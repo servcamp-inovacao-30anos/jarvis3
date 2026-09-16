@@ -101,7 +101,7 @@ html[data-theme="dark"] [style*="background:#dbeafe"]{background:#16283f!importa
 html[data-theme="dark"] [style*="background:#e0f2fe"]{background:#14283a!important;}
 html[data-theme="dark"] [style*="background:#ede9fe"]{background:#221a3d!important;}
 html[data-theme="dark"] [style*="background:#fee2e2"]{background:#3a1620!important;}
-html[data-theme="dark"] [style*="background:#fef3c7"],
+html[data-theme="dark"] [style*="background:#f0fdf4"],
 html[data-theme="dark"] [style*="background:#fef9c3"],
 html[data-theme="dark"] [style*="background:#fefce8"]{background:#33270f!important;}
 html[data-theme="dark"] [style*="background:#f0fdf4"],
@@ -6213,7 +6213,7 @@ function rhDashVagas(){
   const st=arr=>({ab:arr.filter(v=>v.status==="ABERTA").length,pr:arr.filter(v=>v.status==="PREENCHIDA").length,ca:arr.filter(v=>v.status==="CANCELADA").length});
   const sc=st(cont),sr=st(res);
   const box=(lb,cor,bg,o)=>`<div style="flex:1;background:${bg};border-radius:8px;padding:12px"><div style="font-size:.68rem;font-weight:800;color:${cor}">${lb}</div><div style="font-size:1.5rem;font-weight:900;color:${cor}">${o.ab+o.pr+o.ca}</div><div style="font-size:.62rem;color:${cor}">🔴 ${o.ab} · ✅ ${o.pr} · ⚫ ${o.ca}</div></div>`;
-  document.getElementById("rv-tipo").innerHTML=`<div style="display:flex;gap:10px;text-align:center">${box("CONTRATO","#1e40af","#dbeafe",sc)}${box("RESERVA","#92400e","#fef3c7",sr)}</div><div style="margin-top:9px;font-size:.66rem;color:#94a3b8">🔴 abertas · ✅ preenchidas · ⚫ canceladas</div>`;
+  document.getElementById("rv-tipo").innerHTML=`<div style="display:flex;gap:10px;text-align:center">${box("CONTRATO","#1e40af","#dbeafe",sc)}${box("RESERVA","#92400e","#f0fdf4",sr)}</div><div style="margin-top:9px;font-size:.66rem;color:#94a3b8">🔴 abertas · ✅ preenchidas · ⚫ canceladas</div>`;
   // Crescimento x Reposição
   const aum=V.filter(isAumento).length,sub=V.filter(v=>String(v.motivo_abertura||"").toUpperCase().includes("SUBST")).length;
   _rvBars(document.getElementById("rv-motivo"),[["🚀 Aumento de Quadro (crescimento)",aum],["🔄 Substituição (reposição)",sub]],"#7c3aed",aum+sub);
@@ -7646,7 +7646,7 @@ function hqRenderChat(){
         return `<div style="margin-bottom:9px${eu?";text-align:right":""}">
           <span style="font-size:.6rem;font-weight:800;color:${c[1]};cursor:pointer" onclick="hqAbrirDM('${_esc(m.user_key||"")}')">${_esc(m.nome)}</span>
           <span style="font-size:.54rem;color:#94a3b8"> ${dt.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})} ${dt.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</span>
-          <div style="display:inline-block;max-width:92%;background:${eu?(ehPart?"#fef3c7":"#dbeafe"):(ehPart?"#fef9c3":"#f1f5f9")};border-radius:10px;padding:6px 10px;font-size:.7rem;color:#0f172a;margin-top:2px;text-align:left;word-break:break-word">${_esc(m.texto)}</div>
+          <div style="display:inline-block;max-width:92%;background:${eu?(ehPart?"#f0fdf4":"#dbeafe"):(ehPart?"#fef9c3":"#f1f5f9")};border-radius:10px;padding:6px 10px;font-size:.7rem;color:#0f172a;margin-top:2px;text-align:left;word-break:break-word">${_esc(m.texto)}</div>
         </div>`;}).join("")
       :(ehPart?'<div style="color:#94a3b8;font-size:.7rem;text-align:center;padding:30px 0">Comece a conversa particular 🔒</div>':'<div style="color:#94a3b8;font-size:.7rem;text-align:center;padding:30px 0">Nenhuma mensagem ainda — diga oi! 👋</div>')
     }</div>
@@ -8906,7 +8906,7 @@ function sauRender(){
   if(unicos.length){
     const mostrar=unicos.slice(0,8);
     h+='<div style="background:#fff;border:1px solid #fcd34d;border-radius:14px;margin-bottom:12px;overflow:hidden">'
-      +'<div style="padding:13px 18px;border-bottom:1px solid #fef3c7;background:#fffbeb">'
+      +'<div style="padding:13px 18px;border-bottom:1px solid #f0fdf4;background:#fffbeb">'
       +'<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap">'
       +'<span style="font-size:.78rem;font-weight:800;color:#92400e;text-transform:uppercase;letter-spacing:.06em">📌 Posto único em risco</span>'
       +'<span style="font-size:.62rem;color:#b45309">'+mostrar.length+' de '+unicos.length+' · '+_lk("unico","ver todos")+'</span></div>'
@@ -8918,7 +8918,7 @@ function sauRender(){
       if(c.dias_sem_visita===null)partes.push('nunca visitado');
       else if(c.dias_sem_visita>14)partes.push('sem visita há '+c.dias_sem_visita+' dias');
       const grave=c.descobertos>0||c.sem_cobertura>=3;
-      h+='<div style="display:grid;grid-template-columns:46px 1fr auto;gap:13px;align-items:center;padding:13px 18px;border-bottom:1px solid #fef3c7;cursor:pointer" onclick="sauDetalhe('+"'"+_esc(c.cliente).replace(/'/g,"&#39;")+"'"+')">'
+      h+='<div style="display:grid;grid-template-columns:46px 1fr auto;gap:13px;align-items:center;padding:13px 18px;border-bottom:1px solid #f0fdf4;cursor:pointer" onclick="sauDetalhe('+"'"+_esc(c.cliente).replace(/'/g,"&#39;")+"'"+')">'
         +'<div style="width:46px;height:46px;border-radius:11px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:'+(grave?"#fef2f2":"#fffbeb")+';border:1px solid '+(grave?"#fca5a5":"#fcd34d")+'">'
         +'<span style="font-weight:900;font-size:1rem;color:'+(grave?"#b91c1c":"#b45309")+';line-height:1">'+c.sem_cobertura+'</span>'
         +'<span style="font-size:.46rem;color:'+(grave?"#b91c1c":"#b45309")+';font-weight:700;text-align:center;line-height:1.1">sem<br>cobrir</span></div>'
@@ -9692,7 +9692,7 @@ function renderRelDia(){
       body+=rowSec("🚷 ABANDONO (separado)",aband.length,reg("🚷 Abandono",dh,aband.map(det)),true);
       grp(aband,"NOME").forEach(([n,rs2])=>{body+=rowLeaf(n,rs2.length,reg("🚷 Abandono — "+n,dh,rs2.map(det)),true);});
     }
-    html+=card("🚫 Faltas","#b45309","#fef3c7",rows.length+(aband.length?` <span style="font-size:.62rem;font-weight:700">(+${aband.length} abandono)</span>`:""),(rows.length||aband.length)?body:"");
+    html+=card("🚫 Faltas","#b45309","#f0fdf4",rows.length+(aband.length?` <span style="font-size:.62rem;font-weight:700">(+${aband.length} abandono)</span>`:""),(rows.length||aband.length)?body:"");
   }
   // 5. OS AVULSOS — turno → motivo → cliente
   {
