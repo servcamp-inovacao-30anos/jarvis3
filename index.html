@@ -361,6 +361,10 @@ html[data-theme="dark"] .vg-s-rh{background:#241a3d;color:#c4b5fd;}
 .oc-t-alert .oc-v{color:#dc2626!important;}
 .oc-t-alert .oc-sb{color:#c2410c;}
 .oc-t-alert::before{background:#dc2626!important;}
+#ocJust.oc{background:#f0fdf4;border-color:#bbf7d0;}
+#ocJust .oc-lb{color:#15803d;}
+#ocJust .oc-v{color:#16a34a;}
+#ocJust::before{background:#16a34a;}
 .oc.oc-t-warn{background:#fffbeb;border-color:#fcd34d;}
 .oc-t-warn .oc-lb{color:#b45309;}
 .oc-t-warn .oc-v{color:#d97706!important;}
@@ -3221,7 +3225,7 @@ function vgCardJustificativa(){
   document.getElementById("ocJustSub").innerHTML=
     '<b>'+comJ+'</b> justificado(s) · <b>'+semJ+'</b> sem justificativa';
   const c=document.getElementById("ocJust");
-  if(c)c.classList.toggle("oc-t-alert", semJ>comJ);
+  if(c)c.classList.remove("oc-t-alert");
 }
 
 /* Acompanhamento pós-contato: quantos seguem firmes e quantos voltaram a faltar.
