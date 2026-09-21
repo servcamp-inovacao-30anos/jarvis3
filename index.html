@@ -810,7 +810,7 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
            A pagina e o codigo continuam existindo; para religar, descomente esta linha.
       <div class="ni" data-pg="audqual" data-perm="qual" onclick="navTo('audqual',this)"><span class="ni-ic">✅</span><span>Auditoria de Qualidade</span></div>
       -->
-      <div class="ni" data-pg="ligacoes" data-perm="lig" onclick="navTo('ligacoes',this)"><span class="ni-ic">📞</span><span>Ligações &amp; Acompanhamento</span><span class="nib nib-novo">NOVO</span></div>
+      <div class="ni" data-pg="ligacoes" data-perm="lig" onclick="navTo('ligacoes',this)"><span class="ni-ic">📞</span><span>Feedback de Faltas</span><span class="nib nib-novo">NOVO</span></div>
     </div>
   </div>
   <div class="nav-cat" data-cat="rh">
@@ -1715,7 +1715,7 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
     <div id="sau-content"><div style="padding:40px;text-align:center;color:#94a3b8;font-size:.85rem">Carregando…</div></div>
   </div>
   <div class="page" id="pg-ligacoes">
-    <div class="sec-hdr"><span class="sec-hdr-ic">📞</span><div><div class="sec-hdr-t">Ligações &amp; Acompanhamento</div><div class="sec-hdr-sub">Contato preventivo com quem faltou: pendências do dia, registro e painel</div></div></div>
+    <div class="sec-hdr"><span class="sec-hdr-ic">📞</span><div><div class="sec-hdr-t">Feedback de Faltas</div><div class="sec-hdr-sub">Contato preventivo com quem faltou: pendências do dia, registro e painel</div></div></div>
     <div id="lig-content"><div style="padding:40px;text-align:center;color:#94a3b8;font-size:.85rem">Carregando contatos…</div></div>
   </div>
   <style>
@@ -2456,7 +2456,7 @@ function setTurno(t,btn){document.querySelectorAll("#trnoPg .pi").forEach(b=>b.c
 function setArea(){ST.area=document.getElementById("areaS").value;rpg();refresh();}
 function rpg(){Object.keys(ST.tpg).forEach(k=>ST.tpg[k]=1);}
 
-const PTITLES={metas:"Metas da Diretoria",visao:"Visão Geral",ativos:"Funcionários Ativos",clientes:"Clientes",faltas:"Faltas & Top 10",coberturas:"Coberturas",postos:"Justificativa de Postos Descobertos",os:"OS Avulsos",fts:"FTS",dispo:"Sem Alocação",restec:"Reservas Técnicas",hrextra:"Horas Extras",checklist:"Check List",rhvagas:"RH — Controle de Vagas",rhentrev:"RH — Entrevistas & Funil",rhdesl:"RH — Desligamentos",rhres:"RH — Reservas → Efetivação",rhtrein:"RH — Treinamentos",rhdash:"Painel RH — Diretoria",compro:"Comercial — Propostas & Cadência",comdash:"Painel Comercial",config:"Configurações — Acessos & Usuários",sede:"Base Virtual — Equipe",prj:"Projetos — Evolução & Inovação",audqual:"Auditoria de Qualidade",ligacoes:"Ligações & Acompanhamento"};
+const PTITLES={metas:"Metas da Diretoria",visao:"Visão Geral",ativos:"Funcionários Ativos",clientes:"Clientes",faltas:"Faltas & Top 10",coberturas:"Coberturas",postos:"Justificativa de Postos Descobertos",os:"OS Avulsos",fts:"FTS",dispo:"Sem Alocação",restec:"Reservas Técnicas",hrextra:"Horas Extras",checklist:"Check List",rhvagas:"RH — Controle de Vagas",rhentrev:"RH — Entrevistas & Funil",rhdesl:"RH — Desligamentos",rhres:"RH — Reservas → Efetivação",rhtrein:"RH — Treinamentos",rhdash:"Painel RH — Diretoria",compro:"Comercial — Propostas & Cadência",comdash:"Painel Comercial",config:"Configurações — Acessos & Usuários",sede:"Base Virtual — Equipe",prj:"Projetos — Evolução & Inovação",audqual:"Auditoria de Qualidade",ligacoes:"Feedback de Faltas"};
 
 /* ── Sidebar 2.0: accordion com estado salvo + busca de módulos ── */
 function navCatToggle(k){
