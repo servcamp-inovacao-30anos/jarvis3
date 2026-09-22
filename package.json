@@ -6,6 +6,9 @@
   "engines": {
     "node": "24.x"
   },
+  "scripts": {
+    "test": "node --test \"test/*.test.js\""
+  },
   "dependencies": {
     "imapflow": "^1.7.0",
     "nodemailer": "^9.0.3",
