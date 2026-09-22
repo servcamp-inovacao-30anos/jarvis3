@@ -145,3 +145,78 @@ test("segmentosSMS", async t => {
     assert.equal(R.segmentosSMS(""), 0);
   });
 });
+
+test("base de contatos", async t => {
+  const linha = (extra) => ({
+    re: "521", nome_cadastro: "MARIA DA SILVA", nome_norm: "MARIA DA SILVA",
+    telefone_original: "(19) 99876-5432", telefone_e164: "+5519998765432",
+    tipo_telefone: "CELULAR", enviavel: "true", origem: "CADASTRO", data_base: "2026-09-01", ...extra
+  });
+
+  await t.test("só as colunas permitidas entram no banco", () => {
+    const { upserts } = R.planejarContatos([], [linha({ cpf: "123.456.789-00", rg: "12.345.678-9", nome_mae: "ANA", endereco: "RUA X" })], { agora: "2026-09-22T10:00:00Z" });
+    assert.deepEqual(Object.keys(upserts[0]).sort(), [...R.CAMPOS_CONTATO, "atualizado_em"].sort());
+    assert.equal(upserts[0].cpf, undefined);
+  });
+  await t.test("aceita cabeçalho em maiúsculas e com espaços", () => {
+    const { contato } = R.normalizarContato({ RE: 521, "Telefone E164": "+5519998765432", "Tipo Telefone": "celular", Enviavel: "SIM" });
+    assert.equal(contato.re, 521);
+    assert.equal(contato.tipo_telefone, "CELULAR");
+    assert.equal(contato.enviavel, true);
+  });
+  await t.test("novo, atualizado e inalterado", () => {
+    const existentes = [
+      { re: 521, nome_cadastro: "MARIA DA SILVA", nome_norm: "MARIA DA SILVA", telefone_original: "(19) 99876-5432", telefone_e164: "+5519998765432", tipo_telefone: "CELULAR", enviavel: true, origem: "CADASTRO", data_base: "2026-09-01" },
+      { re: 522, nome_cadastro: "JOAO", nome_norm: "JOAO", telefone_original: null, telefone_e164: null, tipo_telefone: "SEM_TELEFONE", enviavel: false, origem: "CADASTRO", data_base: "2026-09-01" }
+    ];
+    const { resumo, upserts } = R.planejarContatos(existentes, [
+      linha(),
+      linha({ re: "522", nome_cadastro: "JOAO", nome_norm: "JOAO", telefone_e164: "+5519911112222", telefone_original: "19911112222" }),
+      linha({ re: "523", nome_cadastro: "ANA", nome_norm: "ANA" })
+    ]);
+    assert.equal(resumo.inalterados, 1);
+    assert.equal(resumo.atualizados, 1);
+    assert.equal(resumo.novos, 1);
+    assert.deepEqual(upserts.map(u => u.re).sort(), [522, 523]);
+  });
+  await t.test("telefone alterado vai para a auditoria com o valor anterior", () => {
+    const existentes = [{ re: 521, telefone_e164: "+5519998765432", tipo_telefone: "CELULAR", enviavel: true }];
+    const { resumo, auditorias } = R.planejarContatos(existentes, [linha({ telefone_e164: "+5519911112222" })], { ator: "raphaelvictor" });
+    assert.equal(resumo.telefones_alterados, 1);
+    assert.equal(auditorias[0].acao, "TELEFONE_ALTERADO");
+    assert.equal(auditorias[0].ator, "raphaelvictor");
+    assert.equal(auditorias[0].antes.telefone_e164, "+5519998765432");
+    assert.equal(auditorias[0].depois.telefone_e164, "+5519911112222");
+  });
+  await t.test("fixo marcado como enviável não vira enviável", () => {
+    const { resumo, upserts } = R.planejarContatos([], [linha({ tipo_telefone: "FIXO", telefone_e164: "+551932345678" })]);
+    assert.equal(upserts[0].enviavel, false);
+    assert.equal(resumo.inconsistentes, 1);
+  });
+  await t.test("celular fora do padrão E.164 brasileiro não vira enviável", () => {
+    assert.equal(R.normalizarContato(linha({ telefone_e164: "+11998765432" })).contato.enviavel, false);
+    assert.equal(R.normalizarContato(linha({ telefone_e164: "+551998765432" })).contato.enviavel, false);
+  });
+  await t.test("RE inválido e RE repetido são rejeitados, com a linha da planilha", () => {
+    const { resumo, rejeitadas } = R.planejarContatos([], [linha(), linha({ re: "" }), linha({ re: "0521" }), linha({ re: "ABC" })]);
+    assert.equal(resumo.validas, 1);
+    assert.equal(resumo.rejeitadas, 3);
+    assert.deepEqual(rejeitadas.map(r => [r.linha, r.motivo]), [[3, "RE_INVALIDO"], [4, "RE_REPETIDO_NO_ARQUIVO"], [5, "RE_INVALIDO"]]);
+  });
+  await t.test("resumo separa enviáveis e não enviáveis por tipo", () => {
+    const { resumo } = R.planejarContatos([], [
+      linha({ re: "1" }), linha({ re: "2" }), linha({ re: "3", tipo_telefone: "CELULAR_CORRIGIDO" }),
+      linha({ re: "4", tipo_telefone: "SEM_TELEFONE", telefone_e164: "", enviavel: "false" }),
+      linha({ re: "5", tipo_telefone: "FIXO", telefone_e164: "+551932345678", enviavel: "false" }),
+      linha({ re: "6", tipo_telefone: "INVALIDO", telefone_e164: "+55199", enviavel: "false" })
+    ]);
+    assert.equal(resumo.enviaveis, 3);
+    assert.equal(resumo.nao_enviaveis, 3);
+    assert.equal(resumo.sem_telefone, 1);
+    assert.deepEqual(resumo.por_tipo, { CELULAR: 2, CELULAR_CORRIGIDO: 1, SEM_TELEFONE: 1, FIXO: 1, INVALIDO: 1 });
+  });
+  await t.test("data da base aceita dd/mm/aaaa", () => {
+    assert.equal(R.normalizarContato(linha({ data_base: "01/09/2026" })).contato.data_base, "2026-09-01");
+    assert.equal(R.normalizarContato(linha({ data_base: "32/09/2026" })).contato.data_base, null);
+  });
+});

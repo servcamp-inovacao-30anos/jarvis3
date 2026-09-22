@@ -187,7 +187,127 @@ function segmentosSMS(texto) {
   return analisarSMS(texto).segmentos;
 }
 
+// ── Base de contatos ────────────────────────────────────────────────────────
+// Só estas colunas entram no banco. A planilha de origem traz CPF, RG, PIS,
+// título de eleitor, nome da mãe, endereço, raça, altura e peso: o que não está
+// nesta lista é descartado antes de qualquer gravação.
+const CAMPOS_CONTATO = ["re", "nome_cadastro", "nome_norm", "telefone_original", "telefone_e164", "tipo_telefone", "enviavel", "origem", "data_base"];
+const TIPOS_CELULAR = new Set(["CELULAR", "CELULAR_CORRIGIDO"]);
+const CELULAR_BR = /^\+55[1-9][1-9]9\d{8}$/;
+
+function textoOuNulo(v) {
+  if (v == null) return null;
+  const s = String(v).trim();
+  return s === "" ? null : s;
+}
+
+function lerBooleano(v) {
+  if (typeof v === "boolean") return v;
+  return ["TRUE", "1", "SIM", "S", "VERDADEIRO"].includes(semAcento(v).trim().toUpperCase());
+}
+
+function lerDataBR(v) {
+  const s = textoOuNulo(v);
+  if (!s) return null;
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return lerData(s) ? s.slice(0, 10) : null;
+  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!m) return null;
+  const iso = isoDe(Number(m[3]), Number(m[2]), Number(m[1]));
+  return lerData(iso) ? iso : null;
+}
+
+function normalizarTelefone(v) {
+  const s = textoOuNulo(v);
+  if (!s) return null;
+  const d = s.replace(/\D/g, "");
+  return d ? "+" + d : null;
+}
+
+// Uma linha da planilha → contato, ou { erro }. O "enviavel" do arquivo só vale
+// se o número for de fato um celular brasileiro em E.164: um fixo marcado como
+// enviável por engano não pode virar SMS.
+function normalizarContato(bruta) {
+  const src = {};
+  for (const [k, v] of Object.entries(bruta || {})) src[semAcento(k).trim().toLowerCase().replace(/\s+/g, "_")] = v;
+  const re = normRE(src.re);
+  if (!/^\d{1,15}$/.test(re) || /^0+$/.test(re)) return { erro: "RE_INVALIDO" };
+  const tel = normalizarTelefone(src.telefone_e164);
+  const tipoInformado = textoOuNulo(src.tipo_telefone);
+  const tipo = tipoInformado ? semAcento(tipoInformado).toUpperCase() : (tel ? null : "SEM_TELEFONE");
+  const declarado = lerBooleano(src.enviavel);
+  const celularValido = !!tel && TIPOS_CELULAR.has(tipo) && CELULAR_BR.test(tel);
+  return {
+    contato: {
+      re: Number(re),
+      nome_cadastro: textoOuNulo(src.nome_cadastro),
+      nome_norm: textoOuNulo(src.nome_norm),
+      telefone_original: textoOuNulo(src.telefone_original),
+      telefone_e164: tel,
+      tipo_telefone: tipo,
+      enviavel: declarado && celularValido,
+      origem: textoOuNulo(src.origem),
+      data_base: lerDataBR(src.data_base)
+    },
+    inconsistente: declarado && !celularValido
+  };
+}
+
+function mesmoValor(a, b) {
+  const na = a == null || a === "" ? null : a, nb = b == null || b === "" ? null : b;
+  return String(na) === String(nb);
+}
+
+// Compara o arquivo com o que já está no banco e devolve o que gravar, sem
+// gravar nada: a tela mostra este resumo antes de a pessoa confirmar.
+// Telefone que mudou gera auditoria com o valor anterior.
+function planejarContatos(existentes, linhas, opcoes) {
+  const o = opcoes || {};
+  const porRE = new Map((existentes || []).map(c => [normRE(c.re), c]));
+  const vistos = new Set();
+  const resumo = {
+    total: 0, validas: 0, rejeitadas: 0,
+    novos: 0, atualizados: 0, inalterados: 0, telefones_alterados: 0,
+    enviaveis: 0, nao_enviaveis: 0, sem_telefone: 0, inconsistentes: 0, por_tipo: {}
+  };
+  const rejeitadas = [], upserts = [], auditorias = [];
+  (linhas || []).forEach((bruta, i) => {
+    resumo.total++;
+    const linha = i + 2; // a linha 1 da planilha é o cabeçalho
+    const { contato: c, erro, inconsistente } = normalizarContato(bruta);
+    if (erro) { rejeitadas.push({ linha, motivo: erro }); return; }
+    const k = String(c.re);
+    if (vistos.has(k)) { rejeitadas.push({ linha, re: c.re, motivo: "RE_REPETIDO_NO_ARQUIVO" }); return; }
+    vistos.add(k);
+    resumo.validas++;
+    if (inconsistente) resumo.inconsistentes++;
+    if (c.enviavel) resumo.enviaveis++; else resumo.nao_enviaveis++;
+    if (!c.telefone_e164) resumo.sem_telefone++;
+    const tp = c.tipo_telefone || "SEM_TIPO";
+    resumo.por_tipo[tp] = (resumo.por_tipo[tp] || 0) + 1;
+
+    const ant = porRE.get(k);
+    if (ant && CAMPOS_CONTATO.every(f => mesmoValor(ant[f], c[f]))) { resumo.inalterados++; return; }
+    if (ant) resumo.atualizados++; else resumo.novos++;
+    const u = { ...c };
+    if (o.agora) u.atualizado_em = o.agora;
+    upserts.push(u);
+    if (ant && !mesmoValor(ant.telefone_e164, c.telefone_e164)) {
+      resumo.telefones_alterados++;
+      auditorias.push({
+        ator: o.ator || null, acao: "TELEFONE_ALTERADO", entidade: "pt_contatos", entidade_id: c.re,
+        antes: { telefone_e164: ant.telefone_e164 || null, tipo_telefone: ant.tipo_telefone || null, enviavel: !!ant.enviavel },
+        depois: { telefone_e164: c.telefone_e164, tipo_telefone: c.tipo_telefone, enviavel: c.enviavel }
+      });
+    }
+  });
+  resumo.rejeitadas = rejeitadas.length;
+  return { resumo, rejeitadas, upserts, auditorias };
+}
+
 module.exports = {
+  CAMPOS_CONTATO,
+  normalizarContato,
+  planejarContatos,
   TOLERANCIA_PADRAO_MIN,
   classificar,
   competenciaDe,

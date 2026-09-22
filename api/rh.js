@@ -43,6 +43,9 @@ const _auth = require("./_auth");
 module.exports = async function handler(req, res) {
   const _ga = _auth.requireAuth(req);
   if (!_ga.ok) return res.status(401).json({ error: "Não autenticado." });
+  // Monitoramento de ponto: o código vive em api/_ponto.js e só passa por aqui
+  // pelo mesmo motivo das metas — o plano Hobby já está nas 12 funções.
+  if (req.query && req.query.modulo === "ponto") return require("./_ponto")(req, res);
   const SUPABASE_URL = process.env.SUPABASE_URL;
   const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
