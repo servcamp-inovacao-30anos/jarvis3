@@ -2,7 +2,9 @@
 //
 // Prefixo "_" → não vira rota. É chamado pelo api/rh.js quando a URL traz
 // ?modulo=ponto: o plano Hobby da Vercel permite 12 funções e já estamos nas 12.
-//   /api/rh?modulo=ponto&t=contatos   (GET lista · POST carga)
+//   /api/rh?modulo=ponto&t=contatos    (GET lista · POST carga)
+//   /api/rh?modulo=ponto&t=processar   (POST reprocessa a última planilha)
+// E o api/import.js chama materializar() a cada planilha recebida.
 //
 // As regras moram em _ponto_regras.js (puras, testadas). Aqui fica só o que
 // fala com o mundo: banco, autorização e o formato das respostas.
@@ -59,19 +61,101 @@ function conectar() {
       }
       return todos;
     },
-    async upsert(tabela, linhas, conflito) {
+    async obter(caminho) {
+      const r = await chamar(caminho);
+      return r.json();
+    },
+    // ignorar: linha que já existe fica como está (ON CONFLICT DO NOTHING).
+    // Sem ignorar, os campos enviados sobrescrevem os da linha existente.
+    async upsert(tabela, linhas, conflito, opcoes) {
+      const o = opcoes || {};
+      const prefer = `resolution=${o.ignorar ? "ignore" : "merge"}-duplicates,return=${o.retornar ? "representation" : "minimal"}`;
+      let volta = [];
       for (const lote of emLotes(linhas, 500)) {
-        await chamar(`${tabela}?on_conflict=${conflito}`, {
-          method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify(lote)
-        });
+        const r = await chamar(`${tabela}?on_conflict=${conflito}`, { method: "POST", headers: { Prefer: prefer }, body: JSON.stringify(lote) });
+        if (o.retornar) volta = volta.concat(await r.json());
       }
+      return volta;
     },
     async inserir(tabela, linhas) {
       for (const lote of emLotes(linhas, 500)) {
         await chamar(tabela, { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify(lote) });
       }
+    },
+    async atualizar(caminho, patch) {
+      await chamar(caminho, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify(patch) });
     }
   };
+}
+
+// ── materialização das ocorrências ──────────────────────────────────────────
+// Chamada pelo api/import.js a cada planilha. O snapshot é substituído a cada
+// importação e a janela da exportação (~20 dias) é mais curta que a competência
+// (26 a 25): recalcular depois a partir dele perderia os primeiros dias. Por
+// isso as ocorrências vão para tabela própria no momento em que chegam.
+//
+// Nenhum SMS é enviado aqui. Jamais.
+const CAMPOS_OCORRENCIA_LIDOS = "id,re,nome,data_jornada,tipo,horario_previsto,horario_marcado,diferenca_minutos,reconciliacao,is_test,chave_dedup";
+
+async function materializar(data, opcoes) {
+  const o = opcoes || {};
+  const db = o.db || conectar();
+  if (!db) return { ok: false, motivo: "CONFIG_AUSENTE" };
+  const ator = o.ator || null;
+  const cfg = R.lerConfig(await db.listar("pt_config?select=chave,valor&order=chave.asc"));
+  const { normNome } = require("./_parse");
+  const det = R.detectarOcorrencias(data && data.hrextra, data && data.ativos, {
+    tolerancia: cfg.tolerancia_minutos, dataVirada: cfg.data_virada, normNome
+  });
+  const resultado = { ok: true, ativo: det.ativo, stats: det.stats, ocorrencias_novas: 0, mensagens_novas: 0, mensagens_atualizadas: 0 };
+  if (!det.ativo) return resultado;
+
+  if (det.ocorrencias.length) {
+    await db.upsert("pt_competencias", R.competenciasNecessarias(det.ocorrencias, cfg.data_virada), "data_inicio,data_fim", { ignorar: true });
+    const comps = await db.listar("pt_competencias?select=id,data_inicio&order=id.asc");
+    const compId = new Map(comps.map(c => [String(c.data_inicio).slice(0, 10), c.id]));
+
+    const datas = det.ocorrencias.map(x => x.data_jornada).sort();
+    const janela = `data_jornada=gte.${datas[0]}&data_jornada=lte.${datas[datas.length - 1]}&is_test=eq.false`;
+    const existentes = await db.listar(`pt_ocorrencias?select=${CAMPOS_OCORRENCIA_LIDOS}&${janela}&order=id.asc`);
+    const jaGravadas = new Set(existentes.map(x => x.chave_dedup));
+    const novas = det.ocorrencias
+      .filter(x => !jaGravadas.has(x.chave_dedup))
+      .map(x => ({ ...x, competencia_id: compId.get(R.competenciaDe(x.data_jornada).inicio) || null }));
+    const inseridas = await db.upsert("pt_ocorrencias", novas, "chave_dedup", { ignorar: true, retornar: true });
+    resultado.ocorrencias_novas = inseridas.length;
+    await db.inserir("pt_auditoria", inseridas.map(x => ({
+      ator, acao: "OCORRENCIA_CRIADA", entidade: "pt_ocorrencias", entidade_id: x.id, antes: null,
+      depois: { re: x.re, data_jornada: x.data_jornada, tipo: x.tipo, diferenca_minutos: x.diferenca_minutos, reconciliacao: x.reconciliacao }
+    })));
+
+    const contatos = await db.listar("pt_contatos?select=re,telefone_e164,tipo_telefone,enviavel&order=re.asc");
+    const mensagens = await db.listar(`pt_mensagens?select=id,re,data_jornada,ocorrencia_ids,status,editado_em,telefone_e164,motivo_bloqueio,texto_gerado,template_id&${janela}&order=id.asc`);
+    const plano = R.planejarMensagens(existentes.concat(inseridas), {
+      contatosPorRE: new Map(contatos.map(c => [String(c.re), c])),
+      existentes: new Map(mensagens.map(m => [`${m.re}|${String(m.data_jornada).slice(0, 10)}`, m])),
+      modelos: cfg.modelos
+    });
+    await db.upsert("pt_mensagens", plano.inserir, "re,data_jornada,is_test", { ignorar: true });
+    for (const a of plano.atualizar) await db.atualizar(`pt_mensagens?id=eq.${a.id}`, a.patch);
+    resultado.mensagens_novas = plano.inserir.length;
+    resultado.mensagens_atualizadas = plano.atualizar.length;
+  }
+
+  await db.inserir("pt_auditoria", [{
+    ator, acao: "IMPORTACAO_PROCESSADA", entidade: "pt_ocorrencias", entidade_id: null, antes: null,
+    depois: { stats: det.stats, ocorrencias_novas: resultado.ocorrencias_novas, mensagens_novas: resultado.mensagens_novas, mensagens_atualizadas: resultado.mensagens_atualizadas }
+  }]);
+  return resultado;
+}
+
+// Reprocessa a última planilha já importada — útil logo depois de definir a
+// data de virada ou de carregar a base de contatos, sem esperar a próxima.
+async function processarUltima({ res, db, ator }) {
+  const snap = await db.obter("dashboard_snapshots?select=data&order=created_at.desc&limit=1");
+  const data = snap && snap[0] && snap[0].data;
+  if (!data) return erro(res, 404, "Nenhuma planilha importada ainda.", "SEM_PLANILHA");
+  return res.status(200).json(await materializar(data, { db, ator }));
 }
 
 // ── contatos ────────────────────────────────────────────────────────────────
@@ -119,7 +203,8 @@ async function carregarContatos({ res, db, ator, body }) {
 
 const ROTAS = {
   "GET contatos": { aprovador: true, fn: listarContatos },
-  "POST contatos": { aprovador: true, fn: carregarContatos }
+  "POST contatos": { aprovador: true, fn: carregarContatos },
+  "POST processar": { aprovador: true, fn: processarUltima }
 };
 
 module.exports = async function ponto(req, res) {
@@ -147,3 +232,5 @@ module.exports = async function ponto(req, res) {
 };
 
 module.exports.APROVADORES = APROVADORES;
+module.exports.materializar = materializar;
+module.exports.usuarioDoToken = usuarioDoToken;

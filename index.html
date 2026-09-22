@@ -4560,6 +4560,33 @@ function turnoFromEscala(esc,hrEntrada){
 function normTxt(v){
   return String(v||"").trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
 }
+// Horario de uma celula de ponto -> "HH:MM", ou "AAAA-MM-DDTHH:MM" quando a
+// celula tambem traz a data. A hora sai do texto formatado (o que o Excel
+// mostra): com cellDates:true, reconstrui-la do objeto Date pode errar por
+// segundos, por causa do fuso historico das datas-base de 1899.
+function horaDaCelula(v,txt){
+  const p2=n=>String(n).padStart(2,"0");
+  let hm="",dia="";
+  const t=String(txt==null?"":txt).trim();
+  const m=t.match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*([AP]M)?$/i);
+  if(m){
+    let h=Number(m[1]);const ap=(m[3]||"").toUpperCase();
+    if(ap==="PM"&&h<12)h+=12;if(ap==="AM"&&h===12)h=0;
+    if(h<24)hm=p2(h)+":"+m[2];
+  }
+  if(typeof v==="number"&&isFinite(v)&&v>=0){
+    const tot=Math.round(v*1440),dias=Math.floor(tot/1440),min=tot-dias*1440;
+    if(!hm)hm=p2(Math.floor(min/60))+":"+p2(min%60);
+    if(v>=1){try{const d=XLSX.SSF.parse_date_code(dias);if(d)dia=d.y+"-"+p2(d.m)+"-"+p2(d.d);}catch(e){}}
+  }else if(v instanceof Date&&!isNaN(v.getTime())){
+    const r=new Date(Math.round(v.getTime()/60000)*60000);
+    if(!hm)hm=p2(r.getHours())+":"+p2(r.getMinutes());
+    if(v.getFullYear()>=1900)dia=v.getFullYear()+"-"+p2(v.getMonth()+1)+"-"+p2(v.getDate());
+  }else{
+    const iso=t.match(/^(\d{4}-\d{2}-\d{2})/);if(iso)dia=iso[1];
+  }
+  return hm?(dia?dia+"T"+hm:hm):"";
+}
 function findSheet(wb,name){
   const target=normTxt(name);
   for(const n of wb.SheetNames){if(normTxt(n)===target)return wb.Sheets[n];}
@@ -4657,6 +4684,7 @@ function buildDataFromWorkbook(wb){
       const kTipo=fk(["TIPOEXTRA"]);
       const kEnt=fk(["HRENTRADA"]),kMrEnt=fk(["HRMRENTRADA"]);
       const kSai=fk(["HRSAIDA"]),kMrSai=fk(["HRMRSAIDA"]);
+      const kRe=fk(["RE"]);
       data.hrextra=heRows.map((r,_i)=>{
         let seg=0;
         if(kMin){
@@ -4690,12 +4718,19 @@ function buildDataFromWorkbook(wb){
           else if(tipoU.indexOf("SAIDA")>=0){const a=n(b[kSai]),c=n(b[kMrSai]);if(a!==null&&c!==null)d=(c-a)*86400;}
           if(d!==null&&d>0&&d<12*3600)seg=Math.round(d);
         }
+        // RE e horarios crus da linha: o monitoramento de ponto precisa deles
+        // para aplicar a tolerancia e montar a orientacao (o total em MINUTOS
+        // nao basta). RE fica vazio quando a aba nao traz essa coluna.
+        const cr=(heRaw&&heRaw[_i])||{};
         return{
           NOME:kFunc?r[kFunc]:"—",DATA:isoDate(kData?r[kData]:""),
           LOCAL:kLocal?r[kLocal]:"—",CLIENTE:(kCli?r[kCli]:"")||(kLocal?r[kLocal]:"")||"—",
           AREA:kArea?r[kArea]:"—",CARGO:kCargo?r[kCargo]:"—",
           MOTIVO:kMotivo?r[kMotivo]:"—",TIPO:kTipo?r[kTipo]:"—",
-          MINUTOS:seg,TURNO:"DIURNO"
+          MINUTOS:seg,TURNO:"DIURNO",
+          RE:kRe?r[kRe]:"",
+          HRENTRADA:kEnt?horaDaCelula(cr[kEnt],r[kEnt]):"",HRMRENTRADA:kMrEnt?horaDaCelula(cr[kMrEnt],r[kMrEnt]):"",
+          HRSAIDA:kSai?horaDaCelula(cr[kSai],r[kSai]):"",HRMRSAIDA:kMrSai?horaDaCelula(cr[kMrSai],r[kMrSai]):""
         };
       }).filter(Boolean);
     }else{data.hrextra=[];}

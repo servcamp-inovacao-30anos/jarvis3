@@ -304,10 +304,260 @@ function planejarContatos(existentes, linhas, opcoes) {
   return { resumo, rejeitadas, upserts, auditorias };
 }
 
+// ── Configuração ────────────────────────────────────────────────────────────
+
+function lerConfig(linhas) {
+  const v = {};
+  (linhas || []).forEach(l => { v[l.chave] = l.valor; });
+  const num = (k, padrao) => { const n = Number(v[k]); return v[k] != null && v[k] !== "" && Number.isFinite(n) ? n : padrao; };
+  const modelos = {};
+  Object.keys(MODELOS_PADRAO).forEach(id => { if (textoOuNulo(v["modelo_" + id])) modelos[id] = v["modelo_" + id]; });
+  return {
+    tolerancia_minutos: num("tolerancia_minutos", TOLERANCIA_PADRAO_MIN),
+    data_virada: lerData(v.data_virada) ? String(v.data_virada).slice(0, 10) : null,
+    sms_limite_dia: num("sms_limite_dia", 50),
+    sms_limite_mes: num("sms_limite_mes", 300),
+    alerta_pct: num("alerta_pct", 80),
+    critico_pct: num("critico_pct", 90),
+    modelos
+  };
+}
+
+// ── Ocorrências a partir da aba HR EXTRA ────────────────────────────────────
+
+const TIPOS_HE = new Set(["EXTRA ENTRADA", "EXTRA SAIDA"]);
+
+function tipoHE(tipo) {
+  const t = semAcento(tipo).toUpperCase().trim().replace(/\s+/g, " ");
+  return TIPOS_HE.has(t) ? t : null;
+}
+
+function soHora(v) {
+  const h = lerHorario(v);
+  return h ? hhmm(h.min) : null;
+}
+
+function reValido(s) {
+  return /^\d{1,15}$/.test(s) && !/^0+$/.test(s) ? Number(s) : null;
+}
+
+function campoSistema(v) {
+  const s = textoOuNulo(v);
+  return s && s !== "—" ? s : null;
+}
+
+// Lê as linhas da HR EXTRA e devolve as ocorrências a gravar, já com RE e
+// chave de deduplicação. Nada de banco aqui.
+//
+// opcoes = { tolerancia, dataVirada, normNome, origem }
+//   dataVirada vazia → o módulo está desligado e nada é criado.
+//   normNome → a MESMA normalização do ativosNomeMap (api/_parse.js).
+//
+// O RE vem da própria linha quando a aba traz a coluna; senão, do nome no
+// quadro de ativos. Nome sem par, ou com mais de um par, fica pendente de
+// reconciliação e não gera mensagem.
+function detectarOcorrencias(hrextra, ativos, opcoes) {
+  const o = opcoes || {};
+  const normNome = o.normNome;
+  const stats = { linhas: 0, consideradas: 0, sem_horario: 0, dentro_tolerancia: 0, antes_da_virada: 0, repetidas: 0, ocorrencias: 0, pendentes_reconciliacao: 0 };
+  const virada = lerData(o.dataVirada) ? String(o.dataVirada).slice(0, 10) : null;
+  if (!virada) return { ativo: false, ocorrencias: [], stats };
+
+  const porNome = new Map(), porRE = new Map();
+  (ativos || []).forEach(a => {
+    const re = reValido(normRE(a.RE));
+    if (re != null) porRE.set(String(re), a);
+    if (a.NOME) {
+      const k = normNome(a.NOME);
+      if (!porNome.has(k)) porNome.set(k, []);
+      porNome.get(k).push(a);
+    }
+  });
+
+  const vistas = new Set(), ocorrencias = [];
+  (hrextra || []).forEach(l => {
+    stats.linhas++;
+    const tipoLinha = tipoHE(l.TIPO);
+    if (!tipoLinha) return;
+    stats.consideradas++;
+    const entrada = tipoLinha === "EXTRA ENTRADA";
+    const previsto = entrada ? l.HRENTRADA : l.HRSAIDA;
+    const marcado = entrada ? l.HRMRENTRADA : l.HRMRSAIDA;
+    if (!lerHorario(previsto) || !lerHorario(marcado)) { stats.sem_horario++; return; }
+    const c = classificar(previsto, marcado, tipoLinha, o.tolerancia);
+    if (!c) { stats.dentro_tolerancia++; return; }
+    const dataJornada = dataDaJornada({ marcacao: marcado, data: l.DATA, tipo: tipoLinha, entradaPrevista: l.HRENTRADA, saidaPrevista: l.HRSAIDA });
+    if (!dataJornada) { stats.sem_horario++; return; }
+    if (dataJornada < virada) { stats.antes_da_virada++; return; }
+
+    let re = null, reconciliacao = null, ativo = null;
+    const reLinha = reValido(normRE(l.RE));
+    if (reLinha != null) {
+      re = reLinha;
+      ativo = porRE.get(String(reLinha)) || null;
+      if (!ativo) reconciliacao = "RE_NAO_ENCONTRADO";
+    } else {
+      const achados = porNome.get(normNome(l.NOME)) || [];
+      if (achados.length === 1) { ativo = achados[0]; re = reValido(normRE(ativo.RE)); }
+      if (re == null) reconciliacao = achados.length > 1 ? "NOME_AMBIGUO" : "NOME_NAO_ENCONTRADO";
+    }
+
+    const identidade = re != null ? re : "NOME:" + normNome(l.NOME);
+    const chave = chaveDedup(identidade, dataJornada, c.tipo, marcado);
+    if (vistas.has(chave)) { stats.repetidas++; return; }
+    vistas.add(chave);
+    stats.ocorrencias++;
+    if (reconciliacao) stats.pendentes_reconciliacao++;
+
+    ocorrencias.push({
+      re,
+      nome: textoOuNulo(l.NOME) || (ativo && textoOuNulo(ativo.NOME)) || "—",
+      data_jornada: dataJornada,
+      tipo: c.tipo,
+      horario_previsto: soHora(previsto),
+      horario_marcado: soHora(marcado),
+      diferenca_minutos: c.minutos,
+      posto: campoSistema(l.LOCAL) || (ativo && campoSistema(ativo.LOCAL)) || null,
+      cliente: campoSistema(l.CLIENTE) || (ativo && campoSistema(ativo.TPCLIENTE)) || null,
+      supervisor: campoSistema(l.AREA) || (ativo && campoSistema(ativo.AREA)) || null,
+      origem: o.origem || "SAR2G_PLANILHA",
+      chave_dedup: chave,
+      status: "DETECTADA",
+      reconciliacao,
+      is_test: false,
+      dado_original: {
+        NOME: l.NOME == null ? null : l.NOME, DATA: l.DATA == null ? null : l.DATA, TIPO: l.TIPO == null ? null : l.TIPO,
+        RE: textoOuNulo(l.RE), MINUTOS: l.MINUTOS == null ? null : l.MINUTOS,
+        HRENTRADA: l.HRENTRADA || null, HRMRENTRADA: l.HRMRENTRADA || null, HRSAIDA: l.HRSAIDA || null, HRMRSAIDA: l.HRMRSAIDA || null,
+        LOCAL: l.LOCAL == null ? null : l.LOCAL, CLIENTE: l.CLIENTE == null ? null : l.CLIENTE, AREA: l.AREA == null ? null : l.AREA
+      }
+    });
+  });
+  return { ativo: true, ocorrencias, stats };
+}
+
+// Competências tocadas pelas ocorrências. A que contém a data de virada nasce
+// PARCIAL, com o corte na virada: os dias anteriores não existem no módulo.
+function competenciasNecessarias(ocorrencias, dataVirada) {
+  const mapa = new Map();
+  (ocorrencias || []).forEach(oc => {
+    const c = competenciaDe(oc.data_jornada);
+    if (!c || mapa.has(c.inicio)) return;
+    const parcial = !!dataVirada && dataVirada > c.inicio && dataVirada <= c.fim;
+    mapa.set(c.inicio, { data_inicio: c.inicio, data_fim: c.fim, parcial, data_corte: parcial ? dataVirada : null });
+  });
+  return [...mapa.values()];
+}
+
+// ── Mensagens ───────────────────────────────────────────────────────────────
+// Sem acento e sem mencionar custo, hora extra, pagamento ou desconto: o
+// objetivo é só orientar a marcar dentro do horário.
+const MODELOS_PADRAO = {
+  entrada_antecipada: "SERVCAMP | ORIENTACAO DE PONTO\nOla, {{nome}}. Em {{data}} sua entrada foi as {{horario_marcado}}, {{minutos}} min antes do previsto ({{horario_previsto}}). Oriente-se a marcar no horario. RE {{re}}.",
+  saida_apos_horario: "SERVCAMP | ORIENTACAO DE PONTO\nOla, {{nome}}. Em {{data}} sua saida foi as {{horario_marcado}}, {{minutos}} min apos o previsto ({{horario_previsto}}). Oriente-se a marcar no horario. RE {{re}}.",
+  ambas_no_mesmo_dia: "SERVCAMP | ORIENTACAO DE PONTO\nOla, {{nome}}. Em {{data}} sua entrada foi as {{entrada_marcada}} e a saida as {{saida_marcada}}, fora do previsto ({{entrada_prevista}} as {{saida_prevista}}). Oriente-se a marcar no horario. RE {{re}}."
+};
+
+function renderizar(modelo, vars) {
+  return String(modelo || "").replace(/\{\{\s*([a-z_]+)\s*\}\}/g, (m, k) => (vars[k] == null ? m : String(vars[k])));
+}
+
+// Só o primeiro nome, sem acento: um "José" no meio do texto jogaria a mensagem
+// inteira para UCS-2 (70 caracteres por SMS em vez de 160).
+function primeiroNome(nome) {
+  const p = semAcento(nome).trim().split(/\s+/)[0] || "";
+  return p.split("-").map(s => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()).join("-");
+}
+
+function ddmm(iso) {
+  const d = lerData(iso);
+  return d ? `${String(d.d).padStart(2, "0")}/${String(d.m).padStart(2, "0")}` : "";
+}
+
+function montarMensagem(lista, modelos) {
+  const maior = arr => arr.reduce((a, b) => (!a || b.diferenca_minutos > a.diferenca_minutos ? b : a), null);
+  const ent = maior(lista.filter(x => x.tipo === "EARLY_ENTRY"));
+  const sai = maior(lista.filter(x => x.tipo === "LATE_EXIT"));
+  const ref = ent || sai;
+  const base = { nome: primeiroNome(ref.nome), data: ddmm(ref.data_jornada), re: String(ref.re) };
+  let template_id, vars;
+  if (ent && sai) {
+    template_id = "ambas_no_mesmo_dia";
+    vars = { ...base, entrada_marcada: ent.horario_marcado, saida_marcada: sai.horario_marcado, entrada_prevista: ent.horario_previsto, saida_prevista: sai.horario_previsto };
+  } else {
+    template_id = ent ? "entrada_antecipada" : "saida_apos_horario";
+    vars = { ...base, horario_marcado: ref.horario_marcado, horario_previsto: ref.horario_previsto, minutos: ref.diferenca_minutos };
+  }
+  const texto = renderizar(modelos[template_id], vars);
+  return { template_id, texto_gerado: texto, segmentos: segmentosSMS(texto) };
+}
+
+// Telefone que a mensagem usaria e, se não puder ser enviada, por quê.
+// No envio o telefone é conferido de novo: isto aqui é o retrato da fila.
+function situacaoTelefone(contato) {
+  if (!contato || !contato.telefone_e164) return { telefone: null, bloqueio: "TELEFONE_AUSENTE" };
+  if (String(contato.tipo_telefone || "").toUpperCase() === "FIXO") return { telefone: contato.telefone_e164, bloqueio: "TELEFONE_FIXO" };
+  if (!contato.enviavel || !CELULAR_BR.test(contato.telefone_e164)) return { telefone: contato.telefone_e164, bloqueio: "TELEFONE_INVALIDO" };
+  return { telefone: contato.telefone_e164, bloqueio: null };
+}
+
+// Uma mensagem por colaborador por dia; duas ocorrências no mesmo dia viram um
+// texto só, que menciona as duas. Pendente de reconciliação não entra.
+//
+// opcoes = { contatosPorRE: Map(re → contato), existentes: Map("re|data" → mensagem), modelos }
+// Mensagem já aprovada, enviada ou rejeitada não é tocada; a que ainda aguarda
+// validação é atualizada — mas um texto editado por alguém não é sobrescrito.
+function planejarMensagens(ocorrencias, opcoes) {
+  const o = opcoes || {};
+  const modelos = { ...MODELOS_PADRAO, ...(o.modelos || {}) };
+  const grupos = new Map();
+  (ocorrencias || []).forEach(oc => {
+    if (oc.re == null || oc.reconciliacao || oc.is_test || oc.id == null) return;
+    const k = `${oc.re}|${oc.data_jornada}`;
+    if (!grupos.has(k)) grupos.set(k, []);
+    grupos.get(k).push(oc);
+  });
+  const inserir = [], atualizar = [];
+  for (const [k, lista] of grupos) {
+    const { re, data_jornada } = lista[0];
+    const msg = montarMensagem(lista, modelos);
+    const { telefone, bloqueio } = situacaoTelefone(o.contatosPorRE && o.contatosPorRE.get(String(re)));
+    const ids = lista.map(x => Number(x.id)).sort((a, b) => a - b);
+    const ex = o.existentes && o.existentes.get(k);
+    if (!ex) {
+      inserir.push({
+        re, data_jornada, ocorrencia_ids: ids, telefone_e164: telefone,
+        template_id: msg.template_id, texto_gerado: msg.texto_gerado, texto_final: null, segmentos: msg.segmentos,
+        status: "AGUARDANDO_VALIDACAO", motivo_bloqueio: bloqueio, is_test: false
+      });
+      continue;
+    }
+    if (ex.status !== "AGUARDANDO_VALIDACAO") continue;
+    const patch = {};
+    if (!ex.editado_em) {
+      const uniao = [...new Set([...(ex.ocorrencia_ids || []).map(Number), ...ids])].sort((a, b) => a - b);
+      if (uniao.join(",") !== (ex.ocorrencia_ids || []).map(Number).sort((a, b) => a - b).join(",")) patch.ocorrencia_ids = uniao;
+      if (ex.texto_gerado !== msg.texto_gerado) Object.assign(patch, msg);
+    }
+    if ((ex.telefone_e164 || null) !== telefone) patch.telefone_e164 = telefone;
+    if ((ex.motivo_bloqueio || null) !== bloqueio) patch.motivo_bloqueio = bloqueio;
+    if (Object.keys(patch).length) atualizar.push({ id: ex.id, patch });
+  }
+  return { inserir, atualizar };
+}
+
 module.exports = {
   CAMPOS_CONTATO,
   normalizarContato,
   planejarContatos,
+  lerConfig,
+  detectarOcorrencias,
+  competenciasNecessarias,
+  MODELOS_PADRAO,
+  renderizar,
+  primeiroNome,
+  situacaoTelefone,
+  planejarMensagens,
   TOLERANCIA_PADRAO_MIN,
   classificar,
   competenciaDe,

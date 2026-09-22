@@ -13,51 +13,9 @@ const _auth = require("../api/_auth");
 const ponto = require("../api/_ponto");
 const rh = require("../api/rh");
 
+const { supabaseFalso, chamar } = require("./_supabase_falso");
+
 ponto.APROVADORES.add("aprovador");
-
-function resposta(status, corpo) {
-  return { ok: status < 400, status, json: async () => corpo, text: async () => JSON.stringify(corpo) };
-}
-
-function supabaseFalso(tabelas) {
-  const log = [];
-  global.fetch = async (url, init = {}) => {
-    const u = new URL(url);
-    const tabela = u.pathname.replace("/rest/v1/", "");
-    const metodo = init.method || "GET";
-    const corpo = init.body ? JSON.parse(init.body) : null;
-    log.push({ metodo, tabela, corpo });
-    tabelas[tabela] = tabelas[tabela] || [];
-    if (metodo === "GET") {
-      const offset = Number(u.searchParams.get("offset") || 0), limit = Number(u.searchParams.get("limit") || 1000);
-      return resposta(200, tabelas[tabela].slice(offset, offset + limit));
-    }
-    if (metodo === "POST") {
-      const conflito = u.searchParams.get("on_conflict");
-      for (const l of corpo) {
-        const i = conflito ? tabelas[tabela].findIndex(x => String(x[conflito]) === String(l[conflito])) : -1;
-        if (i >= 0) tabelas[tabela][i] = { ...tabelas[tabela][i], ...l };
-        else tabelas[tabela].push({ ...l });
-      }
-      return resposta(201, null);
-    }
-    return resposta(405, { message: "método não suportado no falso" });
-  };
-  return log;
-}
-
-function chamar(handler, { method = "GET", query = {}, body, usuario } = {}) {
-  const headers = {};
-  if (usuario) headers.authorization = "Bearer " + _auth.sign(usuario, process.env.AUTH_SECRET, 1);
-  const req = { method, query, body, headers };
-  const res = {
-    statusCode: 0, body: null,
-    status(c) { this.statusCode = c; return this; },
-    json(b) { this.body = b; return this; },
-    setHeader() {}
-  };
-  return Promise.resolve(handler(req, res)).then(() => res);
-}
 
 const contato = (re, tel, extra) => ({
   re, nome_cadastro: "PESSOA " + re, nome_norm: "PESSOA " + re, telefone_original: tel, telefone_e164: tel,

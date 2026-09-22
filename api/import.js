@@ -227,6 +227,14 @@ module.exports = async function handler(req, res) {
     });
   } catch (e) { /* idem */ }
 
+  // ── Monitoramento de ponto ────────────────────────────────────────────────
+  // As ocorrências de marcação vão para tabela própria já aqui (ver
+  // api/_ponto.js). Como o histórico, falha aqui nunca derruba o envio.
+  try {
+    const ponto = require("./_ponto");
+    await ponto.materializar(data, { ator: origem === "robo" ? "robo" : ponto.usuarioDoToken(req) });
+  } catch (e) { /* idem */ }
+
   const row = inserted[0] || null;
   if (row) delete row.data; // não devolve o snapshot inteiro de volta
   return res.status(200).json({ ok: true, origem, row_count: rowCount, row });
