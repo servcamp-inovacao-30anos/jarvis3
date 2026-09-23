@@ -546,10 +546,172 @@ function planejarMensagens(ocorrencias, opcoes) {
   return { inserir, atualizar };
 }
 
+// ── Painel ──────────────────────────────────────────────────────────────────
+// Teste (is_test) nunca entra em indicador, ficha ou reincidência.
+
+function somaMinutos(lista) {
+  return lista.reduce((t, o) => t + (Number(o.diferenca_minutos) || 0), 0);
+}
+
+function resumoCompetencia(ocorrencias, mensagens) {
+  const oc = (ocorrencias || []).filter(o => !o.is_test);
+  const ms = (mensagens || []).filter(m => !m.is_test);
+  const ent = oc.filter(o => o.tipo === "EARLY_ENTRY"), sai = oc.filter(o => o.tipo === "LATE_EXIT");
+  const conta = s => ms.filter(m => m.status === s).length;
+  const aguardando = ms.filter(m => m.status === "AGUARDANDO_VALIDACAO");
+  return {
+    ocorrencias: oc.length,
+    colaboradores: new Set(oc.filter(o => o.re != null).map(o => String(o.re))).size,
+    entradas_antecipadas: { qtd: ent.length, minutos: somaMinutos(ent) },
+    saidas_apos_horario: { qtd: sai.length, minutos: somaMinutos(sai) },
+    minutos_excedentes: somaMinutos(oc),
+    pendentes_reconciliacao: oc.filter(o => o.reconciliacao).length,
+    mensagens: {
+      aguardando: aguardando.length,
+      bloqueadas: aguardando.filter(m => m.motivo_bloqueio).length,
+      aprovadas: conta("APROVADA"), enviadas: conta("ENVIADA"), falhas: conta("FALHA"), rejeitadas: conta("REJEITADA")
+    },
+    colaboradores_sem_telefone: new Set(aguardando.filter(m => /^TELEFONE_/.test(m.motivo_bloqueio || "")).map(m => String(m.re))).size
+  };
+}
+
+// Quem não aprova vê o telefone mascarado: +55 19 ****-5432.
+function mascararTelefone(tel) {
+  const d = String(tel || "").replace(/\D/g, "");
+  if (!d) return null;
+  return d.length < 8 ? "****" : `+${d.slice(0, 2)} ${d.slice(2, 4)} ****-${d.slice(-4)}`;
+}
+
+function linhaDaFila(m, porId, mascarar) {
+  const itens = (m.ocorrencia_ids || []).map(id => porId.get(Number(id))).filter(Boolean)
+    .sort((a, b) => (a.tipo === b.tipo ? 0 : a.tipo === "EARLY_ENTRY" ? -1 : 1));
+  const texto = m.texto_final || m.texto_gerado || "";
+  const sms = analisarSMS(texto);
+  const ref = itens[0] || {};
+  return {
+    id: m.id, re: m.re, nome: ref.nome || null, posto: ref.posto || null, cliente: ref.cliente || null, supervisor: ref.supervisor || null,
+    data_jornada: String(m.data_jornada).slice(0, 10),
+    itens: itens.map(x => ({ id: x.id, tipo: x.tipo, previsto: x.horario_previsto, marcado: x.horario_marcado, minutos: x.diferenca_minutos })),
+    minutos: somaMinutos(itens),
+    telefone: mascarar ? mascararTelefone(m.telefone_e164) : (m.telefone_e164 || null),
+    texto, editado: !!m.editado_em, segmentos: sms.segmentos, codificacao: sms.codificacao, caracteres: sms.caracteres,
+    status: m.status, motivo_bloqueio: m.motivo_bloqueio || null,
+    aprovado_por: m.aprovado_por || null, aprovado_em: m.aprovado_em || null, enviado_em: m.enviado_em || null,
+    rejeitado_por: m.rejeitado_por || null, motivo_rejeicao: m.motivo_rejeicao || null,
+    erro_codigo: m.erro_codigo || null, erro_mensagem: m.erro_mensagem || null
+  };
+}
+
+// Mais recente primeiro; no mesmo dia, quem tem mais tempo fora do horário.
+function montarFila(mensagens, ocorrencias, opcoes) {
+  const porId = new Map((ocorrencias || []).map(x => [Number(x.id), x]));
+  const mascarar = !!(opcoes && opcoes.mascarar);
+  return (mensagens || []).filter(m => !m.is_test).map(m => linhaDaFila(m, porId, mascarar))
+    .sort((a, b) => (a.data_jornada === b.data_jornada ? b.minutos - a.minutos : a.data_jornada < b.data_jornada ? 1 : -1));
+}
+
+// Ficha de um RE. Reincidência = ocorrência depois de uma orientação já enviada.
+function montarFicha(re, dados) {
+  const d = dados || {};
+  const mascarar = !!d.mascarar;
+  const oc = (d.ocorrencias || []).filter(x => !x.is_test)
+    .sort((a, b) => (a.data_jornada === b.data_jornada ? 0 : a.data_jornada < b.data_jornada ? 1 : -1));
+  const ms = (d.mensagens || []).filter(x => !x.is_test);
+  const enviadas = ms.filter(m => m.status === "ENVIADA" && m.enviado_em).map(m => String(m.enviado_em).slice(0, 10)).sort();
+  const primeira = enviadas[0] || null;
+  const historico = oc.map(x => ({
+    id: x.id, data_jornada: String(x.data_jornada).slice(0, 10), tipo: x.tipo,
+    previsto: x.horario_previsto, marcado: x.horario_marcado, minutos: x.diferenca_minutos,
+    posto: x.posto || null, supervisor: x.supervisor || null,
+    apos_orientacao: !!primeira && String(x.data_jornada).slice(0, 10) > primeira
+  }));
+  const comp = d.competencia || null;
+  const dentro = x => comp && String(x.data_jornada).slice(0, 10) >= comp.inicio && String(x.data_jornada).slice(0, 10) <= comp.fim;
+  const ocComp = oc.filter(dentro), msComp = ms.filter(dentro);
+  const porId = new Map(oc.map(x => [Number(x.id), x]));
+  const a = d.ativo || null, c = d.contato || null;
+  return {
+    re,
+    nome: (a && textoOuNulo(a.NOME)) || (oc[0] && oc[0].nome) || null,
+    no_quadro_ativo: !!a,
+    posto_atual: a ? campoSistema(a.LOCAL) : null,
+    supervisor_atual: a ? campoSistema(a.AREA) : null,
+    cargo: a ? campoSistema(a.CARGO) : null,
+    telefone: c ? (mascarar ? mascararTelefone(c.telefone_e164) : c.telefone_e164 || null) : null,
+    tipo_telefone: c ? c.tipo_telefone || null : null,
+    enviavel: !!(c && c.enviavel),
+    competencia: comp ? { ...comp, resumo: resumoCompetencia(ocComp, msComp), dias_com_ocorrencia: new Set(ocComp.map(x => String(x.data_jornada).slice(0, 10))).size } : null,
+    historico,
+    reincidente: historico.some(h => h.apos_orientacao),
+    acoes: ms.map(m => linhaDaFila(m, porId, mascarar)).sort((x, y) => (x.data_jornada < y.data_jornada ? 1 : -1))
+  };
+}
+
+// ── Validação humana ────────────────────────────────────────────────────────
+// Devolvem null quando pode, ou o código do motivo quando não pode.
+
+function motivoParaNaoAprovar(m) {
+  if (!m) return "NAO_ENCONTRADA";
+  if (m.status === "ENVIADA") return "JA_ENVIADA";
+  if (m.status !== "AGUARDANDO_VALIDACAO") return "STATUS_" + m.status;
+  if (m.motivo_bloqueio) return m.motivo_bloqueio;
+  if (!m.telefone_e164) return "TELEFONE_AUSENTE";
+  if (!textoOuNulo(m.texto_final || m.texto_gerado)) return "SEM_TEXTO";
+  return null;
+}
+
+function motivoParaNaoRejeitar(m) {
+  if (!m) return "NAO_ENCONTRADA";
+  if (m.status === "ENVIADA") return "JA_ENVIADA";
+  if (!["AGUARDANDO_VALIDACAO", "APROVADA", "FALHA"].includes(m.status)) return "STATUS_" + m.status;
+  return null;
+}
+
+// O objetivo é orientar a marcar no horário: a mensagem não fala de custo,
+// hora extra, pagamento ou desconto — nem depois de editada à mão.
+const PROIBIDO_NA_MENSAGEM = /\b(horas?\s+extras?|custos?|pagamentos?|pagar|pago|descontos?|descontar|descontad[oa]s?)\b/i;
+
+function validarTextoMensagem(texto) {
+  const t = String(texto == null ? "" : texto).trim();
+  if (!t) return { erro: "TEXTO_VAZIO" };
+  if (t.length > 670) return { erro: "TEXTO_LONGO" };
+  if (PROIBIDO_NA_MENSAGEM.test(semAcento(t))) return { erro: "TERMO_PROIBIDO" };
+  return { texto: t, ...analisarSMS(t) };
+}
+
+// ── Cota de SMS ─────────────────────────────────────────────────────────────
+// Conta SEGMENTOS, não mensagens. "Mês" é o mês do calendário.
+
+function estadoCota(usado, limite, cfg) {
+  if (!(limite > 0) || usado >= limite) return "LIMITE_ATINGIDO";
+  const pct = (usado / limite) * 100;
+  if (pct >= cfg.critico_pct) return "PROXIMO_DO_LIMITE";
+  if (pct >= cfg.alerta_pct) return "ATENCAO";
+  return "NORMAL";
+}
+
+function resumoCota(usos, hoje, cfg) {
+  const lista = usos || [];
+  const dia = lista.filter(u => String(u.dia).slice(0, 10) === hoje).reduce((t, u) => t + (Number(u.segmentos_dia) || 0), 0);
+  const mes = lista.filter(u => String(u.dia).slice(0, 7) === hoje.slice(0, 7)).reduce((t, u) => t + (Number(u.segmentos_dia) || 0), 0);
+  const item = (usado, limite) => ({ usado, limite, disponivel: Math.max(0, limite - usado), estado: estadoCota(usado, limite, cfg) });
+  const r = { dia: hoje, hoje: item(dia, cfg.sms_limite_dia), mes: item(mes, cfg.sms_limite_mes) };
+  r.disponivel = Math.min(r.hoje.disponivel, r.mes.disponivel);
+  return r;
+}
+
 module.exports = {
   CAMPOS_CONTATO,
   normalizarContato,
   planejarContatos,
+  resumoCompetencia,
+  mascararTelefone,
+  montarFila,
+  montarFicha,
+  motivoParaNaoAprovar,
+  motivoParaNaoRejeitar,
+  validarTextoMensagem,
+  resumoCota,
   lerConfig,
   detectarOcorrencias,
   competenciasNecessarias,
