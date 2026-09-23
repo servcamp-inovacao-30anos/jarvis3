@@ -378,9 +378,83 @@ async function editarMensagem({ res, db, ator, body }) {
   return res.status(200).json({ ok: true, id, ...depois });
 }
 
+// ── configuração e modelos de mensagem ──────────────────────────────────────
+
+const MSG_CONFIG = {
+  VALOR_INVALIDO: "Valor fora do intervalo permitido.",
+  ALERTA_ACIMA_DO_CRITICO: "O percentual de alerta precisa ser menor que o crítico.",
+  LIMITE_DIA_ACIMA_DO_MES: "O limite diário não pode ser maior que o mensal.",
+  DATA_INVALIDA: "Data de virada inválida.",
+  VIRADA_NO_PASSADO: "A data de virada precisa ser hoje ou uma data futura: uma data no passado criaria ocorrências retroativas.",
+  VIRADA_JA_EM_USO: "A data de virada não pode mais mudar: já existem ocorrências registradas a partir dela."
+};
+
+function mensagemModelo(v) {
+  const lista = arr => (arr || []).map(x => "{{" + x + "}}").join(", ");
+  return {
+    MODELO_DESCONHECIDO: "Modelo desconhecido.",
+    TEXTO_VAZIO: "O modelo não pode ficar vazio.",
+    VARIAVEL_DESCONHECIDA: `Variável que o sistema não sabe preencher: ${lista(v.variaveis)}. Use só: ${lista(v.permitidas)}.`,
+    CHAVES_SOLTAS: "Há chaves {{ }} incompletas no texto.",
+    TERMO_PROIBIDO: "A orientação não pode mencionar custo, hora extra, pagamento ou desconto.",
+    COM_ACENTO: "O modelo não pode ter acento nem caractere especial: um só já reduz o SMS de 160 para 70 caracteres.",
+    ACIMA_DE_160: `Com um nome de 10 letras, RE de 5 dígitos e 95 minutos, o modelo chega a ${v.caracteres} caracteres — precisa caber em 160.`
+  }[v.erro] || "Modelo inválido.";
+}
+
+async function haOcorrencias(db) {
+  return (await db.obter("pt_ocorrencias?select=id&is_test=eq.false&limit=1")).length > 0;
+}
+
+async function verConfig({ res, db, ator }) {
+  const cfg = await lerConfigDoBanco(db);
+  const modelos = Object.keys(R.MODELOS_PADRAO).map(id => {
+    const texto = cfg.modelos[id] || R.MODELOS_PADRAO[id];
+    const sms = R.analisarSMS(R.renderizar(texto, R.AMOSTRA_MODELO));
+    return { id, texto, personalizado: !!cfg.modelos[id], variaveis: R.VARIAVEIS_MODELO[id], caracteres: sms.unidades, segmentos: sms.segmentos, problema: R.validarModelo(id, texto).erro || null };
+  });
+  return res.status(200).json({
+    ok: true, hoje: hojeSP(), pode_aprovar: ehAprovador(ator),
+    config: { tolerancia_minutos: cfg.tolerancia_minutos, data_virada: cfg.data_virada, sms_limite_dia: cfg.sms_limite_dia, sms_limite_mes: cfg.sms_limite_mes, alerta_pct: cfg.alerta_pct, critico_pct: cfg.critico_pct },
+    virada_travada: !!cfg.data_virada && await haOcorrencias(db),
+    modelos
+  });
+}
+
+// PATCH { tolerancia_minutos?, data_virada?, sms_limite_dia?, sms_limite_mes?,
+//         alerta_pct?, critico_pct?, modelos?: { id: texto } }
+// Tudo é validado antes de qualquer gravação: um modelo inválido não deixa
+// passar pela metade uma alteração que veio junto.
+async function salvarConfig({ res, db, ator, body }) {
+  const atual = await lerConfigDoBanco(db);
+  const v = R.validarConfig(body, atual, { hoje: hojeSP(), haOcorrencias: !!atual.data_virada && await haOcorrencias(db) });
+  if (v.erro) return erro(res, 400, MSG_CONFIG[v.erro] || "Valor inválido.", v.erro, v.campo);
+  const agora = new Date().toISOString();
+  const gravar = [], auditorias = [];
+  for (const [k, val] of Object.entries(v.patch)) {
+    gravar.push({ chave: k, valor: String(val), atualizado_em: agora });
+    auditorias.push({ ator, acao: "CONFIGURACAO_ALTERADA", entidade: "pt_config", entidade_id: null, antes: { chave: k, valor: atual[k] == null ? null : String(atual[k]) }, depois: { chave: k, valor: String(val) } });
+  }
+  const modelos = body.modelos && typeof body.modelos === "object" && !Array.isArray(body.modelos) ? body.modelos : {};
+  for (const [id, texto] of Object.entries(modelos)) {
+    const vm = R.validarModelo(id, texto);
+    if (vm.erro) return erro(res, 400, mensagemModelo(vm), vm.erro, id);
+    const anterior = atual.modelos[id] || R.MODELOS_PADRAO[id];
+    if (vm.texto === anterior) continue;
+    gravar.push({ chave: "modelo_" + id, valor: vm.texto, atualizado_em: agora });
+    auditorias.push({ ator, acao: "MODELO_ALTERADO", entidade: "pt_config", entidade_id: null, antes: { modelo: id, texto: anterior }, depois: { modelo: id, texto: vm.texto } });
+  }
+  if (!gravar.length) return res.status(200).json({ ok: true, alterado: 0 });
+  await db.inserir("pt_auditoria", auditorias);
+  await db.upsert("pt_config", gravar, "chave");
+  return res.status(200).json({ ok: true, alterado: gravar.length });
+}
+
 // ── roteamento ──────────────────────────────────────────────────────────────
 
 const ROTAS = {
+  "GET config": { fn: verConfig },
+  "PATCH config": { aprovador: true, fn: salvarConfig },
   "GET competencia": { fn: verCompetencia },
   "GET fila": { fn: verFila },
   "GET ocorrencias": { fn: listarOcorrencias },

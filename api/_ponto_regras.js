@@ -458,6 +458,72 @@ const MODELOS_PADRAO = {
   ambas_no_mesmo_dia: "SERVCAMP | ORIENTACAO DE PONTO\nOla, {{nome}}. Em {{data}} sua entrada foi as {{entrada_marcada}} e a saida as {{saida_marcada}}, fora do previsto ({{entrada_prevista}} as {{saida_prevista}}). Oriente-se a marcar no horario. RE {{re}}."
 };
 
+const VARIAVEIS_MODELO = {
+  entrada_antecipada: ["nome", "data", "horario_marcado", "minutos", "horario_previsto", "re"],
+  saida_apos_horario: ["nome", "data", "horario_marcado", "minutos", "horario_previsto", "re"],
+  ambas_no_mesmo_dia: ["nome", "data", "entrada_marcada", "saida_marcada", "entrada_prevista", "saida_prevista", "re"]
+};
+
+// Valores no limite do que é realista aqui (nome de 10 letras, RE de 5 dígitos,
+// 95 minutos): se o modelo couber em 1 SMS com eles, cabe para quase todo mundo.
+// A mensagem de cada pessoa é contada de novo quando é gerada.
+const AMOSTRA_MODELO = {
+  nome: "Alessandra", data: "25/09", horario_marcado: "17:54", horario_previsto: "18:00", minutos: 95, re: "12345",
+  entrada_marcada: "06:40", saida_marcada: "19:35", entrada_prevista: "07:00", saida_prevista: "19:00"
+};
+
+// Validação ao salvar um modelo. Regras do plano: sem acento, até 160
+// caracteres, sem falar de custo/hora extra/pagamento/desconto e sem variável
+// que o sistema não sabe preencher.
+function validarModelo(id, texto) {
+  const permitidas = VARIAVEIS_MODELO[id];
+  if (!permitidas) return { erro: "MODELO_DESCONHECIDO" };
+  const t = String(texto == null ? "" : texto).replace(/\r\n/g, "\n").trim();
+  if (!t) return { erro: "TEXTO_VAZIO" };
+  const usadas = [...t.matchAll(/\{\{\s*([^}]*?)\s*\}\}/g)].map(m => m[1]);
+  const desconhecidas = [...new Set(usadas.filter(v => !permitidas.includes(v)))];
+  if (desconhecidas.length) return { erro: "VARIAVEL_DESCONHECIDA", variaveis: desconhecidas, permitidas };
+  if (/\{\{|\}\}/.test(t.replace(/\{\{\s*[a-z_]+\s*\}\}/g, ""))) return { erro: "CHAVES_SOLTAS" };
+  if (PROIBIDO_NA_MENSAGEM.test(semAcento(t))) return { erro: "TERMO_PROIBIDO" };
+  const amostra = renderizar(t, AMOSTRA_MODELO);
+  const sms = analisarSMS(amostra);
+  if (sms.codificacao !== "GSM-7") return { erro: "COM_ACENTO" };
+  if (sms.unidades > 160) return { erro: "ACIMA_DE_160", caracteres: sms.unidades };
+  return { texto: t, amostra, caracteres: sms.unidades, segmentos: sms.segmentos, variaveis: [...new Set(usadas)] };
+}
+
+// Ajustes do módulo. A data de virada só pode ser hoje ou depois: uma data no
+// passado faria a próxima importação criar ocorrências retroativas. E depois
+// que já existem ocorrências, ela não muda mais.
+function validarConfig(pedido, atual, contexto) {
+  const p = pedido || {}, c = contexto || {};
+  const patch = {};
+  const inteiro = (k, min, max) => {
+    if (p[k] === undefined) return null;
+    const n = Number(p[k]);
+    if (!Number.isInteger(n) || n < min || n > max) return { erro: "VALOR_INVALIDO", campo: k, min, max };
+    if (n !== atual[k]) patch[k] = n;
+    return null;
+  };
+  const falha = inteiro("tolerancia_minutos", 0, 60) || inteiro("sms_limite_dia", 1, 10000) || inteiro("sms_limite_mes", 1, 300000) ||
+    inteiro("alerta_pct", 1, 100) || inteiro("critico_pct", 1, 100);
+  if (falha) return falha;
+  const alerta = patch.alerta_pct != null ? patch.alerta_pct : atual.alerta_pct;
+  const critico = patch.critico_pct != null ? patch.critico_pct : atual.critico_pct;
+  if (alerta >= critico) return { erro: "ALERTA_ACIMA_DO_CRITICO" };
+  const dia = patch.sms_limite_dia != null ? patch.sms_limite_dia : atual.sms_limite_dia;
+  const mes = patch.sms_limite_mes != null ? patch.sms_limite_mes : atual.sms_limite_mes;
+  if (dia > mes) return { erro: "LIMITE_DIA_ACIMA_DO_MES" };
+  if (p.data_virada !== undefined && p.data_virada !== atual.data_virada) {
+    const d = textoOuNulo(p.data_virada);
+    if (!d || !lerData(d) || !/^\d{4}-\d{2}-\d{2}$/.test(d)) return { erro: "DATA_INVALIDA", campo: "data_virada" };
+    if (c.hoje && d < c.hoje) return { erro: "VIRADA_NO_PASSADO" };
+    if (atual.data_virada && c.haOcorrencias) return { erro: "VIRADA_JA_EM_USO" };
+    patch.data_virada = d;
+  }
+  return { patch };
+}
+
 function renderizar(modelo, vars) {
   return String(modelo || "").replace(/\{\{\s*([a-z_]+)\s*\}\}/g, (m, k) => (vars[k] == null ? m : String(vars[k])));
 }
@@ -745,6 +811,10 @@ module.exports = {
   detectarOcorrencias,
   competenciasNecessarias,
   MODELOS_PADRAO,
+  VARIAVEIS_MODELO,
+  AMOSTRA_MODELO,
+  validarModelo,
+  validarConfig,
   renderizar,
   primeiroNome,
   situacaoTelefone,

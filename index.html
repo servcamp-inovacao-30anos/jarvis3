@@ -1284,6 +1284,7 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
         <div><div class="sec-hdr-t">Orientação de Ponto</div><div class="sec-hdr-sub" id="pt-sub">Marcações fora do horário previsto e orientação por SMS</div></div>
         <span class="pt-selo" id="pt-parcial" hidden></span>
         <div class="pt-bar" style="margin-left:auto">
+          <button class="pt-btn" id="pt-b-config" hidden onclick="ptConfigAbrir()">⚙️ Configurar</button>
           <button class="pt-btn" id="pt-b-contatos" hidden onclick="ptContatosAbrir()">📇 Base de contatos</button>
           <button class="pt-btn" id="pt-b-processar" hidden onclick="ptProcessar()">🔄 Reprocessar planilha</button>
           <button class="pt-btn" onclick="ptCarregar()">↻ Atualizar</button>
@@ -1314,6 +1315,10 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
           <input type="file" id="pt-ct-arq" accept=".csv,.xlsx,.xls" onchange="ptContatosLer(this)">
           <div id="pt-ct-resumo" style="margin-top:12px"></div>
         </div>
+      </div>
+
+      <div class="det-panel" id="pt-config"><div class="det-hdr"><span class="det-title">Configuração da orientação de ponto</span><button class="det-close" onclick="ptConfigFechar()">✕</button></div>
+        <div class="pt-det-body" id="pt-cfg-b"></div>
       </div>
 
       <div class="ts">
@@ -4056,7 +4061,7 @@ function ptCarregar(){
   PT.carregadoEm=Date.now();
   return Promise.all([ptPedir("GET","competencia"),ptPedir("GET","quota").catch(()=>null)]).then(([c,q])=>{
     PT.comp=c;PT.pode=!!c.pode_aprovar;
-    if(!c.modulo.ativo)ptAviso("Módulo desligado","Nenhuma ocorrência é registrada enquanto a data de virada não for definida. Nada anterior a ela entra — nem no histórico.");
+    if(!c.modulo.ativo)ptAviso("Módulo desligado","Nenhuma ocorrência é registrada enquanto a data de virada não for definida. Nada anterior a ela entra — nem no histórico."+(c.pode_aprovar?" Defina a data em ⚙️ Configurar.":""));
     else ptAviso(null);
     ptRenderCabecalho();ptRenderKpis();ptRenderCota(q&&q.cota);
     return Promise.all([ptFilaCarregar(),ptRecCarregar()]);
@@ -4082,6 +4087,7 @@ function ptRenderCabecalho(){
   const selo=document.getElementById("pt-parcial");
   selo.hidden=!comp.parcial;
   selo.textContent=comp.parcial?`PARCIAL — dados a partir de ${ptDia(comp.data_corte)}`:"";
+  document.getElementById("pt-b-config").hidden=!PT.pode;
   document.getElementById("pt-b-contatos").hidden=!PT.pode;
   document.getElementById("pt-b-processar").hidden=!PT.pode;
 }
@@ -4321,6 +4327,67 @@ function ptProcessar(){
   ptPedir("POST","processar").then(j=>{
     ptToast(j.ativo===false?"Módulo desligado: defina a data de virada.":`Reprocessado: ${j.ocorrencias_novas} ${j.ocorrencias_novas===1?"ocorrência nova":"ocorrências novas"} · ${j.mensagens_novas} ${j.mensagens_novas===1?"mensagem nova":"mensagens novas"}`);
     ptCarregar();
+  }).catch(e=>alert(e.message));
+}
+
+/* configuração e modelos de mensagem (só aprovadores salvam) */
+const PT_MODELO_NOME={entrada_antecipada:"Entrada antecipada",saida_apos_horario:"Saída após o horário",ambas_no_mesmo_dia:"Entrada e saída no mesmo dia"};
+// Mesma amostra do servidor (AMOSTRA_MODELO): valores no limite do realista.
+const PT_AMOSTRA={nome:"Alessandra",data:"25/09",horario_marcado:"17:54",horario_previsto:"18:00",minutos:95,re:"12345",entrada_marcada:"06:40",saida_marcada:"19:35",entrada_prevista:"07:00",saida_prevista:"19:00"};
+function ptRenderizar(t,v){return String(t||"").replace(/\{\{\s*([a-z_]+)\s*\}\}/g,(m,k)=>v[k]==null?m:String(v[k]));}
+function ptConfigAbrir(){
+  ptPedir("GET","config").then(j=>{
+    PT.cfg=j;ptConfigRender();
+    const p=document.getElementById("pt-config");p.classList.add("open");p.scrollIntoView({behavior:"smooth",block:"start"});
+  }).catch(e=>alert(e.message));
+}
+function ptConfigFechar(){document.getElementById("pt-config").classList.remove("open");}
+function ptConfigRender(){
+  const j=PT.cfg,c=j.config;
+  const campo=(id,lbl,tipo,val,extra)=>`<div><label class="rhf-l" for="${id}">${lbl}</label><input class="rhf-i" id="${id}" type="${tipo}" value="${_esc(val==null?"":val)}" ${extra||""}></div>`;
+  const virada=j.virada_travada
+    ?`<div><div class="rhf-l">Data de virada</div><div style="font-weight:800;color:var(--b9)">${ptDiaLongo(c.data_virada)}</div><div class="sk-sub">Travada: já há ocorrências registradas a partir dela.</div></div>`
+    :campo("pt-cf-virada","Data de virada","date",c.data_virada,`min="${_esc(j.hoje)}"`);
+  const modelos=j.modelos.map(m=>`<div style="margin-top:12px"><div class="pt-bar" style="justify-content:space-between"><label class="rhf-l" for="pt-cf-m-${m.id}">${_esc(PT_MODELO_NOME[m.id]||m.id)}${m.personalizado?"":" · texto padrão"}</label><span class="pt-cont" id="pt-cf-c-${m.id}"></span></div><textarea class="pt-ed" id="pt-cf-m-${m.id}" data-id="${m.id}" oninput="ptConfigContar(this.dataset.id)">${_esc(m.texto)}</textarea><div class="sk-sub">Variáveis: ${m.variaveis.map(v=>"{{"+_esc(v)+"}}").join(" ")}</div><div class="sk-sub" id="pt-cf-a-${m.id}" style="margin-top:4px"></div></div>`).join("");
+  document.getElementById("pt-cfg-b").innerHTML=
+    `<div class="pt-sub" style="margin-top:0">Funcionamento</div><div class="pt-grade">${virada}${campo("pt-cf-tol","Tolerância (minutos)","number",c.tolerancia_minutos,'min="0" max="60"')}${campo("pt-cf-dia","SMS por dia (limite)","number",c.sms_limite_dia,'min="1"')}${campo("pt-cf-mes","SMS por mês (limite)","number",c.sms_limite_mes,'min="1"')}${campo("pt-cf-alerta","Alerta da cota (%)","number",c.alerta_pct,'min="1" max="100"')}${campo("pt-cf-critico","Cota crítica (%)","number",c.critico_pct,'min="1" max="100"')}</div>`+
+    `<div class="sk-sub">A data de virada liga o módulo. Ela precisa ser hoje ou uma data futura: nada anterior a ela é registrado, nem no histórico.</div>`+
+    `<div class="pt-sub">Modelos de mensagem</div><div class="sk-sub">Sem acento, até 160 caracteres e sem mencionar custo, hora extra, pagamento ou desconto. A contagem usa um nome de 10 letras, um RE de 5 dígitos e 95 minutos — cabendo assim, cabe para quase todo mundo.</div>${modelos}`+
+    `<div class="pt-bar" style="margin-top:14px"><button class="pt-btn pt-pri" onclick="ptConfigSalvar()">Salvar configuração</button><span class="sk-sub">Mensagens ainda não aprovadas passam a usar o texto novo na próxima importação (ou em Reprocessar planilha). As editadas à mão não mudam.</span></div>`;
+  j.modelos.forEach(m=>ptConfigContar(m.id));
+}
+function ptConfigContar(id){
+  const ta=document.getElementById("pt-cf-m-"+id),m=PT.cfg.modelos.find(x=>x.id===id);if(!ta||!m)return;
+  const amostra=ptRenderizar(ta.value,PT_AMOSTRA),a=ptAnalisarSMS(amostra);
+  const probs=[];
+  const desconhecidas=[...new Set([...ta.value.matchAll(/\{\{\s*([^}]*?)\s*\}\}/g)].map(x=>x[1]).filter(v=>!m.variaveis.includes(v)))];
+  if(desconhecidas.length)probs.push("variável que o sistema não sabe preencher: "+desconhecidas.map(v=>"{{"+v+"}}").join(", "));
+  if(a.codificacao!=="GSM-7")probs.push("tem acento ou caractere especial");
+  if(a.unidades>160)probs.push("passa de 160 caracteres");
+  if(PT_PROIBIDO.test(ta.value.normalize("NFD").replace(/[̀-ͯ]/g,"")))probs.push("menciona custo, hora extra, pagamento ou desconto");
+  const c=document.getElementById("pt-cf-c-"+id);
+  c.textContent=`${a.unidades} caracteres · ${a.segmentos} SMS`;
+  c.classList.toggle("pt-amarelo",!!probs.length);
+  document.getElementById("pt-cf-a-"+id).innerHTML=probs.length
+    ?`<div class="pt-alerta">⚠ Não dá para salvar: ${probs.map(_esc).join(" · ")}.</div>`
+    :`Exemplo: <i>${_esc(amostra)}</i>`;
+}
+function ptConfigSalvar(){
+  const j=PT.cfg,c=j.config,corpo={};
+  const num=(id,k)=>{const el=document.getElementById(id);if(el&&el.value!==""&&Number(el.value)!==c[k])corpo[k]=Number(el.value);};
+  num("pt-cf-tol","tolerancia_minutos");num("pt-cf-dia","sms_limite_dia");num("pt-cf-mes","sms_limite_mes");num("pt-cf-alerta","alerta_pct");num("pt-cf-critico","critico_pct");
+  const v=document.getElementById("pt-cf-virada");
+  if(v&&v.value&&v.value!==c.data_virada){
+    if(!confirm(`Ligar o módulo a partir de ${ptDiaLongo(v.value)}?\n\nA partir dessa data as marcações fora do horário passam a ser registradas. Nada anterior a ela entra.`))return;
+    corpo.data_virada=v.value;
+  }
+  const modelos={};
+  j.modelos.forEach(m=>{const t=document.getElementById("pt-cf-m-"+m.id).value.replace(/\r\n/g,"\n").trim();if(t!==m.texto)modelos[m.id]=t;});
+  if(Object.keys(modelos).length)corpo.modelos=modelos;
+  if(!Object.keys(corpo).length){ptToast("Nada mudou.");return;}
+  ptPedir("PATCH","config",corpo).then(r=>{
+    ptToast(r.alterado?`Configuração salva (${r.alterado} ${r.alterado===1?"item":"itens"})`:"Nada mudou.");
+    return ptPedir("GET","config").then(x=>{PT.cfg=x;ptConfigRender();ptCarregar();});
   }).catch(e=>alert(e.message));
 }
 
