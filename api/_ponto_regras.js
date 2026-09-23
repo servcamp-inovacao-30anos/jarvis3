@@ -738,6 +738,7 @@ module.exports = {
   agruparReconciliacao,
   motivoParaNaoAprovar,
   motivoParaNaoRejeitar,
+  PROIBIDO_NA_MENSAGEM,
   validarTextoMensagem,
   resumoCota,
   lerConfig,

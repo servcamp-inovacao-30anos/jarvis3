@@ -1242,6 +1242,105 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
     </div>
     <div class="cc" style="margin-top:11px"><div class="ch"><div class="chb"></div><span class="ct">Horas Extras por Dia</span></div><div class="cw" style="height:200px"><canvas id="cHE3"></canvas></div></div>
     <div class="ts" style="margin-top:11px"><div class="th2"><div style="display:flex;align-items:center;gap:7px"><div class="chb"></div><span class="ct">Registro de Horas Extras</span></div><div class="tc2"><input class="sb2" type="text" placeholder="Buscar..." id="s-hrextra" oninput="rTbl('hrextra')"></div></div><div id="tbl-hrextra"></div><div class="pag"><div class="pi2" id="pi-hrextra"></div><div class="pbs" id="pb-hrextra"></div></div></div>
+
+    <!-- ORIENTAÇÃO DE PONTO — marcações fora do horário e orientação por SMS (api/_ponto.js) -->
+    <div id="pt-sec" style="margin-top:26px">
+      <style>
+        #pt-sec [hidden]{display:none!important}
+        #pt-sec .pt-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+        #pt-sec .pt-btn{padding:7px 12px;border:1px solid var(--g200);border-radius:8px;background:var(--wh);color:var(--b7);font-size:.7rem;font-weight:800;cursor:pointer;white-space:nowrap}
+        #pt-sec .pt-btn:hover{border-color:var(--b4)}
+        #pt-sec .pt-btn:disabled{opacity:.45;cursor:not-allowed}
+        #pt-sec .pt-btn.pt-pri{background:linear-gradient(135deg,#1e4d8c,#2e8fef);border-color:transparent;color:#fff}
+        #pt-sec .pt-btn.pt-dan{color:#dc2626;border-color:#fecaca}
+        #pt-sec .pt-btn.pt-on{background:var(--b0);border-color:var(--b4)}
+        #pt-sec .pt-selo{font-size:.66rem;font-weight:800;padding:3px 10px;border-radius:12px;background:#fff7ed;color:var(--or);border:1px solid #fed7aa;margin-left:10px;white-space:nowrap}
+        #pt-sec .pt-tbl{overflow-x:auto}
+        #pt-sec .pt-tbl td{vertical-align:top}
+        #pt-sec .pt-prev{min-width:240px;max-width:320px;white-space:pre-wrap;font-size:.66rem;color:var(--g600);line-height:1.35}
+        #pt-sec .pt-b{display:inline-block;padding:1px 7px;border-radius:20px;font-size:.59rem;font-weight:800;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
+        #pt-sec .pt-b-gr{background:#f0fdf4;color:var(--gr);border:1px solid #bbf7d0}
+        #pt-sec .pt-b-am{background:#fffbeb;color:#b45309;border:1px solid #fde68a}
+        #pt-sec .pt-b-or{background:#fff7ed;color:var(--or);border:1px solid #fed7aa}
+        #pt-sec .pt-b-re{background:#fff5f5;color:#dc2626;border:1px solid #fecaca}
+        #pt-sec .pt-b-bl{background:var(--b0);color:var(--b7);border:1px solid var(--b1)}
+        #pt-sec .pt-b-g{background:#f8fafc;color:var(--g600);border:1px solid var(--g200)}
+        #pt-sec .pt-cota{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start}
+        #pt-sec .pt-cota-v{font-size:1.15rem;font-weight:900;color:var(--b9);margin:2px 0 4px}
+        #pt-sec .pt-barra{height:6px;width:170px;background:var(--g200);border-radius:3px;overflow:hidden;margin-top:6px}
+        #pt-sec .pt-barra>div{height:100%;background:var(--b5)}
+        #pt-sec .pt-det-body{padding:14px 16px;background:var(--wh)}
+        #pt-sec textarea.pt-ed{width:100%;min-height:110px;box-sizing:border-box;border:1px solid var(--g200);border-radius:8px;padding:10px;font:inherit;font-size:.78rem;resize:vertical}
+        #pt-sec .pt-cont{font-size:.72rem;font-weight:800;color:var(--gr)}
+        #pt-sec .pt-cont.pt-amarelo{color:#b45309}
+        #pt-sec .pt-alerta{font-size:.68rem;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:6px 9px;margin-top:6px}
+        #pt-sec .pt-link{color:var(--b7);font-weight:800;cursor:pointer;text-decoration:underline dotted}
+        #pt-sec .pt-grade{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px 18px;margin-bottom:12px}
+        #pt-sec .pt-reinc td{background:#fff5f5}
+        #pt-sec .pt-sub{font-size:.66rem;color:var(--g400);margin:10px 0 6px;font-weight:800;text-transform:uppercase;letter-spacing:.4px}
+      </style>
+      <div class="sec-hdr">
+        <span class="sec-hdr-ic">🕘</span>
+        <div><div class="sec-hdr-t">Orientação de Ponto</div><div class="sec-hdr-sub" id="pt-sub">Marcações fora do horário previsto e orientação por SMS</div></div>
+        <span class="pt-selo" id="pt-parcial" hidden></span>
+        <div class="pt-bar" style="margin-left:auto">
+          <button class="pt-btn" id="pt-b-contatos" hidden onclick="ptContatosAbrir()">📇 Base de contatos</button>
+          <button class="pt-btn" id="pt-b-processar" hidden onclick="ptProcessar()">🔄 Reprocessar planilha</button>
+          <button class="pt-btn" onclick="ptCarregar()">↻ Atualizar</button>
+        </div>
+      </div>
+      <div class="alert-banner" id="pt-aviso" hidden><span class="alert-icon">⚠️</span><div><div class="alert-title" id="pt-aviso-t"></div><div class="alert-sub" id="pt-aviso-s"></div></div></div>
+      <div class="sec-kpis" id="pt-kpis" style="grid-template-columns:repeat(4,1fr)"></div>
+      <div class="ts"><div class="th2"><div style="display:flex;align-items:center;gap:7px"><div class="chb"></div><span class="ct">Cota de SMS</span></div></div><div class="pt-cota" id="pt-cota"><span class="sk-sub">Carregando…</span></div></div>
+
+      <div class="det-panel" id="pt-ficha"><div class="det-hdr"><span class="det-title" id="pt-ficha-t"></span><button class="det-close" onclick="ptFichaFechar()">✕</button></div><div class="pt-det-body" id="pt-ficha-b"></div></div>
+
+      <div class="det-panel" id="pt-editor"><div class="det-hdr"><span class="det-title" id="pt-editor-t">Editar mensagem</span><button class="det-close" onclick="ptEditorFechar()">✕</button></div>
+        <div class="pt-det-body">
+          <div class="sk-sub" id="pt-ed-info" style="margin-bottom:8px"></div>
+          <textarea class="pt-ed" id="pt-ed-txt" oninput="ptEditorContar()"></textarea>
+          <div class="pt-bar" style="justify-content:space-between;margin-top:8px">
+            <span class="pt-cont" id="pt-ed-cont"></span>
+            <span class="pt-bar"><button class="pt-btn" onclick="ptEditorRestaurar()">Voltar ao texto gerado</button><button class="pt-btn pt-pri" onclick="ptEditorSalvar()">Salvar texto</button></span>
+          </div>
+          <div id="pt-ed-avisos"></div>
+        </div>
+      </div>
+
+      <div class="det-panel" id="pt-contatos"><div class="det-hdr"><span class="det-title">Base de contatos para SMS</span><button class="det-close" onclick="ptContatosFechar()">✕</button></div>
+        <div class="pt-det-body">
+          <div class="sk-sub" id="pt-ct-atual" style="margin-bottom:8px"></div>
+          <div class="sk-sub" style="margin-bottom:10px">Envie a planilha já normalizada (CSV ou XLSX) com as colunas <b>re, nome_cadastro, nome_norm, telefone_original, telefone_e164, tipo_telefone, enviavel, origem, data_base</b>. Qualquer outra coluna (CPF, RG, endereço…) é descartada aqui mesmo, antes do envio. Nada é gravado sem a sua confirmação.</div>
+          <input type="file" id="pt-ct-arq" accept=".csv,.xlsx,.xls" onchange="ptContatosLer(this)">
+          <div id="pt-ct-resumo" style="margin-top:12px"></div>
+        </div>
+      </div>
+
+      <div class="ts">
+        <div class="th2">
+          <div style="display:flex;align-items:center;gap:7px"><div class="chb"></div><span class="ct">Fila de validação</span><span class="sk-sub" id="pt-fila-n"></span></div>
+          <div class="tc2 pt-bar">
+            <select class="sb2" id="pt-fila-status" onchange="ptFilaCarregar()">
+              <option value="">Pendentes (aguardando, aprovadas e com falha)</option>
+              <option value="AGUARDANDO_VALIDACAO">Aguardando validação</option>
+              <option value="APROVADA">Aprovadas</option>
+              <option value="ENVIADA">Enviadas</option>
+              <option value="FALHA">Com falha</option>
+              <option value="REJEITADA">Rejeitadas</option>
+            </select>
+            <input class="sb2" type="text" placeholder="Buscar..." id="pt-fila-busca" oninput="ptFilaRender()">
+            <span class="pt-bar" id="pt-acoes" hidden><span class="sk-sub" id="pt-sel-n"></span><button class="pt-btn pt-pri" onclick="ptAprovar()" disabled>✅ Aprovar selecionadas</button><button class="pt-btn pt-dan" onclick="ptRejeitar()" disabled>✖ Rejeitar selecionadas</button></span>
+          </div>
+        </div>
+        <div class="pt-tbl" id="pt-fila"><div class="nd">Carregando…</div></div>
+      </div>
+
+      <div class="ts" id="pt-rec-box" hidden>
+        <div class="th2"><div style="display:flex;align-items:center;gap:7px"><div class="chb"></div><span class="ct">Reconciliação de nomes</span></div></div>
+        <div class="sk-sub" style="margin-bottom:10px">Nomes da HR EXTRA que não casaram com ninguém do quadro ativo, ou casaram com mais de uma pessoa. Enquanto estiverem aqui, essas ocorrências não entram na fila de envio. Corrija o nome na origem (SAR2G ou Funcionários Ativos): na próxima importação ele casa sozinho.</div>
+        <div class="pt-tbl" id="pt-rec"></div>
+      </div>
+    </div>
   </div>
 
   <!-- CHECK LIST -->
@@ -3874,6 +3973,7 @@ function updHrExtraC(){
   // Por dia
   const bd=byDay(d);
   mkLine("cHE3",[{label:"Registros",data:bd.vals,borderColor:"#2e8fef",backgroundColor:"rgba(46,143,239,.1)",borderWidth:2,pointRadius:3,fill:true,tension:.35}],bd.labels);
+  ptAoAbrir();
 }
 function _heTipoClick(tipo,card){
   const panel=document.getElementById("det-hrextra");if(!panel)return;
@@ -3900,6 +4000,328 @@ function _heTipoClick(tipo,card){
   const subEl=document.getElementById("det-hrextra-sub");if(subEl){subEl.classList.remove("open");subEl.innerHTML="";}
   panel.classList.add("open");
   panel.scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+
+/* ── Orientação de Ponto ────────────────────────────────────────────────────
+   Marcações fora do horário previsto (vindas da HR EXTRA) e a orientação por
+   SMS. Os dados vêm de /api/rh?modulo=ponto (api/_ponto.js). Quem pode aprovar
+   é o servidor que diz (pode_aprovar): esconder botão aqui é só conveniência,
+   a trava de verdade está lá. Não entra no ciclo de 15s do RT_GUIA de propósito:
+   recarregar a fila no meio de uma seleção faria a pessoa perder o que marcou. */
+const PT={carregadoEm:0,pode:false,comp:null,fila:[],sel:new Set(),ficha:null,fichaFiltro:"comp",fichaDe:"",fichaAte:"",editando:null,contatos:null};
+const PT_URL="/api/rh?modulo=ponto&t=";
+const PT_TIPO={EARLY_ENTRY:"Entrada antecipada",LATE_EXIT:"Saída após o horário"};
+const PT_STATUS={AGUARDANDO_VALIDACAO:["Aguardando","pt-b-bl"],APROVADA:["Aprovada","pt-b-gr"],ENVIADA:["Enviada","pt-b-g"],FALHA:["Falha no envio","pt-b-re"],REJEITADA:["Rejeitada","pt-b-g"]};
+const PT_MOTIVO={TELEFONE_AUSENTE:"Sem telefone",TELEFONE_FIXO:"Telefone fixo",TELEFONE_INVALIDO:"Telefone inválido",NOME_NAO_ENCONTRADO:"Nome sem par no quadro",NOME_AMBIGUO:"Nome ambíguo",RE_NAO_ENCONTRADO:"RE fora do quadro ativo",RE_INVALIDO:"RE inválido",RE_REPETIDO_NO_ARQUIVO:"RE repetido no arquivo",JA_ENVIADA:"já enviada",NAO_ENCONTRADA:"não encontrada",SEM_TEXTO:"sem texto"};
+const PT_COTA={NORMAL:["Normal","pt-b-gr"],ATENCAO:["Atenção","pt-b-am"],PROXIMO_DO_LIMITE:["Próximo do limite","pt-b-or"],LIMITE_ATINGIDO:["Limite atingido","pt-b-re"]};
+const PT_COLS_CONTATO=["re","nome_cadastro","nome_norm","telefone_original","telefone_e164","tipo_telefone","enviavel","origem","data_base"];
+// Mesmo filtro do servidor (validarTextoMensagem): lá ele recusa; aqui só avisa antes de salvar.
+const PT_PROIBIDO=/\b(horas?\s+extras?|custos?|pagamentos?|pagar|pago|descontos?|descontar|descontad[oa]s?)\b/i;
+// Contagem de SMS com a mesma regra do servidor (analisarSMS em api/_ponto_regras.js);
+// test/ponto_front.test.js confere que as duas dão o mesmo resultado.
+const PT_GSM7=new Set(Array.from("@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?"+"¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà"));
+const PT_GSM7_EXT=new Set(Array.from("\f^{}\\[~]|€"));
+function ptAnalisarSMS(texto){
+  const s=String(texto==null?"":texto);
+  let unidades=0,gsm=true;
+  for(const ch of s){
+    if(PT_GSM7.has(ch))unidades+=1;
+    else if(PT_GSM7_EXT.has(ch))unidades+=2;
+    else{gsm=false;break;}
+  }
+  if(!gsm)unidades=s.length;
+  const lim1=gsm?160:70,limN=gsm?153:67;
+  const segmentos=unidades===0?0:unidades<=lim1?1:Math.ceil(unidades/limN);
+  return{codificacao:gsm?"GSM-7":"UCS-2",caracteres:Array.from(s).length,unidades,limite:lim1,segmentos};
+}
+
+function ptMotivo(c){return PT_MOTIVO[c]||String(c||"").replace(/_/g," ").toLowerCase();}
+function ptMin(m){m=Math.round(Number(m)||0);const h=Math.floor(m/60),r=m%60;return h?h+"h"+String(r).padStart(2,"0"):r+" min";}
+function ptDia(iso){const s=String(iso||"");return s.length>=10?s.slice(8,10)+"/"+s.slice(5,7):"—";}
+function ptDiaLongo(iso){const s=String(iso||"");return s.length>=10?s.slice(8,10)+"/"+s.slice(5,7)+"/"+s.slice(0,4):"—";}
+function ptSelo(par){return par?`<span class="pt-b ${par[1]}">${_esc(par[0])}</span>`:"";}
+function ptHoje(){return new Date(Date.now()-3*3600000).toISOString().slice(0,10);}
+function ptToast(m){if(typeof hqToast==="function")hqToast(m);else alert(m);}
+function ptPedir(metodo,t,corpo,qs){
+  const op={method:metodo,headers:{}};
+  if(corpo!==undefined){op.headers["Content-Type"]="application/json";op.body=JSON.stringify(corpo);}
+  return fetch(PT_URL+t+(qs?"&"+qs:""),op).then(r=>r.json().catch(()=>({})).then(j=>{
+    if(!r.ok){const e=new Error(j.error||("Falha HTTP "+r.status));e.codigo=j.codigo;e.detalhe=j.details;throw e;}
+    return j;
+  }));
+}
+
+function ptAoAbrir(){if(Date.now()-PT.carregadoEm>60000)ptCarregar();}
+function ptCarregar(){
+  PT.carregadoEm=Date.now();
+  return Promise.all([ptPedir("GET","competencia"),ptPedir("GET","quota").catch(()=>null)]).then(([c,q])=>{
+    PT.comp=c;PT.pode=!!c.pode_aprovar;
+    if(!c.modulo.ativo)ptAviso("Módulo desligado","Nenhuma ocorrência é registrada enquanto a data de virada não for definida. Nada anterior a ela entra — nem no histórico.");
+    else ptAviso(null);
+    ptRenderCabecalho();ptRenderKpis();ptRenderCota(q&&q.cota);
+    return Promise.all([ptFilaCarregar(),ptRecCarregar()]);
+  }).catch(ptErroGeral);
+}
+function ptErroGeral(e){
+  const d=String((e&&e.detalhe)||"")+" "+String((e&&e.message)||"");
+  if(/PGRST205|42P01|does not exist|schema cache/i.test(d))ptAviso("Módulo ainda não instalado no banco","Cole no SQL Editor do Supabase o bloco “Monitoramento de marcações de ponto” do arquivo supabase_schema.sql e clique em Atualizar.");
+  else ptAviso("Não foi possível carregar a orientação de ponto",(e&&e.message)||"Erro desconhecido.");
+  const f=document.getElementById("pt-fila");if(f&&!PT.fila.length)f.innerHTML='<div class="nd">Sem dados</div>';
+}
+function ptAviso(t,s){
+  const b=document.getElementById("pt-aviso");if(!b)return;
+  if(!t){b.hidden=true;return;}
+  document.getElementById("pt-aviso-t").textContent=t;
+  document.getElementById("pt-aviso-s").textContent=s||"";
+  b.hidden=false;
+}
+function ptRenderCabecalho(){
+  const c=PT.comp;if(!c)return;
+  const comp=c.competencia;
+  document.getElementById("pt-sub").textContent=`Competência ${ptDia(comp.inicio)} a ${ptDiaLongo(comp.fim)} · tolerância de ${c.modulo.tolerancia_minutos} min`;
+  const selo=document.getElementById("pt-parcial");
+  selo.hidden=!comp.parcial;
+  selo.textContent=comp.parcial?`PARCIAL — dados a partir de ${ptDia(comp.data_corte)}`:"";
+  document.getElementById("pt-b-contatos").hidden=!PT.pode;
+  document.getElementById("pt-b-processar").hidden=!PT.pode;
+}
+function ptRenderKpis(){
+  const el=document.getElementById("pt-kpis"),r=PT.comp&&PT.comp.resumo;if(!el||!r)return;
+  const m=r.mensagens,pl=(n,s,p)=>n===1?s:p;
+  const tile=(cor,ic,lbl,v,sub,filtro)=>`<div class="sk ${cor}${filtro?" clickable":""}"${filtro?` data-filtro="${filtro}" onclick="ptFiltrarFila(this.dataset.filtro)"`:""}><div class="sk-top"><span class="sk-ic">${ic}</span></div><div class="sk-lbl">${lbl}</div><div class="sk-v">${v}</div><div class="sk-sub">${sub}</div></div>`;
+  el.innerHTML=
+    tile("sk-bl","📋","Ocorrências",r.ocorrencias,`<b>${r.colaboradores}</b> ${pl(r.colaboradores,"colaborador","colaboradores")}`)+
+    tile("sk-te","⏩","Entradas antecipadas",r.entradas_antecipadas.qtd,`<b>${ptMin(r.entradas_antecipadas.minutos)}</b> antes do previsto`)+
+    tile("sk-pu","⏪","Saídas após o horário",r.saidas_apos_horario.qtd,`<b>${ptMin(r.saidas_apos_horario.minutos)}</b> depois do previsto`)+
+    tile("sk-dkbl","⏱️","Tempo excedente",ptMin(r.minutos_excedentes),"soma da competência")+
+    tile("sk-or","🕓","Aguardando validação",m.aguardando,`<b>${m.bloqueadas}</b> ${pl(m.bloqueadas,"bloqueada","bloqueadas")} por telefone`,"AGUARDANDO_VALIDACAO")+
+    tile("sk-gr","✅","Aprovadas",m.aprovadas,"prontas para envio","APROVADA")+
+    tile("sk-bl","📨","Enviadas",m.enviadas,`<b>${m.falhas}</b> com falha · <b>${m.rejeitadas}</b> ${pl(m.rejeitadas,"rejeitada","rejeitadas")}`,"ENVIADA")+
+    tile("sk-re","📵","Sem telefone",r.colaboradores_sem_telefone,`${pl(r.colaboradores_sem_telefone,"colaborador","colaboradores")} · <b>${r.pendentes_reconciliacao}</b> para reconciliar`);
+}
+function ptFiltrarFila(st){const s=document.getElementById("pt-fila-status");if(!s)return;s.value=st||"";ptFilaCarregar();s.scrollIntoView({behavior:"smooth",block:"center"});}
+function ptRenderCota(c){
+  const el=document.getElementById("pt-cota");if(!el)return;
+  if(!c){el.innerHTML='<span class="sk-sub">Cota indisponível no momento.</span>';return;}
+  const item=(lbl,x)=>`<div><div class="sk-lbl">${lbl}</div><div class="pt-cota-v">${x.usado}/${x.limite}</div>${ptSelo(PT_COTA[x.estado])}<div class="pt-barra"><div style="width:${Math.min(100,Math.round(x.usado/Math.max(1,x.limite)*100))}%"></div></div></div>`;
+  el.innerHTML=item("SMS hoje",c.hoje)+item("SMS no mês",c.mes)+`<div class="sk-sub" style="max-width:380px">A contagem é por <b>segmento</b>: uma mensagem com mais de 160 caracteres, ou com acento, ocupa mais de um SMS.<br>Disponível agora: <b>${c.disponivel}</b> ${c.disponivel===1?"segmento":"segmentos"}.</div>`;
+}
+
+/* fila de validação */
+function ptFilaCarregar(){
+  const st=(document.getElementById("pt-fila-status")||{}).value||"";
+  return ptPedir("GET","fila",undefined,st?"status="+encodeURIComponent(st):"").then(j=>{
+    PT.fila=j.linhas||[];PT.pode=!!j.pode_aprovar;
+    const ids=new Set(PT.fila.map(l=>l.id));
+    [...PT.sel].forEach(id=>{if(!ids.has(id))PT.sel.delete(id);});
+    ptFilaRender();
+  }).catch(ptErroGeral);
+}
+function ptSelecionavel(l){return["AGUARDANDO_VALIDACAO","APROVADA","FALHA"].includes(l.status);}
+function ptFilaRender(){
+  const box=document.getElementById("pt-fila");if(!box)return;
+  document.getElementById("pt-acoes").hidden=!PT.pode;
+  const q=((document.getElementById("pt-fila-busca")||{}).value||"").trim().toLowerCase();
+  const linhas=PT.fila.filter(l=>!q||[l.nome,l.re,l.posto,l.supervisor,l.cliente].some(v=>String(v==null?"":v).toLowerCase().includes(q)));
+  document.getElementById("pt-fila-n").textContent=linhas.length+(linhas.length===1?" mensagem":" mensagens");
+  if(!linhas.length){box.innerHTML='<div class="nd">Nenhuma mensagem nesta situação</div>';ptSelAtualiza();return;}
+  const cab=`<tr>${PT.pode?`<th><input type="checkbox" id="pt-sel-todos" title="Selecionar todas" onchange="ptSelTodos(this.checked)"></th>`:""}<th>Colaborador</th><th>RE</th><th>Posto</th><th>Supervisor</th><th>Data</th><th>Tipo</th><th>Previsto</th><th>Marcado</th><th>Dif.</th><th>Telefone</th><th>Mensagem</th><th>SMS</th><th>Situação</th>${PT.pode?"<th></th>":""}</tr>`;
+  const corpo=linhas.map(l=>{
+    const col=fn=>(l.itens||[]).map(fn).join("<br>");
+    const sms=`<span class="pt-b ${l.segmentos>1?"pt-b-am":"pt-b-gr"}" title="${_esc(l.caracteres+" caracteres · "+l.codificacao)}">${l.segmentos} SMS</span>`;
+    const situ=(l.motivo_bloqueio&&l.status==="AGUARDANDO_VALIDACAO"?ptSelo([ptMotivo(l.motivo_bloqueio),"pt-b-re"]):ptSelo(PT_STATUS[l.status]))+(l.editado?' <span class="sk-sub">editada</span>':"")+(l.erro_mensagem?`<div class="sk-sub">${_esc(l.erro_mensagem)}</div>`:"");
+    const marca=PT.pode?`<td>${ptSelecionavel(l)?`<input type="checkbox" class="pt-sel" data-id="${l.id}"${PT.sel.has(l.id)?" checked":""} onchange="ptSel(this)">`:""}</td>`:"";
+    const editar=PT.pode?`<td>${l.status==="AGUARDANDO_VALIDACAO"?`<button class="pt-btn" data-id="${l.id}" onclick="ptEditorAbrir(Number(this.dataset.id))">✏️ Editar</button>`:""}</td>`:"";
+    return `<tr>${marca}<td class="tdb"><span class="pt-link" data-re="${_esc(l.re)}" onclick="ptFichaAbrir(this.dataset.re)">${_esc(l.nome||"—")}</span></td><td>${_esc(l.re)}</td><td>${_esc(l.posto||"—")}</td><td>${_esc(l.supervisor||"—")}</td><td>${ptDia(l.data_jornada)}</td><td>${col(i=>_esc(PT_TIPO[i.tipo]||i.tipo))}</td><td>${col(i=>_esc(i.previsto||"—"))}</td><td>${col(i=>_esc(i.marcado||"—"))}</td><td>${col(i=>ptMin(i.minutos))}</td><td>${_esc(l.telefone||"—")}</td><td><div class="pt-prev">${_esc(l.texto)}</div></td><td>${sms}</td><td>${situ}</td>${editar}</tr>`;
+  }).join("");
+  box.innerHTML=`<table><thead>${cab}</thead><tbody>${corpo}</tbody></table>`;
+  ptSelAtualiza();
+}
+function ptSel(cb){const id=Number(cb.dataset.id);if(cb.checked)PT.sel.add(id);else PT.sel.delete(id);ptSelAtualiza();}
+function ptSelTodos(v){document.querySelectorAll("#pt-fila .pt-sel").forEach(cb=>{cb.checked=v;const id=Number(cb.dataset.id);if(v)PT.sel.add(id);else PT.sel.delete(id);});ptSelAtualiza();}
+function ptSelAtualiza(){
+  const n=PT.sel.size;
+  document.querySelectorAll("#pt-acoes .pt-btn").forEach(b=>{b.disabled=!n;});
+  const c=document.getElementById("pt-sel-n");if(c)c.textContent=n?n+(n===1?" selecionada":" selecionadas"):"";
+}
+function ptResultado(ok,verbo,recusadas){
+  let m=`${ok.length} ${ok.length===1?"mensagem "+verbo:"mensagens "+verbo+"s"}`;
+  if(recusadas.length)m+=` · ${recusadas.length} não: `+[...new Set(recusadas.map(r=>ptMotivo(r.motivo)))].join(", ");
+  return m;
+}
+function ptAprovar(){
+  const ids=[...PT.sel];if(!ids.length)return;
+  if(!confirm(`Aprovar ${ids.length} ${ids.length===1?"mensagem":"mensagens"}?\n\nAprovar não envia: o envio é um passo separado.`))return;
+  ptPedir("POST","aprovar",{ids}).then(j=>{ptToast(ptResultado(j.aprovadas,"aprovada",j.recusadas));PT.sel.clear();ptCarregar();}).catch(e=>alert(e.message));
+}
+function ptRejeitar(){
+  const ids=[...PT.sel];if(!ids.length)return;
+  const motivo=prompt(`Motivo da rejeição (${ids.length} ${ids.length===1?"mensagem":"mensagens"}):`);
+  if(motivo===null)return;
+  if(!motivo.trim()){alert("Informe o motivo da rejeição.");return;}
+  ptPedir("POST","rejeitar",{ids,motivo}).then(j=>{ptToast(ptResultado(j.rejeitadas,"rejeitada",j.recusadas));PT.sel.clear();ptCarregar();}).catch(e=>alert(e.message));
+}
+
+/* editor de mensagem */
+function ptEditorAbrir(id){
+  const l=PT.fila.find(x=>x.id===id);if(!l)return;
+  PT.editando=l;
+  document.getElementById("pt-editor-t").textContent="Editar mensagem — "+(l.nome||"")+" · "+ptDia(l.data_jornada);
+  document.getElementById("pt-ed-info").textContent=(l.editado?"Este texto já foi editado. ":"")+"Sem acento e com até 160 caracteres, a mensagem cabe em 1 SMS.";
+  document.getElementById("pt-ed-txt").value=l.texto;
+  ptEditorContar();
+  const p=document.getElementById("pt-editor");p.classList.add("open");p.scrollIntoView({behavior:"smooth",block:"center"});
+}
+function ptEditorContar(){
+  const t=document.getElementById("pt-ed-txt").value,a=ptAnalisarSMS(t);
+  const c=document.getElementById("pt-ed-cont");
+  c.textContent=`${a.caracteres} caracteres · ${a.segmentos} SMS`;
+  c.classList.toggle("pt-amarelo",a.segmentos>1||a.codificacao==="UCS-2");
+  const av=[];
+  if(a.codificacao==="UCS-2")av.push("Tem acento ou caractere especial: o limite caiu de 160 para 70 caracteres por SMS.");
+  if(a.segmentos>1)av.push(`Passou de 1 SMS: esta orientação vai ocupar ${a.segmentos} SMS da cota.`);
+  if(PT_PROIBIDO.test(t.normalize("NFD").replace(/[̀-ͯ]/g,"")))av.push("A orientação não pode mencionar custo, hora extra, pagamento ou desconto. O servidor vai recusar este texto.");
+  document.getElementById("pt-ed-avisos").innerHTML=av.map(x=>`<div class="pt-alerta">⚠ ${_esc(x)}</div>`).join("");
+}
+function ptEditorSalvar(){
+  const l=PT.editando;if(!l)return;
+  ptPedir("PATCH","mensagem",{id:l.id,texto_final:document.getElementById("pt-ed-txt").value}).then(j=>{ptEditorFechar();ptToast(`Texto salvo · ${j.segmentos} SMS`);ptFilaCarregar();}).catch(e=>alert(e.message));
+}
+function ptEditorRestaurar(){
+  const l=PT.editando;if(!l)return;
+  if(!confirm("Descartar a edição e voltar ao texto gerado automaticamente?"))return;
+  ptPedir("PATCH","mensagem",{id:l.id,texto_final:null}).then(()=>{ptEditorFechar();ptToast("Texto gerado restaurado");ptFilaCarregar();}).catch(e=>alert(e.message));
+}
+function ptEditorFechar(){PT.editando=null;document.getElementById("pt-editor").classList.remove("open");}
+
+/* ficha individual */
+function ptFichaAbrir(re){
+  if(!re)return;
+  const comp=PT.comp&&PT.comp.competencia;
+  ptPedir("GET","ficha",undefined,"re="+encodeURIComponent(re)+(comp?"&competencia="+comp.inicio:"")).then(j=>{
+    PT.ficha=j.ficha;PT.fichaFiltro="comp";ptFichaRender();
+    const p=document.getElementById("pt-ficha");p.classList.add("open");p.scrollIntoView({behavior:"smooth",block:"start"});
+  }).catch(e=>alert(e.message));
+}
+function ptFichaFechar(){PT.ficha=null;document.getElementById("pt-ficha").classList.remove("open");}
+function ptFichaFiltro(f){PT.fichaFiltro=f;ptFichaRender();}
+function ptFichaPeriodo(){PT.fichaDe=document.getElementById("pt-fi-de").value;PT.fichaAte=document.getElementById("pt-fi-ate").value;ptFichaHistRender();}
+function ptFichaHist(){
+  const f=PT.ficha,h=f.historico||[],c=f.competencia,fl=PT.fichaFiltro;
+  const desde=d=>new Date(Date.parse(ptHoje()+"T12:00:00Z")-d*86400000).toISOString().slice(0,10);
+  if(fl==="7")return h.filter(x=>x.data_jornada>=desde(6));
+  if(fl==="30")return h.filter(x=>x.data_jornada>=desde(29));
+  if(fl==="90")return h.filter(x=>x.data_jornada>=desde(89));
+  if(fl==="comp"&&c)return h.filter(x=>x.data_jornada>=c.inicio&&x.data_jornada<=c.fim);
+  if(fl==="ant"&&c)return h.filter(x=>x.data_jornada<c.inicio);
+  if(fl==="per")return h.filter(x=>(!PT.fichaDe||x.data_jornada>=PT.fichaDe)&&(!PT.fichaAte||x.data_jornada<=PT.fichaAte));
+  return h;
+}
+function ptFichaHistRender(){
+  const el=document.getElementById("pt-fi-hist");if(!el||!PT.ficha)return;
+  const h=ptFichaHist();
+  el.innerHTML=h.length?`<table><thead><tr><th>Data</th><th>Tipo</th><th>Previsto</th><th>Marcado</th><th>Dif.</th><th>Posto</th><th>Supervisor</th><th></th></tr></thead><tbody>${h.map(x=>`<tr${x.apos_orientacao?' class="pt-reinc"':""}><td class="tdb">${ptDiaLongo(x.data_jornada)}</td><td>${_esc(PT_TIPO[x.tipo]||x.tipo)}</td><td>${_esc(x.previsto||"—")}</td><td>${_esc(x.marcado||"—")}</td><td>${ptMin(x.minutos)}</td><td>${_esc(x.posto||"—")}</td><td>${_esc(x.supervisor||"—")}</td><td>${x.apos_orientacao?ptSelo(["após orientação","pt-b-re"]):""}</td></tr>`).join("")}</tbody></table>`:'<div class="nd">Nenhuma ocorrência neste período</div>';
+}
+function ptFichaRender(){
+  const f=PT.ficha;if(!f)return;
+  document.getElementById("pt-ficha-t").textContent="Ficha — "+(f.nome||"—")+" · RE "+f.re;
+  const c=f.competencia,r=c&&c.resumo;
+  const campo=(lbl,v)=>`<div><div class="sk-lbl">${lbl}</div><div style="font-size:.78rem;font-weight:700;color:var(--b9)">${v}</div></div>`;
+  const tel=f.telefone?_esc(f.telefone)+(f.tipo_telefone?` <span class="sk-sub">(${_esc(String(f.tipo_telefone).toLowerCase())})</span>`:""):"—";
+  const cab=`<div class="pt-grade">${campo("Telefone",tel+(f.enviavel?"":" "+ptSelo(["não enviável","pt-b-re"])))}${campo("Posto atual",_esc(f.posto_atual||"—"))}${campo("Supervisor",_esc(f.supervisor_atual||"—"))}${campo("Cargo",_esc(f.cargo||"—"))}${campo("Competência",c?ptDia(c.inicio)+" a "+ptDiaLongo(c.fim):"—")}${campo("Situação",(f.no_quadro_ativo?ptSelo(["no quadro ativo","pt-b-gr"]):ptSelo(["fora do quadro ativo","pt-b-re"]))+(f.reincidente?" "+ptSelo(["reincidente","pt-b-re"]):""))}</div>`;
+  const kpis=r?`<div class="pt-grade">${campo("Ocorrências na competência",r.ocorrencias)}${campo("Entradas antecipadas",r.entradas_antecipadas.qtd+" · "+ptMin(r.entradas_antecipadas.minutos))}${campo("Saídas após o horário",r.saidas_apos_horario.qtd+" · "+ptMin(r.saidas_apos_horario.minutos))}${campo("Tempo excedente",ptMin(r.minutos_excedentes))}${campo("Dias com ocorrência",c.dias_com_ocorrencia)}</div>`:"";
+  const bt=(k,t)=>`<button class="pt-btn${PT.fichaFiltro===k?" pt-on":""}" onclick="ptFichaFiltro('${k}')">${t}</button>`;
+  const periodo=PT.fichaFiltro==="per"?`<input type="date" class="sb2" id="pt-fi-de" value="${_esc(PT.fichaDe)}" onchange="ptFichaPeriodo()"><span class="sk-sub">até</span><input type="date" class="sb2" id="pt-fi-ate" value="${_esc(PT.fichaAte)}" onchange="ptFichaPeriodo()">`:"";
+  const acoes=(f.acoes||[]).map(a=>{
+    const quem=[a.aprovado_por?"aprovada por "+_esc(a.aprovado_por)+" em "+ptDiaLongo(a.aprovado_em):"",a.enviado_em?"enviada em "+ptDiaLongo(a.enviado_em):"",a.rejeitado_por?"rejeitada por "+_esc(a.rejeitado_por)+(a.motivo_rejeicao?": "+_esc(a.motivo_rejeicao):""):"",a.erro_mensagem?"falha: "+_esc(a.erro_mensagem):""].filter(Boolean).join("<br>");
+    return `<tr><td class="tdb">${ptDia(a.data_jornada)}</td><td>${ptSelo(PT_STATUS[a.status])}${a.motivo_bloqueio&&a.status==="AGUARDANDO_VALIDACAO"?" "+ptSelo([ptMotivo(a.motivo_bloqueio),"pt-b-re"]):""}</td><td><div class="pt-prev">${_esc(a.texto)}</div></td><td class="sk-sub">${quem||"—"}</td></tr>`;
+  }).join("");
+  document.getElementById("pt-ficha-b").innerHTML=cab+kpis+
+    `<div class="pt-sub">Histórico</div><div class="pt-bar" style="margin-bottom:8px">${bt("7","7 dias")}${bt("30","30 dias")}${bt("90","90 dias")}${bt("comp","Competência atual")}${bt("ant","Anteriores")}${bt("tudo","Tudo")}${bt("per","Período")}${periodo}</div><div class="pt-tbl" id="pt-fi-hist"></div>`+
+    `<div class="pt-sub">Ações realizadas</div><div class="pt-tbl">${acoes?`<table><thead><tr><th>Dia</th><th>Situação</th><th>Mensagem</th><th>Quem e quando</th></tr></thead><tbody>${acoes}</tbody></table>`:'<div class="nd">Nenhuma orientação registrada</div>'}</div>`;
+  ptFichaHistRender();
+}
+
+/* reconciliação de nomes */
+function ptRecCarregar(){return ptPedir("GET","reconciliacao").then(ptRecRender).catch(()=>{});}
+function ptRecRender(j){
+  const box=document.getElementById("pt-rec-box"),el=document.getElementById("pt-rec");if(!box||!el)return;
+  const g=(j&&j.grupos)||[];
+  box.hidden=!g.length;
+  el.innerHTML=g.length?`<table><thead><tr><th>Nome na HR EXTRA</th><th>Situação</th><th>Ocorrências</th><th>Dias</th><th>Última</th><th>Quem pode ser</th></tr></thead><tbody>${g.map(x=>`<tr><td class="tdb">${_esc(x.nome||"—")}${x.re?` <span class="sk-sub">RE ${_esc(x.re)}</span>`:""}</td><td>${ptSelo([ptMotivo(x.motivo),"pt-b-am"])}</td><td>${x.ocorrencias}</td><td>${x.dias}</td><td>${ptDia(x.ultima_data)}</td><td class="sk-sub">${(x.candidatos||[]).map(c=>`RE ${_esc(c.re)} — ${_esc(c.supervisor||"sem supervisor")} · ${_esc(c.posto||"sem posto")}`).join("<br>")||"—"}</td></tr>`).join("")}</tbody></table>`:"";
+}
+
+/* base de contatos (só aprovadores) */
+function ptContatosAtual(){
+  const at=document.getElementById("pt-ct-atual");at.textContent="Carregando a base atual…";
+  return ptPedir("GET","contatos").then(j=>{
+    const tipos=Object.entries(j.por_tipo||{}).map(([k,v])=>_esc(k)+": "+v).join(" · ");
+    at.innerHTML=j.total?`Base atual: <b>${j.total}</b> contatos · <b>${j.enviaveis}</b> enviáveis · <b>${j.nao_enviaveis}</b> não enviáveis${tipos?" ("+tipos+")":""}${j.atualizado_em?" · atualizada em "+ptDiaLongo(j.atualizado_em):""}`:"A base de contatos ainda está vazia.";
+  }).catch(e=>{at.textContent=e.message;});
+}
+function ptContatosAbrir(){
+  document.getElementById("pt-ct-resumo").innerHTML="";
+  document.getElementById("pt-ct-arq").value="";
+  ptContatosAtual();
+  const p=document.getElementById("pt-contatos");p.classList.add("open");p.scrollIntoView({behavior:"smooth",block:"center"});
+}
+function ptContatosFechar(){PT.contatos=null;document.getElementById("pt-contatos").classList.remove("open");}
+function ptContatosLer(inp){
+  const arq=inp.files&&inp.files[0];if(!arq)return;
+  const rd=new FileReader();
+  rd.onload=e=>{
+    let linhas;
+    try{
+      const wb=XLSX.read(e.target.result,{type:"array"});
+      const brutas=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:"",raw:true});
+      // Só as colunas permitidas saem do navegador: CPF, RG e o resto ficam aqui.
+      linhas=brutas.map(r=>{
+        const o={};
+        for(const[k,v] of Object.entries(r)){
+          const n=k.normalize("NFD").replace(/[̀-ͯ]/g,"").trim().toLowerCase().replace(/\s+/g,"_");
+          if(!PT_COLS_CONTATO.includes(n))continue;
+          let x=v;
+          if(typeof x==="number"){
+            if(n==="data_base"){const d=XLSX.SSF.parse_date_code(x);x=d?d.y+"-"+String(d.m).padStart(2,"0")+"-"+String(d.d).padStart(2,"0"):"";}
+            else x=String(Math.round(x)); // número de telefone lido como número não pode virar 5,5E+12
+          }
+          o[n]=x;
+        }
+        return o;
+      });
+    }catch(err){alert("Não consegui ler o arquivo: "+err.message);return;}
+    if(!linhas.length){alert("O arquivo não tem linhas.");return;}
+    PT.contatos=linhas;
+    const el=document.getElementById("pt-ct-resumo");el.innerHTML='<div class="nd">Conferindo…</div>';
+    ptPedir("POST","contatos",{linhas,confirmar:false}).then(ptContatosResumo).catch(err=>{el.innerHTML="";alert(err.message);});
+  };
+  rd.readAsArrayBuffer(arq);
+}
+function ptContatosResumo(j){
+  const r=j.resumo,el=document.getElementById("pt-ct-resumo");
+  const num=(lbl,v,sub)=>`<div><div class="sk-lbl">${lbl}</div><div class="pt-cota-v">${v}</div>${sub?`<div class="sk-sub">${sub}</div>`:""}</div>`;
+  const tipos=Object.entries(r.por_tipo||{}).map(([k,v])=>`${_esc(k)}: <b>${v}</b>`).join(" · ");
+  const rej=(j.rejeitadas||[]).slice(0,20).map(x=>`Linha ${x.linha}: ${_esc(ptMotivo(x.motivo))}${x.re?" (RE "+_esc(x.re)+")":""}`).join("<br>");
+  el.innerHTML=`<div class="pt-grade">${num("No arquivo",r.total,`${r.validas} válidas · ${r.rejeitadas} rejeitadas`)}${num("Novos",r.novos)}${num("Atualizados",r.atualizados,`${r.telefones_alterados} com telefone alterado`)}${num("Inalterados",r.inalterados)}${num("Enviáveis",r.enviaveis)}${num("Não enviáveis",r.nao_enviaveis,`${r.sem_telefone} sem telefone`)}</div>`+
+    `<div class="sk-sub">Por tipo de telefone: ${tipos||"—"}</div>`+
+    (r.inconsistentes?`<div class="pt-alerta">⚠ ${r.inconsistentes} ${r.inconsistentes===1?"contato veio marcado":"contatos vieram marcados"} como enviável, mas o número não é um celular válido. ${r.inconsistentes===1?"Ele fica":"Eles ficam"} como não enviável.</div>`:"")+
+    (rej?`<div class="pt-alerta">Linhas rejeitadas:<br>${rej}${j.rejeitadas.length>20?"<br>…":""}</div>`:"")+
+    `<div class="pt-bar" style="margin-top:12px">${j.gravado?ptSelo(["Base gravada","pt-b-gr"]):`<button class="pt-btn pt-pri" onclick="ptContatosConfirmar()">Confirmar gravação</button><span class="sk-sub">Nada foi gravado ainda.</span>`}</div>`;
+}
+function ptContatosConfirmar(){
+  if(!PT.contatos)return;
+  ptPedir("POST","contatos",{linhas:PT.contatos,confirmar:true}).then(j=>{
+    ptContatosResumo(j);PT.contatos=null;ptToast("Base de contatos gravada");ptContatosAtual();
+    // atualiza o telefone e o bloqueio das mensagens que ainda aguardam validação
+    return ptPedir("POST","processar").catch(()=>null).then(()=>ptCarregar());
+  }).catch(e=>alert(e.message));
+}
+function ptProcessar(){
+  if(!confirm("Reprocessar a última planilha importada?\n\nSó cria o que ainda não existe — nada é duplicado e nenhum SMS é enviado."))return;
+  ptPedir("POST","processar").then(j=>{
+    ptToast(j.ativo===false?"Módulo desligado: defina a data de virada.":`Reprocessado: ${j.ocorrencias_novas} ${j.ocorrencias_novas===1?"ocorrência nova":"ocorrências novas"} · ${j.mensagens_novas} ${j.mensagens_novas===1?"mensagem nova":"mensagens novas"}`);
+    ptCarregar();
+  }).catch(e=>alert(e.message));
 }
 
 const CK_MODELOS=new Set(["LIMPEZA","PORTARIA","VISITA DE ROTEIRO"]);
