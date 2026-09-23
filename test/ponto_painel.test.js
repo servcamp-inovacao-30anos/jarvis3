@@ -13,8 +13,9 @@ const R = require("../api/_ponto_regras");
 
 ponto.APROVADORES.add("aprovador");
 
-const hoje = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
-const mesAnterior = (() => { const [y, m] = hoje.split("-").map(Number); return m === 1 ? `${y - 1}-12-15` : `${y}-${String(m - 1).padStart(2, "0")}-15`; })();
+// o dia da cota segue o provedor (meia-noite UTC)
+const diaCota = new Date().toISOString().slice(0, 10);
+const mesAnterior = (() => { const [y, m] = diaCota.split("-").map(Number); return m === 1 ? `${y - 1}-12-15` : `${y}-${String(m - 1).padStart(2, "0")}-15`; })();
 const TEXTO_MARIA = "SERVCAMP | ORIENTACAO DE PONTO\nOla, Maria. Em 20/09 sua entrada foi as 17:45, 15 min antes do previsto (18:00). Oriente-se a marcar no horario. RE 521.";
 
 const oc = (id, extra) => ({
@@ -49,7 +50,7 @@ function base() {
       msg(12)
     ],
     pt_contatos: [{ re: 521, telefone_e164: "+5519998765432", tipo_telefone: "CELULAR", enviavel: true }],
-    pt_sms_uso: [{ id: 1, dia: hoje, mes_referencia: hoje.slice(0, 7), segmentos_dia: 42 }, { id: 2, dia: mesAnterior, mes_referencia: mesAnterior.slice(0, 7), segmentos_dia: 999 }],
+    pt_sms_uso: [{ id: 1, dia: diaCota, mes_referencia: diaCota.slice(0, 7), segmentos_dia: 42 }, { id: 2, dia: mesAnterior, mes_referencia: mesAnterior.slice(0, 7), segmentos_dia: 999 }],
     dashboard_snapshots: [{
       id: 1, created_at: "2026-09-22T10:00:00Z",
       data: { ativos: [

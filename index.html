@@ -4023,7 +4023,8 @@ const PT_TIPO={EARLY_ENTRY:"Entrada antecipada",LATE_EXIT:"Saída após o horár
 const PT_STATUS={AGUARDANDO_VALIDACAO:["Aguardando","pt-b-bl"],APROVADA:["Aprovada","pt-b-gr"],ENVIANDO:["Enviando…","pt-b-am"],ENVIADA:["Enviada","pt-b-g"],FALHA:["Falha no envio","pt-b-re"],REJEITADA:["Rejeitada","pt-b-g"]};
 const PT_MOTIVO={TELEFONE_AUSENTE:"Sem telefone",TELEFONE_FIXO:"Telefone fixo",TELEFONE_INVALIDO:"Telefone inválido",NOME_NAO_ENCONTRADO:"Nome sem par no quadro",NOME_AMBIGUO:"Nome ambíguo",RE_NAO_ENCONTRADO:"RE fora do quadro ativo",RE_INVALIDO:"RE inválido",RE_REPETIDO_NO_ARQUIVO:"RE repetido no arquivo",JA_ENVIADA:"já enviada",NAO_ENCONTRADA:"não encontrada",SEM_TEXTO:"sem texto",
   NAO_APROVADA:"ainda não aprovada",REJEITADA:"rejeitada",JA_EM_ENVIO:"já em envio",JA_ORIENTADO_HOJE:"já recebeu SMS hoje",UMA_POR_DIA:"só 1 SMS por colaborador por dia",SEM_COTA:"sem cota",TESTE:"é teste",PRAZO:"fica para a próxima rodada",
-  LIMITE_API:"limite da API do provedor",SMS_GATEWAY_OFFLINE:"gateway de SMS fora do ar",SMS_DESLIGADO:"envio de SMS desligado"};
+  LIMITE_API:"limite do plano do provedor atingido",SMS_GATEWAY_OFFLINE:"celular do gateway indisponível",SMS_DESLIGADO:"envio de SMS desligado",
+  SMS_CREDENCIAL_INVALIDA:"chave do provedor inválida",SMS_INDISPONIVEL:"provedor de SMS fora do ar",SMS_RECUSADO:"SMS recusado pelo gateway"};
 const PT_PROVEDOR={mock:"Simulação (mock) — nenhum SMS real sai",desligado:"Desligado — nenhum SMS sai",textbee:"TextBee"};
 const PT_COTA={NORMAL:["Normal","pt-b-gr"],ATENCAO:["Atenção","pt-b-am"],PROXIMO_DO_LIMITE:["Próximo do limite","pt-b-or"],LIMITE_ATINGIDO:["Limite atingido","pt-b-re"]};
 const PT_COLS_CONTATO=["re","nome_cadastro","nome_norm","telefone_original","telefone_e164","tipo_telefone","enviavel","origem","data_base"];
@@ -4117,8 +4118,9 @@ function ptRenderCota(c,prov){
   const el=document.getElementById("pt-cota");if(!el)return;
   if(!c){el.innerHTML='<span class="sk-sub">Cota indisponível no momento.</span>';return;}
   const item=(lbl,x)=>`<div><div class="sk-lbl">${lbl}</div><div class="pt-cota-v">${x.usado}/${x.limite}</div>${ptSelo(PT_COTA[x.estado])}<div class="pt-barra"><div style="width:${Math.min(100,Math.round(x.usado/Math.max(1,x.limite)*100))}%"></div></div></div>`;
-  const provedor=prov?`<div><div class="sk-lbl">Provedor de SMS</div>${ptSelo([PT_PROVEDOR[prov.nome]||prov.nome,prov.nome==="mock"?"pt-b-am":prov.nome==="desligado"?"pt-b-re":prov.online?"pt-b-gr":"pt-b-re"])}</div>`:"";
-  el.innerHTML=item("SMS hoje",c.hoje)+item("SMS no mês",c.mes)+provedor+`<div class="sk-sub" style="max-width:380px">A contagem é por <b>segmento</b>: uma mensagem com mais de 160 caracteres, ou com acento, ocupa mais de um SMS.<br>Disponível agora: <b>${c.disponivel}</b> ${c.disponivel===1?"segmento":"segmentos"}.</div>`;
+  const rotulo=prov?(prov.nome==="textbee"&&!prov.configurado?"TextBee sem chave (TEXTBEE_API_KEY)":PT_PROVEDOR[prov.nome]||prov.nome):"";
+  const provedor=prov?`<div><div class="sk-lbl">Provedor de SMS</div>${ptSelo([rotulo,prov.nome==="mock"?"pt-b-am":prov.nome==="textbee"&&prov.configurado?"pt-b-gr":"pt-b-re"])}</div>`:"";
+  el.innerHTML=item("SMS hoje",c.hoje)+item("SMS no mês",c.mes)+provedor+`<div class="sk-sub" style="max-width:380px">A contagem é por <b>segmento</b>: uma mensagem com mais de 160 caracteres, ou com acento, ocupa mais de um SMS. O dia da cota vira às 21h (meia-noite UTC), como no TextBee.<br>Disponível agora: <b>${c.disponivel}</b> ${c.disponivel===1?"segmento":"segmentos"}.</div>`;
 }
 
 /* fila de validação */

@@ -14,7 +14,8 @@ const ponto = require("../api/_ponto");
 const { supabaseFalso, chamar } = require("./_supabase_falso");
 
 ponto.APROVADORES.add("aprovador");
-const hoje = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
+// o dia da cota segue o provedor (meia-noite UTC)
+const hoje = new Date().toISOString().slice(0, 10);
 const provedorOriginal = SMS.provedorSMS;
 
 const TXT = "SERVCAMP | ORIENTACAO DE PONTO\nOla, Maria. Marque o ponto no horario. RE 521.";

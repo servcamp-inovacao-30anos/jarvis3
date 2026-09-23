@@ -231,8 +231,21 @@ function hojeSP() {
   return new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
 }
 
+// O dia da COTA segue o provedor: o limite diário do TextBee zera à meia-noite
+// UTC (21h em Brasília). Já a regra de 1 SMS por colaborador por dia usa o dia
+// de Brasília (hojeSP).
+function diaDaCota() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+// O que está no pt_config (tela Configurar) vale; as variáveis de ambiente
+// só entram como valor inicial se o pt_config não tiver o dado.
 async function lerConfigDoBanco(db) {
-  return R.lerConfig(await db.listar("pt_config?select=chave,valor&order=chave.asc"));
+  const linhas = await db.listar("pt_config?select=chave,valor&order=chave.asc");
+  const tem = new Set(linhas.filter(l => l.valor != null && l.valor !== "").map(l => l.chave));
+  const env = { sms_limite_dia: process.env.SMS_LIMITE_DIA, sms_limite_mes: process.env.SMS_LIMITE_MES, tolerancia_minutos: process.env.POINT_TOLERANCE_MINUTES };
+  Object.entries(env).forEach(([chave, valor]) => { if (!tem.has(chave) && valor != null && String(valor).trim() !== "") linhas.push({ chave, valor: String(valor).trim() }); });
+  return R.lerConfig(linhas);
 }
 
 async function ativosDaUltimaPlanilha(db) {
@@ -314,10 +327,11 @@ async function cotaAtual(db, cfg, hoje) {
   return R.resumoCota(usos, hoje, cfg);
 }
 
+// Não chama a rede do provedor: esta leitura roda toda vez que o card abre.
 async function verCota({ res, db }) {
   const cfg = await lerConfigDoBanco(db);
   const sms = require("./_sms").provedorSMS();
-  return res.status(200).json({ ok: true, cota: await cotaAtual(db, cfg, hojeSP()), provedor: { nome: sms.nome, ...(await sms.status()) } });
+  return res.status(200).json({ ok: true, cota: await cotaAtual(db, cfg, diaDaCota()), provedor: { nome: sms.nome, configurado: !!sms.configurado } });
 }
 
 // ── validação humana: só aprovadores ────────────────────────────────────────
@@ -408,9 +422,10 @@ async function editarMensagem({ res, db, ator, body }) {
 // Numa função da Vercel o tempo é curto: o lote para de começar envios novos
 // perto do limite e devolve continuar=true; a tela chama de novo com o resto.
 const PRAZO_ENVIO_MS = 7000;
-const PARA_O_LOTE = new Set(["LIMITE_API", "SMS_GATEWAY_OFFLINE", "SMS_DESLIGADO"]);
+const PARA_O_LOTE = new Set(["LIMITE_API", "SMS_GATEWAY_OFFLINE", "SMS_CREDENCIAL_INVALIDA", "SMS_INDISPONIVEL", "SMS_DESLIGADO"]);
 
 async function montarPlanoDeEnvio(db, body, hoje, cfg) {
+  const diaCota = diaDaCota();
   const ids = idsDoCorpo(body);
   const ms = ids.length
     ? await porIds(db, "pt_mensagens", CAMPOS_MENSAGEM, ids)
@@ -425,7 +440,7 @@ async function montarPlanoDeEnvio(db, body, hoje, cfg) {
   for (const lote of emLotes(res, 150)) contatos = contatos.concat(await db.listar(`pt_contatos?select=re,telefone_e164,tipo_telefone,enviavel&re=in.(${lote.join(",")})&order=re.asc`));
   // "hoje" começa à meia-noite de São Paulo (UTC−3)
   const enviadasHoje = await db.listar(`pt_mensagens?select=re&status=eq.ENVIADA&is_test=eq.false&enviado_em=gte.${hoje}T03:00:00Z&order=id.asc`);
-  const cota = await cotaAtual(db, cfg, hoje);
+  const cota = await cotaAtual(db, cfg, diaCota);
   const plano = R.planejarEnvio(ms, {
     contatosPorRE: new Map(contatos.map(c => [String(c.re), c])),
     jaOrientadosHoje: new Set(enviadasHoje.map(m => String(m.re))),
@@ -437,12 +452,14 @@ async function montarPlanoDeEnvio(db, body, hoje, cfg) {
 async function enviarMensagens({ res, db, ator, body }) {
   const sms = require("./_sms").provedorSMS();
   const cfg = await lerConfigDoBanco(db);
-  const hoje = hojeSP();
+  const hoje = hojeSP(), diaCota = diaDaCota();
   const { ms, plano } = await montarPlanoDeEnvio(db, body, hoje, cfg);
   if (!ms.length) return erro(res, 400, "Nenhuma mensagem para enviar.", "SEM_SELECAO");
-  const estado = await sms.status();
-  const provedor = { nome: sms.nome, online: !!estado.online, motivo: estado.motivo || null };
   if (!body.confirmar) {
+    // Só a prévia consulta o provedor (chave, aparelho): no envio confirmado,
+    // cada SMS já trata os próprios erros e não vale gastar uma chamada a mais.
+    const estado = await sms.status();
+    const provedor = { nome: sms.nome, online: !!estado.online, motivo: estado.motivo || null };
     return res.status(200).json({
       ok: true, simulacao: true, provedor,
       resumo: plano.resumo, cota: plano.cota,
@@ -450,7 +467,8 @@ async function enviarMensagens({ res, db, ator, body }) {
       nao_cabe: plano.nao_cabe, esperam: plano.esperam, bloqueadas: plano.bloqueadas
     });
   }
-  if (sms.nome === "desligado") return erro(res, 409, provedor.motivo || "Envio de SMS desligado.", "SMS_DESLIGADO");
+  if (sms.nome === "desligado") return erro(res, 409, sms.motivo || "Envio de SMS desligado.", "SMS_DESLIGADO");
+  const provedor = { nome: sms.nome, configurado: !!sms.configurado };
 
   const statusAntes = new Map(ms.map(m => [Number(m.id), m.status]));
   const prazo = Date.now() + PRAZO_ENVIO_MS;
@@ -461,7 +479,7 @@ async function enviarMensagens({ res, db, ator, body }) {
     const travada = await db.atualizarRetornando(`pt_mensagens?id=eq.${c.id}&status=in.(APROVADA,FALHA)`, { status: "ENVIANDO" });
     if (!travada.length) { naoEnviadas.push({ id: c.id, motivo: "JA_EM_ENVIO" }); continue; }
     const volta = statusAntes.get(c.id) || "APROVADA";
-    const reservou = await db.rpc("pt_reservar_segmentos", { p_dia: hoje, p_segmentos: c.segmentos, p_limite_dia: cfg.sms_limite_dia, p_limite_mes: cfg.sms_limite_mes });
+    const reservou = await db.rpc("pt_reservar_segmentos", { p_dia: diaCota, p_segmentos: c.segmentos, p_limite_dia: cfg.sms_limite_dia, p_limite_mes: cfg.sms_limite_mes });
     if (reservou !== true) {
       await db.atualizar(`pt_mensagens?id=eq.${c.id}&status=eq.ENVIANDO`, { status: volta });
       parado = "SEM_COTA";
@@ -482,7 +500,7 @@ async function enviarMensagens({ res, db, ator, body }) {
       continue;
     }
     // Não saiu: a cota reservada volta, e a mensagem nunca fica como enviada.
-    await db.rpc("pt_devolver_segmentos", { p_dia: hoje, p_segmentos: c.segmentos });
+    await db.rpc("pt_devolver_segmentos", { p_dia: diaCota, p_segmentos: c.segmentos });
     const codigo = (r && r.codigo) || "SMS_ERRO", mensagem = (r && r.mensagem) || null;
     if (PARA_O_LOTE.has(codigo)) {
       await db.atualizar(`pt_mensagens?id=eq.${c.id}&status=eq.ENVIANDO`, { status: volta, erro_codigo: codigo, erro_mensagem: mensagem });
@@ -497,7 +515,7 @@ async function enviarMensagens({ res, db, ator, body }) {
   return res.status(200).json({
     ok: true, provedor, enviadas, falhas, nao_enviadas: naoEnviadas, bloqueadas: plano.bloqueadas,
     parado_por: parado, continuar: naoEnviadas.some(x => x.motivo === "PRAZO"),
-    cota: await cotaAtual(db, cfg, hoje)
+    cota: await cotaAtual(db, cfg, diaCota)
   });
 }
 
