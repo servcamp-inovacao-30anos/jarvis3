@@ -2,8 +2,11 @@
 //
 // Prefixo "_" → não vira rota. É chamado pelo api/rh.js quando a URL traz
 // ?modulo=ponto: o plano Hobby da Vercel permite 12 funções e já estamos nas 12.
-//   /api/rh?modulo=ponto&t=contatos    (GET lista · POST carga)
-//   /api/rh?modulo=ponto&t=processar   (POST reprocessa a última planilha)
+//   /api/rh?modulo=ponto&t=...
+//     leitura (qualquer pessoa logada; telefone mascarado para quem não aprova):
+//       GET competencia · fila · ocorrencias · ficha · reconciliacao · quota
+//     só aprovadores:
+//       GET/POST contatos · POST processar · POST aprovar · POST rejeitar · PATCH mensagem
 // E o api/import.js chama materializar() a cada planilha recebida.
 //
 // As regras moram em _ponto_regras.js (puras, testadas). Aqui fica só o que
@@ -199,12 +202,197 @@ async function carregarContatos({ res, db, ator, body }) {
   return res.status(200).json(resposta);
 }
 
+// ── painel: leituras ────────────────────────────────────────────────────────
+// Qualquer pessoa logada lê; quem não é aprovador vê o telefone mascarado.
+
+const CAMPOS_OCORRENCIA = "id,re,nome,data_jornada,tipo,horario_previsto,horario_marcado,diferenca_minutos,posto,cliente,supervisor,status,reconciliacao,is_test,competencia_id";
+const CAMPOS_MENSAGEM = "id,re,data_jornada,ocorrencia_ids,telefone_e164,template_id,texto_gerado,texto_final,segmentos,status,motivo_bloqueio,aprovado_por,aprovado_em,editado_por,editado_em,enviado_em,rejeitado_por,rejeitado_em,motivo_rejeicao,erro_codigo,erro_mensagem,is_test,criado_em";
+const STATUS_MENSAGEM = new Set(["AGUARDANDO_VALIDACAO", "APROVADA", "ENVIADA", "FALHA", "REJEITADA"]);
+const DATA_ISO = /^\d{4}-\d{2}-\d{2}$/;
+
+function ehAprovador(ator) {
+  return !!ator && APROVADORES.has(ator);
+}
+
+// Brasil sem horário de verão desde 2019: UTC−3 fixo.
+function hojeSP() {
+  return new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
+}
+
+async function lerConfigDoBanco(db) {
+  return R.lerConfig(await db.listar("pt_config?select=chave,valor&order=chave.asc"));
+}
+
+async function ativosDaUltimaPlanilha(db) {
+  const snap = await db.obter("dashboard_snapshots?select=ativos:data->ativos&order=created_at.desc&limit=1");
+  return (snap && snap[0] && snap[0].ativos) || [];
+}
+
+async function porIds(db, tabela, campos, ids) {
+  let out = [];
+  for (const lote of emLotes(ids, 150)) out = out.concat(await db.listar(`${tabela}?select=${campos}&id=in.(${lote.join(",")})&order=id.asc`));
+  return out;
+}
+
+async function verCompetencia({ req, res, db, ator }) {
+  const cfg = await lerConfigDoBanco(db);
+  const c = R.competenciaDe(DATA_ISO.test(String(req.query.data || "")) ? req.query.data : hojeSP());
+  const comps = await db.listar("pt_competencias?select=id,data_inicio,data_fim,parcial,data_corte,status&order=data_inicio.desc");
+  const reg = comps.find(x => String(x.data_inicio).slice(0, 10) === c.inicio) || null;
+  const parcial = reg ? !!reg.parcial : !!cfg.data_virada && cfg.data_virada > c.inicio && cfg.data_virada <= c.fim;
+  const janela = `data_jornada=gte.${c.inicio}&data_jornada=lte.${c.fim}&is_test=eq.false`;
+  const oc = await db.listar(`pt_ocorrencias?select=${CAMPOS_OCORRENCIA}&${janela}&order=id.asc`);
+  const ms = await db.listar(`pt_mensagens?select=id,re,status,motivo_bloqueio,is_test&${janela}&order=id.asc`);
+  return res.status(200).json({
+    ok: true,
+    modulo: { ativo: !!cfg.data_virada, data_virada: cfg.data_virada, tolerancia_minutos: cfg.tolerancia_minutos },
+    competencia: {
+      id: reg ? reg.id : null, inicio: c.inicio, fim: c.fim, status: reg ? reg.status : "ABERTA",
+      parcial, data_corte: parcial ? (reg ? String(reg.data_corte).slice(0, 10) : cfg.data_virada) : null
+    },
+    competencias: comps.map(x => ({ inicio: String(x.data_inicio).slice(0, 10), fim: String(x.data_fim).slice(0, 10), parcial: !!x.parcial })),
+    resumo: R.resumoCompetencia(oc, ms),
+    pode_aprovar: ehAprovador(ator)
+  });
+}
+
+async function verFila({ req, res, db, ator }) {
+  const pedidos = String(req.query.status || "").split(",").map(s => s.trim().toUpperCase()).filter(s => STATUS_MENSAGEM.has(s));
+  const status = pedidos.length ? pedidos : ["AGUARDANDO_VALIDACAO", "APROVADA", "FALHA"];
+  const ms = await db.listar(`pt_mensagens?select=${CAMPOS_MENSAGEM}&is_test=eq.false&status=in.(${status.join(",")})&order=id.asc`);
+  const oc = await porIds(db, "pt_ocorrencias", CAMPOS_OCORRENCIA, [...new Set(ms.flatMap(m => (m.ocorrencia_ids || []).map(Number)))]);
+  return res.status(200).json({ ok: true, status, pode_aprovar: ehAprovador(ator), linhas: R.montarFila(ms, oc, { mascarar: !ehAprovador(ator) }) });
+}
+
+async function listarOcorrencias({ req, res, db }) {
+  const q = req.query || {};
+  const f = ["is_test=eq.false"];
+  if (DATA_ISO.test(String(q.competencia || ""))) { const c = R.competenciaDe(q.competencia); f.push(`data_jornada=gte.${c.inicio}`, `data_jornada=lte.${c.fim}`); }
+  if (DATA_ISO.test(String(q.de || ""))) f.push(`data_jornada=gte.${q.de}`);
+  if (DATA_ISO.test(String(q.ate || ""))) f.push(`data_jornada=lte.${q.ate}`);
+  if (q.status) f.push(`status=eq.${encodeURIComponent(String(q.status).trim().toUpperCase())}`);
+  if (q.supervisor) f.push(`supervisor=eq.${encodeURIComponent(String(q.supervisor).trim())}`);
+  const re = R.normRE(q.re);
+  if (/^\d{1,15}$/.test(re)) f.push(`re=eq.${re}`);
+  const linhas = await db.listar(`pt_ocorrencias?select=${CAMPOS_OCORRENCIA}&${f.join("&")}&order=data_jornada.desc,id.desc`);
+  return res.status(200).json({ ok: true, linhas });
+}
+
+async function verFicha({ req, res, db, ator }) {
+  const re = R.normRE(req.query.re);
+  if (!/^\d{1,15}$/.test(re)) return erro(res, 400, "Informe o RE do colaborador.", "RE_INVALIDO");
+  const oc = await db.listar(`pt_ocorrencias?select=${CAMPOS_OCORRENCIA}&re=eq.${re}&is_test=eq.false&order=data_jornada.desc,id.desc`);
+  const ms = await db.listar(`pt_mensagens?select=${CAMPOS_MENSAGEM}&re=eq.${re}&is_test=eq.false&order=id.asc`);
+  const contato = (await db.obter(`pt_contatos?select=re,telefone_e164,tipo_telefone,enviavel&re=eq.${re}`))[0] || null;
+  const ativo = (await ativosDaUltimaPlanilha(db)).find(a => R.normRE(a.RE) === re) || null;
+  const competencia = R.competenciaDe(DATA_ISO.test(String(req.query.competencia || "")) ? req.query.competencia : hojeSP());
+  const ficha = R.montarFicha(Number(re), { ocorrencias: oc, mensagens: ms, contato, ativo, competencia, mascarar: !ehAprovador(ator) });
+  return res.status(200).json({ ok: true, ficha });
+}
+
+async function verReconciliacao({ res, db }) {
+  const oc = await db.listar(`pt_ocorrencias?select=${CAMPOS_OCORRENCIA}&reconciliacao=not.is.null&is_test=eq.false&order=data_jornada.desc,id.desc`);
+  const { normNome } = require("./_parse");
+  const grupos = R.agruparReconciliacao(oc, oc.length ? await ativosDaUltimaPlanilha(db) : [], normNome);
+  return res.status(200).json({ ok: true, total_ocorrencias: oc.length, grupos });
+}
+
+async function verCota({ res, db }) {
+  const cfg = await lerConfigDoBanco(db);
+  const hoje = hojeSP();
+  const usos = await db.listar(`pt_sms_uso?select=dia,segmentos_dia&dia=gte.${hoje.slice(0, 7)}-01&order=dia.asc`);
+  return res.status(200).json({ ok: true, cota: R.resumoCota(usos, hoje, cfg) });
+}
+
+// ── validação humana: só aprovadores ────────────────────────────────────────
+
+function idsDoCorpo(body) {
+  const lista = Array.isArray(body.ids) ? body.ids : [];
+  return [...new Set(lista.map(Number).filter(n => Number.isInteger(n) && n > 0))].slice(0, 500);
+}
+
+async function aprovar({ res, db, ator, body }) {
+  const ids = idsDoCorpo(body);
+  if (!ids.length) return erro(res, 400, "Selecione ao menos uma mensagem.", "SEM_SELECAO");
+  const porId = new Map((await porIds(db, "pt_mensagens", CAMPOS_MENSAGEM, ids)).map(m => [Number(m.id), m]));
+  const aprovadas = [], recusadas = [];
+  ids.forEach(id => { const motivo = R.motivoParaNaoAprovar(porId.get(id)); if (motivo) recusadas.push({ id, motivo }); else aprovadas.push(id); });
+  if (aprovadas.length) {
+    const agora = new Date().toISOString();
+    // O filtro de status na própria atualização impede aprovar o que outra
+    // pessoa acabou de rejeitar ou aprovar em paralelo.
+    for (const lote of emLotes(aprovadas, 150)) {
+      await db.atualizar(`pt_mensagens?id=in.(${lote.join(",")})&status=eq.AGUARDANDO_VALIDACAO`, { status: "APROVADA", aprovado_por: ator, aprovado_em: agora });
+    }
+    await db.inserir("pt_auditoria", aprovadas.map(id => ({
+      ator, acao: "MENSAGEM_APROVADA", entidade: "pt_mensagens", entidade_id: id, antes: { status: "AGUARDANDO_VALIDACAO" }, depois: { status: "APROVADA" }
+    })));
+  }
+  return res.status(200).json({ ok: true, aprovadas, recusadas });
+}
+
+async function rejeitar({ res, db, ator, body }) {
+  const ids = idsDoCorpo(body);
+  const motivo = String(body.motivo == null ? "" : body.motivo).trim().slice(0, 300);
+  if (!ids.length) return erro(res, 400, "Selecione ao menos uma mensagem.", "SEM_SELECAO");
+  if (!motivo) return erro(res, 400, "Informe o motivo da rejeição.", "SEM_MOTIVO");
+  const porId = new Map((await porIds(db, "pt_mensagens", CAMPOS_MENSAGEM, ids)).map(m => [Number(m.id), m]));
+  const rejeitadas = [], recusadas = [];
+  ids.forEach(id => { const m = porId.get(id); const r = R.motivoParaNaoRejeitar(m); if (r) recusadas.push({ id, motivo: r }); else rejeitadas.push(m); });
+  if (rejeitadas.length) {
+    const agora = new Date().toISOString();
+    const ids2 = rejeitadas.map(m => Number(m.id));
+    for (const lote of emLotes(ids2, 150)) {
+      await db.atualizar(`pt_mensagens?id=in.(${lote.join(",")})&status=in.(AGUARDANDO_VALIDACAO,APROVADA,FALHA)`, { status: "REJEITADA", rejeitado_por: ator, rejeitado_em: agora, motivo_rejeicao: motivo });
+    }
+    await db.inserir("pt_auditoria", rejeitadas.map(m => ({
+      ator, acao: "MENSAGEM_REJEITADA", entidade: "pt_mensagens", entidade_id: Number(m.id), antes: { status: m.status }, depois: { status: "REJEITADA", motivo }
+    })));
+  }
+  return res.status(200).json({ ok: true, rejeitadas: rejeitadas.map(m => Number(m.id)), recusadas });
+}
+
+// PATCH { id, texto_final } edita; { id, texto_final: null } volta ao texto gerado.
+async function editarMensagem({ res, db, ator, body }) {
+  const id = Number(body.id);
+  if (!Number.isInteger(id) || id <= 0) return erro(res, 400, "Informe a mensagem.", "SEM_SELECAO");
+  const [m] = await porIds(db, "pt_mensagens", CAMPOS_MENSAGEM, [id]);
+  if (!m) return erro(res, 404, "Mensagem não encontrada.", "NAO_ENCONTRADA");
+  if (m.status !== "AGUARDANDO_VALIDACAO") return erro(res, 409, "Só dá para editar a mensagem antes da aprovação.", m.status === "ENVIADA" ? "JA_ENVIADA" : "STATUS_" + m.status);
+  const agora = new Date().toISOString();
+  let patch, depois;
+  if (body.texto_final === null) {
+    patch = { texto_final: null, segmentos: R.segmentosSMS(m.texto_gerado), editado_por: null, editado_em: null };
+    depois = { texto: m.texto_gerado, restaurado: true };
+  } else {
+    const v = R.validarTextoMensagem(body.texto_final);
+    if (v.erro) {
+      const msg = { TEXTO_VAZIO: "O texto não pode ficar vazio.", TEXTO_LONGO: "Texto longo demais.", TERMO_PROIBIDO: "A orientação não pode mencionar custo, hora extra, pagamento ou desconto." }[v.erro];
+      return erro(res, 400, msg, v.erro);
+    }
+    patch = { texto_final: v.texto, segmentos: v.segmentos, editado_por: ator, editado_em: agora };
+    depois = { texto: v.texto, segmentos: v.segmentos, codificacao: v.codificacao };
+  }
+  await db.atualizar(`pt_mensagens?id=eq.${id}&status=eq.AGUARDANDO_VALIDACAO`, patch);
+  await db.inserir("pt_auditoria", [{ ator, acao: "MENSAGEM_EDITADA", entidade: "pt_mensagens", entidade_id: id, antes: { texto: m.texto_final || m.texto_gerado }, depois }]);
+  return res.status(200).json({ ok: true, id, ...depois });
+}
+
 // ── roteamento ──────────────────────────────────────────────────────────────
 
 const ROTAS = {
+  "GET competencia": { fn: verCompetencia },
+  "GET fila": { fn: verFila },
+  "GET ocorrencias": { fn: listarOcorrencias },
+  "GET ficha": { fn: verFicha },
+  "GET reconciliacao": { fn: verReconciliacao },
+  "GET quota": { fn: verCota },
   "GET contatos": { aprovador: true, fn: listarContatos },
   "POST contatos": { aprovador: true, fn: carregarContatos },
-  "POST processar": { aprovador: true, fn: processarUltima }
+  "POST processar": { aprovador: true, fn: processarUltima },
+  "POST aprovar": { aprovador: true, fn: aprovar },
+  "POST rejeitar": { aprovador: true, fn: rejeitar },
+  "PATCH mensagem": { aprovador: true, fn: editarMensagem }
 };
 
 module.exports = async function ponto(req, res) {

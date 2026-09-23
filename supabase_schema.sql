@@ -106,10 +106,17 @@ create table if not exists public.pt_mensagens (
   provider_message_id text,
   erro_codigo         text,
   erro_mensagem       text,
+  rejeitado_por       text,
+  rejeitado_em        timestamptz,
+  motivo_rejeicao     text,
   is_test             boolean not null default false,
   criado_em           timestamptz not null default now(),
   unique (re, data_jornada, is_test)
 );
+-- Para quem já rodou uma versão anterior deste bloco (sem estas colunas).
+alter table public.pt_mensagens add column if not exists rejeitado_por   text;
+alter table public.pt_mensagens add column if not exists rejeitado_em    timestamptz;
+alter table public.pt_mensagens add column if not exists motivo_rejeicao text;
 
 create table if not exists public.pt_sms_uso (
   id             bigint generated always as identity primary key,

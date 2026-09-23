@@ -13,10 +13,10 @@ function filtrar(linhas, params) {
   let out = linhas;
   for (const [k, v] of params) {
     if (PARAMS_DE_CONTROLE.has(k)) continue;
-    const m = String(v).match(/^(eq|gte|lte|gt|lt|in|is)\.(.*)$/);
+    const m = String(v).match(/^(not\.)?(eq|gte|lte|gt|lt|in|is)\.(.*)$/);
     if (!m) continue;
-    const [, op, val] = m;
-    out = out.filter(l => {
+    const [, nao, op, val] = m;
+    const passa = l => {
       const x = l[k] == null ? null : String(l[k]);
       if (op === "is") return val === "null" ? x == null : x === val;
       if (x == null) return false;
@@ -26,9 +26,39 @@ function filtrar(linhas, params) {
       if (op === "gt") return x > val;
       if (op === "lt") return x < val;
       return val.replace(/^\(|\)$/g, "").split(",").includes(x);
-    });
+    };
+    out = out.filter(l => (nao ? !passa(l) : passa(l)));
   }
   return out;
+}
+
+// select=a,b,apelido:coluna->chave — como o PostgREST, devolve só o pedido.
+function projetar(linha, select) {
+  if (!select || select.trim() === "*") return linha;
+  const out = {};
+  for (const item of select.split(",")) {
+    const m = item.trim().match(/^(?:([a-z0-9_]+):)?([a-z0-9_]+)(?:->>?([a-z0-9_]+))?$/i);
+    if (!m) continue;
+    const [, apelido, col, chave] = m;
+    const v = chave ? (linha[col] == null ? null : linha[col][chave]) : linha[col];
+    out[apelido || chave || col] = v === undefined ? null : v;
+  }
+  return out;
+}
+
+function comparar(a, b) {
+  if (typeof a === "number" && typeof b === "number") return a - b;
+  const x = String(a), y = String(b);
+  return x < y ? -1 : x > y ? 1 : 0;
+}
+
+function ordenar(linhas, order) {
+  if (!order) return linhas;
+  const chaves = order.split(",").map(p => { const [col, dir] = p.split("."); return { col, desc: dir === "desc" }; });
+  return [...linhas].sort((a, b) => {
+    for (const { col, desc } of chaves) { const c = comparar(a[col], b[col]); if (c) return desc ? -c : c; }
+    return 0;
+  });
 }
 
 function supabaseFalso(tabelas, opcoes) {
@@ -48,15 +78,10 @@ function supabaseFalso(tabelas, opcoes) {
     const t = (tabelas[caminho] = tabelas[caminho] || []);
 
     if (metodo === "GET") {
-      let linhas = filtrar(t, u.searchParams);
-      const ord = u.searchParams.get("order");
-      if (ord) {
-        const [col, dir] = ord.split(".");
-        const cmp = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
-        linhas = [...linhas].sort((a, b) => cmp(String(a[col]), String(b[col])) * (dir === "desc" ? -1 : 1));
-      }
+      const linhas = ordenar(filtrar(t, u.searchParams), u.searchParams.get("order"));
       const off = Number(u.searchParams.get("offset") || 0), lim = Number(u.searchParams.get("limit") || 1e9);
-      return resposta(200, linhas.slice(off, off + lim).map(l => JSON.parse(JSON.stringify(l))));
+      const sel = u.searchParams.get("select");
+      return resposta(200, linhas.slice(off, off + lim).map(l => JSON.parse(JSON.stringify(projetar(l, sel)))));
     }
     if (metodo === "POST") {
       const conflito = (u.searchParams.get("on_conflict") || "").split(",").filter(Boolean);

@@ -647,6 +647,33 @@ function montarFicha(re, dados) {
   };
 }
 
+// Nomes da HR EXTRA sem par (ou com mais de um par) no quadro ativo. Enquanto
+// estiverem aqui, essas ocorrências não entram na fila de envio. Para nome
+// ambíguo, lista quem são os candidatos — a correção é feita na origem.
+function agruparReconciliacao(ocorrencias, ativos, normNome) {
+  const candidatos = new Map();
+  (ativos || []).forEach(a => {
+    if (!a.NOME) return;
+    const k = normNome(a.NOME);
+    if (!candidatos.has(k)) candidatos.set(k, []);
+    candidatos.get(k).push({ re: reValido(normRE(a.RE)), nome: textoOuNulo(a.NOME), supervisor: campoSistema(a.AREA), posto: campoSistema(a.LOCAL) });
+  });
+  const grupos = new Map();
+  (ocorrencias || []).filter(o => o.reconciliacao && !o.is_test).forEach(o => {
+    const k = `${o.reconciliacao}|${o.reconciliacao === "RE_NAO_ENCONTRADO" ? o.re : normNome(o.nome)}`;
+    if (!grupos.has(k)) grupos.set(k, { motivo: o.reconciliacao, nome: o.nome, re: o.re == null ? null : o.re, supervisor: o.supervisor || null, ocorrencias: 0, minutos: 0, dias: new Set(), ultima_data: null });
+    const g = grupos.get(k);
+    const dia = String(o.data_jornada).slice(0, 10);
+    g.ocorrencias++;
+    g.minutos += Number(o.diferenca_minutos) || 0;
+    g.dias.add(dia);
+    if (!g.ultima_data || dia > g.ultima_data) g.ultima_data = dia;
+  });
+  return [...grupos.values()]
+    .map(g => ({ ...g, dias: g.dias.size, candidatos: g.motivo === "NOME_AMBIGUO" ? candidatos.get(normNome(g.nome)) || [] : [] }))
+    .sort((a, b) => b.ocorrencias - a.ocorrencias || String(a.nome).localeCompare(String(b.nome)));
+}
+
 // ── Validação humana ────────────────────────────────────────────────────────
 // Devolvem null quando pode, ou o código do motivo quando não pode.
 
@@ -708,6 +735,7 @@ module.exports = {
   mascararTelefone,
   montarFila,
   montarFicha,
+  agruparReconciliacao,
   motivoParaNaoAprovar,
   motivoParaNaoRejeitar,
   validarTextoMensagem,
