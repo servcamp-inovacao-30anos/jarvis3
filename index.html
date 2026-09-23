@@ -2263,6 +2263,12 @@ const _origNavTo=typeof navTo==="function"?navTo:null;
 document.querySelectorAll(".ni").forEach(el=>{const orig=el.getAttribute("onclick");el.addEventListener("click",()=>{if(window.innerWidth<=768){document.getElementById("sidebar").classList.remove("open");document.getElementById("mobOverlay").classList.remove("show");}});});
 </script><script>
 const ST={period:"today",turno:"TODOS",area:"",pg:"visao",tpg:{faltas:1,coberturas:1,postos:1,os:1,fts:1,dispo:1,ativos:1,clientes:1},ps:15,sd:null,ed:null,mesEscolhido:null};
+/* Lembra o período (Hoje/Semana/Mês) escolhido, pra não voltar sempre pra
+   "Hoje" ao reabrir o painel — o usuário espera reencontrar o que deixou. */
+try{
+  const _stSalvo=JSON.parse(localStorage.getItem("svc_periodo")||"null");
+  if(_stSalvo&&_stSalvo.period){ST.period=_stSalvo.period;ST.mesEscolhido=_stSalvo.mesEscolhido||null;}
+}catch(e){}
 let CH={},F={},_detAct={},_detRows={},_detSubAct={};
 const pd=s=>s?new Date(s+"T00:00:00"):null;
 const ymd=d=>d?d.toISOString().split("T")[0]:"";
@@ -2429,6 +2435,11 @@ function perAplica(p){
   const d=document.getElementById("dCust");if(d)d.classList.toggle("show",p==="custom");
   const m=document.getElementById("dMes");
   if(m){m.classList.toggle("show",p==="month");if(p==="month")mesOpcoes();}
+  // "custom" não entra aqui: depende das datas digitadas, que não são
+  // salvas — restaurar só o tipo sem elas deixaria a tela em branco.
+  if(p!=="custom"){
+    try{localStorage.setItem("svc_periodo",JSON.stringify({period:ST.period,mesEscolhido:ST.mesEscolhido}));}catch(e){}
+  }
 }
 /* Rotulo do periodo: diz a data que a tela esta REALMENTE mostrando.
    Antes saia sempre o intervalo inteiro da base, entao a tela anunciava
@@ -5053,9 +5064,10 @@ function handleUp(evt){
 }
 function renderAfterLoad(){
   populateAreas();
-  ST.mesEscolhido=null; // base nova: o mes escolhido antes pode nem existir
+  // Mesma base de sempre (só reabrindo o painel): mantém o período e o mês
+  // que a pessoa deixou escolhido, restaurados do localStorage acima.
   if(typeof mtCarregaFundo==="function"&&MT_CACHE===null)mtCarregaFundo();
-  perAplica(ST.period||"today"); // abre sempre no dia de hoje
+  perAplica(ST.period||"today");
   refresh();
   updVGCharts();
   updateStatusLabel();
