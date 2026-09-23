@@ -1321,6 +1321,10 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
         <div class="pt-det-body" id="pt-cfg-b"></div>
       </div>
 
+      <div class="det-panel" id="pt-envio"><div class="det-hdr"><span class="det-title">Confirmar envio de SMS</span><button class="det-close" onclick="ptEnvioFechar()">✕</button></div>
+        <div class="pt-det-body" id="pt-envio-b"></div>
+      </div>
+
       <div class="ts">
         <div class="th2">
           <div style="display:flex;align-items:center;gap:7px"><div class="chb"></div><span class="ct">Fila de validação</span><span class="sk-sub" id="pt-fila-n"></span></div>
@@ -1334,7 +1338,7 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
               <option value="REJEITADA">Rejeitadas</option>
             </select>
             <input class="sb2" type="text" placeholder="Buscar..." id="pt-fila-busca" oninput="ptFilaRender()">
-            <span class="pt-bar" id="pt-acoes" hidden><span class="sk-sub" id="pt-sel-n"></span><button class="pt-btn pt-pri" onclick="ptAprovar()" disabled>✅ Aprovar selecionadas</button><button class="pt-btn pt-dan" onclick="ptRejeitar()" disabled>✖ Rejeitar selecionadas</button></span>
+            <span class="pt-bar" id="pt-acoes" hidden><span class="sk-sub" id="pt-sel-n"></span><button class="pt-btn pt-pri pt-sel-dep" onclick="ptAprovar()" disabled>✅ Aprovar selecionadas</button><button class="pt-btn pt-dan pt-sel-dep" onclick="ptRejeitar()" disabled>✖ Rejeitar selecionadas</button><button class="pt-btn pt-pri" onclick="ptEnviarPreparar()" title="Envia as aprovadas selecionadas ou, sem seleção, todas as aprovadas">📨 Enviar aprovadas</button></span>
           </div>
         </div>
         <div class="pt-tbl" id="pt-fila"><div class="nd">Carregando…</div></div>
@@ -4016,8 +4020,11 @@ function _heTipoClick(tipo,card){
 const PT={carregadoEm:0,pode:false,comp:null,fila:[],sel:new Set(),ficha:null,fichaFiltro:"comp",fichaDe:"",fichaAte:"",editando:null,contatos:null};
 const PT_URL="/api/rh?modulo=ponto&t=";
 const PT_TIPO={EARLY_ENTRY:"Entrada antecipada",LATE_EXIT:"Saída após o horário"};
-const PT_STATUS={AGUARDANDO_VALIDACAO:["Aguardando","pt-b-bl"],APROVADA:["Aprovada","pt-b-gr"],ENVIADA:["Enviada","pt-b-g"],FALHA:["Falha no envio","pt-b-re"],REJEITADA:["Rejeitada","pt-b-g"]};
-const PT_MOTIVO={TELEFONE_AUSENTE:"Sem telefone",TELEFONE_FIXO:"Telefone fixo",TELEFONE_INVALIDO:"Telefone inválido",NOME_NAO_ENCONTRADO:"Nome sem par no quadro",NOME_AMBIGUO:"Nome ambíguo",RE_NAO_ENCONTRADO:"RE fora do quadro ativo",RE_INVALIDO:"RE inválido",RE_REPETIDO_NO_ARQUIVO:"RE repetido no arquivo",JA_ENVIADA:"já enviada",NAO_ENCONTRADA:"não encontrada",SEM_TEXTO:"sem texto"};
+const PT_STATUS={AGUARDANDO_VALIDACAO:["Aguardando","pt-b-bl"],APROVADA:["Aprovada","pt-b-gr"],ENVIANDO:["Enviando…","pt-b-am"],ENVIADA:["Enviada","pt-b-g"],FALHA:["Falha no envio","pt-b-re"],REJEITADA:["Rejeitada","pt-b-g"]};
+const PT_MOTIVO={TELEFONE_AUSENTE:"Sem telefone",TELEFONE_FIXO:"Telefone fixo",TELEFONE_INVALIDO:"Telefone inválido",NOME_NAO_ENCONTRADO:"Nome sem par no quadro",NOME_AMBIGUO:"Nome ambíguo",RE_NAO_ENCONTRADO:"RE fora do quadro ativo",RE_INVALIDO:"RE inválido",RE_REPETIDO_NO_ARQUIVO:"RE repetido no arquivo",JA_ENVIADA:"já enviada",NAO_ENCONTRADA:"não encontrada",SEM_TEXTO:"sem texto",
+  NAO_APROVADA:"ainda não aprovada",REJEITADA:"rejeitada",JA_EM_ENVIO:"já em envio",JA_ORIENTADO_HOJE:"já recebeu SMS hoje",UMA_POR_DIA:"só 1 SMS por colaborador por dia",SEM_COTA:"sem cota",TESTE:"é teste",PRAZO:"fica para a próxima rodada",
+  LIMITE_API:"limite da API do provedor",SMS_GATEWAY_OFFLINE:"gateway de SMS fora do ar",SMS_DESLIGADO:"envio de SMS desligado"};
+const PT_PROVEDOR={mock:"Simulação (mock) — nenhum SMS real sai",desligado:"Desligado — nenhum SMS sai",textbee:"TextBee"};
 const PT_COTA={NORMAL:["Normal","pt-b-gr"],ATENCAO:["Atenção","pt-b-am"],PROXIMO_DO_LIMITE:["Próximo do limite","pt-b-or"],LIMITE_ATINGIDO:["Limite atingido","pt-b-re"]};
 const PT_COLS_CONTATO=["re","nome_cadastro","nome_norm","telefone_original","telefone_e164","tipo_telefone","enviavel","origem","data_base"];
 // Mesmo filtro do servidor (validarTextoMensagem): lá ele recusa; aqui só avisa antes de salvar.
@@ -4063,7 +4070,7 @@ function ptCarregar(){
     PT.comp=c;PT.pode=!!c.pode_aprovar;
     if(!c.modulo.ativo)ptAviso("Módulo desligado","Nenhuma ocorrência é registrada enquanto a data de virada não for definida. Nada anterior a ela entra — nem no histórico."+(c.pode_aprovar?" Defina a data em ⚙️ Configurar.":""));
     else ptAviso(null);
-    ptRenderCabecalho();ptRenderKpis();ptRenderCota(q&&q.cota);
+    ptRenderCabecalho();ptRenderKpis();ptRenderCota(q&&q.cota,q&&q.provedor);
     return Promise.all([ptFilaCarregar(),ptRecCarregar()]);
   }).catch(ptErroGeral);
 }
@@ -4106,11 +4113,12 @@ function ptRenderKpis(){
     tile("sk-re","📵","Sem telefone",r.colaboradores_sem_telefone,`${pl(r.colaboradores_sem_telefone,"colaborador","colaboradores")} · <b>${r.pendentes_reconciliacao}</b> para reconciliar`);
 }
 function ptFiltrarFila(st){const s=document.getElementById("pt-fila-status");if(!s)return;s.value=st||"";ptFilaCarregar();s.scrollIntoView({behavior:"smooth",block:"center"});}
-function ptRenderCota(c){
+function ptRenderCota(c,prov){
   const el=document.getElementById("pt-cota");if(!el)return;
   if(!c){el.innerHTML='<span class="sk-sub">Cota indisponível no momento.</span>';return;}
   const item=(lbl,x)=>`<div><div class="sk-lbl">${lbl}</div><div class="pt-cota-v">${x.usado}/${x.limite}</div>${ptSelo(PT_COTA[x.estado])}<div class="pt-barra"><div style="width:${Math.min(100,Math.round(x.usado/Math.max(1,x.limite)*100))}%"></div></div></div>`;
-  el.innerHTML=item("SMS hoje",c.hoje)+item("SMS no mês",c.mes)+`<div class="sk-sub" style="max-width:380px">A contagem é por <b>segmento</b>: uma mensagem com mais de 160 caracteres, ou com acento, ocupa mais de um SMS.<br>Disponível agora: <b>${c.disponivel}</b> ${c.disponivel===1?"segmento":"segmentos"}.</div>`;
+  const provedor=prov?`<div><div class="sk-lbl">Provedor de SMS</div>${ptSelo([PT_PROVEDOR[prov.nome]||prov.nome,prov.nome==="mock"?"pt-b-am":prov.nome==="desligado"?"pt-b-re":prov.online?"pt-b-gr":"pt-b-re"])}</div>`:"";
+  el.innerHTML=item("SMS hoje",c.hoje)+item("SMS no mês",c.mes)+provedor+`<div class="sk-sub" style="max-width:380px">A contagem é por <b>segmento</b>: uma mensagem com mais de 160 caracteres, ou com acento, ocupa mais de um SMS.<br>Disponível agora: <b>${c.disponivel}</b> ${c.disponivel===1?"segmento":"segmentos"}.</div>`;
 }
 
 /* fila de validação */
@@ -4135,7 +4143,8 @@ function ptFilaRender(){
   const corpo=linhas.map(l=>{
     const col=fn=>(l.itens||[]).map(fn).join("<br>");
     const sms=`<span class="pt-b ${l.segmentos>1?"pt-b-am":"pt-b-gr"}" title="${_esc(l.caracteres+" caracteres · "+l.codificacao)}">${l.segmentos} SMS</span>`;
-    const situ=(l.motivo_bloqueio&&l.status==="AGUARDANDO_VALIDACAO"?ptSelo([ptMotivo(l.motivo_bloqueio),"pt-b-re"]):ptSelo(PT_STATUS[l.status]))+(l.editado?' <span class="sk-sub">editada</span>':"")+(l.erro_mensagem?`<div class="sk-sub">${_esc(l.erro_mensagem)}</div>`:"");
+    const estado=l.status==="ENVIADA"&&l.provider==="mock"?["Enviada (simulação)","pt-b-g"]:PT_STATUS[l.status];
+    const situ=(l.motivo_bloqueio&&l.status==="AGUARDANDO_VALIDACAO"?ptSelo([ptMotivo(l.motivo_bloqueio),"pt-b-re"]):ptSelo(estado))+(l.editado?' <span class="sk-sub">editada</span>':"")+(l.erro_mensagem?`<div class="sk-sub">${_esc(l.erro_mensagem)}</div>`:"");
     const marca=PT.pode?`<td>${ptSelecionavel(l)?`<input type="checkbox" class="pt-sel" data-id="${l.id}"${PT.sel.has(l.id)?" checked":""} onchange="ptSel(this)">`:""}</td>`:"";
     const editar=PT.pode?`<td>${l.status==="AGUARDANDO_VALIDACAO"?`<button class="pt-btn" data-id="${l.id}" onclick="ptEditorAbrir(Number(this.dataset.id))">✏️ Editar</button>`:""}</td>`:"";
     return `<tr>${marca}<td class="tdb"><span class="pt-link" data-re="${_esc(l.re)}" onclick="ptFichaAbrir(this.dataset.re)">${_esc(l.nome||"—")}</span></td><td>${_esc(l.re)}</td><td>${_esc(l.posto||"—")}</td><td>${_esc(l.supervisor||"—")}</td><td>${ptDia(l.data_jornada)}</td><td>${col(i=>_esc(PT_TIPO[i.tipo]||i.tipo))}</td><td>${col(i=>_esc(i.previsto||"—"))}</td><td>${col(i=>_esc(i.marcado||"—"))}</td><td>${col(i=>ptMin(i.minutos))}</td><td>${_esc(l.telefone||"—")}</td><td><div class="pt-prev">${_esc(l.texto)}</div></td><td>${sms}</td><td>${situ}</td>${editar}</tr>`;
@@ -4147,7 +4156,7 @@ function ptSel(cb){const id=Number(cb.dataset.id);if(cb.checked)PT.sel.add(id);e
 function ptSelTodos(v){document.querySelectorAll("#pt-fila .pt-sel").forEach(cb=>{cb.checked=v;const id=Number(cb.dataset.id);if(v)PT.sel.add(id);else PT.sel.delete(id);});ptSelAtualiza();}
 function ptSelAtualiza(){
   const n=PT.sel.size;
-  document.querySelectorAll("#pt-acoes .pt-btn").forEach(b=>{b.disabled=!n;});
+  document.querySelectorAll("#pt-acoes .pt-sel-dep").forEach(b=>{b.disabled=!n;});
   const c=document.getElementById("pt-sel-n");if(c)c.textContent=n?n+(n===1?" selecionada":" selecionadas"):"";
 }
 function ptResultado(ok,verbo,recusadas){
@@ -4328,6 +4337,58 @@ function ptProcessar(){
     ptToast(j.ativo===false?"Módulo desligado: defina a data de virada.":`Reprocessado: ${j.ocorrencias_novas} ${j.ocorrencias_novas===1?"ocorrência nova":"ocorrências novas"} · ${j.mensagens_novas} ${j.mensagens_novas===1?"mensagem nova":"mensagens novas"}`);
     ptCarregar();
   }).catch(e=>alert(e.message));
+}
+
+/* envio de SMS: a tela mostra o plano do servidor e só envia depois da confirmação */
+function ptEnvioCorpo(){
+  const sel=[...PT.sel].filter(id=>{const l=PT.fila.find(x=>x.id===id);return l&&(l.status==="APROVADA"||l.status==="FALHA");});
+  return sel.length?{ids:sel}:{aprovadas:true};
+}
+function ptEnviarPreparar(){
+  const corpo=ptEnvioCorpo();
+  ptPedir("POST","enviar",corpo).then(j=>{
+    PT.envio={corpo,plano:j};ptEnvioRender();
+    const p=document.getElementById("pt-envio");p.classList.add("open");p.scrollIntoView({behavior:"smooth",block:"center"});
+  }).catch(e=>alert(e.message));
+}
+function ptEnvioFechar(){PT.envio=null;document.getElementById("pt-envio").classList.remove("open");}
+function ptEnvioRender(){
+  const j=PT.envio.plano,r=j.resumo,c=j.cota,n=r.a_enviar;
+  const seg=x=>x+(x===1?" segmento":" segmentos");
+  const num=(lbl,v,sub)=>`<div><div class="sk-lbl">${lbl}</div><div class="pt-cota-v">${v}</div>${sub?`<div class="sk-sub">${sub}</div>`:""}</div>`;
+  const motivos=Object.entries(r.por_motivo||{}).map(([k,v])=>`${v} ${_esc(ptMotivo(k))}`).join(" · ");
+  const nomes=j.enviar.map(x=>{const l=PT.fila.find(f=>f.id===x.id);return _esc(l?(l.nome||"RE "+l.re):"RE "+x.re);});
+  const prov=j.provedor.nome==="mock"
+    ?`<div class="pt-alerta">Modo simulação (SMS_PROVIDER=mock): nenhum SMS real sai, mas a fila e a cota se comportam como num envio de verdade.</div>`
+    :j.provedor.nome==="desligado"?`<div class="pt-alerta">${_esc(j.provedor.motivo||"Envio de SMS desligado.")}</div>`:"";
+  document.getElementById("pt-envio-b").innerHTML=prov+
+    `<div class="pt-grade">${num("Analisadas",r.analisadas)}${num("Selecionadas para envio",r.elegiveis,seg(r.segmentos_elegiveis))}${num("Saem agora",n,seg(r.segmentos_a_enviar))}</div>`+
+    (motivos?`<div class="sk-sub">Não saem agora: ${motivos}.</div>`:"")+
+    (c?`<div class="pt-grade" style="margin-top:10px">${num("Uso atual",`${c.antes.hoje}/${c.limite.hoje} hoje · ${c.antes.mes}/${c.limite.mes} no mês`)}${num("Após o envio",`${c.depois.hoje}/${c.limite.hoje} hoje · ${c.depois.mes}/${c.limite.mes} no mês`)}${num("Disponíveis agora",seg(c.disponivel))}</div>`:"")+
+    (!r.cabe_tudo?`<div class="pt-alerta">Não cabe o lote inteiro. Saem as ${n} de maior tempo; as outras ${j.nao_cabe.length} continuam aprovadas, na fila. Nada é descartado.</div>`:"")+
+    (n?`<div class="sk-sub" style="margin-top:8px">Saem agora: ${nomes.join(", ")}.</div>`:`<div class="nd">Nenhuma mensagem pode sair agora.</div>`)+
+    `<div class="pt-bar" style="margin-top:12px">${n?`<button class="pt-btn pt-pri" onclick="ptEnviarConfirmar()"${j.provedor.nome==="desligado"?" disabled":""}>${r.cabe_tudo?`Enviar ${n} ${n===1?"mensagem":"mensagens"}`:`Enviar as ${n} de maior tempo`}</button>`:""}<button class="pt-btn" onclick="ptEnvioFechar()">Cancelar</button></div>`;
+}
+function ptEnviarConfirmar(){
+  if(!PT.envio)return;
+  const b=document.querySelector("#pt-envio-b .pt-pri");if(b)b.disabled=true; // um clique só
+  ptEnvioRodar({...PT.envio.corpo,confirmar:true},{enviadas:0,falhas:0});
+}
+function ptEnvioRodar(corpo,acum){
+  document.getElementById("pt-envio-b").insertAdjacentHTML("beforeend",'<div class="nd">Enviando…</div>');
+  ptPedir("POST","enviar",corpo).then(j=>{
+    acum.enviadas+=j.enviadas.length;acum.falhas+=j.falhas.length;
+    if(j.continuar){
+      const resto=j.nao_enviadas.filter(x=>x.motivo==="PRAZO").map(x=>x.id);
+      if(resto.length)return ptEnvioRodar({ids:resto,confirmar:true},acum);
+    }
+    ptEnvioFechar();
+    let m=`${acum.enviadas} ${acum.enviadas===1?"SMS enviado":"SMS enviados"}`;
+    if(j.provedor&&j.provedor.nome==="mock")m+=" (simulação)";
+    if(acum.falhas)m+=` · ${acum.falhas} com falha`;
+    if(j.parado_por)m+=` · lote interrompido: ${ptMotivo(j.parado_por)}`;
+    ptToast(m);PT.sel.clear();ptCarregar();
+  }).catch(e=>{alert(e.message);ptEnvioFechar();ptCarregar();});
 }
 
 /* configuração e modelos de mensagem (só aprovadores salvam) */

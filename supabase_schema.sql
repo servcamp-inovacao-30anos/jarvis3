@@ -145,6 +145,42 @@ create table if not exists public.pt_auditoria (
   criado_em   timestamptz not null default now()
 );
 
+-- Cota de SMS, em segmentos. A reserva é feita numa transação só, com a linha do
+-- dia travada: dois envios ao mesmo tempo não conseguem passar juntos do limite.
+-- Se o provedor recusar o SMS, a reserva é devolvida.
+create or replace function public.pt_reservar_segmentos(p_dia date, p_segmentos integer, p_limite_dia integer, p_limite_mes integer)
+returns boolean language plpgsql set search_path = public as $$
+declare
+  v_ref text := to_char(p_dia, 'YYYY-MM');
+  v_dia integer;
+  v_mes integer;
+begin
+  insert into pt_sms_uso (dia, mes_referencia) values (p_dia, v_ref) on conflict (dia) do nothing;
+  select segmentos_dia into v_dia from pt_sms_uso where dia = p_dia for update;
+  select coalesce(sum(segmentos_dia), 0) into v_mes from pt_sms_uso where mes_referencia = v_ref;
+  if v_dia + p_segmentos > p_limite_dia or v_mes + p_segmentos > p_limite_mes then
+    return false;
+  end if;
+  update pt_sms_uso
+     set segmentos_dia = segmentos_dia + p_segmentos, segmentos_mes = v_mes + p_segmentos, atualizado_em = now()
+   where dia = p_dia;
+  return true;
+end $$;
+
+create or replace function public.pt_devolver_segmentos(p_dia date, p_segmentos integer)
+returns void language sql set search_path = public as $$
+  update pt_sms_uso
+     set segmentos_dia = greatest(0, segmentos_dia - p_segmentos), segmentos_mes = greatest(0, segmentos_mes - p_segmentos), atualizado_em = now()
+   where dia = p_dia;
+$$;
+
+-- Por padrão o Postgres deixa qualquer papel executar função: aqui só a chave de
+-- serviço (usada pelas funções da Vercel) pode.
+revoke all on function public.pt_reservar_segmentos(date, integer, integer, integer) from public, anon, authenticated;
+revoke all on function public.pt_devolver_segmentos(date, integer) from public, anon, authenticated;
+grant execute on function public.pt_reservar_segmentos(date, integer, integer, integer) to service_role;
+grant execute on function public.pt_devolver_segmentos(date, integer) to service_role;
+
 alter table public.pt_contatos     enable row level security;
 alter table public.pt_competencias enable row level security;
 alter table public.pt_ocorrencias  enable row level security;

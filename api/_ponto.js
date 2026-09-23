@@ -4,9 +4,10 @@
 // ?modulo=ponto: o plano Hobby da Vercel permite 12 funções e já estamos nas 12.
 //   /api/rh?modulo=ponto&t=...
 //     leitura (qualquer pessoa logada; telefone mascarado para quem não aprova):
-//       GET competencia · fila · ocorrencias · ficha · reconciliacao · quota
+//       GET competencia · fila · ocorrencias · ficha · reconciliacao · quota · config
 //     só aprovadores:
-//       GET/POST contatos · POST processar · POST aprovar · POST rejeitar · PATCH mensagem
+//       GET/POST contatos · POST processar · POST aprovar · POST rejeitar
+//       PATCH mensagem · PATCH config · POST enviar
 // E o api/import.js chama materializar() a cada planilha recebida.
 //
 // As regras moram em _ponto_regras.js (puras, testadas). Aqui fica só o que
@@ -87,6 +88,17 @@ function conectar() {
     },
     async atualizar(caminho, patch) {
       await chamar(caminho, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify(patch) });
+    },
+    // Devolve só as linhas que o filtro realmente pegou: com o status no filtro,
+    // vira um "comparar e trocar" — quem chega depois recebe lista vazia.
+    async atualizarRetornando(caminho, patch) {
+      const r = await chamar(caminho, { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify(patch) });
+      return r.json();
+    },
+    async rpc(funcao, args) {
+      const r = await chamar(`rpc/${funcao}`, { method: "POST", body: JSON.stringify(args || {}) });
+      const t = await r.text();
+      return t ? JSON.parse(t) : null;
     }
   };
 }
@@ -206,8 +218,8 @@ async function carregarContatos({ res, db, ator, body }) {
 // Qualquer pessoa logada lê; quem não é aprovador vê o telefone mascarado.
 
 const CAMPOS_OCORRENCIA = "id,re,nome,data_jornada,tipo,horario_previsto,horario_marcado,diferenca_minutos,posto,cliente,supervisor,status,reconciliacao,is_test,competencia_id";
-const CAMPOS_MENSAGEM = "id,re,data_jornada,ocorrencia_ids,telefone_e164,template_id,texto_gerado,texto_final,segmentos,status,motivo_bloqueio,aprovado_por,aprovado_em,editado_por,editado_em,enviado_em,rejeitado_por,rejeitado_em,motivo_rejeicao,erro_codigo,erro_mensagem,is_test,criado_em";
-const STATUS_MENSAGEM = new Set(["AGUARDANDO_VALIDACAO", "APROVADA", "ENVIADA", "FALHA", "REJEITADA"]);
+const CAMPOS_MENSAGEM = "id,re,data_jornada,ocorrencia_ids,telefone_e164,template_id,texto_gerado,texto_final,segmentos,status,motivo_bloqueio,aprovado_por,aprovado_em,editado_por,editado_em,enviado_em,provider,rejeitado_por,rejeitado_em,motivo_rejeicao,erro_codigo,erro_mensagem,is_test,criado_em";
+const STATUS_MENSAGEM = new Set(["AGUARDANDO_VALIDACAO", "APROVADA", "ENVIANDO", "ENVIADA", "FALHA", "REJEITADA"]);
 const DATA_ISO = /^\d{4}-\d{2}-\d{2}$/;
 
 function ehAprovador(ator) {
@@ -258,7 +270,7 @@ async function verCompetencia({ req, res, db, ator }) {
 
 async function verFila({ req, res, db, ator }) {
   const pedidos = String(req.query.status || "").split(",").map(s => s.trim().toUpperCase()).filter(s => STATUS_MENSAGEM.has(s));
-  const status = pedidos.length ? pedidos : ["AGUARDANDO_VALIDACAO", "APROVADA", "FALHA"];
+  const status = pedidos.length ? pedidos : ["AGUARDANDO_VALIDACAO", "APROVADA", "ENVIANDO", "FALHA"];
   const ms = await db.listar(`pt_mensagens?select=${CAMPOS_MENSAGEM}&is_test=eq.false&status=in.(${status.join(",")})&order=id.asc`);
   const oc = await porIds(db, "pt_ocorrencias", CAMPOS_OCORRENCIA, [...new Set(ms.flatMap(m => (m.ocorrencia_ids || []).map(Number)))]);
   return res.status(200).json({ ok: true, status, pode_aprovar: ehAprovador(ator), linhas: R.montarFila(ms, oc, { mascarar: !ehAprovador(ator) }) });
@@ -297,11 +309,15 @@ async function verReconciliacao({ res, db }) {
   return res.status(200).json({ ok: true, total_ocorrencias: oc.length, grupos });
 }
 
+async function cotaAtual(db, cfg, hoje) {
+  const usos = await db.listar(`pt_sms_uso?select=dia,segmentos_dia&dia=gte.${hoje.slice(0, 7)}-01&order=dia.asc`);
+  return R.resumoCota(usos, hoje, cfg);
+}
+
 async function verCota({ res, db }) {
   const cfg = await lerConfigDoBanco(db);
-  const hoje = hojeSP();
-  const usos = await db.listar(`pt_sms_uso?select=dia,segmentos_dia&dia=gte.${hoje.slice(0, 7)}-01&order=dia.asc`);
-  return res.status(200).json({ ok: true, cota: R.resumoCota(usos, hoje, cfg) });
+  const sms = require("./_sms").provedorSMS();
+  return res.status(200).json({ ok: true, cota: await cotaAtual(db, cfg, hojeSP()), provedor: { nome: sms.nome, ...(await sms.status()) } });
 }
 
 // ── validação humana: só aprovadores ────────────────────────────────────────
@@ -376,6 +392,113 @@ async function editarMensagem({ res, db, ator, body }) {
   await db.atualizar(`pt_mensagens?id=eq.${id}&status=eq.AGUARDANDO_VALIDACAO`, patch);
   await db.inserir("pt_auditoria", [{ ator, acao: "MENSAGEM_EDITADA", entidade: "pt_mensagens", entidade_id: id, antes: { texto: m.texto_final || m.texto_gerado }, depois }]);
   return res.status(200).json({ ok: true, id, ...depois });
+}
+
+// ── envio de SMS: só aprovadores ────────────────────────────────────────────
+// POST { ids } ou { aprovadas: true }             → só o plano (tela de confirmação)
+// POST { ids } ou { aprovadas: true, confirmar }  → envia o que couber
+//
+// Cada mensagem passa por três travas, nesta ordem:
+//   1. status APROVADA/FALHA → ENVIANDO, com o status no filtro da gravação:
+//      duplo clique ou outra aba no mesmo lote não mandam o mesmo SMS duas vezes;
+//   2. reserva da cota no banco (pt_reservar_segmentos), numa transação só:
+//      dois envios ao mesmo tempo não passam juntos do limite;
+//   3. o provedor. Se ele recusar, a cota volta e a mensagem nunca é marcada
+//      como enviada.
+// Numa função da Vercel o tempo é curto: o lote para de começar envios novos
+// perto do limite e devolve continuar=true; a tela chama de novo com o resto.
+const PRAZO_ENVIO_MS = 7000;
+const PARA_O_LOTE = new Set(["LIMITE_API", "SMS_GATEWAY_OFFLINE", "SMS_DESLIGADO"]);
+
+async function montarPlanoDeEnvio(db, body, hoje, cfg) {
+  const ids = idsDoCorpo(body);
+  const ms = ids.length
+    ? await porIds(db, "pt_mensagens", CAMPOS_MENSAGEM, ids)
+    : body.aprovadas === true
+      ? await db.listar(`pt_mensagens?select=${CAMPOS_MENSAGEM}&status=in.(APROVADA,FALHA)&is_test=eq.false&order=id.asc`)
+      : [];
+  const oc = await porIds(db, "pt_ocorrencias", "id,diferenca_minutos", [...new Set(ms.flatMap(m => (m.ocorrencia_ids || []).map(Number)))]);
+  const minPorOc = new Map(oc.map(x => [Number(x.id), Number(x.diferenca_minutos) || 0]));
+  const minutosPorId = new Map(ms.map(m => [Number(m.id), (m.ocorrencia_ids || []).reduce((t, id) => t + (minPorOc.get(Number(id)) || 0), 0)]));
+  const res = [...new Set(ms.map(m => m.re).filter(r => r != null))];
+  let contatos = [];
+  for (const lote of emLotes(res, 150)) contatos = contatos.concat(await db.listar(`pt_contatos?select=re,telefone_e164,tipo_telefone,enviavel&re=in.(${lote.join(",")})&order=re.asc`));
+  // "hoje" começa à meia-noite de São Paulo (UTC−3)
+  const enviadasHoje = await db.listar(`pt_mensagens?select=re&status=eq.ENVIADA&is_test=eq.false&enviado_em=gte.${hoje}T03:00:00Z&order=id.asc`);
+  const cota = await cotaAtual(db, cfg, hoje);
+  const plano = R.planejarEnvio(ms, {
+    contatosPorRE: new Map(contatos.map(c => [String(c.re), c])),
+    jaOrientadosHoje: new Set(enviadasHoje.map(m => String(m.re))),
+    cota, minutosPorId
+  });
+  return { ms, plano, cota };
+}
+
+async function enviarMensagens({ res, db, ator, body }) {
+  const sms = require("./_sms").provedorSMS();
+  const cfg = await lerConfigDoBanco(db);
+  const hoje = hojeSP();
+  const { ms, plano } = await montarPlanoDeEnvio(db, body, hoje, cfg);
+  if (!ms.length) return erro(res, 400, "Nenhuma mensagem para enviar.", "SEM_SELECAO");
+  const estado = await sms.status();
+  const provedor = { nome: sms.nome, online: !!estado.online, motivo: estado.motivo || null };
+  if (!body.confirmar) {
+    return res.status(200).json({
+      ok: true, simulacao: true, provedor,
+      resumo: plano.resumo, cota: plano.cota,
+      enviar: plano.enviar.map(c => ({ id: c.id, re: c.re, segmentos: c.segmentos, minutos: c.minutos })),
+      nao_cabe: plano.nao_cabe, esperam: plano.esperam, bloqueadas: plano.bloqueadas
+    });
+  }
+  if (sms.nome === "desligado") return erro(res, 409, provedor.motivo || "Envio de SMS desligado.", "SMS_DESLIGADO");
+
+  const statusAntes = new Map(ms.map(m => [Number(m.id), m.status]));
+  const prazo = Date.now() + PRAZO_ENVIO_MS;
+  const enviadas = [], falhas = [], naoEnviadas = plano.nao_cabe.concat(plano.esperam);
+  let parado = null;
+  for (const c of plano.enviar) {
+    if (parado || Date.now() > prazo) { naoEnviadas.push({ id: c.id, motivo: parado || "PRAZO" }); continue; }
+    const travada = await db.atualizarRetornando(`pt_mensagens?id=eq.${c.id}&status=in.(APROVADA,FALHA)`, { status: "ENVIANDO" });
+    if (!travada.length) { naoEnviadas.push({ id: c.id, motivo: "JA_EM_ENVIO" }); continue; }
+    const volta = statusAntes.get(c.id) || "APROVADA";
+    const reservou = await db.rpc("pt_reservar_segmentos", { p_dia: hoje, p_segmentos: c.segmentos, p_limite_dia: cfg.sms_limite_dia, p_limite_mes: cfg.sms_limite_mes });
+    if (reservou !== true) {
+      await db.atualizar(`pt_mensagens?id=eq.${c.id}&status=eq.ENVIANDO`, { status: volta });
+      parado = "SEM_COTA";
+      naoEnviadas.push({ id: c.id, motivo: "SEM_COTA" });
+      continue;
+    }
+    let r;
+    try { r = await sms.enviar(c.telefone, c.texto); }
+    catch (e) { r = { ok: false, codigo: "SMS_ERRO", mensagem: String((e && e.message) || e).slice(0, 300) }; }
+    const agora = new Date().toISOString();
+    if (r && r.ok) {
+      await db.atualizar(`pt_mensagens?id=eq.${c.id}&status=eq.ENVIANDO`, {
+        status: "ENVIADA", enviado_em: agora, provider: sms.nome, provider_message_id: r.id || null,
+        telefone_e164: c.telefone, segmentos: c.segmentos, erro_codigo: null, erro_mensagem: null
+      });
+      await db.inserir("pt_auditoria", [{ ator, acao: "MENSAGEM_ENVIADA", entidade: "pt_mensagens", entidade_id: c.id, antes: { status: volta }, depois: { status: "ENVIADA", provedor: sms.nome, provider_message_id: r.id || null, segmentos: c.segmentos } }]);
+      enviadas.push(c.id);
+      continue;
+    }
+    // Não saiu: a cota reservada volta, e a mensagem nunca fica como enviada.
+    await db.rpc("pt_devolver_segmentos", { p_dia: hoje, p_segmentos: c.segmentos });
+    const codigo = (r && r.codigo) || "SMS_ERRO", mensagem = (r && r.mensagem) || null;
+    if (PARA_O_LOTE.has(codigo)) {
+      await db.atualizar(`pt_mensagens?id=eq.${c.id}&status=eq.ENVIANDO`, { status: volta, erro_codigo: codigo, erro_mensagem: mensagem });
+      parado = codigo;
+      naoEnviadas.push({ id: c.id, motivo: codigo });
+      continue;
+    }
+    await db.atualizar(`pt_mensagens?id=eq.${c.id}&status=eq.ENVIANDO`, { status: "FALHA", erro_codigo: codigo, erro_mensagem: mensagem });
+    await db.inserir("pt_auditoria", [{ ator, acao: "MENSAGEM_FALHOU", entidade: "pt_mensagens", entidade_id: c.id, antes: { status: volta }, depois: { status: "FALHA", erro_codigo: codigo, erro_mensagem: mensagem } }]);
+    falhas.push({ id: c.id, codigo, mensagem });
+  }
+  return res.status(200).json({
+    ok: true, provedor, enviadas, falhas, nao_enviadas: naoEnviadas, bloqueadas: plano.bloqueadas,
+    parado_por: parado, continuar: naoEnviadas.some(x => x.motivo === "PRAZO"),
+    cota: await cotaAtual(db, cfg, hoje)
+  });
 }
 
 // ── configuração e modelos de mensagem ──────────────────────────────────────
@@ -465,6 +588,7 @@ const ROTAS = {
   "POST contatos": { aprovador: true, fn: carregarContatos },
   "POST processar": { aprovador: true, fn: processarUltima },
   "POST aprovar": { aprovador: true, fn: aprovar },
+  "POST enviar": { aprovador: true, fn: enviarMensagens },
   "POST rejeitar": { aprovador: true, fn: rejeitar },
   "PATCH mensagem": { aprovador: true, fn: editarMensagem }
 };

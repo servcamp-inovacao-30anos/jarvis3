@@ -662,7 +662,7 @@ function linhaDaFila(m, porId, mascarar) {
     telefone: mascarar ? mascararTelefone(m.telefone_e164) : (m.telefone_e164 || null),
     texto, editado: !!m.editado_em, segmentos: sms.segmentos, codificacao: sms.codificacao, caracteres: sms.caracteres,
     status: m.status, motivo_bloqueio: m.motivo_bloqueio || null,
-    aprovado_por: m.aprovado_por || null, aprovado_em: m.aprovado_em || null, enviado_em: m.enviado_em || null,
+    aprovado_por: m.aprovado_por || null, aprovado_em: m.aprovado_em || null, enviado_em: m.enviado_em || null, provider: m.provider || null,
     rejeitado_por: m.rejeitado_por || null, motivo_rejeicao: m.motivo_rejeicao || null,
     erro_codigo: m.erro_codigo || null, erro_mensagem: m.erro_mensagem || null
   };
@@ -793,10 +793,86 @@ function resumoCota(usos, hoje, cfg) {
   return r;
 }
 
+// ── Envio ───────────────────────────────────────────────────────────────────
+// Monta o lote ANTES de qualquer SMS sair; é o que a tela de confirmação mostra.
+//
+// opcoes = { contatosPorRE, jaOrientadosHoje: Set(re), cota: resumoCota, minutosPorId: Map(id → minutos) }
+//
+// - Só sai mensagem APROVADA (ou FALHA, para tentar de novo).
+// - O telefone é conferido de novo na base de contatos de agora.
+// - No máximo 1 SMS por colaborador por dia: quem já recebeu hoje espera, e no
+//   lote fica só a de maior tempo.
+// - Ordem: maior tempo fora do horário primeiro. A primeira que não couber na
+//   cota encerra o lote — uma menor não passa na frente de uma maior.
+// - Nada some: tudo o que não sai volta com o motivo.
+function planejarEnvio(mensagens, opcoes) {
+  const o = opcoes || {};
+  const lista = mensagens || [];
+  const bloqueadas = [], candidatas = [];
+  const minutosDe = m => Number(o.minutosPorId && o.minutosPorId.has(Number(m.id)) ? o.minutosPorId.get(Number(m.id)) : m.minutos) || 0;
+  lista.forEach(m => {
+    const b = motivo => bloqueadas.push({ id: m.id, motivo });
+    if (m.is_test) return b("TESTE");
+    if (m.status === "ENVIADA") return b("JA_ENVIADA");
+    if (m.status === "ENVIANDO") return b("JA_EM_ENVIO");
+    if (m.status === "REJEITADA") return b("REJEITADA");
+    if (m.status === "AGUARDANDO_VALIDACAO") return b("NAO_APROVADA");
+    if (m.status !== "APROVADA" && m.status !== "FALHA") return b("STATUS_" + m.status);
+    const texto = textoOuNulo(m.texto_final || m.texto_gerado);
+    if (!texto) return b("SEM_TEXTO");
+    const { telefone, bloqueio } = situacaoTelefone(o.contatosPorRE && o.contatosPorRE.get(String(m.re)));
+    if (bloqueio) return b(bloqueio);
+    candidatas.push({ id: Number(m.id), re: m.re, data_jornada: String(m.data_jornada).slice(0, 10), status: m.status, telefone, texto, segmentos: segmentosSMS(texto), minutos: minutosDe(m) });
+  });
+  candidatas.sort((a, b) => b.minutos - a.minutos || (a.data_jornada < b.data_jornada ? -1 : a.data_jornada > b.data_jornada ? 1 : 0) || a.id - b.id);
+
+  const hoje = o.jaOrientadosHoje || new Set();
+  const noLote = new Set(), elegiveis = [], esperam = [];
+  for (const c of candidatas) {
+    const k = String(c.re);
+    if (hoje.has(k)) { esperam.push({ id: c.id, motivo: "JA_ORIENTADO_HOJE" }); continue; }
+    if (noLote.has(k)) { esperam.push({ id: c.id, motivo: "UMA_POR_DIA" }); continue; }
+    noLote.add(k);
+    elegiveis.push(c);
+  }
+
+  const disponivel = o.cota ? o.cota.disponivel : Infinity;
+  let usados = 0;
+  const enviar = [], naoCabe = [];
+  for (const c of elegiveis) {
+    if (naoCabe.length || usados + c.segmentos > disponivel) { naoCabe.push({ id: c.id, motivo: "SEM_COTA", segmentos: c.segmentos }); continue; }
+    usados += c.segmentos;
+    enviar.push(c);
+  }
+
+  const porMotivo = {};
+  bloqueadas.concat(esperam).forEach(x => { porMotivo[x.motivo] = (porMotivo[x.motivo] || 0) + 1; });
+  const c = o.cota;
+  return {
+    enviar, nao_cabe: naoCabe, esperam, bloqueadas,
+    resumo: {
+      analisadas: lista.length,
+      elegiveis: elegiveis.length,
+      segmentos_elegiveis: elegiveis.reduce((t, x) => t + x.segmentos, 0),
+      a_enviar: enviar.length,
+      segmentos_a_enviar: usados,
+      cabe_tudo: naoCabe.length === 0,
+      por_motivo: porMotivo
+    },
+    cota: c ? {
+      disponivel: c.disponivel,
+      antes: { hoje: c.hoje.usado, mes: c.mes.usado },
+      depois: { hoje: c.hoje.usado + usados, mes: c.mes.usado + usados },
+      limite: { hoje: c.hoje.limite, mes: c.mes.limite }
+    } : null
+  };
+}
+
 module.exports = {
   CAMPOS_CONTATO,
   normalizarContato,
   planejarContatos,
+  planejarEnvio,
   resumoCompetencia,
   mascararTelefone,
   montarFila,

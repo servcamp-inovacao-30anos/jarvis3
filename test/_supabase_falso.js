@@ -61,6 +61,27 @@ function ordenar(linhas, order) {
   });
 }
 
+// As funções SQL do supabase_schema.sql, com a mesma regra.
+function rpc(tabelas, nome, a) {
+  const uso = (tabelas.pt_sms_uso = tabelas.pt_sms_uso || []);
+  const dia = String(a.p_dia || "").slice(0, 10), ref = dia.slice(0, 7);
+  if (nome === "pt_reservar_segmentos") {
+    let l = uso.find(x => String(x.dia).slice(0, 10) === dia);
+    if (!l) { l = { id: uso.reduce((m, x) => Math.max(m, Number(x.id) || 0), 0) + 1, dia, mes_referencia: ref, segmentos_dia: 0, segmentos_mes: 0 }; uso.push(l); }
+    const mes = uso.filter(x => String(x.mes_referencia || String(x.dia).slice(0, 7)) === ref).reduce((t, x) => t + (Number(x.segmentos_dia) || 0), 0);
+    if (l.segmentos_dia + a.p_segmentos > a.p_limite_dia || mes + a.p_segmentos > a.p_limite_mes) return false;
+    l.segmentos_dia += a.p_segmentos;
+    l.segmentos_mes = mes + a.p_segmentos;
+    return true;
+  }
+  if (nome === "pt_devolver_segmentos") {
+    const l = uso.find(x => String(x.dia).slice(0, 10) === dia);
+    if (l) { l.segmentos_dia = Math.max(0, l.segmentos_dia - a.p_segmentos); l.segmentos_mes = Math.max(0, (l.segmentos_mes || 0) - a.p_segmentos); }
+    return null;
+  }
+  return null;
+}
+
 function supabaseFalso(tabelas, opcoes) {
   const o = opcoes || {};
   const log = [];
@@ -74,7 +95,7 @@ function supabaseFalso(tabelas, opcoes) {
     const prefer = String(h.Prefer || h.prefer || "");
     log.push({ metodo, tabela: caminho, corpo, query: u.search });
     if (o.falhar && o.falhar(metodo, caminho)) return resposta(500, { message: "falha simulada" });
-    if (caminho.startsWith("rpc/")) return resposta(200, null);
+    if (caminho.startsWith("rpc/")) return resposta(200, rpc(tabelas, caminho.slice(4), corpo || {}));
     const t = (tabelas[caminho] = tabelas[caminho] || []);
 
     if (metodo === "GET") {
@@ -102,8 +123,9 @@ function supabaseFalso(tabelas, opcoes) {
       return resposta(201, prefer.includes("return=representation") ? volta : null);
     }
     if (metodo === "PATCH") {
-      filtrar(t, u.searchParams).forEach(x => Object.assign(x, JSON.parse(JSON.stringify(corpo))));
-      return resposta(200, null);
+      const alvo = filtrar(t, u.searchParams);
+      alvo.forEach(x => Object.assign(x, JSON.parse(JSON.stringify(corpo))));
+      return resposta(200, prefer.includes("return=representation") ? alvo.map(x => JSON.parse(JSON.stringify(x))) : null);
     }
     return resposta(405, { message: "método não suportado no falso" });
   };
