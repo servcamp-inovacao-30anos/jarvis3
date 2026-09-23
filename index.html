@@ -2799,7 +2799,11 @@ function _bdvMin(h){
   const m=String(h||"").match(/(\d{1,2}):(\d{2})/);
   return m?parseInt(m[1],10)*60+parseInt(m[2],10):null;
 }
-/* posto -> horas de início dos turnos, tiradas da JORNADA dos ativos */
+/* Planilha de referência "Horário de início dos clientes" (portaria e limpeza),
+   passada à parte porque nem todo cliente tem JORNADA cadastrada nos ativos —
+   ela cobre as lacunas, como o caso do "FEV" que aparecia com "—". */
+const BDV_JORNADAS_REF={"ACDC CAMPINAS":["06:40","07:00","09:00"],"AIMARA":["08:00"],"ANAKEL":["07:30"],"ANALISE EMPRESARIAL":["07:00"],"APEX SCIENCE":["06:00","07:00"],"ASK":["06:00"],"BANCO ABC BRASIL":["06:00","18:00"],"BIODUX":["07:00"],"CCL PARANA":["06:30"],"CELSO CHARURI DE CAMPINAS":["07:30"],"CLINICA ESCALADA":["07:00"],"CLINICA ESCALADA UNID. 02":["07:00"],"CLINICA HALAM":["07:00","09:00"],"CLINICA IGCC":["06:00","08:42"],"COLOMARTI":["07:30"],"COLOMARTI INDAITUBA":["07:00"],"COND - ÁGUA BRANCA":["06:00","07:00","08:00","18:00"],"COND - ALECRINS":["07:00"],"COND - ALTO CAMBUÍ":["06:00","08:30","18:00"],"COND - AMBIANCE RESIDENCE IV":["06:30","18:30"],"COND - ARARUAMA":["08:00"],"COND - ARBORETO":["07:00"],"COND - ARCO VERDE":["08:30"],"COND - AVANT GARDE":["06:00","18:00"],"COND - BAIA DE GUANABARA":["06:00","08:00","18:00"],"COND - CAMBORIU":["08:00"],"COND - CAMBUÍ":["08:00"],"COND - CAMBUI SQUARE":["06:00","18:00"],"COND - CARMEM LIDIA":["08:00"],"COND - CASAS D ITALIA VILLA BELLA":["06:00","18:00"],"COND - CENTER VILLE":["07:00"],"COND - CHACARA PRIMAVERA":["06:00","08:00","18:00"],"COND - COLISEU":["06:00","08:00","18:00"],"COND - COMERCIAL RIACHUELO":["08:00"],"COND - CONQUISTA":["06:00","08:00","18:00"],"COND - CRISTAIS":["08:00"],"COND - DELLOS 1":["08:00"],"COND - DOM NERY":["07:00"],"COND - ECO RESIDENZA":["06:00"],"COND - ECOWAY":["06:00","07:00","08:00","18:00"],"COND - EDIFICIO JOAO PUPO":["07:00"],"COND - FELICITY":["06:00","18:00"],"COND - FORTE ITAMARACA":["07:00","10:00","20:30"],"COND - FORTE SAO JOAQUIM":["08:30"],"COND - GIARDINO D ITALIA":["06:00","18:00"],"COND - GIBRALTAR":["22:00"],"COND - GOIAS":["06:00","08:00","14:00"],"COND - HARAS BELA VISTA":["06:00","18:00"],"COND - IBIRA":["08:00"],"COND - IDYLLE CAMBUI":["06:00","07:00","18:00"],"COND - JEQUITIBAS I":["06:40"],"COND - LAGUNA":["07:00"],"COND - LAUERZ":["07:00"],"COND - LIVING CELEBRATION":["06:00","08:00","09:00","18:00"],"COND - LONDON LOFT":["07:00"],"COND - LONDON PARK":["08:00"],"COND - LUMINI 3":["06:00","08:00","18:00"],"COND - MAIS MIRASSOL":["08:00"],"COND - MAISON RENOIR":["06:00","07:00","18:00"],"COND - MAISON RENOIR P. PRADO":["06:00","18:00"],"COND - MENDES":["08:00"],"COND - MONICA":["08:00"],"COND - NATUS HOME":["06:30","08:00","18:30"],"COND - PARQUE DOS PÁSSAROS":["06:00","08:00","18:00"],"COND - PARQUE ECOLÓGICO":["06:00","07:00","10:00","18:00"],"COND - PATEO DAS INDAIAS":["07:30"],"COND - PEDRA BELLA":["08:00"],"COND - PERNAMBUCO":["06:30","07:10","18:30"],"COND - POEMA":["06:00","07:00","07:20","18:00","19:00"],"COND - PORTAL DAS AMOREIRAS":["06:00","08:00","18:00"],"COND - PQ QUARESMEIRA":["06:00","18:00"],"COND - PRAIA DO FAROL":["06:00","08:00","18:00"],"COND - RAQUEL MENDONCA":["06:00","07:00","18:00"],"COND - RAVENNA":["08:00"],"COND - RESIDENCIAL LUGANO":["06:00","08:00","18:00"],"COND - REVIVA":["06:00","07:50","18:00"],"COND - ROSSI AVILA":["06:00","07:00","18:00"],"COND - SAMAMBAIA":["06:00","08:00","18:00"],"COND - SANTA GENEBRA I":["06:00","08:00","18:00"],"COND - SANTOS DUMONT II":["08:00"],"COND - SOLEIL":["08:00"],"COND - TANGARA":["06:00","08:00","18:00"],"COND - TONS DO MORUMBI":["06:00","08:00","18:00"],"COND - TORRE DO CASTELO":["06:00","07:00","18:00"],"COND - VENEZA":["06:00","07:00","18:00"],"COND - VERNISSAGE":["06:00","08:00","18:00"],"COND - VICTORIA":["14:00"],"COND - VILA ODILA":["08:00"],"COND - VILA ROMANA":["06:00","18:00"],"COND - VILA SICILIANA":["08:00"],"COND - VILLA FLORA HORTOLANDIA":["07:00","09:00","19:00"],"COND - VILLAGE MONET":["06:00","08:00","18:00"],"COND - VILLAGE RUGENDAS":["06:00","07:00","09:50","18:00"],"COND - VILLAGIO DI MILANO":["06:00","07:30","18:00"],"DISTRITO INDUSTRIAL":["06:00","18:00"],"DURST":["08:00"],"EETAD":["06:00","18:00"],"EQUITRONIC EQUIPAMENTOS":["06:00","06:30","11:50"],"FEV":["07:00"],"GUABI NUTRICAO":["06:30"],"IGREJA DO NAZARENO CENTRAL":["20:00"],"JACSYS SISTEMAS":["07:30"],"KADANT":["06:00","07:42","18:00"],"MATTOSO EXTRATO NATURAIS LTDA":["07:00"],"OFTALMOLOGIA SIGNORELLI":["07:00"],"OSSEA TECHNOLOGY":["07:30"],"PEDRAS & POLIMENTOS":["07:00"],"RSB PLASTICOS":["07:00"],"SHMB":["08:00"],"SUL CORTE":["07:00","07:30","08:00"],"SUPPORT DO BRASIL":["07:30"],"VITA COMPONENTES":["07:20"]};
+/* posto -> horas de início dos turnos: JORNADA dos ativos + planilha de referência acima */
 function bdvAberturas(){
   const D=(typeof DASHBOARD_DATA!=="undefined"&&DASHBOARD_DATA)?DASHBOARD_DATA:{};
   const m={};
@@ -2810,6 +2814,14 @@ function bdvAberturas(){
     const ini=parseInt(jm[1],10)*60+parseInt(jm[2],10);
     if(!m[posto])m[posto]=[];
     if(m[posto].indexOf(ini)<0)m[posto].push(ini);
+  });
+  Object.entries(BDV_JORNADAS_REF).forEach(([posto,horarios])=>{
+    horarios.forEach(hstr=>{
+      const hm=hstr.match(/(\d{1,2}):(\d{2})/);if(!hm)return;
+      const ini=parseInt(hm[1],10)*60+parseInt(hm[2],10);
+      if(!m[posto])m[posto]=[];
+      if(m[posto].indexOf(ini)<0)m[posto].push(ini);
+    });
   });
   Object.keys(m).forEach(k=>m[k].sort((x,y)=>x-y));
   return m;
