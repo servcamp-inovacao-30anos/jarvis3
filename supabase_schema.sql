@@ -189,6 +189,14 @@ alter table public.pt_sms_uso      enable row level security;
 alter table public.pt_config       enable row level security;
 alter table public.pt_auditoria    enable row level security;
 
+-- Permissões explícitas: só a chave de serviço lê e escreve. Assim o bloco não
+-- depende da opção do Supabase que libera (ou não) tabelas novas para a API, e
+-- anon/authenticated ficam sem acesso mesmo se alguém desligar o RLS.
+revoke all on public.pt_contatos, public.pt_competencias, public.pt_ocorrencias, public.pt_mensagens,
+  public.pt_sms_uso, public.pt_config, public.pt_auditoria from anon, authenticated;
+grant select, insert, update, delete on public.pt_contatos, public.pt_competencias, public.pt_ocorrencias,
+  public.pt_mensagens, public.pt_sms_uso, public.pt_config, public.pt_auditoria to service_role;
+
 -- Sementes. "on conflict do nothing": rodar de novo não desfaz um ajuste feito
 -- depois. data_virada fica vazia de propósito — enquanto estiver vazia, nenhuma
 -- ocorrência é criada (nada retroativo).
