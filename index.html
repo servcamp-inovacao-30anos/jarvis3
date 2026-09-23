@@ -3377,13 +3377,23 @@ function _bdvClick(tipo){
 
   if(tipo==='total'){
     titulo='🚗 Coberturas BDV — Detalhes ('+bdv.length+')';
+    const ab=bdvAberturas();
+    const inicioCliente=r=>{
+      const cheg=_bdvMin(r.HORARIO);if(cheg===null)return"—";
+      const posto=String(r.DESTINO||"").split("/")[0].trim().toUpperCase();
+      const turnos=ab[posto];if(!turnos||!turnos.length)return"—";
+      let ini=null;
+      for(let i=0;i<turnos.length;i++)if(turnos[i]<=cheg)ini=turnos[i];
+      return ini===null?"—":String(Math.floor(ini/60)).padStart(2,"0")+":"+String(ini%60).padStart(2,"0");
+    };
     html='<div style="max-height:420px;overflow-y:auto;padding:8px"><table style="width:100%;border-collapse:collapse"><thead><tr>';
-    html+='<th style="'+thStyle+'">Data</th><th style="'+thStyle+'">Supervisor</th><th style="'+thStyle+'">Cliente / Destino</th><th style="'+thStyle+'">Horário</th></tr></thead><tbody>';
+    html+='<th style="'+thStyle+'">Data</th><th style="'+thStyle+'">Supervisor</th><th style="'+thStyle+'">Cliente / Destino</th><th style="'+thStyle+'">Início do Cliente</th><th style="'+thStyle+'">Horário</th></tr></thead><tbody>';
     bdv.forEach(r=>{
       html+='<tr>';
       html+='<td style="'+tdStyle+';color:#5a7a9a">'+fmtDt(r.DATA)+'</td>';
       html+='<td style="'+tdStyle+';font-weight:700;color:#1e2d3e">'+r.NOME+'</td>';
       html+='<td style="'+tdStyle+';color:#1d6fc4">📍 '+r.DESTINO+'</td>';
+      html+='<td style="'+tdStyle+';font-weight:700;color:#5a7a9a">🕐 '+inicioCliente(r)+'</td>';
       html+='<td style="'+tdStyle+';font-weight:800;color:#16a34a;font-size:.82rem">⏰ '+(r.HORARIO||"—")+'</td>';
       html+='</tr>';
     });
