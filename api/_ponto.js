@@ -18,7 +18,7 @@ const _auth = require("./_auth");
 
 // Quem pode aprovar, enviar e mexer na base de contatos. A checagem é AQUI, no
 // servidor: esconder o botão no front é conveniência, não segurança.
-const APROVADORES = new Set(["joaoygor"]);
+const APROVADORES = new Set(["joaoygor", "raphaelvictor"]);
 
 function usuarioDoToken(req) {
   const secret = process.env.AUTH_SECRET;
