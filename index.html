@@ -178,6 +178,35 @@ body{font-family:"Segoe UI",system-ui,sans-serif;background:var(--g50);display:f
 .btn-up:hover{background:rgba(255,255,255,.12);color:#fff;}
 #fu{display:none;}
 .main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+/* Modo TV: painel do mapa de clientes fixo ao lado da Visão Geral, pra TV 24h
+   do Eduardo. Ativa com ?modotv=1 na URL — sem item de menu, é kiosk mode. */
+.tv-map-panel{display:none;position:fixed;top:0;right:0;width:38vw;height:100vh;background:#0d1f35;z-index:500;flex-direction:column;box-shadow:-6px 0 24px rgba(0,0,0,.2);}
+body.tv-mode .tv-map-panel{display:flex;}
+body.tv-mode .sb,body.tv-mode .mob-header,body.tv-mode .mob-overlay{display:none!important;}
+body.tv-mode .main{margin-right:38vw;}
+.tv-map-panel .tv-map-hdr{padding:14px 18px;color:#fff;display:flex;align-items:baseline;justify-content:space-between;gap:10px;background:linear-gradient(135deg,#0d1f35,#1e4d8c);flex-shrink:0;}
+.tv-map-panel .tv-map-hdr b{font-size:.92rem;letter-spacing:.2px;}
+.tv-map-panel .tv-map-hdr span{font-size:.66rem;color:#9db8dd;white-space:nowrap;}
+#tv-mapa{flex:1;width:100%;background:#1a2332;}
+/* Mapa escuro sem depender de provedor externo: inverte só a camada de tiles
+   (.leaflet-tile-pane) do OpenStreetMap — pinos e popups ficam noutra camada
+   do Leaflet e não são afetados, continuam com as cores reais. */
+.tv-map-panel .leaflet-tile-pane,
+html[data-theme="dark"] #sau-mapa .leaflet-tile-pane{
+  filter:invert(1) hue-rotate(180deg) brightness(.95) contrast(.9);
+}
+/* Atribuição do Leaflet discreta em fundo escuro: o padrão dele (caixa clara)
+   destoa do mapa escurecido. Vale pro Modo TV e pra Saúde do Cliente quando a
+   tela está no tema escuro. */
+.tv-map-panel .leaflet-control-attribution,
+html[data-theme="dark"] #sau-mapa .leaflet-control-attribution{
+  background:rgba(13,31,53,.72)!important;color:#9db8dd!important;
+}
+.tv-map-panel .leaflet-control-attribution a,
+html[data-theme="dark"] #sau-mapa .leaflet-control-attribution a{color:#c9dbf2!important;}
+html[data-theme="dark"] #sau-mapa{background:#1a2332;}
+.tv-map-panel .tv-map-leg{padding:9px 16px;background:#111a2b;font-size:.64rem;color:#9db0c9;display:flex;gap:12px;flex-wrap:wrap;align-items:center;border-top:1px solid #223148;flex-shrink:0;}
+@media (max-width:900px){.tv-map-panel{width:100vw;height:46vh;top:auto;bottom:0;box-shadow:0 -6px 24px rgba(0,0,0,.2);} body.tv-mode .main{margin-right:0;margin-bottom:46vh;}}
 .topbar{background:var(--wh);border-bottom:1px solid var(--g200);padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:52px;flex-shrink:0;}
 .tb-t{font-size:.95rem;font-weight:700;color:var(--g800);}
 .tb-s{font-size:.67rem;color:var(--g400);margin-top:1px;}
@@ -866,6 +895,11 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
   <button class="sb-recolher" id="sbRecolher" onclick="navMiniToggle()">⬅ Recolher menu</button>
   <div class="sb-credit"><span>Desenvolvido por <b>Convert Vision</b></span></div>
 </aside>
+<div class="tv-map-panel" id="tvMapaPanel">
+  <div class="tv-map-hdr"><b>🗺️ Mapa de Clientes</b><span id="tvMapaAtualizado">carregando…</span></div>
+  <div id="tv-mapa"></div>
+  <div class="tv-map-leg" id="tv-mapa-leg"></div>
+</div>
 <div class="main">
   <div class="topbar">
     <div><div class="tb-t" id="pgTitle">Visão Geral</div><div class="tb-s" id="pgSub">Grupo ServCamp</div></div>
@@ -926,9 +960,9 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       <div class="vg-sec-lbl vg-s-op"><span class="i">🔧</span>Operacional</div>
       <div class="oc-row oc-row-op">
         <div class="oc c1 oc-t-alert" id="ocFaltas" onclick="navTo('faltas',null)"><div class="oc-ic">🚫</div><div class="oc-lb">Faltas</div><div class="oc-v" id="oc1">—</div><div class="oc-sb" id="oc1s">registros</div><div id="ocFaltasTrend"></div></div>
-        <div class="oc c7 oc-t-warn"><div class="oc-ic">📌</div><div class="oc-lb">Faltas Contrato</div><div class="oc-v" id="oc7">—</div><div class="oc-sb">registros</div></div>
-        <div class="oc c8 oc-t-warn"><div class="oc-ic">🔖</div><div class="oc-lb">Faltas Reserva</div><div class="oc-v" id="oc8">—</div><div class="oc-sb">registros</div></div>
-        <div class="oc c8 oc-t-warn"><div class="oc-ic">🏢</div><div class="oc-lb">Faltas Departamento</div><div class="oc-v" id="oc10">—</div><div class="oc-sb">pessoal interno</div></div>
+        <div class="oc c7 oc-t-warn"><div class="oc-ic">📌</div><div class="oc-lb">Faltas Contrato</div><div class="oc-v" id="oc7">—</div><div class="oc-sb">registros</div><div class="oc-cmp" id="oc7c"></div></div>
+        <div class="oc c8 oc-t-warn"><div class="oc-ic">🔖</div><div class="oc-lb">Faltas Reserva</div><div class="oc-v" id="oc8">—</div><div class="oc-sb">registros</div><div class="oc-cmp" id="oc8c"></div></div>
+        <div class="oc c8 oc-t-warn"><div class="oc-ic">🏢</div><div class="oc-lb">Faltas Departamento</div><div class="oc-v" id="oc10">—</div><div class="oc-sb">pessoal interno</div><div class="oc-cmp" id="oc10c"></div></div>
         <div class="oc oc-t-alert" onclick="_postoVagoClick()"><div class="oc-ic">🚨</div><div class="oc-lb">Posto Descoberto</div><div class="oc-v" id="oc9">—</div><div class="oc-sb">vago sem cobertura</div></div>
         <div class="oc c6 oc-alert" id="ocDispo" onclick="navTo('dispo',null)"><div class="oc-ic">🔴</div><div class="oc-lb">Sem Alocação</div><div class="oc-v" id="oc6">—</div><div class="oc-sb" id="oc6s">registros</div><div class="oc-cmp" id="oc6c"></div></div>
         <div class="oc c4" onclick="navTo('fts',null)"><div class="oc-ic">🔄</div><div class="oc-lb">FTS</div><div class="oc-v" id="oc4">—</div><div class="oc-sb">registros</div></div>
@@ -1919,6 +1953,7 @@ function _abrirSessao(u){
   sessionStorage.setItem("userMetas",usr.metas?"1":"0");
   applyUserUI();
   if(typeof hqBeat==="function")hqBeat(); // já aparece na Sede Virtual
+  tvModoChecar(); // se abriu a TV sem estar logado ainda, ativa só depois do login
 }
 /* Troca de senha. modo: "primeiro" (ainda na senha padrão), "obrigatoria" (must_change
    marcado no banco) ou "voluntaria" (menu do perfil — pede a senha atual). */
@@ -2283,6 +2318,12 @@ const _origNavTo=typeof navTo==="function"?navTo:null;
 document.querySelectorAll(".ni").forEach(el=>{const orig=el.getAttribute("onclick");el.addEventListener("click",()=>{if(window.innerWidth<=768){document.getElementById("sidebar").classList.remove("open");document.getElementById("mobOverlay").classList.remove("show");}});});
 </script><script>
 const ST={period:"today",turno:"TODOS",area:"",pg:"visao",tpg:{faltas:1,coberturas:1,postos:1,os:1,fts:1,dispo:1,ativos:1,clientes:1},ps:15,sd:null,ed:null,mesEscolhido:null};
+/* Lembra o período (Hoje/Semana/Mês) escolhido, pra não voltar sempre pra
+   "Hoje" ao reabrir o painel — o usuário espera reencontrar o que deixou. */
+try{
+  const _stSalvo=JSON.parse(localStorage.getItem("svc_periodo")||"null");
+  if(_stSalvo&&_stSalvo.period){ST.period=_stSalvo.period;ST.mesEscolhido=_stSalvo.mesEscolhido||null;}
+}catch(e){}
 let CH={},F={},_detAct={},_detRows={},_detSubAct={};
 const pd=s=>s?new Date(s+"T00:00:00"):null;
 const ymd=d=>d?d.toISOString().split("T")[0]:"";
@@ -2449,6 +2490,11 @@ function perAplica(p){
   const d=document.getElementById("dCust");if(d)d.classList.toggle("show",p==="custom");
   const m=document.getElementById("dMes");
   if(m){m.classList.toggle("show",p==="month");if(p==="month")mesOpcoes();}
+  // "custom" não entra aqui: depende das datas digitadas, que não são
+  // salvas — restaurar só o tipo sem elas deixaria a tela em branco.
+  if(p!=="custom"){
+    try{localStorage.setItem("svc_periodo",JSON.stringify({period:ST.period,mesEscolhido:ST.mesEscolhido}));}catch(e){}
+  }
 }
 /* Rotulo do periodo: diz a data que a tela esta REALMENTE mostrando.
    Antes saia sempre o intervalo inteiro da base, entao a tela anunciava
@@ -2649,13 +2695,26 @@ function updVG(){
   document.getElementById("vg-fn").textContent=ativos.length;
   document.getElementById("vg-fns").innerHTML=`<b>${ativos.filter(r=>r.TURNO==="DIURNO").length}</b> diurno · <b>${ativos.filter(r=>r.TURNO==="NOTURNO").length}</b> noturno`;
 }
+/* Quebra por cargo pros cards de Faltas — mesmo texto, sem ser preciso abrir
+   o detalhe pra saber SE eh porteiro, zelador etc que esta faltando. */
+function _faltasPorCargo(arr){
+  const m={};
+  (arr||[]).forEach(r=>{const c=r.CARGO||"—";m[c]=(m[c]||0)+1;});
+  return Object.entries(m).sort((a,b)=>b[1]-a[1]).map(([c,n])=>c+": <b>"+n+"</b>").join(" · ");
+}
 function updOC(){
   document.getElementById("oc1").textContent=F.faltas.length;
-  document.getElementById("oc7").textContent=F.faltas.filter(r=>r.TIPO==="CONTRATO").length;
-  document.getElementById("oc8").textContent=F.faltas.filter(r=>r.TIPO==="RESERVA").length;
+  const _fContrato=F.faltas.filter(r=>r.TIPO==="CONTRATO");
+  const _fReserva=F.faltas.filter(r=>r.TIPO==="RESERVA");
+  const _fDepto=F.faltas.filter(r=>r.TIPO==="DEPARTAMENTO");
+  document.getElementById("oc7").textContent=_fContrato.length;
+  document.getElementById("oc8").textContent=_fReserva.length;
   // Pessoal interno (Mesa Operacional, Supervisao, DP, Financeiro). Entra no
   // total de Faltas; sem este card a soma Contrato+Reserva nao fechava com ele.
-  document.getElementById("oc10").textContent=F.faltas.filter(r=>r.TIPO==="DEPARTAMENTO").length;
+  document.getElementById("oc10").textContent=_fDepto.length;
+  document.getElementById("oc7c").innerHTML=_faltasPorCargo(_fContrato);
+  document.getElementById("oc8c").innerHTML=_faltasPorCargo(_fReserva);
+  document.getElementById("oc10c").innerHTML=_faltasPorCargo(_fDepto);
   document.getElementById("oc4").textContent=F.fts.length;
   const _oc5=document.getElementById("oc5");if(_oc5)_oc5.textContent=F.justif.length;
   document.getElementById("oc6").textContent=F.dispo.length;
@@ -2819,7 +2878,11 @@ function _bdvMin(h){
   const m=String(h||"").match(/(\d{1,2}):(\d{2})/);
   return m?parseInt(m[1],10)*60+parseInt(m[2],10):null;
 }
-/* posto -> horas de início dos turnos, tiradas da JORNADA dos ativos */
+/* Planilha de referência "Horário de início dos clientes" (portaria e limpeza),
+   passada à parte porque nem todo cliente tem JORNADA cadastrada nos ativos —
+   ela cobre as lacunas, como o caso do "FEV" que aparecia com "—". */
+const BDV_JORNADAS_REF={"ACDC CAMPINAS":["06:40","07:00","09:00"],"AIMARA":["08:00"],"ANAKEL":["07:30"],"ANALISE EMPRESARIAL":["07:00"],"APEX SCIENCE":["06:00","07:00"],"ASK":["06:00"],"BANCO ABC BRASIL":["06:00","18:00"],"BIODUX":["07:00"],"CCL PARANA":["06:30"],"CELSO CHARURI DE CAMPINAS":["07:30"],"CLINICA ESCALADA":["07:00"],"CLINICA ESCALADA UNID. 02":["07:00"],"CLINICA HALAM":["07:00","09:00"],"CLINICA IGCC":["06:00","08:42"],"COLOMARTI":["07:30"],"COLOMARTI INDAITUBA":["07:00"],"COND - ÁGUA BRANCA":["06:00","07:00","08:00","18:00"],"COND - ALECRINS":["07:00"],"COND - ALTO CAMBUÍ":["06:00","08:30","18:00"],"COND - AMBIANCE RESIDENCE IV":["06:30","18:30"],"COND - ARARUAMA":["08:00"],"COND - ARBORETO":["07:00"],"COND - ARCO VERDE":["08:30"],"COND - AVANT GARDE":["06:00","18:00"],"COND - BAIA DE GUANABARA":["06:00","08:00","18:00"],"COND - CAMBORIU":["08:00"],"COND - CAMBUÍ":["08:00"],"COND - CAMBUI SQUARE":["06:00","18:00"],"COND - CARMEM LIDIA":["08:00"],"COND - CASAS D ITALIA VILLA BELLA":["06:00","18:00"],"COND - CENTER VILLE":["07:00"],"COND - CHACARA PRIMAVERA":["06:00","08:00","18:00"],"COND - COLISEU":["06:00","08:00","18:00"],"COND - COMERCIAL RIACHUELO":["08:00"],"COND - CONQUISTA":["06:00","08:00","18:00"],"COND - CRISTAIS":["08:00"],"COND - DELLOS 1":["08:00"],"COND - DOM NERY":["07:00"],"COND - ECO RESIDENZA":["06:00"],"COND - ECOWAY":["06:00","07:00","08:00","18:00"],"COND - EDIFICIO JOAO PUPO":["07:00"],"COND - FELICITY":["06:00","18:00"],"COND - FORTE ITAMARACA":["07:00","10:00","20:30"],"COND - FORTE SAO JOAQUIM":["08:30"],"COND - GIARDINO D ITALIA":["06:00","18:00"],"COND - GIBRALTAR":["22:00"],"COND - GOIAS":["06:00","08:00","14:00"],"COND - HARAS BELA VISTA":["06:00","18:00"],"COND - IBIRA":["08:00"],"COND - IDYLLE CAMBUI":["06:00","07:00","18:00"],"COND - JEQUITIBAS I":["06:40"],"COND - LAGUNA":["07:00"],"COND - LAUERZ":["07:00"],"COND - LIVING CELEBRATION":["06:00","08:00","09:00","18:00"],"COND - LONDON LOFT":["07:00"],"COND - LONDON PARK":["08:00"],"COND - LUMINI 3":["06:00","08:00","18:00"],"COND - MAIS MIRASSOL":["08:00"],"COND - MAISON RENOIR":["06:00","07:00","18:00"],"COND - MAISON RENOIR P. PRADO":["06:00","18:00"],"COND - MENDES":["08:00"],"COND - MONICA":["08:00"],"COND - NATUS HOME":["06:30","08:00","18:30"],"COND - PARQUE DOS PÁSSAROS":["06:00","08:00","18:00"],"COND - PARQUE ECOLÓGICO":["06:00","07:00","10:00","18:00"],"COND - PATEO DAS INDAIAS":["07:30"],"COND - PEDRA BELLA":["08:00"],"COND - PERNAMBUCO":["06:30","07:10","18:30"],"COND - POEMA":["06:00","07:00","07:20","18:00","19:00"],"COND - PORTAL DAS AMOREIRAS":["06:00","08:00","18:00"],"COND - PQ QUARESMEIRA":["06:00","18:00"],"COND - PRAIA DO FAROL":["06:00","08:00","18:00"],"COND - RAQUEL MENDONCA":["06:00","07:00","18:00"],"COND - RAVENNA":["08:00"],"COND - RESIDENCIAL LUGANO":["06:00","08:00","18:00"],"COND - REVIVA":["06:00","07:50","18:00"],"COND - ROSSI AVILA":["06:00","07:00","18:00"],"COND - SAMAMBAIA":["06:00","08:00","18:00"],"COND - SANTA GENEBRA I":["06:00","08:00","18:00"],"COND - SANTOS DUMONT II":["08:00"],"COND - SOLEIL":["08:00"],"COND - TANGARA":["06:00","08:00","18:00"],"COND - TONS DO MORUMBI":["06:00","08:00","18:00"],"COND - TORRE DO CASTELO":["06:00","07:00","18:00"],"COND - VENEZA":["06:00","07:00","18:00"],"COND - VERNISSAGE":["06:00","08:00","18:00"],"COND - VICTORIA":["14:00"],"COND - VILA ODILA":["08:00"],"COND - VILA ROMANA":["06:00","18:00"],"COND - VILA SICILIANA":["08:00"],"COND - VILLA FLORA HORTOLANDIA":["07:00","09:00","19:00"],"COND - VILLAGE MONET":["06:00","08:00","18:00"],"COND - VILLAGE RUGENDAS":["06:00","07:00","09:50","18:00"],"COND - VILLAGIO DI MILANO":["06:00","07:30","18:00"],"DISTRITO INDUSTRIAL":["06:00","18:00"],"DURST":["08:00"],"EETAD":["06:00","18:00"],"EQUITRONIC EQUIPAMENTOS":["06:00","06:30","11:50"],"FEV":["07:00"],"GUABI NUTRICAO":["06:30"],"IGREJA DO NAZARENO CENTRAL":["20:00"],"JACSYS SISTEMAS":["07:30"],"KADANT":["06:00","07:42","18:00"],"MATTOSO EXTRATO NATURAIS LTDA":["07:00"],"OFTALMOLOGIA SIGNORELLI":["07:00"],"OSSEA TECHNOLOGY":["07:30"],"PEDRAS & POLIMENTOS":["07:00"],"RSB PLASTICOS":["07:00"],"SHMB":["08:00"],"SUL CORTE":["07:00","07:30","08:00"],"SUPPORT DO BRASIL":["07:30"],"VITA COMPONENTES":["07:20"]};
+/* posto -> horas de início dos turnos: JORNADA dos ativos + planilha de referência acima */
 function bdvAberturas(){
   const D=(typeof DASHBOARD_DATA!=="undefined"&&DASHBOARD_DATA)?DASHBOARD_DATA:{};
   const m={};
@@ -2830,6 +2893,14 @@ function bdvAberturas(){
     const ini=parseInt(jm[1],10)*60+parseInt(jm[2],10);
     if(!m[posto])m[posto]=[];
     if(m[posto].indexOf(ini)<0)m[posto].push(ini);
+  });
+  Object.entries(BDV_JORNADAS_REF).forEach(([posto,horarios])=>{
+    horarios.forEach(hstr=>{
+      const hm=hstr.match(/(\d{1,2}):(\d{2})/);if(!hm)return;
+      const ini=parseInt(hm[1],10)*60+parseInt(hm[2],10);
+      if(!m[posto])m[posto]=[];
+      if(m[posto].indexOf(ini)<0)m[posto].push(ini);
+    });
   });
   Object.keys(m).forEach(k=>m[k].sort((x,y)=>x-y));
   return m;
@@ -3397,13 +3468,23 @@ function _bdvClick(tipo){
 
   if(tipo==='total'){
     titulo='🚗 Coberturas BDV — Detalhes ('+bdv.length+')';
+    const ab=bdvAberturas();
+    const inicioCliente=r=>{
+      const cheg=_bdvMin(r.HORARIO);if(cheg===null)return"—";
+      const posto=String(r.DESTINO||"").split("/")[0].trim().toUpperCase();
+      const turnos=ab[posto];if(!turnos||!turnos.length)return"—";
+      let ini=null;
+      for(let i=0;i<turnos.length;i++)if(turnos[i]<=cheg)ini=turnos[i];
+      return ini===null?"—":String(Math.floor(ini/60)).padStart(2,"0")+":"+String(ini%60).padStart(2,"0");
+    };
     html='<div style="max-height:420px;overflow-y:auto;padding:8px"><table style="width:100%;border-collapse:collapse"><thead><tr>';
-    html+='<th style="'+thStyle+'">Data</th><th style="'+thStyle+'">Supervisor</th><th style="'+thStyle+'">Cliente / Destino</th><th style="'+thStyle+'">Horário</th></tr></thead><tbody>';
+    html+='<th style="'+thStyle+'">Data</th><th style="'+thStyle+'">Supervisor</th><th style="'+thStyle+'">Cliente / Destino</th><th style="'+thStyle+'">Início do Cliente</th><th style="'+thStyle+'">Horário</th></tr></thead><tbody>';
     bdv.forEach(r=>{
       html+='<tr>';
       html+='<td style="'+tdStyle+';color:#5a7a9a">'+fmtDt(r.DATA)+'</td>';
       html+='<td style="'+tdStyle+';font-weight:700;color:#1e2d3e">'+r.NOME+'</td>';
       html+='<td style="'+tdStyle+';color:#1d6fc4">📍 '+r.DESTINO+'</td>';
+      html+='<td style="'+tdStyle+';font-weight:700;color:#5a7a9a">🕐 '+inicioCliente(r)+'</td>';
       html+='<td style="'+tdStyle+';font-weight:800;color:#16a34a;font-size:.82rem">⏰ '+(r.HORARIO||"—")+'</td>';
       html+='</tr>';
     });
@@ -5051,9 +5132,10 @@ function handleUp(evt){
 }
 function renderAfterLoad(){
   populateAreas();
-  ST.mesEscolhido=null; // base nova: o mes escolhido antes pode nem existir
+  // Mesma base de sempre (só reabrindo o painel): mantém o período e o mês
+  // que a pessoa deixou escolhido, restaurados do localStorage acima.
   if(typeof mtCarregaFundo==="function"&&MT_CACHE===null)mtCarregaFundo();
-  perAplica(ST.period||"today"); // abre sempre no dia de hoje
+  perAplica(ST.period||"today");
   refresh();
   updVGCharts();
   updateStatusLabel();
@@ -9057,6 +9139,17 @@ function sauMapaMostrar(){
     .then(j=>{ SAU_PINOS=(j&&j.pinos)||[]; sauMapaDesenhar(); })
     .catch(()=>{document.getElementById("sau-mapa").innerHTML='<div style="padding:40px;text-align:center;color:#dc2626;font-size:.78rem">Erro ao carregar os endereços.</div>';});
 }
+/* Mesmo tile do OpenStreetMap sempre — o escurecido vem de filtro CSS na
+   camada de tiles (.leaflet-tile-pane), não de trocar de provedor. Testei
+   CartoDB Dark Matter sem chave e a Carto passou a exigir cadastro/API key
+   (mapa saiu com aviso "API KEY REQUIRED" por cima) — sem depender de conta
+   de terceiro, o filtro inverte só o tile, os pinos/popups continuam com as
+   cores reais (a classe .leaflet-tile-pane não inclui marcadores). */
+function mapaTile(){
+  return {url:"https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    attr:'&copy; colaboradores do <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom:19};
+}
 function sauMapaDesenhar(){
   const el=document.getElementById("sau-mapa");
   if(!el||!SAU_PINOS)return;
@@ -9064,9 +9157,8 @@ function sauMapaDesenhar(){
   el.innerHTML="";
   if(SAU_MAPA){SAU_MAPA.remove();SAU_MAPA=null;}
   SAU_MAPA=L.map("sau-mapa",{scrollWheelZoom:false});   // roda do mouse rola a página, não o mapa
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
-    maxZoom:19, attribution:'&copy; colaboradores do <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-  }).addTo(SAU_MAPA);
+  const tile=mapaTile();
+  L.tileLayer(tile.url,{maxZoom:tile.maxZoom,attribution:tile.attr}).addTo(SAU_MAPA);
 
   const grupo=[];
   SAU_PINOS.forEach(p=>{
@@ -9101,6 +9193,77 @@ function sauMapaDesenhar(){
     +'<span>'+bola("#dc2626")+'abaixo de 50</span>'
     +'<span style="color:#94a3b8">· bola maior = mais efetivos no local</span>'
     +'<span style="margin-left:auto">'+SAU_PINOS.length+' locais'+(nAprox?' · <span style="color:#b45309">'+nAprox+' aproximados</span>':'')+'</span>';
+}
+
+/* Mapa da TV (?modotv=1): painel fixo ao lado da Visão Geral, sempre visível
+   e carregando sozinho — sem botão, sem clique, feito pra tela 24h. Instância
+   própria (não reaproveita SAU_MAPA) pra não arriscar mexer no mapa da Saúde
+   do Cliente, que já tem sua própria lógica de redesenho ajustada. */
+var TV_MAPA=null, TV_PINOS=null;
+function tvMapaCarregar(){
+  const el=document.getElementById("tv-mapa");
+  if(!el)return;
+  if(typeof L==="undefined"){
+    el.innerHTML='<div style="padding:30px;text-align:center;color:#fca5a5;font-size:.76rem">Biblioteca do mapa não carregou. Recarregue a página.</div>';
+    return;
+  }
+  fetch("/api/hq?mapa=1")
+    .then(r=>r.json())
+    .then(j=>{ TV_PINOS=(j&&j.pinos)||[]; tvMapaDesenhar(); })
+    .catch(()=>{ el.innerHTML='<div style="padding:30px;text-align:center;color:#fca5a5;font-size:.76rem">Erro ao carregar os endereços.</div>'; });
+}
+function tvMapaDesenhar(){
+  const el=document.getElementById("tv-mapa");
+  if(!el||!TV_PINOS)return;
+  if(!TV_PINOS.length){el.innerHTML='<div style="padding:30px;text-align:center;color:#94a3b8;font-size:.76rem">Nenhum endereço geocodificado.</div>';return;}
+  el.innerHTML="";
+  if(TV_MAPA){TV_MAPA.remove();TV_MAPA=null;}
+  TV_MAPA=L.map("tv-mapa",{scrollWheelZoom:false,zoomControl:false});
+  const tile=mapaTile();
+  L.tileLayer(tile.url,{maxZoom:tile.maxZoom,attribution:tile.attr}).addTo(TV_MAPA);
+  const grupo=[];
+  TV_PINOS.forEach(p=>{
+    const cor=sauCor(p.saude);
+    const raio=p.efetivos>=10?11:p.efetivos>=4?8:6;
+    const m=L.circleMarker([p.lat,p.lon],{radius:raio,color:"#fff",weight:2,fillColor:cor,fillOpacity:.92}).addTo(TV_MAPA);
+    m.bindPopup(
+      '<div style="font-weight:800;font-size:.8rem;color:#0d1f35">'+_esc(p.cliente)+'</div>'
+      +'<div style="font-size:.72rem;margin-top:3px"><b style="color:'+cor+'">Saúde '+p.saude+'</b> · '+p.efetivos+' efetivo(s)</div>',
+      {maxWidth:260}
+    );
+    grupo.push([p.lat,p.lon]);
+  });
+  TV_MAPA.fitBounds(grupo,{padding:[20,20]});
+  setTimeout(()=>{try{TV_MAPA.invalidateSize();}catch(e){}},60);
+
+  const nAprox=TV_PINOS.filter(p=>p.precisao==="cidade"||p.precisao==="bairro").length;
+  const bola=c=>'<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'+c+';border:2px solid #fff;box-shadow:0 0 0 1px '+c+';vertical-align:-1px;margin-right:3px"></span>';
+  document.getElementById("tv-mapa-leg").innerHTML=
+    '<span>'+bola("#16a34a")+'70+</span><span>'+bola("#f59e0b")+'50-69</span><span>'+bola("#dc2626")+'<50</span>'
+    +'<span style="margin-left:auto">'+TV_PINOS.length+' locais'+(nAprox?' · '+nAprox+' aprox.':'')+'</span>';
+  const rot=document.getElementById("tvMapaAtualizado");
+  if(rot)rot.textContent="atualizado "+new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+}
+/* Ativa com ?modotv=1 na URL — kiosk mode, sem item de menu, pra não
+   aparecer pra ninguém que não seja a TV. Trava na Visão Geral e recarrega
+   o mapa a cada 10min sozinho, porque ninguém vai estar ali pra clicar. */
+function tvModoIniciar(){
+  document.body.classList.add("tv-mode");
+  navTo("visao",null);
+  tvMapaCarregar();
+  setInterval(tvMapaCarregar,10*60000);
+}
+/* Só o Eduardo: mesmo com ?modotv=1 na URL, só ativa se a conta logada for a
+   dele — pra alguém não achar a URL e ativar sem querer/dever. Chamada duas
+   vezes: no carregamento (se já estava logado numa aba antiga) e logo após o
+   login (se abriu a URL antes de logar).*/
+function tvModoChecar(){
+  if(document.body.classList.contains("tv-mode"))return; // já ativo, não reinicia
+  try{
+    const quer=new URLSearchParams(location.search).get("modotv")==="1";
+    const ehEduardo=sessionStorage.getItem("logged")==="1"&&sessionStorage.getItem("userKey")==="eduardocipriano";
+    if(quer&&ehEduardo)tvModoIniciar();
+  }catch(e){}
 }
 function sauDetalhe(nome){
   const c=(VG.saudeClientes||[]).find(x=>x.cliente===nome);if(!c)return;
@@ -9779,6 +9942,9 @@ function applyTheme(t){
     Chart.defaults.color=c;Chart.defaults.borderColor=g;
     if(typeof CH!=="undefined")Object.values(CH).forEach(ch=>{try{ch.update();}catch(e){}});
   }
+  // Mapa da Saúde do Cliente: se já estiver aberto, troca o tile pro tema
+  // novo na hora, sem esperar reabrir. Os pinos já estão em cache (SAU_PINOS).
+  if(typeof SAU_MAPA_ABERTO!=="undefined"&&SAU_MAPA_ABERTO&&typeof sauMapaDesenhar==="function")sauMapaDesenhar();
 }
 function toggleTheme(){
   const cur=document.documentElement.getAttribute("data-theme")==="dark"?"dark":"light";
@@ -9917,6 +10083,7 @@ function init(){
         if(!it||it.style.display!=="none")navTo(volta,it||null);
       }
     }catch(e){}
+    tvModoChecar(); // pega o caso de já estar logado (aba antiga reaberta)
     setTimeout(rtPing,2000);
   });
 }
