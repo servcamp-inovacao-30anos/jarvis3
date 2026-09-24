@@ -185,8 +185,18 @@ body.tv-mode .main{margin-right:38vw;}
 .tv-map-panel .tv-map-hdr{padding:14px 18px;color:#fff;display:flex;align-items:baseline;justify-content:space-between;gap:10px;background:linear-gradient(135deg,#0d1f35,#1e4d8c);flex-shrink:0;}
 .tv-map-panel .tv-map-hdr b{font-size:.92rem;letter-spacing:.2px;}
 .tv-map-panel .tv-map-hdr span{font-size:.66rem;color:#9db8dd;white-space:nowrap;}
-#tv-mapa{flex:1;width:100%;background:#e2e8f0;}
-.tv-map-panel .tv-map-leg{padding:9px 16px;background:#fff;font-size:.64rem;color:#64748b;display:flex;gap:12px;flex-wrap:wrap;align-items:center;border-top:1px solid #e2e8f0;flex-shrink:0;}
+#tv-mapa{flex:1;width:100%;background:#1a2332;}
+/* Atribuição do Leaflet discreta em fundo escuro: o padrão dele (caixa clara)
+   destoa do tile CartoDB Dark Matter. Vale pro Modo TV e pra Saúde do Cliente
+   quando a tela está no tema escuro. */
+.tv-map-panel .leaflet-control-attribution,
+html[data-theme="dark"] #sau-mapa .leaflet-control-attribution{
+  background:rgba(13,31,53,.72)!important;color:#9db8dd!important;
+}
+.tv-map-panel .leaflet-control-attribution a,
+html[data-theme="dark"] #sau-mapa .leaflet-control-attribution a{color:#c9dbf2!important;}
+html[data-theme="dark"] #sau-mapa{background:#1a2332;}
+.tv-map-panel .tv-map-leg{padding:9px 16px;background:#111a2b;font-size:.64rem;color:#9db0c9;display:flex;gap:12px;flex-wrap:wrap;align-items:center;border-top:1px solid #223148;flex-shrink:0;}
 @media (max-width:900px){.tv-map-panel{width:100vw;height:46vh;top:auto;bottom:0;box-shadow:0 -6px 24px rgba(0,0,0,.2);} body.tv-mode .main{margin-right:0;margin-bottom:46vh;}}
 .topbar{background:var(--wh);border-bottom:1px solid var(--g200);padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:52px;flex-shrink:0;}
 .tb-t{font-size:.95rem;font-weight:700;color:var(--g800);}
@@ -9102,6 +9112,19 @@ function sauMapaMostrar(){
     .then(j=>{ SAU_PINOS=(j&&j.pinos)||[]; sauMapaDesenhar(); })
     .catch(()=>{document.getElementById("sau-mapa").innerHTML='<div style="padding:40px;text-align:center;color:#dc2626;font-size:.78rem">Erro ao carregar os endereços.</div>';});
 }
+/* Tile escuro (CartoDB Dark Matter) pro mapa acompanhar o tema — claro usa o
+   OpenStreetMap de sempre. "forcarEscuro" ignora o tema da tela e usa sempre
+   o escuro (caso do Modo TV, que é sempre dark). */
+function mapaTile(forcarEscuro){
+  const escuro=forcarEscuro||document.documentElement.getAttribute("data-theme")==="dark";
+  return escuro
+    ? {url:"https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+       attr:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+       maxZoom:20}
+    : {url:"https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+       attr:'&copy; colaboradores do <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+       maxZoom:19};
+}
 function sauMapaDesenhar(){
   const el=document.getElementById("sau-mapa");
   if(!el||!SAU_PINOS)return;
@@ -9109,9 +9132,8 @@ function sauMapaDesenhar(){
   el.innerHTML="";
   if(SAU_MAPA){SAU_MAPA.remove();SAU_MAPA=null;}
   SAU_MAPA=L.map("sau-mapa",{scrollWheelZoom:false});   // roda do mouse rola a página, não o mapa
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
-    maxZoom:19, attribution:'&copy; colaboradores do <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-  }).addTo(SAU_MAPA);
+  const tile=mapaTile();
+  L.tileLayer(tile.url,{maxZoom:tile.maxZoom,attribution:tile.attr}).addTo(SAU_MAPA);
 
   const grupo=[];
   SAU_PINOS.forEach(p=>{
@@ -9172,9 +9194,8 @@ function tvMapaDesenhar(){
   el.innerHTML="";
   if(TV_MAPA){TV_MAPA.remove();TV_MAPA=null;}
   TV_MAPA=L.map("tv-mapa",{scrollWheelZoom:false,zoomControl:false});
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
-    maxZoom:19, attribution:'&copy; colaboradores do <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-  }).addTo(TV_MAPA);
+  const tile=mapaTile(true); // Modo TV é sempre escuro, não segue o tema da tela
+  L.tileLayer(tile.url,{maxZoom:tile.maxZoom,attribution:tile.attr}).addTo(TV_MAPA);
   const grupo=[];
   TV_PINOS.forEach(p=>{
     const cor=sauCor(p.saude);
@@ -9896,6 +9917,9 @@ function applyTheme(t){
     Chart.defaults.color=c;Chart.defaults.borderColor=g;
     if(typeof CH!=="undefined")Object.values(CH).forEach(ch=>{try{ch.update();}catch(e){}});
   }
+  // Mapa da Saúde do Cliente: se já estiver aberto, troca o tile pro tema
+  // novo na hora, sem esperar reabrir. Os pinos já estão em cache (SAU_PINOS).
+  if(typeof SAU_MAPA_ABERTO!=="undefined"&&SAU_MAPA_ABERTO&&typeof sauMapaDesenhar==="function")sauMapaDesenhar();
 }
 function toggleTheme(){
   const cur=document.documentElement.getAttribute("data-theme")==="dark"?"dark":"light";
