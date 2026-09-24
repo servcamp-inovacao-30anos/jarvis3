@@ -176,6 +176,18 @@ body{font-family:"Segoe UI",system-ui,sans-serif;background:var(--g50);display:f
 .btn-up:hover{background:rgba(255,255,255,.12);color:#fff;}
 #fu{display:none;}
 .main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+/* Modo TV: painel do mapa de clientes fixo ao lado da Visão Geral, pra TV 24h
+   do Eduardo. Ativa com ?modotv=1 na URL — sem item de menu, é kiosk mode. */
+.tv-map-panel{display:none;position:fixed;top:0;right:0;width:38vw;height:100vh;background:#0d1f35;z-index:500;flex-direction:column;box-shadow:-6px 0 24px rgba(0,0,0,.2);}
+body.tv-mode .tv-map-panel{display:flex;}
+body.tv-mode .sb,body.tv-mode .mob-header,body.tv-mode .mob-overlay{display:none!important;}
+body.tv-mode .main{margin-right:38vw;}
+.tv-map-panel .tv-map-hdr{padding:14px 18px;color:#fff;display:flex;align-items:baseline;justify-content:space-between;gap:10px;background:linear-gradient(135deg,#0d1f35,#1e4d8c);flex-shrink:0;}
+.tv-map-panel .tv-map-hdr b{font-size:.92rem;letter-spacing:.2px;}
+.tv-map-panel .tv-map-hdr span{font-size:.66rem;color:#9db8dd;white-space:nowrap;}
+#tv-mapa{flex:1;width:100%;background:#e2e8f0;}
+.tv-map-panel .tv-map-leg{padding:9px 16px;background:#fff;font-size:.64rem;color:#64748b;display:flex;gap:12px;flex-wrap:wrap;align-items:center;border-top:1px solid #e2e8f0;flex-shrink:0;}
+@media (max-width:900px){.tv-map-panel{width:100vw;height:46vh;top:auto;bottom:0;box-shadow:0 -6px 24px rgba(0,0,0,.2);} body.tv-mode .main{margin-right:0;margin-bottom:46vh;}}
 .topbar{background:var(--wh);border-bottom:1px solid var(--g200);padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:52px;flex-shrink:0;}
 .tb-t{font-size:.95rem;font-weight:700;color:var(--g800);}
 .tb-s{font-size:.67rem;color:var(--g400);margin-top:1px;}
@@ -863,6 +875,11 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
   <button class="sb-recolher" id="sbRecolher" onclick="navMiniToggle()">⬅ Recolher menu</button>
   <div class="sb-credit"><span>Desenvolvido por <b>Convert Vision</b></span></div>
 </aside>
+<div class="tv-map-panel" id="tvMapaPanel">
+  <div class="tv-map-hdr"><b>🗺️ Mapa de Clientes</b><span id="tvMapaAtualizado">carregando…</span></div>
+  <div id="tv-mapa"></div>
+  <div class="tv-map-leg" id="tv-mapa-leg"></div>
+</div>
 <div class="main">
   <div class="topbar">
     <div><div class="tb-t" id="pgTitle">Visão Geral</div><div class="tb-s" id="pgSub">Grupo ServCamp</div></div>
@@ -9129,6 +9146,66 @@ function sauMapaDesenhar(){
     +'<span style="color:#94a3b8">· bola maior = mais efetivos no local</span>'
     +'<span style="margin-left:auto">'+SAU_PINOS.length+' locais'+(nAprox?' · <span style="color:#b45309">'+nAprox+' aproximados</span>':'')+'</span>';
 }
+
+/* Mapa da TV (?modotv=1): painel fixo ao lado da Visão Geral, sempre visível
+   e carregando sozinho — sem botão, sem clique, feito pra tela 24h. Instância
+   própria (não reaproveita SAU_MAPA) pra não arriscar mexer no mapa da Saúde
+   do Cliente, que já tem sua própria lógica de redesenho ajustada. */
+var TV_MAPA=null, TV_PINOS=null;
+function tvMapaCarregar(){
+  const el=document.getElementById("tv-mapa");
+  if(!el)return;
+  if(typeof L==="undefined"){
+    el.innerHTML='<div style="padding:30px;text-align:center;color:#fca5a5;font-size:.76rem">Biblioteca do mapa não carregou. Recarregue a página.</div>';
+    return;
+  }
+  fetch("/api/hq?mapa=1")
+    .then(r=>r.json())
+    .then(j=>{ TV_PINOS=(j&&j.pinos)||[]; tvMapaDesenhar(); })
+    .catch(()=>{ el.innerHTML='<div style="padding:30px;text-align:center;color:#fca5a5;font-size:.76rem">Erro ao carregar os endereços.</div>'; });
+}
+function tvMapaDesenhar(){
+  const el=document.getElementById("tv-mapa");
+  if(!el||!TV_PINOS)return;
+  if(!TV_PINOS.length){el.innerHTML='<div style="padding:30px;text-align:center;color:#94a3b8;font-size:.76rem">Nenhum endereço geocodificado.</div>';return;}
+  el.innerHTML="";
+  if(TV_MAPA){TV_MAPA.remove();TV_MAPA=null;}
+  TV_MAPA=L.map("tv-mapa",{scrollWheelZoom:false,zoomControl:false});
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
+    maxZoom:19, attribution:'&copy; colaboradores do <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+  }).addTo(TV_MAPA);
+  const grupo=[];
+  TV_PINOS.forEach(p=>{
+    const cor=sauCor(p.saude);
+    const raio=p.efetivos>=10?11:p.efetivos>=4?8:6;
+    const m=L.circleMarker([p.lat,p.lon],{radius:raio,color:"#fff",weight:2,fillColor:cor,fillOpacity:.92}).addTo(TV_MAPA);
+    m.bindPopup(
+      '<div style="font-weight:800;font-size:.8rem;color:#0d1f35">'+_esc(p.cliente)+'</div>'
+      +'<div style="font-size:.72rem;margin-top:3px"><b style="color:'+cor+'">Saúde '+p.saude+'</b> · '+p.efetivos+' efetivo(s)</div>',
+      {maxWidth:260}
+    );
+    grupo.push([p.lat,p.lon]);
+  });
+  TV_MAPA.fitBounds(grupo,{padding:[20,20]});
+  setTimeout(()=>{try{TV_MAPA.invalidateSize();}catch(e){}},60);
+
+  const nAprox=TV_PINOS.filter(p=>p.precisao==="cidade"||p.precisao==="bairro").length;
+  const bola=c=>'<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'+c+';border:2px solid #fff;box-shadow:0 0 0 1px '+c+';vertical-align:-1px;margin-right:3px"></span>';
+  document.getElementById("tv-mapa-leg").innerHTML=
+    '<span>'+bola("#16a34a")+'70+</span><span>'+bola("#f59e0b")+'50-69</span><span>'+bola("#dc2626")+'<50</span>'
+    +'<span style="margin-left:auto">'+TV_PINOS.length+' locais'+(nAprox?' · '+nAprox+' aprox.':'')+'</span>';
+  const rot=document.getElementById("tvMapaAtualizado");
+  if(rot)rot.textContent="atualizado "+new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+}
+/* Ativa com ?modotv=1 na URL — kiosk mode, sem item de menu, pra não
+   aparecer pra ninguém que não seja a TV. Trava na Visão Geral e recarrega
+   o mapa a cada 10min sozinho, porque ninguém vai estar ali pra clicar. */
+function tvModoIniciar(){
+  document.body.classList.add("tv-mode");
+  navTo("visao",null);
+  tvMapaCarregar();
+  setInterval(tvMapaCarregar,10*60000);
+}
 function sauDetalhe(nome){
   const c=(VG.saudeClientes||[]).find(x=>x.cliente===nome);if(!c)return;
   const ex=document.getElementById("rdModal");if(ex)ex.remove();
@@ -9943,6 +10020,9 @@ function init(){
         var it=document.querySelector('.ni[data-pg="'+volta+'"]');
         if(!it||it.style.display!=="none")navTo(volta,it||null);
       }
+    }catch(e){}
+    try{
+      if(new URLSearchParams(location.search).get("modotv")==="1")tvModoIniciar();
     }catch(e){}
     setTimeout(rtPing,2000);
   });
