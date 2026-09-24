@@ -16,6 +16,9 @@
 //   MAIL_FROM  — opcional, nome exibido (padrão "Grupo Serv Camp <MAIL_USER>")
 //   MAIL_BCC   — opcional, cópia oculta de toda a cadência (padrão: MAIL_USER)
 //   CRON_SECRET — a Vercel manda como Bearer automaticamente
+//
+// Cópia oculta fixa: além do MAIL_BCC/MAIL_USER, gerencia@gruposervcamp.com.br
+// (diretoria) também recebe cópia oculta de todo e-mail automático, desde 24/09.
 
 const nodemailer = require("nodemailer");
 
@@ -151,7 +154,11 @@ async function enviarEmail(tx, para, assunto, html) {
   // (raw), um cabeçalho Bcc seria entregue junto e o cliente veria a cópia —
   // deixaria de ser oculta. No envelope, o destinatário nunca sabe.
   const bcc = process.env.MAIL_BCC || process.env.MAIL_USER;
-  const destinos = bcc && bcc !== para ? [para, bcc] : [para];
+  // Diretoria em cópia oculta em todo e-mail automático, a pedido do João
+  // (24/09). Fixo no código, não em env var, pra não depender de ninguém
+  // lembrar de configurar isso de novo numa próxima migração.
+  const DIRETORIA_BCC = "gerencia@gruposervcamp.com.br";
+  const destinos = [...new Set([para, bcc, DIRETORIA_BCC].filter(Boolean))];
 
   const info = await tx.sendMail({
     envelope: { from: process.env.MAIL_USER, to: destinos },
