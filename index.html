@@ -186,9 +186,16 @@ body.tv-mode .main{margin-right:38vw;}
 .tv-map-panel .tv-map-hdr b{font-size:.92rem;letter-spacing:.2px;}
 .tv-map-panel .tv-map-hdr span{font-size:.66rem;color:#9db8dd;white-space:nowrap;}
 #tv-mapa{flex:1;width:100%;background:#1a2332;}
+/* Mapa escuro sem depender de provedor externo: inverte só a camada de tiles
+   (.leaflet-tile-pane) do OpenStreetMap — pinos e popups ficam noutra camada
+   do Leaflet e não são afetados, continuam com as cores reais. */
+.tv-map-panel .leaflet-tile-pane,
+html[data-theme="dark"] #sau-mapa .leaflet-tile-pane{
+  filter:invert(1) hue-rotate(180deg) brightness(.95) contrast(.9);
+}
 /* Atribuição do Leaflet discreta em fundo escuro: o padrão dele (caixa clara)
-   destoa do tile CartoDB Dark Matter. Vale pro Modo TV e pra Saúde do Cliente
-   quando a tela está no tema escuro. */
+   destoa do mapa escurecido. Vale pro Modo TV e pra Saúde do Cliente quando a
+   tela está no tema escuro. */
 .tv-map-panel .leaflet-control-attribution,
 html[data-theme="dark"] #sau-mapa .leaflet-control-attribution{
   background:rgba(13,31,53,.72)!important;color:#9db8dd!important;
@@ -9112,18 +9119,16 @@ function sauMapaMostrar(){
     .then(j=>{ SAU_PINOS=(j&&j.pinos)||[]; sauMapaDesenhar(); })
     .catch(()=>{document.getElementById("sau-mapa").innerHTML='<div style="padding:40px;text-align:center;color:#dc2626;font-size:.78rem">Erro ao carregar os endereços.</div>';});
 }
-/* Tile escuro (CartoDB Dark Matter) pro mapa acompanhar o tema — claro usa o
-   OpenStreetMap de sempre. "forcarEscuro" ignora o tema da tela e usa sempre
-   o escuro (caso do Modo TV, que é sempre dark). */
-function mapaTile(forcarEscuro){
-  const escuro=forcarEscuro||document.documentElement.getAttribute("data-theme")==="dark";
-  return escuro
-    ? {url:"https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-       attr:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-       maxZoom:20}
-    : {url:"https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-       attr:'&copy; colaboradores do <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-       maxZoom:19};
+/* Mesmo tile do OpenStreetMap sempre — o escurecido vem de filtro CSS na
+   camada de tiles (.leaflet-tile-pane), não de trocar de provedor. Testei
+   CartoDB Dark Matter sem chave e a Carto passou a exigir cadastro/API key
+   (mapa saiu com aviso "API KEY REQUIRED" por cima) — sem depender de conta
+   de terceiro, o filtro inverte só o tile, os pinos/popups continuam com as
+   cores reais (a classe .leaflet-tile-pane não inclui marcadores). */
+function mapaTile(){
+  return {url:"https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    attr:'&copy; colaboradores do <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom:19};
 }
 function sauMapaDesenhar(){
   const el=document.getElementById("sau-mapa");
@@ -9194,7 +9199,7 @@ function tvMapaDesenhar(){
   el.innerHTML="";
   if(TV_MAPA){TV_MAPA.remove();TV_MAPA=null;}
   TV_MAPA=L.map("tv-mapa",{scrollWheelZoom:false,zoomControl:false});
-  const tile=mapaTile(true); // Modo TV é sempre escuro, não segue o tema da tela
+  const tile=mapaTile();
   L.tileLayer(tile.url,{maxZoom:tile.maxZoom,attribution:tile.attr}).addTo(TV_MAPA);
   const grupo=[];
   TV_PINOS.forEach(p=>{
