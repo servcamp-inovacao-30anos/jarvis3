@@ -16,6 +16,9 @@
 //   MAIL_FROM  — opcional, nome exibido (padrão "Grupo Serv Camp <MAIL_USER>")
 //   MAIL_BCC   — opcional, cópia oculta de toda a cadência (padrão: MAIL_USER)
 //   CRON_SECRET — a Vercel manda como Bearer automaticamente
+//
+// Cópia oculta fixa: além do MAIL_BCC/MAIL_USER, gerencia@gruposervcamp.com.br
+// (diretoria) também recebe cópia oculta de todo e-mail automático, desde 24/09.
 
 const nodemailer = require("nodemailer");
 
@@ -40,6 +43,68 @@ function corpoEmail(etapa, nome) {
   }[etapa];
   const html = txt.split("\n").map(l => l.trim() ? `<p style="margin:0 0 12px">${l}</p>` : "").join("");
   return html + `<p style="margin:18px 0 0;color:#0d1f35"><b>Grupo Serv Camp</b><br><span style="color:#64748b;font-size:13px">Terceirização de Serviços</span></p>`;
+}
+
+// Busca os e-mails REALMENTE enviados nos últimos `dias`, com quem respondeu
+// depois. Usada tanto pelo diagnóstico (?historico=1) quanto pelo resumo
+// semanal por e-mail (?relatorio=1) — mesma consulta, dois formatos de saída.
+async function buscarHistorico(sb, SUPABASE_URL, hoje, dias) {
+  const desde = new Date(hoje.getTime() - dias * 86400000).toISOString();
+  const lr = await fetch(
+    `${SUPABASE_URL}/rest/v1/com_cadencia_log?canal=eq.EMAIL&status=eq.enviado&enviado_em=gte.${desde}&select=proposta_id,etapa,enviado_em&order=enviado_em.desc`,
+    { headers: sb }
+  );
+  if (!lr.ok) throw new Error("Falha ao consultar histórico: " + await lr.text());
+  const envios = await lr.json();
+  const idsUnicos = [...new Set(envios.map(e => e.proposta_id))];
+  let propsMap = {};
+  if (idsUnicos.length) {
+    const pr = await fetch(`${SUPABASE_URL}/rest/v1/com_propostas?id=in.(${idsUnicos.join(",")})&select=id,nome,email,respondido_em`, { headers: sb });
+    if (pr.ok) (await pr.json()).forEach(p => { propsMap[p.id] = p; });
+  }
+  const lista = envios.map(e => {
+    const p = propsMap[e.proposta_id] || {};
+    return {
+      cliente: p.nome || "—",
+      email: p.email || "—",
+      etapa: e.etapa,
+      dataHora: new Date(e.enviado_em).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }),
+      respondeu: !!(p.respondido_em)
+    };
+  });
+  const propostasQueResponderam = idsUnicos.filter(id => propsMap[id] && propsMap[id].respondido_em).length;
+  return { totalEnvios: lista.length, propostasContactadas: idsUnicos.length, propostasQueResponderam, lista };
+}
+
+// Monta o corpo do e-mail de resumo semanal (tabela + números), com o mesmo
+// visual dos e-mails da cadência (navy + verde pra "respondeu").
+function corpoRelatorio(r, inicioSemana, fimSemana) {
+  const linhas = r.lista.map(l => `<tr>
+    <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0"><b style="color:#0f172a">${l.cliente}</b><br><span style="color:#64748b;font-size:12px">${l.email}</span></td>
+    <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:center;color:#1e4d8c;font-weight:700">Msg ${l.etapa}</td>
+    <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;white-space:nowrap;color:#475569">${l.dataHora}</td>
+    <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:center">${l.respondeu ? '<span style="color:#16a34a;font-weight:700">✓ Respondeu</span>' : '<span style="color:#94a3b8">—</span>'}</td>
+  </tr>`).join("");
+  return `
+    <p style="margin:0 0 4px;color:#0d1f35;font-size:19px;font-weight:800">Resumo semanal — Cadência Comercial</p>
+    <p style="margin:0 0 18px;color:#64748b;font-size:13px">${inicioSemana} a ${fimSemana}</p>
+    <table style="border-collapse:separate;border-spacing:10px 0;margin:0 0 8px">
+      <tr>
+        <td style="padding:10px 16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px"><b style="font-size:20px;color:#0d1f35">${r.totalEnvios}</b><br><span style="font-size:11px;color:#64748b">e-mails enviados</span></td>
+        <td style="padding:10px 16px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px"><b style="font-size:20px;color:#0d1f35">${r.propostasContactadas}</b><br><span style="font-size:11px;color:#64748b">propostas contactadas</span></td>
+        <td style="padding:10px 16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px"><b style="font-size:20px;color:#16a34a">${r.propostasQueResponderam}</b><br><span style="font-size:11px;color:#64748b">responderam</span></td>
+      </tr>
+    </table>
+    <table style="border-collapse:collapse;width:100%;font-size:13px;margin-top:14px">
+      <thead><tr style="text-align:left;color:#94a3b8;font-size:11px;text-transform:uppercase">
+        <th style="padding:8px 10px;border-bottom:2px solid #e2e8f0">Cliente</th>
+        <th style="padding:8px 10px;border-bottom:2px solid #e2e8f0;text-align:center">Etapa</th>
+        <th style="padding:8px 10px;border-bottom:2px solid #e2e8f0">Enviado em</th>
+        <th style="padding:8px 10px;border-bottom:2px solid #e2e8f0;text-align:center">Retorno</th>
+      </tr></thead>
+      <tbody>${linhas || '<tr><td colspan="4" style="padding:14px;color:#94a3b8">Nenhum e-mail enviado nesta semana.</td></tr>'}</tbody>
+    </table>
+    <p style="margin:18px 0 0;color:#0d1f35"><b>Grupo Serv Camp</b><br><span style="color:#64748b;font-size:13px">Relatório automático semanal — não precisa responder este e-mail</span></p>`;
 }
 
 // Transporter SMTP (Locaweb). Criado uma vez por invocação e reaproveitado.
@@ -151,7 +216,11 @@ async function enviarEmail(tx, para, assunto, html) {
   // (raw), um cabeçalho Bcc seria entregue junto e o cliente veria a cópia —
   // deixaria de ser oculta. No envelope, o destinatário nunca sabe.
   const bcc = process.env.MAIL_BCC || process.env.MAIL_USER;
-  const destinos = bcc && bcc !== para ? [para, bcc] : [para];
+  // Diretoria em cópia oculta em todo e-mail automático, a pedido do João
+  // (24/09). Fixo no código, não em env var, pra não depender de ninguém
+  // lembrar de configurar isso de novo numa próxima migração.
+  const DIRETORIA_BCC = "gerencia@gruposervcamp.com.br";
+  const destinos = [...new Set([para, bcc, DIRETORIA_BCC].filter(Boolean))];
 
   const info = await tx.sendMail({
     envelope: { from: process.env.MAIL_USER, to: destinos },
@@ -471,6 +540,65 @@ module.exports = async function handler(req, res) {
   }
 
   const hoje = new Date(); hoje.setUTCHours(0, 0, 0, 0);
+
+  // ?proximos=1 → mesma lógica de "quem está na fila", mas para TODAS as
+  // candidatas (não só as vencidas hoje), com quantos dias faltam pra cada
+  // uma. Só leitura: não envia, não grava. Existe pra responder "qual vai
+  // ser o próximo e-mail de verdade, pra eu perguntar pro cliente se chegou".
+  if (req.query && (req.query.proximos === "1" || req.query.proximos === "true")) {
+    const fila = props.map(p => {
+      const etapaAtual = p.cadencia_etapa || 0;
+      const ancora = p.cadencia_reiniciada_em || p.data_envio_proposta;
+      let proxima, necessario, baseISO;
+      if (etapaAtual < 2) { proxima = 2; necessario = DIAS_ANCORA_MSG2; baseISO = ancora; }
+      else { proxima = etapaAtual + 1; necessario = GAP_DESDE_ANTERIOR[proxima]; baseISO = (ultimoEnvioPorProposta[p.id] && ultimoEnvioPorProposta[p.id][etapaAtual]) || ancora; }
+      const base = new Date(String(baseISO).slice(0, 10) + "T00:00:00Z");
+      const diasPassados = Math.floor((hoje - base) / 86400000);
+      const diasRestantes = necessario - diasPassados; // <= 0 já venceu, dispara no próximo cron
+      const prevista = new Date(hoje.getTime() + Math.max(diasRestantes, 0) * 86400000);
+      return { nome: p.nome, email: p.email, etapaAtual, proximaEtapa: proxima, diasRestantes, dataPrevista: prevista.toISOString().slice(0, 10) };
+    }).sort((a, b) => a.diasRestantes - b.diasRestantes);
+    return res.status(200).json({ ok: true, candidatas: props.length, fila: fila.slice(0, 15) });
+  }
+
+  // ?historico=1 → últimos 10 dias de e-mails REALMENTE enviados (não a fila,
+  // o que já saiu de fato), com data/hora e quantos desses clientes
+  // responderam depois. Só leitura: não envia, não grava. Existe pra alguém
+  // revisar o que foi mandado em nome dela.
+  if (req.query && (req.query.historico === "1" || req.query.historico === "true")) {
+    try {
+      const r2 = await buscarHistorico(sb, SUPABASE_URL, hoje, 10);
+      return res.status(200).json({ ok: true, periodo: "últimos 10 dias", ...r2 });
+    } catch (e) {
+      return res.status(502).json({ ok: false, erro: String((e && e.message) || e) });
+    }
+  }
+
+  // ?relatorio=1 → resumo dos últimos 7 dias, por E-MAIL DE VERDADE, pra
+  // Comercial e Diretoria (não é diagnóstico, envia mesmo). Roda toda
+  // segunda-feira via Cron (vercel.json), pra ela ficar ciente do que foi
+  // mandado automaticamente em nome dela.
+  if (req.query && (req.query.relatorio === "1" || req.query.relatorio === "true")) {
+    try {
+      const r2 = await buscarHistorico(sb, SUPABASE_URL, hoje, 7);
+      const inicioSemana = new Date(hoje.getTime() - 7 * 86400000).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
+      const fimSemana = hoje.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
+      const destinatarios = ["comercial@gruposervcamp.com.br", "gerencia@gruposervcamp.com.br"];
+      const tx = mailer();
+      const info = await tx.sendMail({
+        from: process.env.MAIL_FROM || `"Grupo Serv Camp" <${process.env.MAIL_USER}>`,
+        to: destinatarios.join(", "),
+        subject: `Resumo semanal da Cadência Comercial — ${inicioSemana} a ${fimSemana}`,
+        html: corpoRelatorio(r2, inicioSemana, fimSemana)
+      });
+      tx.close();
+      const ok = !!(info && info.accepted && info.accepted.length);
+      return res.status(200).json({ ok, enviadoPara: destinatarios, periodo: `${inicioSemana} a ${fimSemana}`, ...r2 });
+    } catch (e) {
+      return res.status(502).json({ ok: false, erro: String((e && e.message) || e) });
+    }
+  }
+
   const resultado = { candidatas: props.length, enviadas: 0, falhas: 0, detalhes: [] };
   if (dry) resultado.modo = "SIMULAÇÃO — nenhum e-mail enviado, nada gravado";
   let tx = null;
@@ -535,5 +663,29 @@ module.exports = async function handler(req, res) {
   }
 
   if (tx) tx.close();
+
+  // Resumo semanal: piggyback no cron diário das 12h, sem precisar de um 3º
+  // cron (o Hobby da Vercel limita a 2). Só dispara às segundas-feiras
+  // (UTC), e só na execução de verdade — não em ?dry=1.
+  if (!dry && hoje.getUTCDay() === 1) {
+    try {
+      const r2 = await buscarHistorico(sb, SUPABASE_URL, hoje, 7);
+      const inicioSemana = new Date(hoje.getTime() - 7 * 86400000).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
+      const fimSemana = hoje.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
+      const destinatarios = ["comercial@gruposervcamp.com.br", "gerencia@gruposervcamp.com.br"];
+      const tx2 = mailer();
+      const info = await tx2.sendMail({
+        from: process.env.MAIL_FROM || `"Grupo Serv Camp" <${process.env.MAIL_USER}>`,
+        to: destinatarios.join(", "),
+        subject: `Resumo semanal da Cadência Comercial — ${inicioSemana} a ${fimSemana}`,
+        html: corpoRelatorio(r2, inicioSemana, fimSemana)
+      });
+      tx2.close();
+      resultado.resumoSemanal = { ok: !!(info && info.accepted && info.accepted.length), enviadoPara: destinatarios };
+    } catch (e) {
+      resultado.resumoSemanal = { ok: false, erro: String((e && e.message) || e) };
+    }
+  }
+
   return res.status(200).json({ ok: true, ...resultado });
 };
