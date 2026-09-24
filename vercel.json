@@ -1,7 +1,8 @@
 {
   "crons": [
     { "path": "/api/comercial-cron?respostas=1", "schedule": "0 11 * * *" },
-    { "path": "/api/comercial-cron", "schedule": "0 12 * * *" }
+    { "path": "/api/comercial-cron", "schedule": "0 12 * * *" },
+    { "path": "/api/comercial-cron?relatorio=1", "schedule": "0 11 * * 1" }
   ],
   "headers": [
     {
