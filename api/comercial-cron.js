@@ -523,7 +523,8 @@ module.exports = async function handler(req, res) {
         cliente: p.nome || "—",
         email: p.email || "—",
         etapa: e.etapa,
-        dataHora: new Date(e.enviado_em).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })
+        dataHora: new Date(e.enviado_em).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }),
+        respondeu: !!(p.respondido_em)
       };
     });
     const propostasQueResponderam = idsUnicos.filter(id => propsMap[id] && propsMap[id].respondido_em).length;
