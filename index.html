@@ -1277,6 +1277,8 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
         #pt-sec .pt-link{color:var(--b7);font-weight:800;cursor:pointer;text-decoration:underline dotted}
         #pt-sec .pt-grade{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px 18px;margin-bottom:12px}
         #pt-sec .pt-reinc td{background:#fff5f5}
+        #pt-sec input.pt-in{padding:7px 10px;border:1px solid var(--g200);border-radius:8px;font:inherit;font-size:.78rem;width:190px;outline:none;background:var(--wh)}
+        #pt-sec input.pt-in:focus{border-color:var(--b5)}
         #pt-sec .pt-sub{font-size:.66rem;color:var(--g400);margin:10px 0 6px;font-weight:800;text-transform:uppercase;letter-spacing:.4px}
       </style>
       <div class="sec-hdr">
@@ -1287,6 +1289,7 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
           <button class="pt-btn" id="pt-b-config" hidden onclick="ptConfigAbrir()">⚙️ Configurar</button>
           <button class="pt-btn" id="pt-b-contatos" hidden onclick="ptContatosAbrir()">📇 Base de contatos</button>
           <button class="pt-btn" id="pt-b-processar" hidden onclick="ptProcessar()">🔄 Reprocessar planilha</button>
+          <button class="pt-btn" id="pt-b-teste" hidden onclick="ptTesteAbrir()">🧪 Envio de teste</button>
           <button class="pt-btn" onclick="ptCarregar()">↻ Atualizar</button>
         </div>
       </div>
@@ -1323,6 +1326,28 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
 
       <div class="det-panel" id="pt-envio"><div class="det-hdr"><span class="det-title">Confirmar envio de SMS</span><button class="det-close" onclick="ptEnvioFechar()">✕</button></div>
         <div class="pt-det-body" id="pt-envio-b"></div>
+      </div>
+
+      <div class="det-panel" id="pt-teste"><div class="det-hdr"><span class="det-title">Envio de teste — 1 SMS para um colaborador</span><button class="det-close" onclick="ptTesteFechar()">✕</button></div>
+        <div class="pt-det-body">
+          <div class="pt-bar" style="margin-bottom:10px">
+            <input type="text" class="pt-in" id="pt-te-re" placeholder="RE do colaborador" inputmode="numeric" onkeydown="if(event.key==='Enter')ptTesteCarregar()">
+            <button class="pt-btn pt-pri" onclick="ptTesteCarregar()">Carregar</button>
+            <span class="sk-sub">O SMS sai de verdade pelo provedor configurado e gasta cota. Não entra na fila nem nos indicadores.</span>
+          </div>
+          <div id="pt-te-info"></div>
+          <div id="pt-te-form" hidden>
+            <div class="pt-sub">Telefone de destino</div>
+            <div class="pt-bar"><input type="tel" class="pt-in" id="pt-te-tel" placeholder="(19) 99876-5432" oninput="ptTesteContar()"><span class="sk-sub" id="pt-te-tel-info"></span></div>
+            <div class="pt-sub">Mensagem</div>
+            <textarea class="pt-ed" id="pt-te-txt" oninput="ptTesteContar()"></textarea>
+            <div class="pt-bar" style="justify-content:space-between;margin-top:8px">
+              <span class="pt-cont" id="pt-te-cont"></span>
+              <span class="pt-bar"><button class="pt-btn" onclick="ptTesteRestaurar()">Voltar ao texto sugerido</button><button class="pt-btn pt-pri" id="pt-te-enviar" onclick="ptTesteEnviar()">📨 Enviar SMS de teste</button></span>
+            </div>
+            <div id="pt-te-avisos"></div>
+          </div>
+        </div>
       </div>
 
       <div class="ts">
@@ -4098,6 +4123,7 @@ function ptRenderCabecalho(){
   document.getElementById("pt-b-config").hidden=!PT.pode;
   document.getElementById("pt-b-contatos").hidden=!PT.pode;
   document.getElementById("pt-b-processar").hidden=!PT.pode;
+  document.getElementById("pt-b-teste").hidden=!PT.pode;
 }
 function ptRenderKpis(){
   const el=document.getElementById("pt-kpis"),r=PT.comp&&PT.comp.resumo;if(!el||!r)return;
@@ -4189,17 +4215,20 @@ function ptEditorAbrir(id){
   ptEditorContar();
   const p=document.getElementById("pt-editor");p.classList.add("open");p.scrollIntoView({behavior:"smooth",block:"center"});
 }
-function ptEditorContar(){
-  const t=document.getElementById("pt-ed-txt").value,a=ptAnalisarSMS(t);
-  const c=document.getElementById("pt-ed-cont");
+// Contador e avisos do texto de um SMS; usado pelo editor e pelo envio de teste.
+function ptContarTexto(t,contId,avisosId){
+  const a=ptAnalisarSMS(t);
+  const c=document.getElementById(contId);
   c.textContent=`${a.caracteres} caracteres · ${a.segmentos} SMS`;
   c.classList.toggle("pt-amarelo",a.segmentos>1||a.codificacao==="UCS-2");
   const av=[];
   if(a.codificacao==="UCS-2")av.push("Tem acento ou caractere especial: o limite caiu de 160 para 70 caracteres por SMS.");
   if(a.segmentos>1)av.push(`Passou de 1 SMS: esta orientação vai ocupar ${a.segmentos} SMS da cota.`);
   if(PT_PROIBIDO.test(t.normalize("NFD").replace(/[̀-ͯ]/g,"")))av.push("A orientação não pode mencionar custo, hora extra, pagamento ou desconto. O servidor vai recusar este texto.");
-  document.getElementById("pt-ed-avisos").innerHTML=av.map(x=>`<div class="pt-alerta">⚠ ${_esc(x)}</div>`).join("");
+  document.getElementById(avisosId).innerHTML=av.map(x=>`<div class="pt-alerta">⚠ ${_esc(x)}</div>`).join("");
+  return a;
 }
+function ptEditorContar(){ptContarTexto(document.getElementById("pt-ed-txt").value,"pt-ed-cont","pt-ed-avisos");}
 function ptEditorSalvar(){
   const l=PT.editando;if(!l)return;
   ptPedir("PATCH","mensagem",{id:l.id,texto_final:document.getElementById("pt-ed-txt").value}).then(j=>{ptEditorFechar();ptToast(`Texto salvo · ${j.segmentos} SMS`);ptFilaCarregar();}).catch(e=>alert(e.message));
@@ -4391,6 +4420,62 @@ function ptEnvioRodar(corpo,acum){
     if(j.parado_por)m+=` · lote interrompido: ${ptMotivo(j.parado_por)}`;
     ptToast(m);PT.sel.clear();ptCarregar();
   }).catch(e=>{alert(e.message);ptEnvioFechar();ptCarregar();});
+}
+
+/* envio de teste: 1 SMS avulso para um RE (só aprovadores) */
+// Mesma regra do servidor (telefoneDeTeste): celular brasileiro, com ou sem +55.
+function ptTelefoneTeste(v){let d=String(v||"").replace(/\D/g,"");if(d.length===10||d.length===11)d="55"+d;return /^55[1-9][1-9]9\d{8}$/.test(d)?"+"+d:null;}
+function ptTesteAbrir(){
+  PT.teste=null;
+  document.getElementById("pt-te-info").innerHTML="";
+  document.getElementById("pt-te-form").hidden=true;
+  const p=document.getElementById("pt-teste");p.classList.add("open");p.scrollIntoView({behavior:"smooth",block:"center"});
+  document.getElementById("pt-te-re").focus();
+}
+function ptTesteFechar(){PT.teste=null;document.getElementById("pt-teste").classList.remove("open");}
+function ptTesteCarregar(){
+  const re=document.getElementById("pt-te-re").value.trim();
+  if(!re){alert("Informe o RE do colaborador.");return;}
+  const info=document.getElementById("pt-te-info");
+  info.innerHTML='<div class="nd">Carregando…</div>';
+  document.getElementById("pt-te-form").hidden=true;
+  ptPedir("GET","teste",undefined,"re="+encodeURIComponent(re)).then(j=>{
+    PT.teste=j;
+    const c=j.colaborador,campo=(lbl,v)=>`<div><div class="sk-lbl">${lbl}</div><div style="font-size:.78rem;font-weight:700;color:var(--b9)">${v}</div></div>`;
+    const tel=j.telefone?_esc(j.telefone)+(j.tipo_telefone?` <span class="sk-sub">(${_esc(String(j.tipo_telefone).toLowerCase())})</span>`:""):"—";
+    const cota=j.cota?`${j.cota.hoje.usado}/${j.cota.hoje.limite} hoje · ${j.cota.mes.usado}/${j.cota.mes.limite} no mês`:"—";
+    const oc=(j.ultimas_ocorrencias||[]).map(x=>`<tr><td class="tdb">${ptDiaLongo(x.data_jornada)}</td><td>${_esc(PT_TIPO[x.tipo]||x.tipo)}</td><td>${_esc(x.previsto||"—")}</td><td>${_esc(x.marcado||"—")}</td><td>${ptMin(x.minutos)}</td></tr>`).join("");
+    const prov=j.provedor.nome==="mock"?`<div class="pt-alerta">Modo simulação (SMS_PROVIDER=mock): nenhum SMS real sai.</div>`
+      :j.provedor.nome==="desligado"?`<div class="pt-alerta">Envio de SMS desligado (SMS_PROVIDER vazio): nada vai sair.</div>`:"";
+    info.innerHTML=prov+
+      `<div class="pt-grade">${campo("Colaborador",_esc(c.nome||"—")+" · RE "+c.re)}${campo("Cargo",_esc(c.cargo||"—"))}${campo("Posto atual",_esc(c.posto||"—"))}${campo("Supervisor",_esc(c.supervisor||"—"))}${campo("Telefone na base",tel+(j.bloqueio?" "+ptSelo([ptMotivo(j.bloqueio),"pt-b-re"]):""))}${campo("Situação",c.no_quadro_ativo?ptSelo(["no quadro ativo","pt-b-gr"]):ptSelo(["fora do quadro ativo","pt-b-re"]))}${campo("Provedor",_esc(PT_PROVEDOR[j.provedor.nome]||j.provedor.nome))}${campo("Cota de SMS",cota)}</div>`+
+      `<div class="pt-sub">Últimas ocorrências</div><div class="pt-tbl">${oc?`<table><thead><tr><th>Data</th><th>Tipo</th><th>Previsto</th><th>Marcado</th><th>Dif.</th></tr></thead><tbody>${oc}</tbody></table>`:'<div class="nd">Nenhuma ocorrência registrada — o texto sugerido é um aviso de teste.</div>'}</div>`;
+    document.getElementById("pt-te-tel").value=j.telefone&&!j.bloqueio?j.telefone:"";
+    document.getElementById("pt-te-txt").value=j.sugestao.texto;
+    document.getElementById("pt-te-form").hidden=false;
+    document.getElementById("pt-te-enviar").disabled=j.provedor.nome==="desligado";
+    ptTesteContar();
+  }).catch(e=>{PT.teste=null;info.innerHTML=`<div class="pt-alerta">⚠ ${_esc(e.message)}</div>`;});
+}
+function ptTesteContar(){
+  ptContarTexto(document.getElementById("pt-te-txt").value,"pt-te-cont","pt-te-avisos");
+  const v=document.getElementById("pt-te-tel").value,e=ptTelefoneTeste(v);
+  const j=PT.teste,i=document.getElementById("pt-te-tel-info");
+  i.textContent=!v.trim()?"Digite um celular com DDD.":!e?"Não parece um celular brasileiro com DDD.":j&&j.telefone&&e!==j.telefone?"Diferente do telefone da base: o SMS vai para este número.":"";
+}
+function ptTesteRestaurar(){if(PT.teste){document.getElementById("pt-te-txt").value=PT.teste.sugestao.texto;ptTesteContar();}}
+function ptTesteEnviar(){
+  const j=PT.teste;if(!j)return;
+  const tel=ptTelefoneTeste(document.getElementById("pt-te-tel").value);
+  if(!tel){alert("Telefone inválido: use um celular com DDD, por exemplo (19) 99876-5432.");return;}
+  const texto=document.getElementById("pt-te-txt").value,a=ptAnalisarSMS(texto.trim());
+  const c=j.colaborador;
+  if(!confirm(`Enviar ${a.segmentos} SMS de teste para ${tel}?\n\nColaborador: ${c.nome||"—"} · RE ${c.re}\nProvedor: ${PT_PROVEDOR[j.provedor.nome]||j.provedor.nome}\n\n${texto.trim()}`))return;
+  const b=document.getElementById("pt-te-enviar");b.disabled=true; // um clique só
+  ptPedir("POST","teste",{re:c.re,telefone:tel,texto,confirmar:true}).then(r=>{
+    ptToast(`SMS de teste enviado para ${tel} · ${r.segmentos} SMS`+(r.provedor==="mock"?" (simulação)":""));
+    ptCarregar();
+  }).catch(e=>alert("Não enviado: "+e.message)).finally(()=>{b.disabled=false;});
 }
 
 /* configuração e modelos de mensagem (só aprovadores salvam) */

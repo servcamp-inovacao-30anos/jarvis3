@@ -740,6 +740,37 @@ function agruparReconciliacao(ocorrencias, ativos, normNome) {
     .sort((a, b) => b.ocorrencias - a.ocorrencias || String(a.nome).localeCompare(String(b.nome)));
 }
 
+// ── Envio de teste ──────────────────────────────────────────────────────────
+// Um SMS avulso para um RE, disparado à mão por um aprovador. Não vira
+// pt_mensagens: teste não entra em indicador, ficha nem reincidência.
+
+// Número digitado na tela de teste → E.164, ou null se não for celular
+// brasileiro. Aceita com ou sem +55, com ou sem máscara.
+function telefoneDeTeste(v) {
+  let d = String(v == null ? "" : v).replace(/\D/g, "");
+  if (d.length === 10 || d.length === 11) d = "55" + d;
+  const e164 = "+" + d;
+  return CELULAR_BR.test(e164) ? e164 : null;
+}
+
+// Texto que a tela de teste já traz preenchido: a orientação do dia mais
+// recente com ocorrência, com os modelos em uso; sem ocorrência, um aviso
+// neutro de teste. Sem acento, para caber em 1 SMS.
+function textoDeTeste(re, nome, ocorrencias, modelos) {
+  const oc = (ocorrencias || []).filter(o => !o.is_test && (o.tipo === "EARLY_ENTRY" || o.tipo === "LATE_EXIT"));
+  if (oc.length) {
+    const dia = oc.map(o => String(o.data_jornada).slice(0, 10)).sort().pop();
+    const lista = oc.filter(o => String(o.data_jornada).slice(0, 10) === dia).map(o => ({ ...o, data_jornada: dia, nome: o.nome || nome }));
+    const m = montarMensagem(lista, { ...MODELOS_PADRAO, ...(modelos || {}) });
+    return { origem: "ocorrencia", data_jornada: dia, template_id: m.template_id, texto: m.texto_gerado };
+  }
+  const primeiro = primeiroNome(nome || "");
+  return {
+    origem: "padrao", data_jornada: null, template_id: null,
+    texto: `SERVCAMP | TESTE DE ENVIO\nOla${primeiro ? ", " + primeiro : ""}. Esta e uma mensagem de teste do sistema de orientacao de ponto. Nao e preciso responder. RE ${re}.`
+  };
+}
+
 // ── Validação humana ────────────────────────────────────────────────────────
 // Devolvem null quando pode, ou o código do motivo quando não pode.
 
@@ -894,6 +925,8 @@ module.exports = {
   renderizar,
   primeiroNome,
   situacaoTelefone,
+  telefoneDeTeste,
+  textoDeTeste,
   planejarMensagens,
   TOLERANCIA_PADRAO_MIN,
   classificar,

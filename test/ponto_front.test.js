@@ -47,6 +47,15 @@ test("a tela avisa sobre os mesmos termos que o servidor recusa", () => {
   assert.equal(daTela.flags, R.PROIBIDO_NA_MENSAGEM.flags);
 });
 
+test("o envio de teste aceita na tela os mesmos telefones que o servidor", () => {
+  const m = html.match(/function ptTelefoneTeste\(v\)\{.*\}\n/);
+  assert.ok(m, "ptTelefoneTeste não encontrado no index.html");
+  const ctx = vm.createContext({});
+  vm.runInContext(m[0] + "this.f = ptTelefoneTeste;", ctx);
+  const casos = ["(19) 99876-5432", "19998765432", "+55 19 99876-5432", "5519998765432", "1932345678", "(19) 3234-5678", "0019998765432", "", null, "abc", "11 9 1234 5678", "+55 01 99876-5432"];
+  for (const t of casos) assert.equal(ctx.f(t), R.telefoneDeTeste(t), String(t));
+});
+
 test("a tela só envia as colunas que o servidor aceita na base de contatos", () => {
   const m = html.match(/const PT_COLS_CONTATO=(\[[^\]]*\]);/);
   assert.ok(m, "PT_COLS_CONTATO não encontrado no index.html");

@@ -7,7 +7,7 @@
 //       GET competencia · fila · ocorrencias · ficha · reconciliacao · quota · config
 //     só aprovadores:
 //       GET/POST contatos · POST processar · POST aprovar · POST rejeitar
-//       PATCH mensagem · PATCH config · POST enviar
+//       PATCH mensagem · PATCH config · POST enviar · GET/POST teste
 // E o api/import.js chama materializar() a cada planilha recebida.
 //
 // As regras moram em _ponto_regras.js (puras, testadas). Aqui fica só o que
@@ -18,7 +18,7 @@ const _auth = require("./_auth");
 
 // Quem pode aprovar, enviar e mexer na base de contatos. A checagem é AQUI, no
 // servidor: esconder o botão no front é conveniência, não segurança.
-const APROVADORES = new Set([]);
+const APROVADORES = new Set(["joaoygor"]);
 
 function usuarioDoToken(req) {
   const secret = process.env.AUTH_SECRET;
@@ -519,6 +519,75 @@ async function enviarMensagens({ res, db, ator, body }) {
   });
 }
 
+// ── envio de teste: só aprovadores ──────────────────────────────────────────
+// GET  teste?re=                          → dados do colaborador e texto sugerido
+// POST teste { re, telefone, texto, confirmar: true } → manda 1 SMS avulso
+//
+// Não cria pt_mensagens (teste não entra em indicador nem na ficha), mas gasta
+// cota como qualquer envio e fica no pt_auditoria. O telefone pode ser trocado
+// na tela — para testar no próprio celular antes de mandar ao colaborador.
+
+async function dadosDoTeste(db, re) {
+  const oc = await db.listar(`pt_ocorrencias?select=${CAMPOS_OCORRENCIA}&re=eq.${re}&is_test=eq.false&order=data_jornada.desc,id.desc`);
+  const contato = (await db.obter(`pt_contatos?select=re,nome_cadastro,telefone_e164,tipo_telefone,enviavel&re=eq.${re}`))[0] || null;
+  const ativo = (await ativosDaUltimaPlanilha(db)).find(a => R.normRE(a.RE) === re) || null;
+  const nome = (ativo && ativo.NOME) || (oc[0] && oc[0].nome) || (contato && contato.nome_cadastro) || null;
+  return { oc, contato, ativo, nome };
+}
+
+async function verTeste({ req, res, db }) {
+  const re = R.normRE(req.query.re);
+  if (!/^\d{1,15}$/.test(re)) return erro(res, 400, "Informe o RE do colaborador.", "RE_INVALIDO");
+  const { oc, contato, ativo, nome } = await dadosDoTeste(db, re);
+  if (!nome && !contato) return erro(res, 404, `RE ${re} não está no quadro ativo, nas ocorrências nem na base de contatos.`, "RE_NAO_ENCONTRADO");
+  const cfg = await lerConfigDoBanco(db);
+  const sms = require("./_sms").provedorSMS();
+  const tel = R.situacaoTelefone(contato);
+  const ficha = R.montarFicha(Number(re), { ocorrencias: oc, contato, ativo, competencia: R.competenciaDe(hojeSP()) });
+  return res.status(200).json({
+    ok: true,
+    colaborador: { re: Number(re), nome, cargo: ficha.cargo, posto: ficha.posto_atual, supervisor: ficha.supervisor_atual, no_quadro_ativo: ficha.no_quadro_ativo },
+    telefone: tel.telefone, tipo_telefone: contato ? contato.tipo_telefone || null : null, bloqueio: tel.bloqueio,
+    ultimas_ocorrencias: ficha.historico.slice(0, 5),
+    sugestao: R.textoDeTeste(Number(re), nome, oc, cfg.modelos),
+    provedor: { nome: sms.nome, configurado: !!sms.configurado },
+    cota: await cotaAtual(db, cfg, diaDaCota())
+  });
+}
+
+async function enviarTeste({ res, db, ator, body }) {
+  const re = R.normRE(body.re);
+  if (!/^\d{1,15}$/.test(re)) return erro(res, 400, "Informe o RE do colaborador.", "RE_INVALIDO");
+  const telefone = R.telefoneDeTeste(body.telefone);
+  if (!telefone) return erro(res, 400, "Telefone inválido: use um celular com DDD, por exemplo (19) 99876-5432.", "TELEFONE_INVALIDO");
+  const v = R.validarTextoMensagem(body.texto);
+  if (v.erro) {
+    const msg = { TEXTO_VAZIO: "O texto não pode ficar vazio.", TEXTO_LONGO: "Texto longo demais.", TERMO_PROIBIDO: "A orientação não pode mencionar custo, hora extra, pagamento ou desconto." }[v.erro];
+    return erro(res, 400, msg, v.erro);
+  }
+  // Sem o "confirmar" explícito, nada sai: protege contra chamada acidental.
+  if (body.confirmar !== true) return erro(res, 400, "Envio de teste sem confirmação.", "SEM_CONFIRMACAO");
+  const sms = require("./_sms").provedorSMS();
+  if (sms.nome === "desligado") return erro(res, 409, sms.motivo || "Envio de SMS desligado.", "SMS_DESLIGADO");
+  const cfg = await lerConfigDoBanco(db);
+  const diaCota = diaDaCota();
+  const reservou = await db.rpc("pt_reservar_segmentos", { p_dia: diaCota, p_segmentos: v.segmentos, p_limite_dia: cfg.sms_limite_dia, p_limite_mes: cfg.sms_limite_mes });
+  if (reservou !== true) return erro(res, 409, "Sem cota de SMS disponível para este envio.", "SEM_COTA");
+  let r;
+  try { r = await sms.enviar(telefone, v.texto); }
+  catch (e) { r = { ok: false, codigo: "SMS_ERRO", mensagem: String((e && e.message) || e).slice(0, 300) }; }
+  const registro = { re: Number(re), telefone: R.mascararTelefone(telefone), segmentos: v.segmentos, provedor: sms.nome, texto: v.texto };
+  if (r && r.ok) {
+    await db.inserir("pt_auditoria", [{ ator, acao: "SMS_TESTE_ENVIADO", entidade: "pt_sms_teste", entidade_id: null, antes: null, depois: { ...registro, provider_message_id: r.id || null } }]);
+    return res.status(200).json({ ok: true, provedor: sms.nome, provider_message_id: r.id || null, segmentos: v.segmentos, cota: await cotaAtual(db, cfg, diaCota) });
+  }
+  // Não saiu: a cota volta.
+  await db.rpc("pt_devolver_segmentos", { p_dia: diaCota, p_segmentos: v.segmentos });
+  const codigo = (r && r.codigo) || "SMS_ERRO", mensagem = (r && r.mensagem) || null;
+  await db.inserir("pt_auditoria", [{ ator, acao: "SMS_TESTE_FALHOU", entidade: "pt_sms_teste", entidade_id: null, antes: null, depois: { ...registro, erro_codigo: codigo, erro_mensagem: mensagem } }]);
+  return erro(res, 502, mensagem || "O provedor não enviou o SMS.", codigo);
+}
+
 // ── configuração e modelos de mensagem ──────────────────────────────────────
 
 const MSG_CONFIG = {
@@ -607,6 +676,8 @@ const ROTAS = {
   "POST processar": { aprovador: true, fn: processarUltima },
   "POST aprovar": { aprovador: true, fn: aprovar },
   "POST enviar": { aprovador: true, fn: enviarMensagens },
+  "GET teste": { aprovador: true, fn: verTeste },
+  "POST teste": { aprovador: true, fn: enviarTeste },
   "POST rejeitar": { aprovador: true, fn: rejeitar },
   "PATCH mensagem": { aprovador: true, fn: editarMensagem }
 };
