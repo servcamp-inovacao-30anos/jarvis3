@@ -478,6 +478,27 @@ module.exports = async function handler(req, res) {
   }
 
   const hoje = new Date(); hoje.setUTCHours(0, 0, 0, 0);
+
+  // ?proximos=1 → mesma lógica de "quem está na fila", mas para TODAS as
+  // candidatas (não só as vencidas hoje), com quantos dias faltam pra cada
+  // uma. Só leitura: não envia, não grava. Existe pra responder "qual vai
+  // ser o próximo e-mail de verdade, pra eu perguntar pro cliente se chegou".
+  if (req.query && (req.query.proximos === "1" || req.query.proximos === "true")) {
+    const fila = props.map(p => {
+      const etapaAtual = p.cadencia_etapa || 0;
+      const ancora = p.cadencia_reiniciada_em || p.data_envio_proposta;
+      let proxima, necessario, baseISO;
+      if (etapaAtual < 2) { proxima = 2; necessario = DIAS_ANCORA_MSG2; baseISO = ancora; }
+      else { proxima = etapaAtual + 1; necessario = GAP_DESDE_ANTERIOR[proxima]; baseISO = (ultimoEnvioPorProposta[p.id] && ultimoEnvioPorProposta[p.id][etapaAtual]) || ancora; }
+      const base = new Date(String(baseISO).slice(0, 10) + "T00:00:00Z");
+      const diasPassados = Math.floor((hoje - base) / 86400000);
+      const diasRestantes = necessario - diasPassados; // <= 0 já venceu, dispara no próximo cron
+      const prevista = new Date(hoje.getTime() + Math.max(diasRestantes, 0) * 86400000);
+      return { nome: p.nome, email: p.email, etapaAtual, proximaEtapa: proxima, diasRestantes, dataPrevista: prevista.toISOString().slice(0, 10) };
+    }).sort((a, b) => a.diasRestantes - b.diasRestantes);
+    return res.status(200).json({ ok: true, candidatas: props.length, fila: fila.slice(0, 15) });
+  }
+
   const resultado = { candidatas: props.length, enviadas: 0, falhas: 0, detalhes: [] };
   if (dry) resultado.modo = "SIMULAÇÃO — nenhum e-mail enviado, nada gravado";
   let tx = null;
