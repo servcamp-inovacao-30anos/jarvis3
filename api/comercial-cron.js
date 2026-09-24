@@ -663,5 +663,29 @@ module.exports = async function handler(req, res) {
   }
 
   if (tx) tx.close();
+
+  // Resumo semanal: piggyback no cron diário das 12h, sem precisar de um 3º
+  // cron (o Hobby da Vercel limita a 2). Só dispara às segundas-feiras
+  // (UTC), e só na execução de verdade — não em ?dry=1.
+  if (!dry && hoje.getUTCDay() === 1) {
+    try {
+      const r2 = await buscarHistorico(sb, SUPABASE_URL, hoje, 7);
+      const inicioSemana = new Date(hoje.getTime() - 7 * 86400000).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
+      const fimSemana = hoje.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
+      const destinatarios = ["comercial@gruposervcamp.com.br", "gerencia@gruposervcamp.com.br"];
+      const tx2 = mailer();
+      const info = await tx2.sendMail({
+        from: process.env.MAIL_FROM || `"Grupo Serv Camp" <${process.env.MAIL_USER}>`,
+        to: destinatarios.join(", "),
+        subject: `Resumo semanal da Cadência Comercial — ${inicioSemana} a ${fimSemana}`,
+        html: corpoRelatorio(r2, inicioSemana, fimSemana)
+      });
+      tx2.close();
+      resultado.resumoSemanal = { ok: !!(info && info.accepted && info.accepted.length), enviadoPara: destinatarios };
+    } catch (e) {
+      resultado.resumoSemanal = { ok: false, erro: String((e && e.message) || e) };
+    }
+  }
+
   return res.status(200).json({ ok: true, ...resultado });
 };
