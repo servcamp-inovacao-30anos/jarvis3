@@ -923,9 +923,9 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       <div class="vg-sec-lbl vg-s-op"><span class="i">🔧</span>Operacional</div>
       <div class="oc-row oc-row-op">
         <div class="oc c1 oc-t-alert" id="ocFaltas" onclick="navTo('faltas',null)"><div class="oc-ic">🚫</div><div class="oc-lb">Faltas</div><div class="oc-v" id="oc1">—</div><div class="oc-sb" id="oc1s">registros</div><div id="ocFaltasTrend"></div></div>
-        <div class="oc c7 oc-t-warn"><div class="oc-ic">📌</div><div class="oc-lb">Faltas Contrato</div><div class="oc-v" id="oc7">—</div><div class="oc-sb">registros</div></div>
-        <div class="oc c8 oc-t-warn"><div class="oc-ic">🔖</div><div class="oc-lb">Faltas Reserva</div><div class="oc-v" id="oc8">—</div><div class="oc-sb">registros</div></div>
-        <div class="oc c8 oc-t-warn"><div class="oc-ic">🏢</div><div class="oc-lb">Faltas Departamento</div><div class="oc-v" id="oc10">—</div><div class="oc-sb">pessoal interno</div></div>
+        <div class="oc c7 oc-t-warn"><div class="oc-ic">📌</div><div class="oc-lb">Faltas Contrato</div><div class="oc-v" id="oc7">—</div><div class="oc-sb">registros</div><div class="oc-cmp" id="oc7c"></div></div>
+        <div class="oc c8 oc-t-warn"><div class="oc-ic">🔖</div><div class="oc-lb">Faltas Reserva</div><div class="oc-v" id="oc8">—</div><div class="oc-sb">registros</div><div class="oc-cmp" id="oc8c"></div></div>
+        <div class="oc c8 oc-t-warn"><div class="oc-ic">🏢</div><div class="oc-lb">Faltas Departamento</div><div class="oc-v" id="oc10">—</div><div class="oc-sb">pessoal interno</div><div class="oc-cmp" id="oc10c"></div></div>
         <div class="oc oc-t-alert" onclick="_postoVagoClick()"><div class="oc-ic">🚨</div><div class="oc-lb">Posto Descoberto</div><div class="oc-v" id="oc9">—</div><div class="oc-sb">vago sem cobertura</div></div>
         <div class="oc c6 oc-alert" id="ocDispo" onclick="navTo('dispo',null)"><div class="oc-ic">🔴</div><div class="oc-lb">Sem Alocação</div><div class="oc-v" id="oc6">—</div><div class="oc-sb" id="oc6s">registros</div><div class="oc-cmp" id="oc6c"></div></div>
         <div class="oc c4" onclick="navTo('fts',null)"><div class="oc-ic">🔄</div><div class="oc-lb">FTS</div><div class="oc-v" id="oc4">—</div><div class="oc-sb">registros</div></div>
@@ -2640,13 +2640,26 @@ function updVG(){
   document.getElementById("vg-fn").textContent=ativos.length;
   document.getElementById("vg-fns").innerHTML=`<b>${ativos.filter(r=>r.TURNO==="DIURNO").length}</b> diurno · <b>${ativos.filter(r=>r.TURNO==="NOTURNO").length}</b> noturno`;
 }
+/* Quebra por cargo pros cards de Faltas — mesmo texto, sem ser preciso abrir
+   o detalhe pra saber SE eh porteiro, zelador etc que esta faltando. */
+function _faltasPorCargo(arr){
+  const m={};
+  (arr||[]).forEach(r=>{const c=r.CARGO||"—";m[c]=(m[c]||0)+1;});
+  return Object.entries(m).sort((a,b)=>b[1]-a[1]).map(([c,n])=>c+": <b>"+n+"</b>").join(" · ");
+}
 function updOC(){
   document.getElementById("oc1").textContent=F.faltas.length;
-  document.getElementById("oc7").textContent=F.faltas.filter(r=>r.TIPO==="CONTRATO").length;
-  document.getElementById("oc8").textContent=F.faltas.filter(r=>r.TIPO==="RESERVA").length;
+  const _fContrato=F.faltas.filter(r=>r.TIPO==="CONTRATO");
+  const _fReserva=F.faltas.filter(r=>r.TIPO==="RESERVA");
+  const _fDepto=F.faltas.filter(r=>r.TIPO==="DEPARTAMENTO");
+  document.getElementById("oc7").textContent=_fContrato.length;
+  document.getElementById("oc8").textContent=_fReserva.length;
   // Pessoal interno (Mesa Operacional, Supervisao, DP, Financeiro). Entra no
   // total de Faltas; sem este card a soma Contrato+Reserva nao fechava com ele.
-  document.getElementById("oc10").textContent=F.faltas.filter(r=>r.TIPO==="DEPARTAMENTO").length;
+  document.getElementById("oc10").textContent=_fDepto.length;
+  document.getElementById("oc7c").innerHTML=_faltasPorCargo(_fContrato);
+  document.getElementById("oc8c").innerHTML=_faltasPorCargo(_fReserva);
+  document.getElementById("oc10c").innerHTML=_faltasPorCargo(_fDepto);
   document.getElementById("oc4").textContent=F.fts.length;
   const _oc5=document.getElementById("oc5");if(_oc5)_oc5.textContent=F.justif.length;
   document.getElementById("oc6").textContent=F.dispo.length;
