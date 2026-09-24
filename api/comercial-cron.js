@@ -499,6 +499,40 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ ok: true, candidatas: props.length, fila: fila.slice(0, 15) });
   }
 
+  // ?historico=1 → últimos 10 dias de e-mails REALMENTE enviados (não a fila,
+  // o que já saiu de fato), com data/hora e quantos desses clientes
+  // responderam depois. Só leitura: não envia, não grava. Existe pra alguém
+  // revisar o que foi mandado em nome dela.
+  if (req.query && (req.query.historico === "1" || req.query.historico === "true")) {
+    const desde = new Date(hoje.getTime() - 10 * 86400000).toISOString();
+    const lr = await fetch(
+      `${SUPABASE_URL}/rest/v1/com_cadencia_log?canal=eq.EMAIL&status=eq.enviado&enviado_em=gte.${desde}&select=proposta_id,etapa,enviado_em&order=enviado_em.desc`,
+      { headers: sb }
+    );
+    if (!lr.ok) return res.status(502).json({ error: "Falha ao consultar histórico.", details: await lr.text() });
+    const envios = await lr.json();
+    const idsUnicos = [...new Set(envios.map(e => e.proposta_id))];
+    let propsMap = {};
+    if (idsUnicos.length) {
+      const pr = await fetch(`${SUPABASE_URL}/rest/v1/com_propostas?id=in.(${idsUnicos.join(",")})&select=id,nome,email,respondido_em`, { headers: sb });
+      if (pr.ok) (await pr.json()).forEach(p => { propsMap[p.id] = p; });
+    }
+    const lista = envios.map(e => {
+      const p = propsMap[e.proposta_id] || {};
+      return {
+        cliente: p.nome || "—",
+        email: p.email || "—",
+        etapa: e.etapa,
+        dataHora: new Date(e.enviado_em).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })
+      };
+    });
+    const propostasQueResponderam = idsUnicos.filter(id => propsMap[id] && propsMap[id].respondido_em).length;
+    return res.status(200).json({
+      ok: true, periodo: "últimos 10 dias", totalEnvios: lista.length,
+      propostasContactadas: idsUnicos.length, propostasQueResponderam, lista
+    });
+  }
+
   const resultado = { candidatas: props.length, enviadas: 0, falhas: 0, detalhes: [] };
   if (dry) resultado.modo = "SIMULAÇÃO — nenhum e-mail enviado, nada gravado";
   let tx = null;
