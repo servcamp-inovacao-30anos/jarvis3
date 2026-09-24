@@ -1931,6 +1931,7 @@ async function doLogin(e){
   const mustChange=override?override.must_change!==false:!usr.admin;
   if(mustChange){showForcePasswordChange(u);}
   else{showWelcome();}
+  tvModoChecar(); // se abriu a TV sem estar logado ainda, ativa só depois do login
   return false;
 }
 function showForcePasswordChange(userKey){
@@ -9206,6 +9207,18 @@ function tvModoIniciar(){
   tvMapaCarregar();
   setInterval(tvMapaCarregar,10*60000);
 }
+/* Só o Eduardo: mesmo com ?modotv=1 na URL, só ativa se a conta logada for a
+   dele — pra alguém não achar a URL e ativar sem querer/dever. Chamada duas
+   vezes: no carregamento (se já estava logado numa aba antiga) e logo após o
+   login (se abriu a URL antes de logar).*/
+function tvModoChecar(){
+  if(document.body.classList.contains("tv-mode"))return; // já ativo, não reinicia
+  try{
+    const quer=new URLSearchParams(location.search).get("modotv")==="1";
+    const ehEduardo=sessionStorage.getItem("logged")==="1"&&sessionStorage.getItem("userKey")==="eduardocipriano";
+    if(quer&&ehEduardo)tvModoIniciar();
+  }catch(e){}
+}
 function sauDetalhe(nome){
   const c=(VG.saudeClientes||[]).find(x=>x.cliente===nome);if(!c)return;
   const ex=document.getElementById("rdModal");if(ex)ex.remove();
@@ -10021,9 +10034,7 @@ function init(){
         if(!it||it.style.display!=="none")navTo(volta,it||null);
       }
     }catch(e){}
-    try{
-      if(new URLSearchParams(location.search).get("modotv")==="1")tvModoIniciar();
-    }catch(e){}
+    tvModoChecar(); // pega o caso de já estar logado (aba antiga reaberta)
     setTimeout(rtPing,2000);
   });
 }
