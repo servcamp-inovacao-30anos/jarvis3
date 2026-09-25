@@ -2,6 +2,8 @@
 .env
 .env.*
 *.env
+# exceção: modelo sem valores, só com os nomes das variáveis
+!.env.example
 
 node_modules/
 .claude/
