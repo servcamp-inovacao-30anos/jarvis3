@@ -453,8 +453,8 @@ function competenciasNecessarias(ocorrencias, dataVirada) {
 // Sem acento e sem mencionar custo, hora extra, pagamento ou desconto: o
 // objetivo é só orientar a marcar dentro do horário.
 const MODELOS_PADRAO = {
-  entrada_antecipada: "SERVCAMP | ORIENTACAO DE PONTO\nOla, {{nome}}. Em {{data}} sua entrada foi as {{horario_marcado}}, {{minutos}} min antes do previsto ({{horario_previsto}}). Oriente-se a marcar no horario. RE {{re}}.",
-  saida_apos_horario: "SERVCAMP | ORIENTACAO DE PONTO\nOla, {{nome}}. Em {{data}} sua saida foi as {{horario_marcado}}, {{minutos}} min apos o previsto ({{horario_previsto}}). Oriente-se a marcar no horario. RE {{re}}.",
+  entrada_antecipada: "SERVCAMP | ORIENTACAO DE PONTO\nOla, {{nome}}. Em {{data}} sua entrada foi as {{horario_marcado}}, {{minutos}} antes do previsto ({{horario_previsto}}). Oriente-se a marcar no horario. RE {{re}}.",
+  saida_apos_horario: "SERVCAMP | ORIENTACAO DE PONTO\nOla, {{nome}}. Em {{data}} sua saida foi as {{horario_marcado}}, {{minutos}} apos o previsto ({{horario_previsto}}). Oriente-se a marcar no horario. RE {{re}}.",
   ambas_no_mesmo_dia: "SERVCAMP | ORIENTACAO DE PONTO\nOla, {{nome}}. Em {{data}} sua entrada foi as {{entrada_marcada}} e a saida as {{saida_marcada}}, fora do previsto ({{entrada_prevista}} as {{saida_prevista}}). Oriente-se a marcar no horario. RE {{re}}."
 };
 
@@ -468,7 +468,7 @@ const VARIAVEIS_MODELO = {
 // 95 minutos): se o modelo couber em 1 SMS com eles, cabe para quase todo mundo.
 // A mensagem de cada pessoa é contada de novo quando é gerada.
 const AMOSTRA_MODELO = {
-  nome: "Alessandra", data: "25/09", horario_marcado: "17:54", horario_previsto: "18:00", minutos: 95, re: "12345",
+  nome: "Alessandra", data: "25/09", horario_marcado: "17:54", horario_previsto: "18:00", minutos: formatarDuracao(95), re: "12345",
   entrada_marcada: "06:40", saida_marcada: "19:35", entrada_prevista: "07:00", saida_prevista: "19:00"
 };
 
@@ -540,6 +540,14 @@ function ddmm(iso) {
   return d ? `${String(d.d).padStart(2, "0")}/${String(d.m).padStart(2, "0")}` : "";
 }
 
+// Acima de 1h a mensagem mostra "2h40min" em vez de "160 min" — minutos
+// corridos de dois dígitos não deixam claro, de cara, quanto tempo é isso.
+function formatarDuracao(minutosTotais) {
+  const m = Math.max(0, Math.round(Number(minutosTotais) || 0));
+  if (m < 60) return `${m} min`;
+  return `${Math.floor(m / 60)}h${String(m % 60).padStart(2, "0")}min`;
+}
+
 function montarMensagem(lista, modelos) {
   const maior = arr => arr.reduce((a, b) => (!a || b.diferenca_minutos > a.diferenca_minutos ? b : a), null);
   const ent = maior(lista.filter(x => x.tipo === "EARLY_ENTRY"));
@@ -552,7 +560,7 @@ function montarMensagem(lista, modelos) {
     vars = { ...base, entrada_marcada: ent.horario_marcado, saida_marcada: sai.horario_marcado, entrada_prevista: ent.horario_previsto, saida_prevista: sai.horario_previsto };
   } else {
     template_id = ent ? "entrada_antecipada" : "saida_apos_horario";
-    vars = { ...base, horario_marcado: ref.horario_marcado, horario_previsto: ref.horario_previsto, minutos: ref.diferenca_minutos };
+    vars = { ...base, horario_marcado: ref.horario_marcado, horario_previsto: ref.horario_previsto, minutos: formatarDuracao(ref.diferenca_minutos) };
   }
   const texto = renderizar(modelos[template_id], vars);
   return { template_id, texto_gerado: texto, segmentos: segmentosSMS(texto) };
