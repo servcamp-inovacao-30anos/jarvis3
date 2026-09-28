@@ -141,7 +141,7 @@ test("PATCH config", async t => {
     assert.equal(r.body.codigo, "VIRADA_JA_EM_USO");
   });
   await t.test("modelo salvo passa a valer na geração das mensagens", () => {
-    const novo = "SERVCAMP | PONTO\nOla, {{nome}}. Entrada as {{horario_marcado}} em {{data}}, {{minutos}} min antes. RE {{re}}.";
+    const novo = "SERVCAMP | PONTO\nOla, {{nome}}. Entrada as {{horario_marcado}} em {{data}}, {{minutos}} antes. RE {{re}}.";
     const cfg = R.lerConfig([{ chave: "modelo_entrada_antecipada", valor: novo }]);
     const { inserir } = R.planejarMensagens(
       [{ id: 1, re: 521, nome: "MARIA DA SILVA", data_jornada: "2026-09-24", tipo: "EARLY_ENTRY", horario_previsto: "18:00", horario_marcado: "17:54", diferenca_minutos: 6, reconciliacao: null, is_test: false }],

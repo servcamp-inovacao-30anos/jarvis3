@@ -4582,7 +4582,7 @@ function ptTesteEnviar(){
 /* configuração e modelos de mensagem (só aprovadores salvam) */
 const PT_MODELO_NOME={entrada_antecipada:"Entrada antecipada",saida_apos_horario:"Saída após o horário",ambas_no_mesmo_dia:"Entrada e saída no mesmo dia"};
 // Mesma amostra do servidor (AMOSTRA_MODELO): valores no limite do realista.
-const PT_AMOSTRA={nome:"Alessandra",data:"25/09",horario_marcado:"17:54",horario_previsto:"18:00",minutos:95,re:"12345",entrada_marcada:"06:40",saida_marcada:"19:35",entrada_prevista:"07:00",saida_prevista:"19:00"};
+const PT_AMOSTRA={nome:"Alessandra",data:"25/09",horario_marcado:"17:54",horario_previsto:"18:00",minutos:"1h35min",re:"12345",entrada_marcada:"06:40",saida_marcada:"19:35",entrada_prevista:"07:00",saida_prevista:"19:00"};
 function ptRenderizar(t,v){return String(t||"").replace(/\{\{\s*([a-z_]+)\s*\}\}/g,(m,k)=>v[k]==null?m:String(v[k]));}
 function ptConfigAbrir(){
   ptPedir("GET","config").then(j=>{
