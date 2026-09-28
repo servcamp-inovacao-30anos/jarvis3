@@ -220,3 +220,23 @@ test("base de contatos", async t => {
     assert.equal(R.normalizarContato(linha({ data_base: "32/09/2026" })).contato.data_base, null);
   });
 });
+
+test("classificarTelefoneBR: telefone digitado à mão no painel", async t => {
+  await t.test("celular com DDD, com ou sem 55/+55 na frente", () => {
+    assert.deepEqual(R.classificarTelefoneBR("(19) 99876-5432"), { tipo: "CELULAR", e164: "+5519998765432" });
+    assert.deepEqual(R.classificarTelefoneBR("5519998765432"), { tipo: "CELULAR", e164: "+5519998765432" });
+    assert.deepEqual(R.classificarTelefoneBR("+55 19 99876-5432"), { tipo: "CELULAR", e164: "+5519998765432" });
+  });
+  await t.test("celular sem o 9 (formato antigo): acrescenta", () => {
+    assert.deepEqual(R.classificarTelefoneBR("(19) 9876-5432"), { tipo: "CELULAR_CORRIGIDO", e164: "+5519998765432" });
+  });
+  await t.test("fixo (começa com 2 a 5)", () => {
+    assert.deepEqual(R.classificarTelefoneBR("(19) 3234-5678"), { tipo: "FIXO", e164: "+551932345678" });
+  });
+  await t.test("DDD inválido, quantidade errada de dígitos, ou vazio", () => {
+    assert.deepEqual(R.classificarTelefoneBR("(01) 99876-5432"), { tipo: "INVALIDO", e164: null });
+    assert.deepEqual(R.classificarTelefoneBR("998765432"), { tipo: "INVALIDO", e164: null });
+    assert.deepEqual(R.classificarTelefoneBR(""), { tipo: "SEM_TELEFONE", e164: null });
+    assert.deepEqual(R.classificarTelefoneBR(null), { tipo: "SEM_TELEFONE", e164: null });
+  });
+});

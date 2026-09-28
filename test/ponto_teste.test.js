@@ -138,5 +138,55 @@ test("POST teste", async t => {
     assert.equal(r.statusCode, 409);
     assert.equal(r.body.codigo, "SMS_DESLIGADO");
   });
+  await t.test("sem RE: teste avulso (ex.: diretor, que não é colaborador)", async () => {
+    process.env.SMS_PROVIDER = "mock";
+    const tabelas = base();
+    supabaseFalso(tabelas);
+    const r = await enviar({ telefone: "(19) 91111-2222", texto: "SERVCAMP | TESTE DE ENVIO\nOla. Teste do sistema.", confirmar: true });
+    assert.equal(r.statusCode, 200);
+    const a = tabelas.pt_auditoria.find(x => x.acao === "SMS_TESTE_ENVIADO");
+    assert.equal(a.depois.re, null);
+  });
   delete process.env.SMS_PROVIDER;
+});
+
+test("POST contato", async t => {
+  const salvar = (body, usuario) => chamar(ponto, { method: "POST", query: { t: "contato" }, usuario: usuario === undefined ? "aprovador" : usuario, body });
+  await t.test("só aprovador", async () => {
+    supabaseFalso(base());
+    const r = await salvar({ re: 900, telefone: "(19) 99876-5432" }, "outra-pessoa");
+    assert.equal(r.statusCode, 403);
+  });
+  await t.test("cria contato novo (RE sem nenhum registro na base)", async () => {
+    const tabelas = base();
+    supabaseFalso(tabelas);
+    const r = await salvar({ re: 900, telefone: "(19) 99876-5432", nome: "Fulano de Tal" });
+    assert.equal(r.statusCode, 200);
+    assert.deepEqual(r.body.contato, { re: 900, telefone_e164: "+5519998765432", tipo_telefone: "CELULAR", enviavel: true });
+    const c = tabelas.pt_contatos.find(x => x.re === 900);
+    assert.equal(c.nome_cadastro, "Fulano de Tal");
+    assert.equal(c.origem, "MANUAL");
+    const a = tabelas.pt_auditoria.find(x => x.acao === "TELEFONE_ALTERADO" && x.entidade_id === 900);
+    assert.equal(a.antes, null);
+  });
+  await t.test("corrige o telefone de quem já está sem telefone na base", async () => {
+    const tabelas = base();
+    tabelas.pt_contatos.push({ re: 999, nome_cadastro: "SEM CONTATO", telefone_e164: null, tipo_telefone: "SEM_TELEFONE", enviavel: false });
+    supabaseFalso(tabelas);
+    const r = await salvar({ re: 999, telefone: "19987654321" });
+    assert.equal(r.statusCode, 200);
+    assert.equal(r.body.contato.tipo_telefone, "CELULAR");
+    const c = tabelas.pt_contatos.find(x => x.re === 999);
+    assert.equal(c.telefone_e164, "+5519987654321");
+    assert.equal(c.nome_cadastro, "SEM CONTATO", "sem nome novo, mantém o que já tinha");
+    const a = tabelas.pt_auditoria.find(x => x.acao === "TELEFONE_ALTERADO" && x.entidade_id === 999);
+    assert.deepEqual(a.antes, { telefone_e164: null, tipo_telefone: "SEM_TELEFONE", enviavel: false });
+  });
+  await t.test("recusa telefone fixo, inválido, vazio ou RE inválido", async () => {
+    supabaseFalso(base());
+    assert.equal((await salvar({ re: 900, telefone: "(19) 3234-5678" })).body.codigo, "TELEFONE_INVALIDO");
+    assert.equal((await salvar({ re: 900, telefone: "998765432" })).body.codigo, "TELEFONE_INVALIDO");
+    assert.equal((await salvar({ re: 900, telefone: "" })).body.codigo, "TELEFONE_INVALIDO");
+    assert.equal((await salvar({ re: "abc", telefone: "19998765432" })).body.codigo, "RE_INVALIDO");
+  });
 });

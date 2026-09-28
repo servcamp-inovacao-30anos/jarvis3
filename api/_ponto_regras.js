@@ -223,6 +223,25 @@ function normalizarTelefone(v) {
   return d ? "+" + d : null;
 }
 
+// Classifica um telefone digitado à mão (painel), sem passar pela planilha:
+// aceita com ou sem "55" na frente. 11 dígitos (DDD+9 no início) é celular;
+// 10 dígitos é celular sem o 9 (corrigido, se começa com 6-9) ou fixo.
+function classificarTelefoneBR(bruto) {
+  let d = String(bruto || "").replace(/\D/g, "");
+  if (!d) return { tipo: "SEM_TELEFONE", e164: null };
+  if ((d.length === 12 || d.length === 13) && d.startsWith("55")) d = d.slice(2);
+  if (d.length !== 10 && d.length !== 11) return { tipo: "INVALIDO", e164: null };
+  const ddd = d.slice(0, 2), numero = d.slice(2);
+  if (!/^[1-9][1-9]$/.test(ddd)) return { tipo: "INVALIDO", e164: null };
+  if (numero.length === 9 && numero[0] === "9") return { tipo: "CELULAR", e164: "+55" + ddd + numero };
+  if (numero.length === 8) {
+    return /^[6-9]/.test(numero)
+      ? { tipo: "CELULAR_CORRIGIDO", e164: "+55" + ddd + "9" + numero }
+      : { tipo: "FIXO", e164: "+55" + ddd + numero };
+  }
+  return { tipo: "INVALIDO", e164: null };
+}
+
 // Uma linha da planilha → contato, ou { erro }. O "enviavel" do arquivo só vale
 // se o número for de fato um celular brasileiro em E.164: um fixo marcado como
 // enviável por engano não pode virar SMS.
@@ -910,6 +929,7 @@ function planejarEnvio(mensagens, opcoes) {
 module.exports = {
   CAMPOS_CONTATO,
   normalizarContato,
+  classificarTelefoneBR,
   planejarContatos,
   planejarEnvio,
   resumoCompetencia,
