@@ -1348,6 +1348,15 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
         </div>
       </div>
 
+      <div class="det-panel" id="pt-contato"><div class="det-hdr"><span class="det-title" id="pt-contato-t">Telefone do colaborador</span><button class="det-close" onclick="ptContatoFechar()">✕</button></div>
+        <div class="pt-det-body">
+          <div class="sk-sub" id="pt-contato-info" style="margin-bottom:8px"></div>
+          <div class="pt-bar"><input type="tel" class="pt-in" id="pt-contato-tel" placeholder="(19) 99876-5432" oninput="ptContatoContar()" onkeydown="if(event.key==='Enter')ptContatoSalvar()"></div>
+          <div class="sk-sub" id="pt-contato-aviso" style="margin-top:6px"></div>
+          <div class="pt-bar" style="margin-top:10px"><button class="pt-btn pt-pri" id="pt-contato-salvar" onclick="ptContatoSalvar()">Salvar telefone</button></div>
+        </div>
+      </div>
+
       <div class="det-panel" id="pt-contatos"><div class="det-hdr"><span class="det-title">Base de contatos para SMS</span><button class="det-close" onclick="ptContatosFechar()">✕</button></div>
         <div class="pt-det-body">
           <div class="sk-sub" id="pt-ct-atual" style="margin-bottom:8px"></div>
@@ -1370,6 +1379,7 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
           <div class="pt-bar" style="margin-bottom:10px">
             <input type="text" class="pt-in" id="pt-te-re" placeholder="RE do colaborador" inputmode="numeric" onkeydown="if(event.key==='Enter')ptTesteCarregar()">
             <button class="pt-btn pt-pri" onclick="ptTesteCarregar()">Carregar</button>
+            <span class="pt-link" onclick="ptTesteAvulso()">ou número avulso, sem RE</span>
             <span class="sk-sub">O SMS sai de verdade pelo provedor configurado e gasta cota. Não entra na fila nem nos indicadores.</span>
           </div>
           <div id="pt-te-info"></div>
@@ -4276,13 +4286,43 @@ function ptFilaRender(){
     const situ=(l.motivo_bloqueio&&l.status==="AGUARDANDO_VALIDACAO"?ptSelo([ptMotivo(l.motivo_bloqueio),"pt-b-re"]):ptSelo(estado))+(l.editado?' <span class="sk-sub">editada</span>':"")+(l.erro_mensagem?`<div class="sk-sub">${_esc(l.erro_mensagem)}</div>`:"");
     const marca=PT.pode?`<td>${ptSelecionavel(l)?`<input type="checkbox" class="pt-sel" data-id="${l.id}"${PT.sel.has(l.id)?" checked":""} onchange="ptSel(this)">`:""}</td>`:"";
     const editar=PT.pode?`<td>${l.status==="AGUARDANDO_VALIDACAO"?`<button class="pt-btn" data-id="${l.id}" onclick="ptEditorAbrir(Number(this.dataset.id))">✏️ Editar</button>`:""}</td>`:"";
-    return `<tr>${marca}<td class="tdb"><span class="pt-link" data-re="${_esc(l.re)}" onclick="ptFichaAbrir(this.dataset.re)">${_esc(l.nome||"—")}</span></td><td>${_esc(l.re)}</td><td>${_esc(l.posto||"—")}</td><td>${_esc(l.supervisor||"—")}</td><td>${ptDia(l.data_jornada)}</td><td>${col(i=>_esc(PT_TIPO[i.tipo]||i.tipo))}</td><td>${col(i=>_esc(i.previsto||"—"))}</td><td>${col(i=>_esc(i.marcado||"—"))}</td><td>${col(i=>ptMin(i.minutos))}</td><td>${_esc(l.telefone||"—")}</td><td><div class="pt-prev">${_esc(l.texto)}</div></td><td>${sms}</td><td>${situ}</td>${editar}</tr>`;
+    const tel=PT.pode?`<span class="pt-link" data-re="${_esc(l.re)}" onclick="ptContatoAbrir(this.dataset.re)">${_esc(l.telefone||"+ telefone")}</span>`:_esc(l.telefone||"—");
+    return `<tr>${marca}<td class="tdb"><span class="pt-link" data-re="${_esc(l.re)}" onclick="ptFichaAbrir(this.dataset.re)">${_esc(l.nome||"—")}</span></td><td>${_esc(l.re)}</td><td>${_esc(l.posto||"—")}</td><td>${_esc(l.supervisor||"—")}</td><td>${ptDia(l.data_jornada)}</td><td>${col(i=>_esc(PT_TIPO[i.tipo]||i.tipo))}</td><td>${col(i=>_esc(i.previsto||"—"))}</td><td>${col(i=>_esc(i.marcado||"—"))}</td><td>${col(i=>ptMin(i.minutos))}</td><td>${tel}</td><td><div class="pt-prev">${_esc(l.texto)}</div></td><td>${sms}</td><td>${situ}</td>${editar}</tr>`;
   }).join("");
   box.innerHTML=`<table><thead>${cab}</thead><tbody>${corpo}</tbody></table>`;
   ptSelAtualiza();
 }
 function ptSel(cb){const id=Number(cb.dataset.id);if(cb.checked)PT.sel.add(id);else PT.sel.delete(id);ptSelAtualiza();}
 function ptSelTodos(v){document.querySelectorAll("#pt-fila .pt-sel").forEach(cb=>{cb.checked=v;const id=Number(cb.dataset.id);if(v)PT.sel.add(id);else PT.sel.delete(id);});ptSelAtualiza();}
+/* telefone do colaborador, direto na fila (sem precisar da planilha) */
+function ptContatoAbrir(re){
+  PT.contatoRe=re;
+  const l=(PT.fila||[]).find(x=>String(x.re)===String(re));
+  document.getElementById("pt-contato-t").textContent="Telefone — "+(l&&l.nome?l.nome:"RE "+re);
+  document.getElementById("pt-contato-info").textContent=l&&l.telefone?"Telefone atual: "+l.telefone:"Este colaborador ainda não tem telefone na base de contatos.";
+  document.getElementById("pt-contato-tel").value=l&&l.telefone?l.telefone.replace(/^\+55/,""):"";
+  document.getElementById("pt-contato-aviso").textContent="";
+  ptContatoContar();
+  const p=document.getElementById("pt-contato");p.classList.add("open");p.scrollIntoView({behavior:"smooth",block:"center"});
+  document.getElementById("pt-contato-tel").focus();
+}
+function ptContatoFechar(){document.getElementById("pt-contato").classList.remove("open");}
+function ptContatoContar(){
+  const v=document.getElementById("pt-contato-tel").value;
+  document.getElementById("pt-contato-aviso").textContent=!v.trim()?"":!ptTelefoneTeste(v)?"Não parece um celular brasileiro com DDD (ex.: (19) 99876-5432). Telefone fixo não recebe SMS.":"";
+}
+function ptContatoSalvar(){
+  const re=PT.contatoRe,tel=document.getElementById("pt-contato-tel").value.trim();
+  if(!tel){alert("Informe um telefone.");return;}
+  const l=(PT.fila||[]).find(x=>String(x.re)===String(re));
+  const b=document.getElementById("pt-contato-salvar");b.disabled=true;
+  ptPedir("POST","contato",{re,telefone:tel,nome:l&&l.nome||undefined}).then(()=>{
+    ptToast("Telefone salvo");
+    ptContatoFechar();
+    // Atualiza as mensagens pendentes que estavam bloqueadas por falta de telefone.
+    return ptPedir("POST","processar").catch(()=>null);
+  }).then(()=>ptCarregar()).catch(e=>alert(e.message)).finally(()=>{b.disabled=false;});
+}
 function ptSelAtualiza(){
   const n=PT.sel.size;
   document.querySelectorAll("#pt-acoes .pt-sel-dep").forEach(b=>{b.disabled=!n;});
@@ -4527,16 +4567,29 @@ function ptEnvioRodar(corpo,acum){
 // Mesma regra do servidor (telefoneDeTeste): celular brasileiro, com ou sem +55.
 function ptTelefoneTeste(v){let d=String(v||"").replace(/\D/g,"");if(d.length===10||d.length===11)d="55"+d;return /^55[1-9][1-9]9\d{8}$/.test(d)?"+"+d:null;}
 function ptTesteAbrir(){
-  PT.teste=null;
+  PT.teste=null;PT.testeAvulso=false;
   document.getElementById("pt-te-info").innerHTML="";
   document.getElementById("pt-te-form").hidden=true;
   const p=document.getElementById("pt-teste");p.classList.add("open");p.scrollIntoView({behavior:"smooth",block:"center"});
   document.getElementById("pt-te-re").focus();
 }
 function ptTesteFechar(){PT.teste=null;document.getElementById("pt-teste").classList.remove("open");}
+// Testar um número que não é de colaborador (sem RE) — ex.: celular do diretor.
+function ptTesteAvulso(){
+  PT.teste=null;PT.testeAvulso=true;
+  document.getElementById("pt-te-re").value="";
+  document.getElementById("pt-te-info").innerHTML='<div class="sk-sub">Teste avulso — sem vínculo com colaborador, não precisa de RE. Preencha o telefone e o texto abaixo.</div>';
+  document.getElementById("pt-te-tel").value="";
+  document.getElementById("pt-te-txt").value="SERVCAMP | TESTE DE ENVIO\nOla. Esta e uma mensagem de teste do sistema de orientacao de ponto. Nao e preciso responder.";
+  document.getElementById("pt-te-form").hidden=false;
+  document.getElementById("pt-te-enviar").disabled=false;
+  ptTesteContar();
+  document.getElementById("pt-te-tel").focus();
+}
 function ptTesteCarregar(){
   const re=document.getElementById("pt-te-re").value.trim();
   if(!re){alert("Informe o RE do colaborador.");return;}
+  PT.testeAvulso=false;
   const info=document.getElementById("pt-te-info");
   info.innerHTML='<div class="nd">Carregando…</div>';
   document.getElementById("pt-te-form").hidden=true;
@@ -4566,14 +4619,18 @@ function ptTesteContar(){
 }
 function ptTesteRestaurar(){if(PT.teste){document.getElementById("pt-te-txt").value=PT.teste.sugestao.texto;ptTesteContar();}}
 function ptTesteEnviar(){
-  const j=PT.teste;if(!j)return;
+  const avulso=!!PT.testeAvulso,j=PT.teste;
+  if(!avulso&&!j)return;
   const tel=ptTelefoneTeste(document.getElementById("pt-te-tel").value);
   if(!tel){alert("Telefone inválido: use um celular com DDD, por exemplo (19) 99876-5432.");return;}
   const texto=document.getElementById("pt-te-txt").value,a=ptAnalisarSMS(texto.trim());
-  const c=j.colaborador;
-  if(!confirm(`Enviar ${a.segmentos} SMS de teste para ${tel}?\n\nColaborador: ${c.nome||"—"} · RE ${c.re}\nProvedor: ${PT_PROVEDOR[j.provedor.nome]||j.provedor.nome}\n\n${texto.trim()}`))return;
+  const c=j&&j.colaborador;
+  const quem=avulso?"Número avulso, sem colaborador vinculado":`Colaborador: ${c.nome||"—"} · RE ${c.re}`;
+  const provedor=avulso?"":`\nProvedor: ${PT_PROVEDOR[j.provedor.nome]||j.provedor.nome}`;
+  if(!confirm(`Enviar ${a.segmentos} SMS de teste para ${tel}?\n\n${quem}${provedor}\n\n${texto.trim()}`))return;
   const b=document.getElementById("pt-te-enviar");b.disabled=true; // um clique só
-  ptPedir("POST","teste",{re:c.re,telefone:tel,texto,confirmar:true}).then(r=>{
+  const corpo=avulso?{telefone:tel,texto,confirmar:true}:{re:c.re,telefone:tel,texto,confirmar:true};
+  ptPedir("POST","teste",corpo).then(r=>{
     ptToast(`SMS de teste enviado para ${tel} · ${r.segmentos} SMS`+(r.provedor==="mock"?" (simulação)":""));
     ptCarregar();
   }).catch(e=>alert("Não enviado: "+e.message)).finally(()=>{b.disabled=false;});

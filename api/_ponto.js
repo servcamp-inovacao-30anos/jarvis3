@@ -6,7 +6,7 @@
 //     leitura (qualquer pessoa logada; telefone mascarado para quem não aprova):
 //       GET competencia · fila · ocorrencias · ficha · reconciliacao · quota · config
 //     só aprovadores:
-//       GET/POST contatos · POST processar · POST aprovar · POST rejeitar
+//       GET/POST contatos · POST contato · POST processar · POST aprovar · POST rejeitar
 //       PATCH mensagem · PATCH config · POST enviar · GET/POST teste
 // E o api/import.js chama materializar() a cada planilha recebida.
 //
@@ -212,6 +212,42 @@ async function carregarContatos({ res, db, ator, body }) {
   }]);
   resposta.gravado = true;
   return res.status(200).json(resposta);
+}
+
+// Um telefone só, digitado no próprio painel (colaborador sem contato na
+// base, ou número errado). Não precisa de planilha nem confirmação em duas
+// etapas: quem está aqui já é aprovador e já viu o RE na fila.
+async function salvarContato({ res, db, ator, body }) {
+  const re = R.normRE(body.re);
+  if (!/^\d{1,15}$/.test(re) || /^0+$/.test(re)) return erro(res, 400, "RE inválido.", "RE_INVALIDO");
+  const { tipo, e164 } = R.classificarTelefoneBR(body.telefone);
+  if (tipo === "SEM_TELEFONE") return erro(res, 400, "Informe um telefone.", "TELEFONE_INVALIDO");
+  // Só celular manda SMS: fixo classifica certinho, mas não serve pra esta base.
+  if (tipo !== "CELULAR" && tipo !== "CELULAR_CORRIGIDO") return erro(res, 400, "Telefone inválido: use um celular com DDD, por exemplo (19) 99876-5432.", "TELEFONE_INVALIDO");
+
+  const anterior = (await db.obter(`pt_contatos?select=${R.CAMPOS_CONTATO.join(",")}&re=eq.${re}`))[0] || null;
+  const nomeDigitado = String(body.nome == null ? "" : body.nome).trim();
+  const nome = nomeDigitado || (anterior && anterior.nome_cadastro) || null;
+  const agora = new Date().toISOString();
+  const contato = {
+    re: Number(re),
+    nome_cadastro: nome,
+    nome_norm: nome ? require("./_parse").normNome(nome) : (anterior && anterior.nome_norm) || null,
+    telefone_original: String(body.telefone == null ? "" : body.telefone).trim() || null,
+    telefone_e164: e164,
+    tipo_telefone: tipo,
+    enviavel: true, // só chega aqui CELULAR ou CELULAR_CORRIGIDO, as duas checagens acima já filtraram o resto
+    origem: "MANUAL",
+    data_base: agora.slice(0, 10),
+    atualizado_em: agora
+  };
+  await db.inserir("pt_auditoria", [{
+    ator, acao: "TELEFONE_ALTERADO", entidade: "pt_contatos", entidade_id: Number(re),
+    antes: anterior ? { telefone_e164: anterior.telefone_e164 || null, tipo_telefone: anterior.tipo_telefone || null, enviavel: !!anterior.enviavel } : null,
+    depois: { telefone_e164: e164, tipo_telefone: tipo, enviavel: true }
+  }]);
+  await db.upsert("pt_contatos", [contato], "re");
+  return res.status(200).json({ ok: true, contato: { re: Number(re), telefone_e164: e164, tipo_telefone: tipo, enviavel: true } });
 }
 
 // ── painel: leituras ────────────────────────────────────────────────────────
@@ -556,8 +592,14 @@ async function verTeste({ req, res, db }) {
 }
 
 async function enviarTeste({ res, db, ator, body }) {
-  const re = R.normRE(body.re);
-  if (!/^\d{1,15}$/.test(re)) return erro(res, 400, "Informe o RE do colaborador.", "RE_INVALIDO");
+  // RE é opcional: dá para testar um número avulso (ex.: celular do diretor,
+  // que não é colaborador e não tem RE). Quando vier, tem que ser válido.
+  const temRe = body.re !== undefined && body.re !== null && String(body.re).trim() !== "";
+  let re = null;
+  if (temRe) {
+    re = R.normRE(body.re);
+    if (!/^\d{1,15}$/.test(re)) return erro(res, 400, "Informe o RE do colaborador.", "RE_INVALIDO");
+  }
   const telefone = R.telefoneDeTeste(body.telefone);
   if (!telefone) return erro(res, 400, "Telefone inválido: use um celular com DDD, por exemplo (19) 99876-5432.", "TELEFONE_INVALIDO");
   const v = R.validarTextoMensagem(body.texto);
@@ -576,7 +618,7 @@ async function enviarTeste({ res, db, ator, body }) {
   let r;
   try { r = await sms.enviar(telefone, v.texto); }
   catch (e) { r = { ok: false, codigo: "SMS_ERRO", mensagem: String((e && e.message) || e).slice(0, 300) }; }
-  const registro = { re: Number(re), telefone: R.mascararTelefone(telefone), segmentos: v.segmentos, provedor: sms.nome, texto: v.texto };
+  const registro = { re: re == null ? null : Number(re), telefone: R.mascararTelefone(telefone), segmentos: v.segmentos, provedor: sms.nome, texto: v.texto };
   if (r && r.ok) {
     await db.inserir("pt_auditoria", [{ ator, acao: "SMS_TESTE_ENVIADO", entidade: "pt_sms_teste", entidade_id: null, antes: null, depois: { ...registro, provider_message_id: r.id || null } }]);
     return res.status(200).json({ ok: true, provedor: sms.nome, provider_message_id: r.id || null, segmentos: v.segmentos, cota: await cotaAtual(db, cfg, diaCota) });
@@ -673,6 +715,7 @@ const ROTAS = {
   "GET quota": { fn: verCota },
   "GET contatos": { aprovador: true, fn: listarContatos },
   "POST contatos": { aprovador: true, fn: carregarContatos },
+  "POST contato": { aprovador: true, fn: salvarContato },
   "POST processar": { aprovador: true, fn: processarUltima },
   "POST aprovar": { aprovador: true, fn: aprovar },
   "POST enviar": { aprovador: true, fn: enviarMensagens },
