@@ -325,12 +325,19 @@ function planejarContatos(existentes, linhas, opcoes) {
 
 // ── Configuração ────────────────────────────────────────────────────────────
 
+// {{minutos}} já traz a unidade ("24 min", "2h40min"). Modelo gravado antes
+// disso (a semente do banco, ou um texto personalizado) escrevia "{{minutos}} min":
+// tira o "min" que sobra, senão a mensagem sai "24 min min".
+function semMinSobrando(texto) {
+  return String(texto == null ? "" : texto).replace(/(\{\{\s*minutos\s*\}\})\s*min\b/g, "$1");
+}
+
 function lerConfig(linhas) {
   const v = {};
   (linhas || []).forEach(l => { v[l.chave] = l.valor; });
   const num = (k, padrao) => { const n = Number(v[k]); return v[k] != null && v[k] !== "" && Number.isFinite(n) ? n : padrao; };
   const modelos = {};
-  Object.keys(MODELOS_PADRAO).forEach(id => { if (textoOuNulo(v["modelo_" + id])) modelos[id] = v["modelo_" + id]; });
+  Object.keys(MODELOS_PADRAO).forEach(id => { if (textoOuNulo(v["modelo_" + id])) modelos[id] = semMinSobrando(v["modelo_" + id]); });
   return {
     tolerancia_minutos: num("tolerancia_minutos", TOLERANCIA_PADRAO_MIN),
     data_virada: lerData(v.data_virada) ? String(v.data_virada).slice(0, 10) : null,
@@ -497,7 +504,7 @@ const AMOSTRA_MODELO = {
 function validarModelo(id, texto) {
   const permitidas = VARIAVEIS_MODELO[id];
   if (!permitidas) return { erro: "MODELO_DESCONHECIDO" };
-  const t = String(texto == null ? "" : texto).replace(/\r\n/g, "\n").trim();
+  const t = semMinSobrando(String(texto == null ? "" : texto).replace(/\r\n/g, "\n").trim());
   if (!t) return { erro: "TEXTO_VAZIO" };
   const usadas = [...t.matchAll(/\{\{\s*([^}]*?)\s*\}\}/g)].map(m => m[1]);
   const desconhecidas = [...new Set(usadas.filter(v => !permitidas.includes(v)))];

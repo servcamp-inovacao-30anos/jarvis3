@@ -109,7 +109,7 @@ test("PATCH config", async t => {
   await t.test("grava configuração e modelo, com auditoria de antes e depois", async () => {
     const tabelas = base();
     const log = supabaseFalso(tabelas);
-    const novo = "SERVCAMP | PONTO\nOla, {{nome}}. Em {{data}} voce entrou as {{horario_marcado}}, {{minutos}} min antes. Marque no horario. RE {{re}}.";
+    const novo = "SERVCAMP | PONTO\nOla, {{nome}}. Em {{data}} voce entrou as {{horario_marcado}}, {{minutos}} antes. Marque no horario. RE {{re}}.";
     const r = await chamar(ponto, { method: "PATCH", query: { t: "config" }, usuario: "aprovador", body: { tolerancia_minutos: 7, data_virada: amanha, modelos: { entrada_antecipada: novo } } });
     assert.equal(r.statusCode, 200);
     assert.equal(r.body.alterado, 3);
@@ -148,6 +148,21 @@ test("PATCH config", async t => {
       { contatosPorRE: new Map(), modelos: cfg.modelos }
     );
     assert.equal(inserir[0].texto_gerado, "SERVCAMP | PONTO\nOla, Maria. Entrada as 17:54 em 24/09, 6 min antes. RE 521.");
+  });
+  await t.test("modelo antigo no banco ('{{minutos}} min') não duplica o 'min'", () => {
+    const antigo = "SERVCAMP | ORIENTACAO DE PONTO\nOla, {{nome}}. Em {{data}} sua entrada foi as {{horario_marcado}}, {{minutos}} min antes do previsto ({{horario_previsto}}). Oriente-se a marcar no horario. RE {{re}}.";
+    const cfg = R.lerConfig([{ chave: "modelo_entrada_antecipada", valor: antigo }]);
+    assert.equal(cfg.modelos.entrada_antecipada, R.MODELOS_PADRAO.entrada_antecipada);
+    const oc = (id, min, marcado, previsto) => ({ id, re: 18, nome: "SIDNEI DOS SANTOS", data_jornada: "2026-09-28", tipo: "EARLY_ENTRY", horario_previsto: previsto, horario_marcado: marcado, diferenca_minutos: min, reconciliacao: null, is_test: false });
+    const longo = R.planejarMensagens([oc(1, 160, "07:20", "10:00")], { contatosPorRE: new Map(), modelos: cfg.modelos }).inserir[0].texto_gerado;
+    assert.match(longo, /07:20, 2h40min antes do previsto/);
+    const curto = R.planejarMensagens([oc(2, 24, "07:36", "08:00")], { contatosPorRE: new Map(), modelos: cfg.modelos }).inserir[0].texto_gerado;
+    assert.match(curto, /07:36, 24 min antes do previsto/);
+    assert.doesNotMatch(longo + curto, /min min/);
+  });
+  await t.test("salvar modelo no jeito antigo grava sem o 'min' sobrando", () => {
+    const r = R.validarModelo("saida_apos_horario", "Ola {{nome}}, saida {{horario_marcado}}, {{minutos}} min apos. RE {{re}}.");
+    assert.equal(r.texto, "Ola {{nome}}, saida {{horario_marcado}}, {{minutos}} apos. RE {{re}}.");
   });
 });
 
