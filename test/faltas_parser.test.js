@@ -71,7 +71,7 @@ test("faltas trazem a escala", () => {
   assert.equal(data.faltas[0].ABONO, "I");
 });
 
-test("dias da ficha: só de quem faltou, com todas as situações do dia", async t => {
+test("dias da ficha: com todas as situações do dia", async t => {
   const data = planilha();
   await t.test("quem faltou tem os dias guardados", () => {
     assert.deepEqual(data.fichaDias["521"], {
@@ -80,8 +80,8 @@ test("dias da ficha: só de quem faltou, com todas as situações do dia", async
       "2026-10-13": "TRABALHANDO|FT"
     });
   });
-  await t.test("quem não faltou fica de fora", () => {
-    assert.equal(data.fichaDias["522"], undefined);
+  await t.test("quem não faltou também tem os dias recentes (pode ter faltado numa planilha anterior)", () => {
+    assert.deepEqual(data.fichaDias["522"], { "2026-10-10": "TRABALHANDO" });
   });
 });
 
@@ -99,4 +99,18 @@ test("medidas trazem o número do processo, sem repetir", () => {
   assert.equal(data.disciplina[0].HIST, "P-100");
   assert.equal(data.disciplina[0].DATA, "2026-10-13");
   assert.equal(data.disciplina[0].FASE, "CONCLUIDO");
+});
+
+test("dias da ficha: quem não faltou nesta planilha fica com os últimos 10 dias", () => {
+  const wb = XLSX.utils.book_new();
+  const cab = ["RE", "NOMEFUNCIONARIO", "DATA", "DESCSITUACAOHOJE", "DESCESCALA", "DESCTPABONO"];
+  XLSX.utils.book_append_sheet(wb, aba([cab,
+    [600, "ANTIGA", D(1, 10), "TRABALHO", "5X2 SDF", null],
+    [600, "ANTIGA", D(20, 10), "TRABALHO", "5X2 SDF", null],
+    [601, "FALTOU", D(1, 10), "TRABALHO", "5X2 SDF", null],
+    [601, "FALTOU", D(20, 10), "FALTA", "5X2 SDF", "I"]
+  ]), "FICHA PRESENCA");
+  const data = P.buildDataFromWorkbook(XLSX.read(XLSX.write(wb, { type: "buffer", bookType: "xlsx" }), { type: "buffer", cellDates: true }));
+  assert.deepEqual(Object.keys(data.fichaDias["600"]), ["2026-10-20"], "01/10 está a mais de 10 dias do último dia");
+  assert.deepEqual(Object.keys(data.fichaDias["601"]).sort(), ["2026-10-01", "2026-10-20"], "quem faltou guarda todos os dias");
 });

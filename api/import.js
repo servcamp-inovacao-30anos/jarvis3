@@ -55,6 +55,12 @@ const SB = () => ({
   key: process.env.SUPABASE_SERVICE_ROLE_KEY
 });
 
+function semFichaDias(data) {
+  const copia = { ...data };
+  delete copia.fichaDias;
+  return copia;
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -167,7 +173,10 @@ module.exports = async function handler(req, res) {
         row_count: rowCount,
         fingerprint: fingerprint,
         origem: origem,
-        data: data
+        // fichaDias (dias da Ficha de Presença, por RE) serve só para o módulo
+        // Faltas x Medidas, que o guarda em tabela própria logo abaixo. Fica fora
+        // do snapshot: toda tela baixa o snapshot, e ninguém lá usa esse dado.
+        data: semFichaDias(data)
       })
     });
   } catch (networkErr) {

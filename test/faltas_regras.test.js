@@ -207,3 +207,25 @@ test("calendário: medida lançada num dia de falta mostra a falta, com a marca 
   assert.equal(d.tipo, "FALTA");
   assert.equal(d.medida, true);
 });
+
+test("planilha real (29/09): liberação total não é dia trabalhado; liberação parcial é", () => {
+  assert.equal(R.trabalhouNoDia("LIB. TOTAL"), false);
+  assert.equal(R.trabalhouNoDia("LIB. PAR. FUNC."), true);
+  assert.equal(R.trabalhouNoDia("LIB. PAR. COB."), true);
+  assert.equal(R.trabalhouNoDia("TRABALHO"), true);
+});
+
+test("falta sem código de abono: nem vira caso nem entra nas abonadas", () => {
+  const r = R.montarCasos({ faltas: [falta("2026-10-07", { ABONO: "—" })], fichaDias: {}, medidas: [], hoje: "2026-10-08" });
+  assert.equal(r.casos.length, 0);
+  assert.equal(r.abonadas.length, 0);
+  assert.deepEqual(r.semCodigo.map(x => x.data), ["2026-10-07"]);
+});
+
+test("5X2 DSF folga domingo e segunda: faltou sexta, volta terça", () => {
+  const esc = { ESCALA: "5X2 FOLGA DOM/SEG/FER" };
+  const antes = unico({ faltas: [falta("2026-10-09", esc)], hoje: "2026-10-09", dataBase: "2026-10-09" });
+  assert.equal(antes.retornoPrevisto, "2026-10-10", "sábado é dia de trabalho nessa escala");
+  const c = unico({ faltas: [falta("2026-10-09", esc)], fichaDias: { 521: presente("2026-10-10") }, hoje: "2026-10-10", dataBase: "2026-10-10" });
+  assert.deepEqual(c.prazo, ["2026-10-10", "2026-10-13", "2026-10-14"], "sábado, terça e quarta (domingo e segunda são folga)");
+});

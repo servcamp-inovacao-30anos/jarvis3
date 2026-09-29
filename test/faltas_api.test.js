@@ -152,3 +152,20 @@ test("falha no módulo não derruba a importação da planilha", async () => {
   assert.equal(r.statusCode, 200);
   assert.equal(tab.dashboard_snapshots.length, 1, "o snapshot foi salvo");
 });
+
+test("retorno numa planilha seguinte: os dias de quem faltou antes continuam sendo guardados", async () => {
+  const t = tabelasVazias(); supabaseFalso(t);
+  const hojeISO = new Date().toISOString().slice(0, 10);
+  t.fm_faltas.push({ re: 521, data: hojeISO, codigo: "I", escala: "12X36", tipo: "CONTRATO" });
+  // planilha do dia seguinte: a 521 não tem falta, só o dia trabalhado; a 777 nunca faltou
+  await faltas.materializar({ faltas: [], fichaDias: { 521: { "2099-01-02": "TRABALHO" }, 777: { "2099-01-02": "TRABALHO" } } });
+  assert.deepEqual(t.fm_dias.map(d => [d.re, d.data]), [[521, "2099-01-02"]]);
+});
+
+test("a cópia da planilha que as telas carregam não leva os dias da ficha", async () => {
+  const importar = require("../api/import");
+  const tab = tabelasVazias(); supabaseFalso(tab);
+  await chamar(importar, { method: "POST", headers: { "content-type": "application/json" }, body: { data: { ...planilha(), clientes: [] } } });
+  assert.equal(tab.dashboard_snapshots[0].data.fichaDias, undefined);
+  assert.equal(tab.fm_dias.length, 2, "mas o módulo guardou");
+});

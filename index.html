@@ -5515,8 +5515,18 @@ function buildDataFromWorkbook(wb){
         cobArr.push({NOME:base.NOME,DATA:base.DATA,LOCAL:base.LOCAL,AREA:base.AREA,TURNO:base.TURNO,CARGO:cargoVaga,MOTIVO:r["DESCIMPLA"]||"—"});
     }
     data.faltas=faltas;data.fts=ftsArr;data.cobertura=cobArr;
+    // De quem faltou nesta planilha: todos os dias. Dos demais: os ultimos 10
+    // dias, porque quem faltou numa planilha anterior volta numa seguinte (e na
+    // virada da folha, no dia 26, a falta nem aparece mais aqui).
     data.fichaDias={};
-    faltas.forEach(f=>{const k=String(f.RE||"").trim();if(k&&diasPorRE[k])data.fichaDias[k]=diasPorRE[k];});
+    const comFalta=new Set(faltas.map(f=>String(f.RE||"").trim()).filter(Boolean));
+    const ultimoDia=Object.values(diasPorRE).reduce((m,d)=>Object.keys(d).reduce((x,k)=>k>x?k:x,m),"");
+    const desde=ultimoDia?new Date(new Date(ultimoDia+"T12:00:00Z").getTime()-9*86400000).toISOString().slice(0,10):"";
+    Object.keys(diasPorRE).forEach(k=>{
+      if(comFalta.has(k)){data.fichaDias[k]=diasPorRE[k];return;}
+      const rec={};Object.keys(diasPorRE[k]).forEach(dia=>{if(dia>=desde)rec[dia]=diasPorRE[k][dia];});
+      if(Object.keys(rec).length)data.fichaDias[k]=rec;
+    });
   }else{
     ext("FALTAS",(r,I)=>({
       NOME:r[I["NOMEFUNCIONARIO"]],RE:r[I["RE"]]||"",DATA:isoDate(r[I["DATA"]]),

@@ -16,6 +16,7 @@ const R = require("./_faltas_regras");
 const ponto = require("./_ponto");
 
 const JANELA_DIAS = 150; // o que a tela carrega: casos mais antigos já se encerraram
+const DIAS_ACOMPANHADOS = 45; // quem faltou nesse período ainda tem os dias da ficha guardados
 
 function erro(res, status, mensagem, codigo) { return res.status(status).json({ error: mensagem, codigo }); }
 function hojeSP() { return new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10); }
@@ -43,7 +44,11 @@ async function materializar(data, opcoes) {
       supervisor: f.AREA || null, escala: f.ESCALA || null, tipo: f.TIPO || null, atualizado_em: agora
     });
   });
+  // Dias da ficha interessam de quem faltou nesta planilha e de quem faltou
+  // antes (está no banco): é assim que se vê o retorno numa planilha seguinte.
   const reDoModulo = new Set(faltas.map(f => String(f.re)));
+  const recentes = await db.listar(`fm_faltas?select=re&data=gte.${R.somaDias(new Date().toISOString().slice(0, 10), -DIAS_ACOMPANHADOS)}&order=re.asc`);
+  recentes.forEach(x => reDoModulo.add(String(x.re)));
 
   const dias = [];
   Object.entries(data.fichaDias || {}).forEach(([reTxt, porDia]) => {

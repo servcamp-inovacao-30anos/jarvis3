@@ -15,6 +15,8 @@ const FAMILIAS = {
   "12X36": { prazo: 2, alternado: true }                // dia sim, dia não
 };
 
+const ABONADAS = new Set(["A", "J", "L"]); // abonada · justificada · licença
+
 const SITUACOES = {
   AGUARDANDO_RETORNO: "AGUARDANDO_RETORNO",
   NO_PRAZO: "NO_PRAZO",
@@ -51,7 +53,9 @@ function reDe(v) { const s = String(v == null ? "" : v).trim().replace(/\.0+$/, 
 // Situação do dia na Ficha de Presença → a pessoa estava lá?
 // true = trabalhou · false = não trabalhou (folga, férias, afastamento...) · null = não diz.
 // "FALT" fica de fora de propósito: a falta vem da lista de faltas, com o código.
-const NAO_TRABALHOU = ["FALT", "AUSEN", "FOLGA", "FERIAS", "FÉRIAS", "INSS", "AFAST", "ATESTADO", "LICEN", "SUSPENS", "ABANDONO", "DESLIG", "DEMIT"];
+// Valores reais do SAR2G (29/09): TRABALHO, FOLGA, FALTA, LIB. PAR. COB., LIB. PAR. FUNC., LIB. TOTAL.
+// Liberação parcial = a pessoa esteve lá; liberação total = dispensada do dia.
+const NAO_TRABALHOU = ["FALT", "AUSEN", "FOLGA", "FERIAS", "FÉRIAS", "INSS", "AFAST", "ATESTADO", "LICEN", "SUSPENS", "ABANDONO", "DESLIG", "DEMIT", "LIB. TOTAL", "LIB TOTAL"];
 function trabalhouNoDia(situacoes) {
   if (situacoes == null || String(situacoes).trim() === "") return null;
   const lista = String(situacoes).toUpperCase().split("|").map(s => s.trim()).filter(s => s && s !== "—");
@@ -64,11 +68,19 @@ function trabalhouNoDia(situacoes) {
 // Dia até a data da planilha: o que a Ficha de Presença diz manda.
 // Depois dela (futuro): previsão pela escala. Feriado só conta como dia de
 // trabalho se a pessoa teve presença nele (regra da coordenação).
-function agenda({ familia, ancora, dias, faltasPorDia, feriados, dataBase }) {
+// A 5X2 DSF ("FOLGA DOM/SEG/FER") folga domingo e segunda, não sábado e domingo.
+function folgasDaEscala(familia, escala) {
+  const e = String(escala || "").toUpperCase();
+  if (familia === "5X2" && (/DOM\/SEG/.test(e) || /\bDSF\b/.test(e))) return new Set([0, 1]);
+  return FAMILIAS[familia].folgaNaSemana;
+}
+
+function agenda({ familia, escala, ancora, dias, faltasPorDia, feriados, dataBase }) {
   const F = FAMILIAS[familia];
+  const folgas = F.alternado ? null : folgasDaEscala(familia, escala);
   const escalado = d => {
     if (F.alternado) return ((diasEntre(ancora, d) % 2) + 2) % 2 === 0;
-    return !F.folgaNaSemana.has(diaDaSemana(d));
+    return !folgas.has(diaDaSemana(d));
   };
   return function (d) {
     const falta = faltasPorDia[d];
@@ -162,12 +174,15 @@ function montarCasos(entrada) {
   });
   medidasPorRE.forEach(l => l.sort((a, b) => (a.DATA < b.DATA ? -1 : a.DATA > b.DATA ? 1 : 0)));
 
-  const casos = [], abonadas = [];
+  const casos = [], abonadas = [], semCodigo = [];
   for (const [re, lista] of porRE) {
     lista.sort((a, b) => (a.data < b.data ? -1 : 1));
     const faltasPorDia = {};
     lista.forEach(f => { faltasPorDia[f.data] = f; });
-    lista.filter(f => f.codigo !== "I").forEach(f => abonadas.push(pessoa(f, { data: f.data, codigo: f.codigo })));
+    // Só A, J e L são abonadas. Falta sem código ainda não foi classificada no
+    // SAR2G: não vira caso nem entra nas abonadas; conta em semCodigo.
+    lista.filter(f => ABONADAS.has(f.codigo)).forEach(f => abonadas.push(pessoa(f, { data: f.data, codigo: f.codigo })));
+    lista.filter(f => f.codigo !== "I" && !ABONADAS.has(f.codigo)).forEach(f => semCodigo.push(pessoa(f, { data: f.data })));
     const injust = lista.filter(f => f.codigo === "I");
     const medidas = medidasPorRE.get(re) || [];
     const ref = injust[injust.length - 1] || lista[lista.length - 1];
@@ -176,7 +191,7 @@ function montarCasos(entrada) {
     while (i < injust.length) {
       const f1 = injust[i];
       const F = FAMILIAS[f1.familia];
-      const dia = agenda({ familia: f1.familia, ancora: f1.data, dias: fichaDias[re] || {}, faltasPorDia, feriados, dataBase });
+      const dia = agenda({ familia: f1.familia, escala: f1.ESCALA, ancora: f1.data, dias: fichaDias[re] || {}, faltasPorDia, feriados, dataBase });
       const caso = pessoa(ref, {});
       Object.assign(caso, { familia: f1.familia, escala: f1.ESCALA || "", primeiraFalta: f1.data, faltas: [f1.data], retorno: null, retornoPrevisto: null, prazo: [], prazoFim: null, medida: null, situacao: null, motivo: "" });
 
@@ -236,7 +251,7 @@ function montarCasos(entrada) {
       if (i < 0) break;
     }
   }
-  return { casos, abonadas, foraDoModulo, dataBase };
+  return { casos, abonadas, semCodigo, foraDoModulo, dataBase };
 }
 
 function presencaEntre(dia, de, ate) {
