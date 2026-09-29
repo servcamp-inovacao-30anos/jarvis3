@@ -121,6 +121,10 @@ async function verCasos({ res, db, ator }) {
 
   const resumo = {};
   r.casos.forEach(c => { resumo[c.situacao] = (resumo[c.situacao] || 0) + 1; });
+  const abonadasPorRE = {};
+  r.abonadas.forEach(a => { (abonadasPorRE[a.re] = abonadasPorRE[a.re] || []).push(a.data); });
+  const listaFeriados = feriados.map(f => String(f.data).slice(0, 10));
+  r.casos.forEach(c => { c.calendario = R.calendario(c, { dias: fichaDias[c.re] || {}, abonadas: abonadasPorRE[c.re] || [], feriados: listaFeriados, hoje }); });
   const doCaso = new Set(r.casos.map(c => String(c.re)));
   const diasDosCasos = {};
   Object.keys(fichaDias).forEach(re => { if (doCaso.has(String(re))) diasDosCasos[re] = fichaDias[re]; });

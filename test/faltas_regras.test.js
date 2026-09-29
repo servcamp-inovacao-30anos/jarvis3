@@ -169,3 +169,41 @@ test("faltas separadas por mais que o prazo viram dois casos, e uma medida cobre
   assert.equal(lista[0].situacao, S.TRATADA_FORA_DO_PRAZO, "a 1ª já tinha vencido em 12/10");
   assert.equal(lista[1].situacao, S.TRATADA, "a 2ª estava no prazo");
 });
+
+test("competência: do dia 26 ao dia 25 do mês seguinte", () => {
+  assert.deepEqual(R.competenciaDe("2026-10-07"), { inicio: "2026-09-26", fim: "2026-10-25" });
+  assert.deepEqual(R.competenciaDe("2026-10-26"), { inicio: "2026-10-26", fim: "2026-11-25" });
+  assert.deepEqual(R.competenciaDe("2026-12-30"), { inicio: "2026-12-26", fim: "2027-01-25" });
+});
+
+test("calendário do card: cada dia com a cor que a regra decidiu", () => {
+  const c = unico({ faltas: [falta("2026-10-07")], fichaDias: { 521: { ...presente("2026-10-06", "2026-10-08", "2026-10-09"), "2026-10-04": "FOLGA" } }, medidas: [medida("2026-10-09")], hoje: "2026-10-09", dataBase: "2026-10-09" });
+  const cal = R.calendario(c, { dias: { ...presente("2026-10-06", "2026-10-08", "2026-10-09"), "2026-10-04": "FOLGA" }, abonadas: ["2026-10-05"], hoje: "2026-10-09" });
+  const tipo = d => cal.find(x => x.data === d).tipo;
+  assert.equal(cal.length, 30, "26/09 a 25/10");
+  assert.equal(tipo("2026-10-04"), "FOLGA");
+  assert.equal(tipo("2026-10-05"), "ABONADA");
+  assert.equal(tipo("2026-10-06"), "TRABALHOU");
+  assert.equal(tipo("2026-10-07"), "FALTA");
+  assert.equal(tipo("2026-10-08"), "RETORNO");
+  assert.equal(tipo("2026-10-09"), "MEDIDA");
+  assert.equal(tipo("2026-10-12"), "PRAZO");
+  assert.ok(cal.find(x => x.data === "2026-10-09").hoje);
+  assert.ok(cal.find(x => x.data === "2026-10-12").futuro);
+});
+
+test("calendário: falta no último dia da folha mostra o prazo que cai na folha seguinte", () => {
+  const dias = presente("2026-10-26");
+  const c = unico({ faltas: [falta("2026-10-23")], fichaDias: { 521: dias }, hoje: "2026-10-26", dataBase: "2026-10-26" });
+  const cal = R.calendario(c, { dias, hoje: "2026-10-26" });
+  assert.equal(cal[0].data, "2026-09-26");
+  assert.equal(cal[cal.length - 1].data, "2026-10-28", "vai até o fim do prazo (seg 26, ter 27, qua 28)");
+  assert.equal(cal.find(x => x.data === "2026-10-28").tipo, "PRAZO");
+});
+
+test("calendário: medida lançada num dia de falta mostra a falta, com a marca da medida", () => {
+  const c = unico({ faltas: [falta("2026-10-07"), falta("2026-10-08")], fichaDias: { 521: presente("2026-10-09") }, medidas: [medida("2026-10-08")], hoje: "2026-10-09", dataBase: "2026-10-09" });
+  const d = R.calendario(c, { dias: presente("2026-10-09"), hoje: "2026-10-09" }).find(x => x.data === "2026-10-08");
+  assert.equal(d.tipo, "FALTA");
+  assert.equal(d.medida, true);
+});
