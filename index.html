@@ -7162,6 +7162,9 @@ function comCadParada(x){
   if(x.cadencia_ativa===false)return"a cadência foi desligada nesta proposta";
   if(!x.data_envio_proposta)return"a data de envio da proposta ainda não foi registrada";
   if((x.cadencia_etapa||0)>=5)return"a régua chegou ao fim (Msg 5 já enviada)";
+  // Msg 2 a 5 são e-mail: sem endereço o servidor nem considera a proposta
+  // (filtro email=not.is.null em api/comercial-cron.js), então não é "vencida".
+  if(!String(x.email||"").trim())return"o cliente não tem e-mail cadastrado";
   return null;
 }
 /* Data do envio REAL de uma etapa já mandada, lida do log — não da âncora.
@@ -7251,10 +7254,10 @@ function comLoad(){
   comWaStatus();
   comFetchAll().then(comRenderAll).catch(err=>{console.error("Erro comercial:",err);if(kb)kb.innerHTML='<div style="padding:30px;text-align:center;color:#dc2626;font-size:.8rem">Erro ao carregar. Verifique a conexão.</div>';});
 }
-/* A agenda da Vercel esta PAUSADA desde 11/08 (vercel.json com "crons": []).
-   O radar precisa dizer isso, senao exibe datas futuras como se fossem promessas.
-   TROQUE PARA true NO MESMO COMMIT em que a agenda voltar. */
-const COM_CAD_AGENDA_ATIVA=false;
+/* Agenda da Vercel (crons em vercel.json). Ficou PAUSADA de 11/08 ate voltar
+   em setembro; com false o radar avisa que nada sai sozinho. Se a agenda for
+   pausada de novo (vercel.json com "crons": []), TROQUE PARA false no mesmo commit. */
+const COM_CAD_AGENDA_ATIVA=true;
 
 /* Radar da Cadencia — o que ja saiu, o que parou e o que sai a seguir.
    Reaproveita comCadParada() e comCadProxima(), as MESMAS funcoes que o painel
