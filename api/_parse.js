@@ -119,6 +119,10 @@ function buildDataFromWorkbook(wb){
   if(wsFicha){
     const fichaRows=XLSX.utils.sheet_to_json(wsFicha,{raw:true,defval:null});
     const faltas=[],ftsArr=[],cobArr=[];
+    // Situacao de cada dia, por RE. O modulo Faltas x Medidas precisa saber em
+    // que dia quem faltou VOLTOU a trabalhar: o prazo da medida conta do retorno.
+    // Guarda so de quem teve falta, para nao inflar o snapshot com o quadro todo.
+    const diasPorRE={};
     for(const r of fichaRows){
       const nome=r["NOMEFUNCIONARIO"];
       if(!nome||String(nome).trim()==="")continue;
@@ -130,8 +134,18 @@ function buildDataFromWorkbook(wb){
         // na hora de abrir o cadastro no sistema de origem.
         NOME:nome,RE:r["RE"]||"",DATA:isoDate(r["DATA"]),LOCAL:r["NOMELOCAL"],
         CARGO:r["DESC_CARGO"],AREA:r["AREASUPERVISAO"],
-        TIPO:r["TPCLIENTE"],TURNO:turnoFromEscala(r["DESCESCALA"],r["HRENTRADA"])
+        TIPO:r["TPCLIENTE"],TURNO:turnoFromEscala(r["DESCESCALA"],r["HRENTRADA"]),
+        ESCALA:r["DESCESCALA"]||""
       };
+      // Mais de uma linha no mesmo dia (o proprio posto e uma FT, por exemplo):
+      // guarda todas as situacoes, separadas por "|", e a regra decide depois.
+      const reDia=String(r["RE"]||"").trim();
+      if(reDia&&base.DATA){
+        const d=(diasPorRE[reDia]=diasPorRE[reDia]||{});
+        const s=sit||"—";
+        if(!d[base.DATA])d[base.DATA]=s;
+        else if(d[base.DATA].split("|").indexOf(s)<0)d[base.DATA]+="|"+s;
+      }
       if(sit.includes("FALT")||sit.includes("AUSENCIA")||sit.includes("AUSÊNCIA"))
         faltas.push({...base,ABONO:r["DESCTPABONO"]||"—"});
       const cargoVaga=r["CARGO_VAGA"]||r["DESC_CARGO"]||"—"; // cargo do POSTO coberto (não o do colaborador)
@@ -141,13 +155,18 @@ function buildDataFromWorkbook(wb){
         cobArr.push({NOME:base.NOME,DATA:base.DATA,LOCAL:base.LOCAL,AREA:base.AREA,TURNO:base.TURNO,CARGO:cargoVaga,MOTIVO:r["DESCIMPLA"]||"—"});
     }
     data.faltas=faltas;data.fts=ftsArr;data.cobertura=cobArr;
+    data.fichaDias={};
+    faltas.forEach(f=>{const k=String(f.RE||"").trim();if(k&&diasPorRE[k])data.fichaDias[k]=diasPorRE[k];});
   }else{
     ext("FALTAS",(r,I)=>({
       NOME:r[I["NOMEFUNCIONARIO"]],RE:r[I["RE"]]||"",DATA:isoDate(r[I["DATA"]]),
       LOCAL:r[I["NOMELOCAL"]],CARGO:r[I["DESC_CARGO"]],
       AREA:r[I["AREASUPERVISAO"]],ABONO:r[I["DESCTPABONO"]],
-      TIPO:r[I["TPCLIENTE"]],TURNO:turnoFromEscala(r[I["DESCESCALA"]],r[I["HRENTRADA"]])
+      TIPO:r[I["TPCLIENTE"]],TURNO:turnoFromEscala(r[I["DESCESCALA"]],r[I["HRENTRADA"]]),
+      ESCALA:r[I["DESCESCALA"]]||""
     }),"faltas");
+    // Sem a Ficha de Presenca nao ha como saber os dias trabalhados.
+    data.fichaDias={};
     ext("FTS",(r,I)=>{
       const nomeF=r[I["NOMEFUNCIONARIO"]];
       if(nomeF===null||nomeF===undefined||String(nomeF).trim()==="")return null;
@@ -308,6 +327,9 @@ function buildDataFromWorkbook(wb){
         TPCLIENTE:r[sa.idx["CLIENTE"]]||"—",LOCAL:r[sa.idx["LOCALSERVICO"]]||"—",
         TURNO:r[sa.idx["TURNO"]]||"DIURNO",TIPO:r[sa.idx["TIPO"]]||"—",
         SITUACAO:r[sa.idx["SITMOBRAHOJE"]]||"—",EMPRESA:r[sa.idx["EMPRESA"]]||"—",
+        // O RE e reaproveitado depois de uma demissao: RE + admissao separa quem
+        // tem o numero hoje de quem teve antes.
+        ADMISSAO:isoDate(r[sa.idx["DTADMISSAO"]]),
         // JORNADA traz o horário do posto em texto: "09H 06:30 - 15:30 C/ 1H INT".
         // É a única fonte da hora de abertura, e é o que permite medir quanto
         // tempo o supervisor leva para chegar depois de o posto iniciar.
@@ -451,7 +473,9 @@ function buildDataFromWorkbook(wb){
         CARGO:r[iD["LOCAL"]]||"",
         MOTIVO:r[iD["DESCRICAO"]]||"\u2014",
         OBS:String((r[iD["OBSDOCUMENTO"]]||"")+" "+(r[iD["OBSDOCUMENTO_CONTINUACAO"]]||"")).trim().slice(0,220),
-        FASE:r[iD["FASEATUAL"]]||""
+        FASE:r[iD["FASEATUAL"]]||"",
+        // Numero do processo: identifica a medida entre uma planilha e outra.
+        HIST:hid
       });
     });
   }
