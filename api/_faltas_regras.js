@@ -270,6 +270,6 @@ function pessoa(f, extra) {
 }
 
 module.exports = {
-  FAMILIAS, SITUACOES, familiaEscala, ehOperacional, trabalhouNoDia, montarCasos,
+  FAMILIAS, SITUACOES, familiaEscala, ehOperacional, trabalhouNoDia, montarCasos, reDe,
   textoMedidaComAusencia, descreverMedida, somaDias, ddmm
 };

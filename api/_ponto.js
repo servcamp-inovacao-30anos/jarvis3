@@ -89,6 +89,10 @@ function conectar() {
     async atualizar(caminho, patch) {
       await chamar(caminho, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify(patch) });
     },
+    // O caminho precisa trazer um filtro: sem ele o PostgREST recusa (e ainda bem).
+    async remover(caminho) {
+      await chamar(caminho, { method: "DELETE", headers: { Prefer: "return=minimal" } });
+    },
     // Devolve só as linhas que o filtro realmente pegou: com o status no filtro,
     // vira um "comparar e trocar" — quem chega depois recebe lista vazia.
     async atualizarRetornando(caminho, patch) {
@@ -750,5 +754,6 @@ module.exports = async function ponto(req, res) {
 };
 
 module.exports.APROVADORES = APROVADORES;
+module.exports.conectar = conectar;
 module.exports.materializar = materializar;
 module.exports.usuarioDoToken = usuarioDoToken;
