@@ -127,13 +127,6 @@ function supabaseFalso(tabelas, opcoes) {
       alvo.forEach(x => Object.assign(x, JSON.parse(JSON.stringify(corpo))));
       return resposta(200, prefer.includes("return=representation") ? alvo.map(x => JSON.parse(JSON.stringify(x))) : null);
     }
-    if (metodo === "DELETE") {
-      // como o PostgREST: DELETE sem filtro é recusado
-      if (![...u.searchParams.keys()].some(k => !PARAMS_DE_CONTROLE.has(k))) return resposta(400, { message: "DELETE requires a WHERE clause" });
-      const alvo = new Set(filtrar(t, u.searchParams));
-      tabelas[caminho] = t.filter(x => !alvo.has(x));
-      return resposta(204, null);
-    }
     return resposta(405, { message: "método não suportado no falso" });
   };
   return log;

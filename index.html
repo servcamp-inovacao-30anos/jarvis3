@@ -843,7 +843,6 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       <div class="ni" data-pg="audqual" data-perm="qual" onclick="navTo('audqual',this)"><span class="ni-ic">✅</span><span>Auditoria de Qualidade</span></div>
       -->
       <div class="ni" data-pg="ligacoes" data-perm="lig" onclick="navTo('ligacoes',this)"><span class="ni-ic">📞</span><span>Feedback de Faltas</span><span class="nib nib-novo">NOVO</span></div>
-      <div class="ni" data-pg="faltasmed" onclick="navTo('faltasmed',this)"><span class="ni-ic">⚖️</span><span>Faltas x Medidas</span><span class="nib nib-novo">NOVO</span></div>
     </div>
   </div>
   <div class="nav-cat" data-cat="rh">
@@ -1014,7 +1013,7 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
         </div>
         <div class="oc c7 oc-h" id="ocDisc" onclick="vgDiscDet()">
           <div class="oc-ic">⚖️</div>
-          <div class="oc-txt"><div class="oc-lb">Disciplina</div><div class="oc-duo"><span class="oc-v" id="ocDiscA">—</span><span class="d2" id="ocDiscS">—</span></div><div class="oc-sb" id="ocDiscSub">advertências · suspensões</div><div class="oc-cmp" id="ocDiscDet"></div><div class="oc-cmp" id="ocDiscFm"></div></div>
+          <div class="oc-txt"><div class="oc-lb">Disciplina</div><div class="oc-duo"><span class="oc-v" id="ocDiscA">—</span><span class="d2" id="ocDiscS">—</span></div><div class="oc-sb" id="ocDiscSub">advertências · suspensões</div><div class="oc-cmp" id="ocDiscDet"></div></div>
         </div>
       </div>
     </div>
@@ -1895,68 +1894,6 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
     <div class="sec-hd"><div class="sec-ic">🩺</div><div><div class="sec-t">Saúde do Cliente</div><div class="sec-s">Quem está em risco — e por quê. Faltas de contrato, postos descobertos e visita do supervisor nos últimos 30 dias.</div></div></div>
     <div id="sau-content"><div style="padding:40px;text-align:center;color:#94a3b8;font-size:.85rem">Carregando…</div></div>
   </div>
-  <div class="page" id="pg-faltasmed">
-    <style>
-      #pg-faltasmed .fm-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-      #pg-faltasmed .fm-btn{padding:7px 13px;border:1px solid var(--g200);border-radius:8px;background:var(--wh);color:var(--g700);font:inherit;font-size:.74rem;font-weight:800;cursor:pointer}
-      #pg-faltasmed .fm-btn:hover{border-color:var(--b5);color:var(--b6)}
-      #pg-faltasmed .fm-btn.fm-pri{background:var(--b7);border-color:var(--b7);color:#fff}
-      #pg-faltasmed .fm-btn:disabled{opacity:.5;cursor:default}
-      #pg-faltasmed .fm-in{padding:7px 10px;border:1px solid var(--g200);border-radius:8px;font:inherit;font-size:.76rem;background:var(--wh);color:var(--g800);outline:none}
-      #pg-faltasmed .fm-in:focus{border-color:var(--b5)}
-      #pg-faltasmed .fm-info{font-size:.7rem;color:var(--g500);margin:2px 0 12px}
-      #pg-faltasmed .fm-abas{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 12px}
-      #pg-faltasmed .fm-aba{padding:8px 13px;border-radius:9px;border:1px solid var(--g200);background:var(--wh);font-size:.74rem;font-weight:800;color:var(--g600);cursor:pointer;display:flex;gap:7px;align-items:center}
-      #pg-faltasmed .fm-aba b{font-size:.8rem;color:var(--g800)}
-      #pg-faltasmed .fm-aba.on{border-color:var(--b7);box-shadow:0 0 0 2px rgba(30,77,140,.15);color:var(--b7)}
-      #pg-faltasmed .fm-lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:12px}
-      #pg-faltasmed .fm-card{background:var(--wh);border:1px solid var(--g200);border-left:5px solid var(--g300);border-radius:10px;padding:13px 15px;box-shadow:var(--sh)}
-      #pg-faltasmed .fm-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
-      #pg-faltasmed .fm-nome{font-weight:900;font-size:.86rem;color:var(--g800)}
-      #pg-faltasmed .fm-dados{font-size:.68rem;color:var(--g500);margin-top:2px;line-height:1.45}
-      #pg-faltasmed .fm-selo{font-size:.6rem;font-weight:900;text-transform:uppercase;letter-spacing:.3px;padding:3px 8px;border-radius:7px;white-space:nowrap}
-      #pg-faltasmed .fm-dest{font-size:.76rem;color:var(--g700);margin:10px 0 8px;line-height:1.45}
-      #pg-faltasmed .fm-alerta{font-size:.72rem;line-height:1.5;background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.35);border-radius:8px;padding:9px 11px;color:var(--g700);margin:10px 0 8px}
-      #pg-faltasmed .fm-cal{display:flex;flex-wrap:wrap;gap:3px;margin:8px 0 4px}
-      #pg-faltasmed .fm-d{width:25px;height:30px;border-radius:5px;border:1px solid var(--g200);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:.6rem;font-weight:800;color:var(--g600);background:var(--wh);line-height:1.05}
-      #pg-faltasmed .fm-d i{font-style:normal;font-size:.48rem;font-weight:700;opacity:.7}
-      #pg-faltasmed .fm-d.fut{opacity:.55}
-      #pg-faltasmed .fm-d.hj{outline:2px solid var(--g800);outline-offset:1px}
-      #pg-faltasmed .fm-d{position:relative}
-      #pg-faltasmed .fm-d.cm::after{content:"✓";position:absolute;top:-6px;right:-5px;width:13px;height:13px;border-radius:50%;background:#16a34a;color:#fff;font-size:.5rem;display:flex;align-items:center;justify-content:center;border:1px solid var(--wh)}
-      #pg-faltasmed .t-TRABALHOU{background:var(--g100)}
-      #pg-faltasmed .t-FOLGA{background:var(--wh);color:var(--g400)}
-      #pg-faltasmed .t-FALTA{background:#dc2626;border-color:#dc2626;color:#fff}
-      #pg-faltasmed .t-ABONADA{background:#2563eb;border-color:#2563eb;color:#fff}
-      #pg-faltasmed .t-RETORNO{background:#facc15;border-color:#eab308;color:#422006}
-      #pg-faltasmed .t-RETORNO_PREVISTO{background:rgba(250,204,21,.25);border:2px dashed #eab308;color:#854d0e}
-      #pg-faltasmed .t-PRAZO{background:#fb923c;border-color:#f97316;color:#fff}
-      #pg-faltasmed .t-MEDIDA{background:#16a34a;border-color:#16a34a;color:#fff}
-      #pg-faltasmed .t-FERIADO{background:rgba(124,58,237,.12);color:#7c3aed}
-      #pg-faltasmed .fm-leg{display:flex;gap:10px;flex-wrap:wrap;font-size:.64rem;color:var(--g500);margin:0 0 12px}
-      #pg-faltasmed .fm-leg span{display:inline-flex;align-items:center;gap:4px}
-      #pg-faltasmed .fm-leg .fm-d{width:14px;height:14px;display:inline-block}
-      #pg-faltasmed .fm-med{border-top:1px dashed var(--g200);margin-top:9px;padding-top:9px;font-size:.72rem;color:var(--g700)}
-      #pg-faltasmed .fm-med textarea{width:100%;box-sizing:border-box;min-height:52px;margin-top:5px;border:1px solid var(--g200);border-radius:7px;padding:7px 9px;font:inherit;font-size:.74rem;background:var(--wh);color:var(--g800);resize:vertical}
-      #pg-faltasmed .fm-hist{font-size:.66rem;color:var(--g500);margin-top:6px}
-      #pg-faltasmed .fm-vazio{padding:40px;text-align:center;color:var(--g400);font-size:.84rem;background:var(--wh);border:1px dashed var(--g200);border-radius:10px}
-      #pg-faltasmed table.fm-tb{width:100%;border-collapse:collapse;background:var(--wh);border:1px solid var(--g200);border-radius:10px;overflow:hidden;font-size:.74rem}
-      #pg-faltasmed table.fm-tb th{text-align:left;font-size:.62rem;text-transform:uppercase;letter-spacing:.3px;color:var(--g500);padding:9px 10px;border-bottom:1px solid var(--g200);background:var(--g50)}
-      #pg-faltasmed table.fm-tb td{padding:8px 10px;border-bottom:1px solid var(--g100);color:var(--g700)}
-      #pg-faltasmed .fm-sub2{font-size:.66rem;color:var(--g400);margin:18px 0 6px;font-weight:900;text-transform:uppercase;letter-spacing:.4px}
-      #pg-faltasmed .s-NO_PRAZO{border-left-color:#f97316}                  #pg-faltasmed .fm-selo.s-NO_PRAZO{background:rgba(249,115,22,.14);color:#c2410c}
-      #pg-faltasmed .s-AGUARDANDO_RETORNO{border-left-color:#dc2626}        #pg-faltasmed .fm-selo.s-AGUARDANDO_RETORNO{background:rgba(220,38,38,.12);color:#b91c1c}
-      #pg-faltasmed .s-PRAZO_VENCIDO{border-left-color:#eab308}             #pg-faltasmed .fm-selo.s-PRAZO_VENCIDO{background:rgba(234,179,8,.18);color:#854d0e}
-      #pg-faltasmed .s-COORDENACAO{border-left-color:#7c3aed}               #pg-faltasmed .fm-selo.s-COORDENACAO{background:rgba(124,58,237,.12);color:#6d28d9}
-      #pg-faltasmed .s-VERIFICAR{border-left-color:#7c3aed}                 #pg-faltasmed .fm-selo.s-VERIFICAR{background:rgba(124,58,237,.12);color:#6d28d9}
-      #pg-faltasmed .s-TRATADA{border-left-color:#16a34a}                   #pg-faltasmed .fm-selo.s-TRATADA{background:rgba(22,163,74,.12);color:#15803d}
-      #pg-faltasmed .s-TRATADA_FORA_DO_PRAZO{border-left-color:#16a34a}     #pg-faltasmed .fm-selo.s-TRATADA_FORA_DO_PRAZO{background:rgba(22,163,74,.12);color:#15803d}
-    </style>
-    <div class="sec-hdr"><span class="sec-hdr-ic">⚖️</span><div><div class="sec-hdr-t">Faltas x Medidas</div><div class="sec-hdr-sub">Faltas injustificadas e o prazo para aplicar a medida disciplinar</div></div>
-      <div class="fm-bar" style="margin-left:auto"><button class="fm-btn" onclick="fmLoad(true)">↻ Atualizar</button></div></div>
-    <div id="fm-sec"><div class="fm-vazio">Carregando…</div></div>
-  </div>
-
   <div class="page" id="pg-ligacoes">
     <div class="sec-hdr"><span class="sec-hdr-ic">📞</span><div><div class="sec-hdr-t">Feedback de Faltas</div><div class="sec-hdr-sub">Contato preventivo com quem faltou: pendências do dia, registro e painel</div></div></div>
     <div id="lig-content"><div style="padding:40px;text-align:center;color:#94a3b8;font-size:.85rem">Carregando contatos…</div></div>
@@ -2728,7 +2665,7 @@ function setTurno(t,btn){document.querySelectorAll("#trnoPg .pi").forEach(b=>b.c
 function setArea(){ST.area=document.getElementById("areaS").value;rpg();refresh();}
 function rpg(){Object.keys(ST.tpg).forEach(k=>ST.tpg[k]=1);}
 
-const PTITLES={metas:"Metas da Diretoria",visao:"Visão Geral",ativos:"Funcionários Ativos",clientes:"Clientes",faltas:"Faltas & Top 10",coberturas:"Coberturas",postos:"Justificativa de Postos Descobertos",os:"OS Avulsos",fts:"FTS",dispo:"Sem Alocação",restec:"Reservas Técnicas",hrextra:"Horas Extras",checklist:"Check List",rhvagas:"RH — Controle de Vagas",rhentrev:"RH — Entrevistas & Funil",rhdesl:"RH — Desligamentos",rhres:"RH — Reservas → Efetivação",rhtrein:"RH — Treinamentos",rhdash:"Painel RH — Diretoria",compro:"Comercial — Propostas & Cadência",comdash:"Painel Comercial",config:"Configurações — Acessos & Usuários",sede:"Base Virtual — Equipe",prj:"Projetos — Evolução & Inovação",audqual:"Auditoria de Qualidade",ligacoes:"Feedback de Faltas",faltasmed:"Faltas x Medidas"};
+const PTITLES={metas:"Metas da Diretoria",visao:"Visão Geral",ativos:"Funcionários Ativos",clientes:"Clientes",faltas:"Faltas & Top 10",coberturas:"Coberturas",postos:"Justificativa de Postos Descobertos",os:"OS Avulsos",fts:"FTS",dispo:"Sem Alocação",restec:"Reservas Técnicas",hrextra:"Horas Extras",checklist:"Check List",rhvagas:"RH — Controle de Vagas",rhentrev:"RH — Entrevistas & Funil",rhdesl:"RH — Desligamentos",rhres:"RH — Reservas → Efetivação",rhtrein:"RH — Treinamentos",rhdash:"Painel RH — Diretoria",compro:"Comercial — Propostas & Cadência",comdash:"Painel Comercial",config:"Configurações — Acessos & Usuários",sede:"Base Virtual — Equipe",prj:"Projetos — Evolução & Inovação",audqual:"Auditoria de Qualidade",ligacoes:"Feedback de Faltas"};
 
 /* ── Sidebar 2.0: accordion com estado salvo + busca de módulos ── */
 function navCatToggle(k){
@@ -2866,7 +2803,6 @@ function navTo(p,btn){
   else if(p==="prj"){prjLoad();}
   else if(p==="audqual"){audLoad();}
   else if(p==="ligacoes"){ligLoad();}
-  else if(p==="faltasmed"){fmLoad();}
   else{updVGCharts();}
   if(p!=="sede"&&typeof HQ_TIMER!=="undefined"&&HQ_TIMER){clearInterval(HQ_TIMER);HQ_TIMER=null;}
   if(typeof hqBeat==="function")hqBeat(); // presença: avisa em qual sala estou
@@ -3599,7 +3535,6 @@ function vgCardDisciplina(){
     .join(" \u00b7 ");
   const c=document.getElementById("ocDisc");
   if(c)c.classList.toggle("oc-t-alert", sus.length>0);
-  if(typeof fmVgResumo==="function")fmVgResumo();
 }
 /* O detalhe abre a MESMA lista que gerou o numero, nunca um recalculo. */
 function vgDiscDet(){
@@ -9390,156 +9325,6 @@ function audSalvar(){
     .then(({ok,j})=>{if(!ok)throw new Error((j&&j.error)||"");document.getElementById("aud-modal").remove();audLoad();})
     .catch(()=>{msg.style.color="#dc2626";msg.textContent="Erro ao salvar.";});
 }
-/* ═════════ FALTAS x MEDIDAS — prazo para a medida disciplinar ═════════
-   Os casos vêm prontos do servidor (api/_faltas_regras.js): situação, prazo e
-   o calendário do card. A tela só mostra; nenhuma regra é refeita aqui. */
-const FM={dados:null,aba:"NO_PRAZO",busca:"",sup:"",carregadoEm:0,vg:null,vgEm:0};
-const FM_ABAS=[
-  {id:"NO_PRAZO",rot:"No prazo",sit:["NO_PRAZO"]},
-  {id:"AGUARDANDO",rot:"Aguardando retorno",sit:["AGUARDANDO_RETORNO"]},
-  {id:"VENCIDO",rot:"Prazo vencido",sit:["PRAZO_VENCIDO"]},
-  {id:"COORD",rot:"Coordenação decide",sit:["COORDENACAO","VERIFICAR"]},
-  {id:"TRATADAS",rot:"Tratadas",sit:["TRATADA","TRATADA_FORA_DO_PRAZO"]},
-  {id:"ABONADAS",rot:"Abonadas"},
-  {id:"PAINEL",rot:"Painel"}
-];
-const FM_SIT={NO_PRAZO:"No prazo",AGUARDANDO_RETORNO:"Aguardando retorno",PRAZO_VENCIDO:"Prazo vencido",COORDENACAO:"Coordenação decide",VERIFICAR:"⚠ Verificar",TRATADA:"Tratada",TRATADA_FORA_DO_PRAZO:"Tratada fora do prazo"};
-const FM_DIA=["dom","seg","ter","qua","qui","sex","sáb"];
-const FM_ABONO={A:"Abonada",J:"Justificada",L:"Licença"};
-function fmDd(d){if(!d)return"—";const p=String(d).slice(0,10).split("-");return p[2]+"/"+p[1];}
-function fmDdS(d){if(!d)return"—";const x=new Date(String(d).slice(0,10)+"T12:00:00Z");return FM_DIA[x.getUTCDay()]+" "+fmDd(d);}
-function fmMedidaTxt(m){
-  if(!m)return"";const t=String(m.TIPO||"").toUpperCase(),g=String(m.GRAU||"").toUpperCase();
-  if(t.indexOf("SUSPENS")===0)return"Suspensão"+(Number(m.DIAS||m.dias)?" de "+Number(m.DIAS||m.dias)+" dia(s)":"");
-  return"Advertência"+(g==="VERBAL"?" verbal":g==="ESCRITA"?" escrita":"");
-}
-function fmPedir(metodo,t,corpo){
-  const op={method:metodo,headers:{}};
-  if(corpo!==undefined){op.headers["Content-Type"]="application/json";op.body=JSON.stringify(corpo);}
-  return fetch("/api/rh?modulo=faltas&t="+t,op).then(r=>r.json().catch(()=>({})).then(j=>{if(!r.ok)throw new Error(j.error||("Falha HTTP "+r.status));return j;}));
-}
-function fmLoad(forcar){
-  const box=document.getElementById("fm-sec");
-  if(!forcar&&FM.dados&&Date.now()-FM.carregadoEm<60000){fmRender();return;}
-  if(box&&!FM.dados)box.innerHTML='<div class="fm-vazio">Carregando…</div>';
-  return fmPedir("GET","casos").then(j=>{FM.dados=j;FM.carregadoEm=Date.now();FM.vg=j.resumo;FM.vgEm=Date.now();fmRender();fmVgPinta();})
-    .catch(e=>{if(box)box.innerHTML='<div class="fm-vazio">Não foi possível carregar: '+_esc(e.message)+'</div>';});
-}
-function fmFiltra(c){
-  const q=FM.busca.trim().toLowerCase();
-  if(FM.sup&&(c.supervisor||"")!==FM.sup)return false;
-  if(!q)return true;
-  return [c.nome,c.re,c.posto,c.supervisor].some(v=>String(v==null?"":v).toLowerCase().indexOf(q)>=0);
-}
-function fmContar(aba){
-  const j=FM.dados;if(!j)return 0;
-  if(aba.id==="ABONADAS")return j.abonadas.filter(fmFiltra).length;
-  if(!aba.sit)return null;
-  return j.casos.filter(c=>aba.sit.indexOf(c.situacao)>=0&&fmFiltra(c)).length;
-}
-function fmRender(){
-  const box=document.getElementById("fm-sec"),j=FM.dados;if(!box||!j)return;
-  const sups=[...new Set(j.casos.map(c=>c.supervisor).concat(j.abonadas.map(a=>a.supervisor)).filter(Boolean))].sort();
-  const abas=FM_ABAS.map(a=>{const n=fmContar(a);return `<div class="fm-aba${FM.aba===a.id?" on":""}" data-a="${a.id}" onclick="FM.aba=this.dataset.a;fmRender()">${_esc(a.rot)}${n==null?"":" <b>"+n+"</b>"}</div>`;}).join("");
-  const filtros=`<div class="fm-bar" style="margin-bottom:10px"><input class="fm-in" id="fm-busca" placeholder="Buscar nome, RE, posto…" value="${_esc(FM.busca)}" oninput="FM.busca=this.value;fmRenderCorpo()" style="width:230px">`+
-    `<select class="fm-in" onchange="FM.sup=this.value;fmRender()"><option value="">Todos os supervisores</option>${sups.map(s=>`<option${s===FM.sup?" selected":""}>${_esc(s)}</option>`).join("")}</select></div>`;
-  box.innerHTML=`<div class="fm-info">Planilha até <b>${fmDdS(j.dataBase)}</b> · hoje ${fmDdS(j.hoje)} · só faltas injustificadas do operacional, nas escalas 5x2, 6x1 e 12x36</div>`+
-    `<div class="fm-abas">${abas}</div>${filtros}<div id="fm-corpo"></div>`;
-  fmRenderCorpo();
-}
-function fmRenderCorpo(){
-  const el=document.getElementById("fm-corpo"),j=FM.dados;if(!el||!j)return;
-  document.querySelectorAll("#pg-faltasmed .fm-aba").forEach(a=>{const def=FM_ABAS.find(x=>x.id===a.dataset.a);const n=fmContar(def);const b=a.querySelector("b");if(b&&n!=null)b.textContent=n;});
-  const aba=FM_ABAS.find(a=>a.id===FM.aba)||FM_ABAS[0];
-  if(aba.id==="ABONADAS"){el.innerHTML=fmAbonadas();return;}
-  if(aba.id==="PAINEL"){el.innerHTML=fmPainel();return;}
-  // mais urgente primeiro; nas tratadas, a medida mais recente primeiro
-  const ordem={NO_PRAZO:c=>c.prazoFim,AGUARDANDO:c=>c.retornoPrevisto||c.primeiraFalta,VENCIDO:c=>c.prazoFim,COORD:c=>(c.situacao==="VERIFICAR"?"0":"1")+c.primeiraFalta,TRATADAS:c=>c.medida?c.medida.DATA:""}[aba.id];
-  const lista=j.casos.filter(c=>aba.sit.indexOf(c.situacao)>=0&&fmFiltra(c)).sort((a,b)=>String(ordem(a)||"").localeCompare(String(ordem(b)||"")));
-  if(aba.id==="TRATADAS")lista.reverse();
-  if(!lista.length){el.innerHTML='<div class="fm-vazio">Nenhum caso nesta situação.</div>';return;}
-  el.innerHTML=fmLegenda()+'<div class="fm-lista">'+lista.map(fmCard).join("")+'</div>';
-}
-function fmLegenda(){
-  const it=[["FALTA","falta injustificada"],["ABONADA","abonada"],["RETORNO","retorno"],["RETORNO_PREVISTO","retorno previsto"],["PRAZO","prazo da medida"],["MEDIDA","medida aplicada"],["TRABALHOU","trabalhou"],["FOLGA","folga / sem registro"],["FERIADO","feriado"]];
-  return '<div class="fm-leg">'+it.map(([t,r])=>`<span><i class="fm-d t-${t}"></i>${r}</span>`).join("")+'<span><i class="fm-d hj"></i>hoje</span></div>';
-}
-function fmCal(c){
-  return '<div class="fm-cal">'+(c.calendario||[]).map(d=>{
-    const comMedida=d.medida&&d.tipo!=="MEDIDA";
-    return `<div class="fm-d t-${d.tipo||"X"}${d.futuro?" fut":""}${d.hoje?" hj":""}${comMedida?" cm":""}" title="${fmDdS(d.data)}${comMedida?" · medida lançada neste dia":""}"><i>${FM_DIA[d.semana].charAt(0).toUpperCase()}</i>${d.dia}</div>`;
-  }).join("")+'</div>';
-}
-function fmDestaque(c){
-  const un=c.familia==="12X36"?"2 plantões":"3 dias de trabalho";
-  const faltou="Faltou em "+c.faltas.map(fmDdS).join(", ")+".";
-  if(c.situacao==="AGUARDANDO_RETORNO")return `<div class="fm-dest">${faltou} <b>Retorno previsto: ${fmDdS(c.retornoPrevisto)}.</b> A partir do retorno, o supervisor tem ${un} para aplicar a medida.</div>`;
-  if(c.situacao==="NO_PRAZO")return `<div class="fm-dest">${faltou} Voltou em ${fmDdS(c.retorno)}. <b>Aplicar a medida até ${fmDdS(c.prazoFim)}</b> (prazo: ${c.prazo.map(fmDdS).join(", ")}).</div>`;
-  if(c.situacao==="VERIFICAR"||c.situacao==="COORDENACAO")return `<div class="fm-alerta">${_esc(c.motivo)}</div>`;
-  return `<div class="fm-dest">${faltou} ${_esc(c.motivo)}</div>`;
-}
-function fmCard(c){
-  const j=FM.dados;
-  const dados=[ "RE "+_esc(c.re), _esc(c.cargo), _esc(c.posto), _esc(c.escala), "Sup. "+_esc(c.supervisor||"—") ].filter(Boolean).join(" · ");
-  let med="";
-  if(c.medida){
-    const m=c.medida;
-    const motivo=j.pode_editar
-      ?`<textarea id="fm-mt-${_esc(m.chave)}" placeholder="Motivo da medida (texto livre)">${_esc(m.motivo||"")}</textarea><div class="fm-bar" style="margin-top:5px"><button class="fm-btn fm-pri" data-ch="${_esc(m.chave)}" onclick="fmSalvarMotivo(this.dataset.ch,this)">Salvar motivo</button>${m.motivo_editado_por?`<span class="fm-info" style="margin:0">editado por ${_esc(m.motivo_editado_por)} em ${fmDd(m.motivo_editado_em)}</span>`:""}</div>`
-      :`<div style="margin-top:4px">${m.motivo?_esc(m.motivo):'<span style="color:var(--g400)">sem motivo registrado</span>'}</div>`;
-    med=`<div class="fm-med"><b>${fmMedidaTxt(m)}</b> em ${fmDdS(m.DATA)}${m.MOTIVO?` · no SAR2G: ${_esc(m.MOTIVO)}`:""}<div class="fm-info" style="margin:6px 0 0">Motivo (JARVIS)</div>${motivo}</div>`;
-  }
-  const outras=((j.historico||{})[c.re]||[]).filter(h=>!c.medida||h.chave!==c.medida.chave);
-  const hist=outras.length?`<div class="fm-hist">Medidas anteriores: ${outras.map(h=>fmMedidaTxt({TIPO:h.tipo,GRAU:h.grau,DIAS:h.dias})+" em "+fmDd(h.data)).join(" · ")}</div>`:"";
-  return `<div class="fm-card s-${c.situacao}"><div class="fm-top"><div><div class="fm-nome">${_esc(c.nome)}</div><div class="fm-dados">${dados}</div></div><span class="fm-selo s-${c.situacao}">${FM_SIT[c.situacao]||c.situacao}</span></div>${fmDestaque(c)}${fmCal(c)}${med}${hist}</div>`;
-}
-function fmAbonadas(){
-  const l=FM.dados.abonadas.filter(fmFiltra).sort((a,b)=>String(b.data).localeCompare(String(a.data)));
-  if(!l.length)return'<div class="fm-vazio">Nenhuma falta abonada no período.</div>';
-  return '<div class="fm-info">Faltas que chegaram com atestado ou justificativa: saem da cobrança.</div><table class="fm-tb"><thead><tr><th>Dia</th><th>Colaborador</th><th>RE</th><th>Situação</th><th>Posto</th><th>Supervisor</th></tr></thead><tbody>'+
-    l.map(a=>`<tr><td>${fmDdS(a.data)}</td><td><b>${_esc(a.nome)}</b></td><td>${_esc(a.re)}</td><td>${_esc(FM_ABONO[a.codigo]||a.codigo)}</td><td>${_esc(a.posto)}</td><td>${_esc(a.supervisor)}</td></tr>`).join("")+'</tbody></table>';
-}
-function fmPainel(){
-  const j=FM.dados,por={};
-  j.casos.filter(fmFiltra).forEach(c=>{const s=c.supervisor||"Sem supervisor";const x=(por[s]=por[s]||{t:0,NO_PRAZO:0,AGUARDANDO_RETORNO:0,PRAZO_VENCIDO:0,COORD:0,TRATADA:0,TRATADA_FORA_DO_PRAZO:0});x.t++;const k=(c.situacao==="COORDENACAO"||c.situacao==="VERIFICAR")?"COORD":c.situacao;x[k]=(x[k]||0)+1;});
-  const pct=x=>{const d=x.TRATADA+x.TRATADA_FORA_DO_PRAZO+x.PRAZO_VENCIDO;return d?Math.round(x.TRATADA/d*100)+"%":"—";};
-  const linhas=Object.entries(por).sort((a,b)=>(b[1].PRAZO_VENCIDO+b[1].COORD)-(a[1].PRAZO_VENCIDO+a[1].COORD)||a[0].localeCompare(b[0]));
-  let h='<div class="fm-info">% no prazo = casos tratados dentro do prazo ÷ casos cujo prazo já terminou (tratados no prazo, fora do prazo e vencidos).</div>';
-  h+=linhas.length?'<table class="fm-tb"><thead><tr><th>Supervisor</th><th>Casos</th><th>No prazo</th><th>Aguardando</th><th>Vencidos</th><th>Coordenação</th><th>Tratadas</th><th>Fora do prazo</th><th>% no prazo</th></tr></thead><tbody>'+
-    linhas.map(([s,x])=>`<tr><td><b>${_esc(s)}</b></td><td>${x.t}</td><td>${x.NO_PRAZO}</td><td>${x.AGUARDANDO_RETORNO}</td><td>${x.PRAZO_VENCIDO?`<b style="color:#b45309">${x.PRAZO_VENCIDO}</b>`:0}</td><td>${x.COORD}</td><td>${x.TRATADA}</td><td>${x.TRATADA_FORA_DO_PRAZO}</td><td><b>${pct(x)}</b></td></tr>`).join("")+'</tbody></table>':'<div class="fm-vazio">Nenhum caso no período.</div>';
-  h+='<div class="fm-sub2">Feriados</div><div class="fm-info">Feriado só conta como dia de trabalho se a pessoa teve presença nele.</div>';
-  h+=(j.feriados||[]).length?'<table class="fm-tb" style="max-width:520px"><tbody>'+j.feriados.map(f=>`<tr><td>${fmDdS(f.data)}/${String(f.data).slice(0,4)}</td><td>${_esc(f.descricao||"")}</td><td style="text-align:right">${j.pode_editar?`<button class="fm-btn" data-d="${_esc(String(f.data).slice(0,10))}" onclick="fmFeriadoRemover(this.dataset.d)">Remover</button>`:""}</td></tr>`).join("")+'</tbody></table>':'<div class="fm-info">Nenhum feriado cadastrado.</div>';
-  if(j.pode_editar)h+='<div class="fm-bar" style="margin-top:8px"><input type="date" class="fm-in" id="fm-fer-d"><input class="fm-in" id="fm-fer-t" placeholder="Descrição (ex.: Finados)" style="width:220px"><button class="fm-btn fm-pri" onclick="fmFeriadoSalvar()">Adicionar feriado</button></div>';
-  return h;
-}
-function fmSalvarMotivo(chave,btn){
-  const ta=document.getElementById("fm-mt-"+chave);if(!ta)return;
-  btn.disabled=true;
-  fmPedir("PATCH","motivo",{chave,motivo:ta.value}).then(r=>{
-    FM.dados.casos.forEach(c=>{if(c.medida&&c.medida.chave===chave){c.medida.motivo=r.motivo;if(r.alterado){c.medida.motivo_editado_por=r.motivo_editado_por;c.medida.motivo_editado_em=r.motivo_editado_em;}}});
-    ptToast(r.alterado?"Motivo salvo":"Nada mudou no motivo");fmRenderCorpo();
-  }).catch(e=>{alert(e.message);btn.disabled=false;});
-}
-function fmFeriadoSalvar(){
-  const d=(document.getElementById("fm-fer-d")||{}).value,t=(document.getElementById("fm-fer-t")||{}).value;
-  if(!d){alert("Escolha a data do feriado.");return;}
-  fmPedir("POST","feriados",{data:d,descricao:t}).then(()=>{ptToast("Feriado salvo");fmLoad(true);}).catch(e=>alert(e.message));
-}
-function fmFeriadoRemover(d){
-  if(!confirm("Remover o feriado de "+fmDd(d)+"?"))return;
-  fmPedir("POST","feriados",{data:d,remover:true}).then(()=>{ptToast("Feriado removido");fmLoad(true);}).catch(e=>alert(e.message));
-}
-/* Card "Disciplina" da Visão Geral: uma linha com os casos do módulo. */
-function fmVgPinta(){
-  const el=document.getElementById("ocDiscFm");if(!el||!FM.vg)return;
-  const r=FM.vg,n=k=>r[k]||0;
-  el.innerHTML=`<span style="cursor:pointer;text-decoration:underline dotted" onclick="event.stopPropagation();navTo('faltasmed',null)">⚖️ <b>${n("NO_PRAZO")}</b> no prazo · <b>${n("PRAZO_VENCIDO")}</b> vencidos · <b>${n("COORDENACAO")+n("VERIFICAR")}</b> coordenação</span>`;
-}
-function fmVgResumo(){
-  if(FM.vg&&Date.now()-FM.vgEm<300000){fmVgPinta();return;}
-  fmPedir("GET","casos").then(j=>{FM.dados=FM.dados||j;FM.vg=j.resumo;FM.vgEm=Date.now();fmVgPinta();}).catch(()=>{});
-}
-
 /* ═════════ LIGAÇÕES & ACOMPANHAMENTO — contato preventivo pós-falta ═════════
    Puxa as faltas da planilha diária, aponta quem faltou e ainda não foi
    contatado, e registra a tratativa. Fecha o ciclo antes da medida disciplinar. */

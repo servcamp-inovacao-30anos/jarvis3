@@ -235,14 +235,6 @@ module.exports = async function handler(req, res) {
     await ponto.materializar(data, { ator: origem === "robo" ? "robo" : ponto.usuarioDoToken(req) });
   } catch (e) { /* idem */ }
 
-  // ── Faltas x Medidas ──────────────────────────────────────────────────────
-  // Guarda faltas, dias trabalhados e medidas em tabela própria (api/_faltas.js).
-  // Falha aqui também não derruba o envio, mas fica no log da Vercel: calada,
-  // ninguém descobriria que o módulo parou de receber dados.
-  try {
-    await require("./_faltas").materializar(data);
-  } catch (e) { console.error("[faltas] materializar falhou: " + (e && e.message ? e.message : e)); }
-
   const row = inserted[0] || null;
   if (row) delete row.data; // não devolve o snapshot inteiro de volta
   return res.status(200).json({ ok: true, origem, row_count: rowCount, row });
