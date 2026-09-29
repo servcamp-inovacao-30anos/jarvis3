@@ -1897,64 +1897,212 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
   </div>
   <div class="page" id="pg-faltasmed">
     <style>
-      #pg-faltasmed .fm-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-      #pg-faltasmed .fm-btn{padding:7px 13px;border:1px solid var(--g200);border-radius:8px;background:var(--wh);color:var(--g700);font:inherit;font-size:.74rem;font-weight:800;cursor:pointer}
-      #pg-faltasmed .fm-btn:hover{border-color:var(--b5);color:var(--b6)}
+      /* ── Faltas x Medidas: tokens do módulo (claro / escuro) ── */
+      #pg-faltasmed{
+        --fm-surface:var(--wh);--fm-subtle:#f8fafc;--fm-line:var(--g200);--fm-line2:var(--g100);
+        --fm-text:var(--g800);--fm-text2:var(--g600);--fm-muted:var(--g500);
+        --fm-brand:#1d6fc4;--fm-brand-tx:#1e4d8c;--fm-brand-soft:#e8f1fc;--fm-ring:rgba(29,111,196,.22);
+        --fm-sh:0 1px 2px rgba(16,24,40,.05);--fm-sh2:0 1px 3px rgba(16,24,40,.08),0 1px 2px rgba(16,24,40,.04);
+        --c-work:#dde7f5;--c-work-bd:#b9cbe6;--c-work-tx:#1e3a5f;
+        --c-off-stripe:rgba(100,116,139,.2);--c-off-bd:#e4e7ec;--c-off-tx:#98a2b3;--c-none-bd:#cfd6e0;
+        --c-hol:#efe9fe;--c-hol-bd:#b69cf7;--c-hol-tx:#5b21b6;--c-hol-bar:#7c3aed;
+        --c-falta:#d92d20;--c-abon:#0086c9;--c-ret:#f5b000;--c-ret-tx:#3d2800;--c-ret-soft:#fff8e1;--c-ret-tx2:#8a5a00;
+        --c-prazo:#ffead5;--c-prazo-bd:#fdae6b;--c-prazo-tx:#9a3412;--c-fim:#ea580c;--c-med:#079455;
+        font-variant-numeric:tabular-nums;
+      }
+      html[data-theme="dark"] #pg-faltasmed{
+        --fm-subtle:#131d2c;--fm-brand:#5aafff;--fm-brand-tx:#8cc6ff;--fm-brand-soft:rgba(46,143,239,.18);--fm-ring:rgba(90,175,255,.3);
+        --fm-sh:0 1px 2px rgba(0,0,0,.35);--fm-sh2:0 1px 3px rgba(0,0,0,.45);
+        --c-work:#22324b;--c-work-bd:#35507a;--c-work-tx:#d3e0f2;
+        --c-off-stripe:rgba(148,163,184,.14);--c-off-bd:#27344a;--c-off-tx:#66768d;--c-none-bd:#33425a;
+        --c-hol:rgba(124,58,237,.22);--c-hol-bd:#7c5cd6;--c-hol-tx:#d2c2ff;--c-hol-bar:#a78bfa;
+        --c-ret-soft:rgba(245,176,0,.12);--c-ret-tx2:#f5c542;
+        --c-prazo:rgba(249,115,22,.18);--c-prazo-bd:#b4531c;--c-prazo-tx:#fdba74;
+      }
+      /* tons de situação: --k (cor), --kbg (fundo), --kbd (borda), --ktx (texto) */
+      #pg-faltasmed .k-or{--k:#ea580c;--kbg:#fff4ed;--kbd:#fdd5b5;--ktx:#b93815}
+      #pg-faltasmed .k-in{--k:#1d6fc4;--kbg:#eff6ff;--kbd:#c3dcf7;--ktx:#1e4d8c}
+      #pg-faltasmed .k-da{--k:#d92d20;--kbg:#fef3f2;--kbd:#fecdca;--ktx:#b42318}
+      #pg-faltasmed .k-vi{--k:#7a5af8;--kbg:#f4f3ff;--kbd:#d9d6fe;--ktx:#5925dc}
+      #pg-faltasmed .k-ok{--k:#079455;--kbg:#ecfdf3;--kbd:#abefc6;--ktx:#067647}
+      #pg-faltasmed .k-wa{--k:#dc6803;--kbg:#fffaeb;--kbd:#fedf89;--ktx:#b54708}
+      #pg-faltasmed .k-ab{--k:#0086c9;--kbg:#f0f9ff;--kbd:#b9e6fe;--ktx:#026aa2}
+      html[data-theme="dark"] #pg-faltasmed .k-or{--kbg:rgba(234,88,12,.14);--kbd:rgba(234,88,12,.38);--ktx:#fdba74}
+      html[data-theme="dark"] #pg-faltasmed .k-in{--k:#5aafff;--kbg:rgba(46,143,239,.14);--kbd:rgba(46,143,239,.38);--ktx:#93c5fd}
+      html[data-theme="dark"] #pg-faltasmed .k-da{--k:#f04438;--kbg:rgba(217,45,32,.15);--kbd:rgba(240,68,56,.4);--ktx:#fda29b}
+      html[data-theme="dark"] #pg-faltasmed .k-vi{--k:#9b8afb;--kbg:rgba(122,90,248,.16);--kbd:rgba(155,138,251,.4);--ktx:#c7bdff}
+      html[data-theme="dark"] #pg-faltasmed .k-ok{--k:#17b26a;--kbg:rgba(7,148,85,.15);--kbd:rgba(23,178,106,.38);--ktx:#75e0a7}
+      html[data-theme="dark"] #pg-faltasmed .k-wa{--k:#f79009;--kbg:rgba(220,104,3,.15);--kbd:rgba(247,144,9,.38);--ktx:#fec84b}
+      html[data-theme="dark"] #pg-faltasmed .k-ab{--k:#36bffa;--kbg:rgba(0,134,201,.15);--kbd:rgba(54,191,250,.38);--ktx:#7cd4fd}
+
+      /* controles */
+      #pg-faltasmed .fm-btn{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 14px;border:1px solid var(--fm-line);border-radius:8px;background:var(--fm-surface);color:var(--fm-text);font:inherit;font-size:.76rem;font-weight:600;cursor:pointer;box-shadow:var(--fm-sh);transition:background .15s,border-color .15s,box-shadow .15s;white-space:nowrap}
+      #pg-faltasmed .fm-btn svg{width:15px;height:15px}
+      #pg-faltasmed .fm-btn:hover{background:var(--fm-subtle);border-color:var(--g300)}
       #pg-faltasmed .fm-btn.fm-pri{background:var(--b7);border-color:var(--b7);color:#fff}
+      #pg-faltasmed .fm-btn.fm-pri:hover{background:#173f75;border-color:#173f75}
+      #pg-faltasmed .fm-btn.fm-del{background:transparent;border-color:transparent;box-shadow:none;color:var(--ktx)}
+      #pg-faltasmed .fm-btn.fm-del:hover{background:var(--kbg);border-color:var(--kbd)}
+      #pg-faltasmed .fm-btn.sm{height:28px;padding:0 10px;font-size:.7rem}
       #pg-faltasmed .fm-btn:disabled{opacity:.5;cursor:default}
-      #pg-faltasmed .fm-in{padding:7px 10px;border:1px solid var(--g200);border-radius:8px;font:inherit;font-size:.76rem;background:var(--wh);color:var(--g800);outline:none}
-      #pg-faltasmed .fm-in:focus{border-color:var(--b5)}
-      #pg-faltasmed .fm-info{font-size:.7rem;color:var(--g500);margin:2px 0 12px}
-      #pg-faltasmed .fm-abas{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 12px}
-      #pg-faltasmed .fm-aba{padding:8px 13px;border-radius:9px;border:1px solid var(--g200);background:var(--wh);font-size:.74rem;font-weight:800;color:var(--g600);cursor:pointer;display:flex;gap:7px;align-items:center}
-      #pg-faltasmed .fm-aba b{font-size:.8rem;color:var(--g800)}
-      #pg-faltasmed .fm-aba.on{border-color:var(--b7);box-shadow:0 0 0 2px rgba(30,77,140,.15);color:var(--b7)}
-      #pg-faltasmed .fm-lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:12px}
-      #pg-faltasmed .fm-card{background:var(--wh);border:1px solid var(--g200);border-left:5px solid var(--g300);border-radius:10px;padding:13px 15px;box-shadow:var(--sh)}
-      #pg-faltasmed .fm-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
-      #pg-faltasmed .fm-nome{font-weight:900;font-size:.86rem;color:var(--g800)}
-      #pg-faltasmed .fm-dados{font-size:.68rem;color:var(--g500);margin-top:2px;line-height:1.45}
-      #pg-faltasmed .fm-selo{font-size:.6rem;font-weight:900;text-transform:uppercase;letter-spacing:.3px;padding:3px 8px;border-radius:7px;white-space:nowrap}
-      #pg-faltasmed .fm-dest{font-size:.76rem;color:var(--g700);margin:10px 0 8px;line-height:1.45}
-      #pg-faltasmed .fm-alerta{font-size:.72rem;line-height:1.5;background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.35);border-radius:8px;padding:9px 11px;color:var(--g700);margin:10px 0 8px}
-      #pg-faltasmed .fm-cal{display:flex;flex-wrap:wrap;gap:3px;margin:8px 0 4px}
-      #pg-faltasmed .fm-d{width:25px;height:30px;border-radius:5px;border:1px solid var(--g200);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:.6rem;font-weight:800;color:var(--g600);background:var(--wh);line-height:1.05}
-      #pg-faltasmed .fm-d i{font-style:normal;font-size:.48rem;font-weight:700;opacity:.7}
-      #pg-faltasmed .fm-d.fut{opacity:.55}
-      #pg-faltasmed .fm-d.hj{outline:2px solid var(--g800);outline-offset:1px}
-      #pg-faltasmed .fm-d{position:relative}
-      #pg-faltasmed .fm-d.cm::after{content:"✓";position:absolute;top:-6px;right:-5px;width:13px;height:13px;border-radius:50%;background:#16a34a;color:#fff;font-size:.5rem;display:flex;align-items:center;justify-content:center;border:1px solid var(--wh)}
-      #pg-faltasmed .t-TRABALHOU{background:var(--g100)}
-      #pg-faltasmed .t-FOLGA{background:var(--wh);color:var(--g400)}
-      #pg-faltasmed .t-FALTA{background:#dc2626;border-color:#dc2626;color:#fff}
-      #pg-faltasmed .t-ABONADA{background:#2563eb;border-color:#2563eb;color:#fff}
-      #pg-faltasmed .t-RETORNO{background:#facc15;border-color:#eab308;color:#422006}
-      #pg-faltasmed .t-RETORNO_PREVISTO{background:rgba(250,204,21,.25);border:2px dashed #eab308;color:#854d0e}
-      #pg-faltasmed .t-PRAZO{background:#fb923c;border-color:#f97316;color:#fff}
-      #pg-faltasmed .t-MEDIDA{background:#16a34a;border-color:#16a34a;color:#fff}
-      #pg-faltasmed .t-FERIADO{background:rgba(124,58,237,.12);color:#7c3aed}
-      #pg-faltasmed .fm-leg{display:flex;gap:10px;flex-wrap:wrap;font-size:.64rem;color:var(--g500);margin:0 0 12px}
-      #pg-faltasmed .fm-leg span{display:inline-flex;align-items:center;gap:4px}
-      #pg-faltasmed .fm-leg .fm-d{width:14px;height:14px;display:inline-block}
-      #pg-faltasmed .fm-med{border-top:1px dashed var(--g200);margin-top:9px;padding-top:9px;font-size:.72rem;color:var(--g700)}
-      #pg-faltasmed .fm-med textarea{width:100%;box-sizing:border-box;min-height:52px;margin-top:5px;border:1px solid var(--g200);border-radius:7px;padding:7px 9px;font:inherit;font-size:.74rem;background:var(--wh);color:var(--g800);resize:vertical}
-      #pg-faltasmed .fm-hist{font-size:.66rem;color:var(--g500);margin-top:6px}
-      #pg-faltasmed .fm-vazio{padding:40px;text-align:center;color:var(--g400);font-size:.84rem;background:var(--wh);border:1px dashed var(--g200);border-radius:10px}
-      #pg-faltasmed table.fm-tb{width:100%;border-collapse:collapse;background:var(--wh);border:1px solid var(--g200);border-radius:10px;overflow:hidden;font-size:.74rem}
-      #pg-faltasmed table.fm-tb th{text-align:left;font-size:.62rem;text-transform:uppercase;letter-spacing:.3px;color:var(--g500);padding:9px 10px;border-bottom:1px solid var(--g200);background:var(--g50)}
-      #pg-faltasmed table.fm-tb td{padding:8px 10px;border-bottom:1px solid var(--g100);color:var(--g700)}
-      #pg-faltasmed .fm-sub2{font-size:.66rem;color:var(--g400);margin:18px 0 6px;font-weight:900;text-transform:uppercase;letter-spacing:.4px}
-      #pg-faltasmed .s-NO_PRAZO{border-left-color:#f97316}                  #pg-faltasmed .fm-selo.s-NO_PRAZO{background:rgba(249,115,22,.14);color:#c2410c}
-      #pg-faltasmed .s-AGUARDANDO_RETORNO{border-left-color:#dc2626}        #pg-faltasmed .fm-selo.s-AGUARDANDO_RETORNO{background:rgba(220,38,38,.12);color:#b91c1c}
-      #pg-faltasmed .s-PRAZO_VENCIDO{border-left-color:#eab308}             #pg-faltasmed .fm-selo.s-PRAZO_VENCIDO{background:rgba(234,179,8,.18);color:#854d0e}
-      #pg-faltasmed .s-COORDENACAO{border-left-color:#7c3aed}               #pg-faltasmed .fm-selo.s-COORDENACAO{background:rgba(124,58,237,.12);color:#6d28d9}
-      #pg-faltasmed .s-VERIFICAR{border-left-color:#7c3aed}                 #pg-faltasmed .fm-selo.s-VERIFICAR{background:rgba(124,58,237,.12);color:#6d28d9}
-      #pg-faltasmed .s-TRATADA{border-left-color:#16a34a}                   #pg-faltasmed .fm-selo.s-TRATADA{background:rgba(22,163,74,.12);color:#15803d}
-      #pg-faltasmed .s-TRATADA_FORA_DO_PRAZO{border-left-color:#16a34a}     #pg-faltasmed .fm-selo.s-TRATADA_FORA_DO_PRAZO{background:rgba(22,163,74,.12);color:#15803d}
+      #pg-faltasmed .fm-in{height:34px;padding:0 12px;border:1px solid var(--fm-line);border-radius:8px;background:var(--fm-surface);color:var(--fm-text);font:inherit;font-size:.78rem;box-shadow:var(--fm-sh);outline:none;transition:border-color .15s,box-shadow .15s}
+      #pg-faltasmed .fm-in::placeholder,#pg-faltasmed .fm-ta::placeholder{color:var(--g400)}
+      #pg-faltasmed .fm-in:focus,#pg-faltasmed .fm-ta:focus{border-color:var(--fm-brand);box-shadow:0 0 0 4px var(--fm-ring)}
+      #pg-faltasmed .fm-btn:focus-visible,#pg-faltasmed .fm-tab:focus-visible,#pg-faltasmed .fm-kpi:focus-visible{outline:none;box-shadow:0 0 0 4px var(--fm-ring)}
+
+      /* topo: contexto, indicadores, abas, filtros */
+      #pg-faltasmed .fm-meta{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
+      #pg-faltasmed .fm-chip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border:1px solid var(--fm-line);border-radius:13px;background:var(--fm-surface);font-size:.7rem;color:var(--fm-muted)}
+      #pg-faltasmed .fm-chip b{color:var(--fm-text);font-weight:600}
+      #pg-faltasmed .fm-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:20px}
+      @media (max-width:980px){#pg-faltasmed .fm-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+      #pg-faltasmed .fm-kpi{position:relative;overflow:hidden;text-align:left;background:var(--fm-surface);border:1px solid var(--fm-line);border-radius:12px;padding:14px 16px 13px 18px;box-shadow:var(--fm-sh);cursor:pointer;font:inherit;color:inherit;transition:border-color .15s,box-shadow .15s}
+      #pg-faltasmed .fm-kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--k)}
+      #pg-faltasmed .fm-kpi:hover{border-color:var(--kbd);box-shadow:var(--fm-sh2)}
+      #pg-faltasmed .fm-kpi-l{font-size:.64rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--fm-muted)}
+      #pg-faltasmed .fm-kpi-v{font-size:1.65rem;font-weight:700;line-height:1.15;color:var(--fm-text);margin-top:6px;letter-spacing:-.01em}
+      #pg-faltasmed .fm-kpi-s{font-size:.7rem;color:var(--fm-muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      #pg-faltasmed .fm-tabs{display:flex;flex-wrap:wrap;align-items:stretch;gap:2px;border-bottom:1px solid var(--fm-line);margin-bottom:14px}
+      #pg-faltasmed .fm-tabs::-webkit-scrollbar{display:none}
+      #pg-faltasmed .fm-tab{appearance:none;background:none;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;padding:10px 12px;font:inherit;font-size:.78rem;font-weight:600;color:var(--fm-text2);cursor:pointer;display:inline-flex;align-items:center;gap:8px;white-space:nowrap;border-radius:6px 6px 0 0;transition:color .15s,border-color .15s}
+      #pg-faltasmed .fm-tab:hover{color:var(--fm-text)}
+      #pg-faltasmed .fm-tab.on{color:var(--fm-brand-tx);border-bottom-color:var(--fm-brand)}
+      #pg-faltasmed .fm-tab .dot{width:7px;height:7px;border-radius:50%;background:var(--k)}
+      #pg-faltasmed .fm-tab .n{min-width:22px;height:20px;padding:0 7px;border-radius:10px;background:var(--g100);color:var(--fm-text2);font-size:.66rem;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+      #pg-faltasmed .fm-tab.on .n{background:var(--fm-brand-soft);color:var(--fm-brand-tx)}
+      #pg-faltasmed .fm-tab-sep{flex:0 0 1px;background:var(--fm-line);margin:9px 8px}
+      #pg-faltasmed .fm-tool{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+      #pg-faltasmed .fm-search{position:relative;display:inline-flex}
+      #pg-faltasmed .fm-search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--g400);pointer-events:none}
+      #pg-faltasmed .fm-search .fm-in{padding-left:34px;width:270px;max-width:calc(100vw - 64px)}
+      #pg-faltasmed .fm-count{margin-left:auto;font-size:.72rem;color:var(--fm-muted)}
+
+      /* legenda */
+      #pg-faltasmed .fm-leg{display:flex;flex-wrap:wrap;gap:8px 0;align-items:center;padding:9px 4px;border:1px solid var(--fm-line);border-radius:10px;background:var(--fm-surface);margin-bottom:14px;font-size:.7rem;color:var(--fm-text2)}
+      #pg-faltasmed .fm-leg-g{display:flex;gap:6px 14px;align-items:center;flex-wrap:wrap;padding:0 14px;border-right:1px solid var(--fm-line2)}
+      #pg-faltasmed .fm-leg-g:last-child{border-right:0}
+      #pg-faltasmed .fm-leg-t{font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--fm-muted)}
+      #pg-faltasmed .fm-leg-i{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+      #pg-faltasmed .fm-leg .fm-d{width:16px;height:16px;border-radius:4px;font-size:0}
+      #pg-faltasmed .fm-leg .fm-d.fer::after{left:3px;right:3px;bottom:2px;height:2px}
+
+      /* cartão do caso */
+      #pg-faltasmed .fm-lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(560px,100%),1fr));gap:14px;align-items:start}
+      #pg-faltasmed .fm-card{background:var(--fm-surface);border:1px solid var(--fm-line);border-top:3px solid var(--k);border-radius:12px;box-shadow:var(--fm-sh2);overflow:hidden}
+      #pg-faltasmed .fm-ch{display:flex;gap:12px;align-items:center;padding:14px 16px 12px}
+      #pg-faltasmed .fm-av{flex:0 0 36px;height:36px;border-radius:50%;background:var(--g100);border:1px solid var(--fm-line);color:var(--fm-text2);font-size:.7rem;font-weight:700;letter-spacing:.02em;display:flex;align-items:center;justify-content:center}
+      #pg-faltasmed .fm-id{flex:1;min-width:0}
+      #pg-faltasmed .fm-nome{font-size:.86rem;font-weight:700;color:var(--fm-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      #pg-faltasmed .fm-sub{display:flex;align-items:center;gap:8px;font-size:.7rem;color:var(--fm-muted);margin-top:2px;min-width:0}
+      #pg-faltasmed .fm-re{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.66rem;font-weight:600;color:var(--fm-text2);background:var(--g100);border-radius:4px;padding:1px 6px;white-space:nowrap}
+      #pg-faltasmed .fm-pill{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:12px;border:1px solid var(--kbd);background:var(--kbg);color:var(--ktx);font-size:.68rem;font-weight:600;white-space:nowrap;flex:0 0 auto}
+      #pg-faltasmed .fm-pill i{width:6px;height:6px;border-radius:50%;background:var(--k)}
+      #pg-faltasmed .fm-attrs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--fm-line2);border-bottom:1px solid var(--fm-line2);background:var(--fm-subtle)}
+      #pg-faltasmed .fm-attrs>div{padding:8px 16px;min-width:0}
+      #pg-faltasmed .fm-attrs>div+div{border-left:1px solid var(--fm-line2)}
+      #pg-faltasmed .fm-attrs dt{font-size:.6rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--fm-muted)}
+      #pg-faltasmed .fm-attrs dd{font-size:.74rem;font-weight:500;color:var(--fm-text);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      #pg-faltasmed .fm-note{display:flex;gap:10px;align-items:flex-start;margin:12px 16px 0;padding:10px 12px;border:1px solid var(--kbd);background:var(--kbg);border-radius:8px;color:var(--fm-text)}
+      #pg-faltasmed .fm-note svg{flex:0 0 16px;width:16px;height:16px;color:var(--k);margin-top:1px}
+      #pg-faltasmed .fm-note b{display:block;font-size:.76rem;font-weight:700;color:var(--ktx)}
+      #pg-faltasmed .fm-note p{font-size:.72rem;line-height:1.5;color:var(--fm-text2);margin-top:2px}
+      #pg-faltasmed .fm-cb{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;padding:14px 16px 16px;align-items:start}
+      @media (max-width:640px){#pg-faltasmed .fm-cb{grid-template-columns:1fr}#pg-faltasmed .fm-attrs{grid-template-columns:1fr}#pg-faltasmed .fm-attrs>div+div{border-left:0;border-top:1px solid var(--fm-line2)}}
+
+      /* linha do tempo do caso */
+      #pg-faltasmed .fm-tl{list-style:none;margin:0;padding:0}
+      #pg-faltasmed .fm-tl li{position:relative;display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:10px;align-items:center;padding:7px 0}
+      #pg-faltasmed .fm-tl li:not(:last-child)::before{content:"";position:absolute;left:6px;top:calc(50% + 7px);height:calc(100% - 14px);width:2px;background:var(--fm-line)}
+      #pg-faltasmed .fm-tl .b{width:14px;height:14px;border-radius:50%;border:2px solid var(--g300);background:var(--fm-surface);box-sizing:border-box}
+      #pg-faltasmed .fm-tl .c-da{--tc:var(--c-falta)} #pg-faltasmed .fm-tl .c-am{--tc:var(--c-ret)} #pg-faltasmed .fm-tl .c-or{--tc:var(--c-fim)} #pg-faltasmed .fm-tl .c-ok{--tc:var(--c-med)}
+      #pg-faltasmed .fm-tl .done .b{background:var(--tc);border-color:var(--tc)}
+      #pg-faltasmed .fm-tl .pend .b{border-style:dashed;border-color:var(--tc)}
+      #pg-faltasmed .fm-tl .cur .b{border-color:var(--tc);box-shadow:inset 0 0 0 2px var(--fm-surface),inset 0 0 0 5px var(--tc)}
+      #pg-faltasmed .fm-tl .l{font-size:.72rem;color:var(--fm-text2)}
+      #pg-faltasmed .fm-tl .v{font-size:.74rem;font-weight:600;color:var(--fm-text);text-align:right}
+      #pg-faltasmed .fm-tl .v em{font-style:normal;font-size:.66rem;font-weight:600;color:var(--fm-muted);margin-left:4px}
+      #pg-faltasmed .fm-tl .none .v{font-weight:500;color:var(--fm-muted)}
+
+      /* calendário da folha (26 → 25) */
+      #pg-faltasmed .fm-calw{width:max-content}
+      #pg-faltasmed .fm-calh{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;font-size:.62rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--fm-muted)}
+      #pg-faltasmed .fm-calh b{font-weight:600;color:var(--fm-text2);letter-spacing:0;text-transform:none;font-size:.68rem}
+      #pg-faltasmed .fm-cal{display:grid;grid-template-columns:repeat(7,30px);gap:4px}
+      #pg-faltasmed .fm-wd{font-size:.58rem;font-weight:700;color:var(--fm-muted);text-align:center;padding-bottom:1px}
+      #pg-faltasmed .fm-d{position:relative;display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:6px;border:1px solid transparent;font-size:.7rem;font-weight:600;color:var(--fm-text2);box-sizing:border-box}
+      #pg-faltasmed .fm-d .m{position:absolute;top:1px;left:3px;font-size:.44rem;font-weight:700;text-transform:uppercase;letter-spacing:.02em;opacity:.75;line-height:1}
+      #pg-faltasmed .fm-d.t-TRABALHOU{background:var(--c-work);border-color:var(--c-work-bd);color:var(--c-work-tx)}
+      #pg-faltasmed .fm-d.t-FOLGA{background:repeating-linear-gradient(135deg,transparent 0 3px,var(--c-off-stripe) 3px 4.5px);border-color:var(--c-off-bd);color:var(--c-off-tx)}
+      #pg-faltasmed .fm-d.t-X{border:1px dashed var(--c-none-bd);color:var(--c-off-tx)}
+      #pg-faltasmed .fm-d.t-FERIADO{background:var(--c-hol);border-color:var(--c-hol-bd);color:var(--c-hol-tx)}
+      #pg-faltasmed .fm-d.fer::after{content:"";position:absolute;left:6px;right:6px;bottom:3px;height:3px;border-radius:2px;background:var(--c-hol-bar)}
+      #pg-faltasmed .fm-d.t-FALTA{background:var(--c-falta);border-color:var(--c-falta);color:#fff}
+      #pg-faltasmed .fm-d.t-ABONADA{background:var(--c-abon);border-color:var(--c-abon);color:#fff}
+      #pg-faltasmed .fm-d.t-RETORNO{background:var(--c-ret);border-color:var(--c-ret);color:var(--c-ret-tx)}
+      #pg-faltasmed .fm-d.t-RETORNO_PREVISTO{background:var(--c-ret-soft);border:1.5px dashed var(--c-ret);color:var(--c-ret-tx2)}
+      #pg-faltasmed .fm-d.t-PRAZO{background:var(--c-prazo);border-color:var(--c-prazo-bd);color:var(--c-prazo-tx)}
+      #pg-faltasmed .fm-d.t-PRAZO.fp{background:var(--c-fim);border-color:var(--c-fim);color:#fff}
+      #pg-faltasmed .fm-d.t-MEDIDA{background:var(--c-med);border-color:var(--c-med);color:#fff}
+      #pg-faltasmed .fm-d.fut:not(.t-PRAZO):not(.t-RETORNO_PREVISTO):not(.t-FERIADO){opacity:.45}
+      #pg-faltasmed .fm-d.hj{box-shadow:0 0 0 2px var(--fm-surface),0 0 0 4px var(--fm-brand)}
+      #pg-faltasmed .fm-d.cm::before{content:"✓";position:absolute;top:-6px;right:-6px;width:14px;height:14px;border-radius:50%;background:var(--c-med);border:2px solid var(--fm-surface);color:#fff;font-size:8px;font-weight:800;line-height:1;display:flex;align-items:center;justify-content:center}
+
+      /* medida e histórico */
+      #pg-faltasmed .fm-md{border-top:1px solid var(--fm-line2);background:var(--fm-subtle);padding:12px 16px 14px}
+      #pg-faltasmed .fm-md-h{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:.74rem;color:var(--fm-text)}
+      #pg-faltasmed .fm-md-h .t{font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--fm-muted);margin-right:2px}
+      #pg-faltasmed .fm-md-h .s{color:var(--fm-muted);font-size:.7rem}
+      #pg-faltasmed .fm-tag{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:6px;border:1px solid var(--kbd);background:var(--kbg);color:var(--ktx);font-size:.68rem;font-weight:600}
+      #pg-faltasmed .fm-lbl{display:block;font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--fm-muted);margin:12px 0 5px}
+      #pg-faltasmed .fm-ta{display:block;width:100%;box-sizing:border-box;min-height:56px;border:1px solid var(--fm-line);border-radius:8px;padding:8px 10px;font:inherit;font-size:.76rem;line-height:1.45;background:var(--fm-surface);color:var(--fm-text);resize:vertical;outline:none;box-shadow:var(--fm-sh);transition:border-color .15s,box-shadow .15s}
+      #pg-faltasmed .fm-md-f{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:8px}
+      #pg-faltasmed .fm-edit{font-size:.66rem;color:var(--fm-muted)}
+      #pg-faltasmed .fm-ro{font-size:.76rem;color:var(--fm-text);line-height:1.45}
+      #pg-faltasmed .fm-hist{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:9px 16px;border-top:1px solid var(--fm-line2);font-size:.68rem;color:var(--fm-muted)}
+      #pg-faltasmed .fm-hchip{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:10px;background:var(--g100);color:var(--fm-text2);font-weight:500}
+
+      /* tabelas, painel e feriados */
+      #pg-faltasmed .fm-h2{font-size:.86rem;font-weight:700;color:var(--fm-text);margin:0 0 3px}
+      #pg-faltasmed .fm-p{font-size:.72rem;color:var(--fm-muted);margin:0 0 12px;line-height:1.5}
+      #pg-faltasmed .fm-blk+.fm-blk{margin-top:26px}
+      #pg-faltasmed .fm-tbw{border:1px solid var(--fm-line);border-radius:12px;overflow:auto;background:var(--fm-surface);box-shadow:var(--fm-sh)}
+      #pg-faltasmed table.fm-tb{width:100%;border-collapse:collapse;font-size:.76rem}
+      #pg-faltasmed table.fm-tb th{text-align:left;font-size:.62rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--fm-muted);padding:10px 14px;border-bottom:1px solid var(--fm-line);background:var(--fm-subtle);white-space:nowrap}
+      #pg-faltasmed table.fm-tb td{padding:11px 14px;border-bottom:1px solid var(--fm-line2);color:var(--fm-text);vertical-align:middle}
+      #pg-faltasmed table.fm-tb tbody tr:last-child td{border-bottom:0}
+      #pg-faltasmed table.fm-tb tbody tr:hover td{background:var(--fm-subtle)}
+      #pg-faltasmed table.fm-tb .num{text-align:right;white-space:nowrap}
+      #pg-faltasmed table.fm-tb .nw{white-space:nowrap}
+      #pg-faltasmed .fm-tn{font-weight:600;color:var(--fm-text);white-space:nowrap}
+      #pg-faltasmed .fm-ts{font-size:.68rem;color:var(--fm-muted);margin-top:1px}
+      #pg-faltasmed .fm-z{color:var(--g300)}
+      #pg-faltasmed .fm-cnt{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:22px;padding:0 7px;border-radius:11px;border:1px solid var(--kbd);background:var(--kbg);color:var(--ktx);font-weight:700;font-size:.7rem}
+      #pg-faltasmed .fm-pct{display:inline-flex;align-items:center;gap:8px;justify-content:flex-end}
+      #pg-faltasmed .fm-pct .trk{width:72px;height:6px;border-radius:3px;background:var(--g100);overflow:hidden}
+      #pg-faltasmed .fm-pct .trk i{display:block;height:100%;border-radius:3px;background:var(--k)}
+      #pg-faltasmed .fm-pct b{min-width:34px;text-align:right;font-weight:700}
+      #pg-faltasmed .fm-fer{border:1px solid var(--fm-line);border-radius:12px;background:var(--fm-surface);box-shadow:var(--fm-sh);max-width:640px;overflow:hidden}
+      #pg-faltasmed .fm-fer-r{display:flex;align-items:center;gap:14px;padding:10px 14px;border-bottom:1px solid var(--fm-line2)}
+      #pg-faltasmed .fm-dt{flex:0 0 42px;border:1px solid var(--c-hol-bd);border-radius:8px;overflow:hidden;text-align:center;background:var(--fm-surface)}
+      #pg-faltasmed .fm-dt span{display:block;background:var(--c-hol-bar);color:#fff;font-size:.54rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 0}
+      #pg-faltasmed .fm-dt b{display:block;font-size:.92rem;font-weight:700;color:var(--fm-text);padding:3px 0 4px}
+      #pg-faltasmed .fm-fer-t{flex:1;min-width:0}
+      #pg-faltasmed .fm-fer-t b{display:block;font-size:.78rem;font-weight:600;color:var(--fm-text)}
+      #pg-faltasmed .fm-fer-t span{font-size:.68rem;color:var(--fm-muted)}
+      #pg-faltasmed .fm-fer-vz{padding:16px 14px;font-size:.74rem;color:var(--fm-muted);border-bottom:1px solid var(--fm-line2)}
+      #pg-faltasmed .fm-fer-add{display:flex;gap:8px;flex-wrap:wrap;padding:12px 14px;background:var(--fm-subtle)}
+      #pg-faltasmed .fm-fer-add .fm-in:nth-child(2){flex:1;min-width:180px}
+
+      /* estado vazio */
+      #pg-faltasmed .fm-empty{padding:48px 20px;text-align:center;border:1px dashed var(--fm-line);border-radius:12px;background:var(--fm-surface)}
+      #pg-faltasmed .fm-empty .ic{width:44px;height:44px;margin:0 auto 12px;border-radius:50%;background:var(--g100);color:var(--fm-muted);display:flex;align-items:center;justify-content:center}
+      #pg-faltasmed .fm-empty .ic svg{width:20px;height:20px}
+      #pg-faltasmed .fm-empty b{display:block;font-size:.84rem;font-weight:700;color:var(--fm-text)}
+      #pg-faltasmed .fm-empty span{display:block;font-size:.74rem;color:var(--fm-muted);margin-top:4px}
     </style>
     <div class="sec-hdr"><span class="sec-hdr-ic">⚖️</span><div><div class="sec-hdr-t">Faltas x Medidas</div><div class="sec-hdr-sub">Faltas injustificadas e o prazo para aplicar a medida disciplinar</div></div>
-      <div class="fm-bar" style="margin-left:auto"><button class="fm-btn" onclick="fmLoad(true)">↻ Atualizar</button></div></div>
-    <div id="fm-sec"><div class="fm-vazio">Carregando…</div></div>
+      <div style="margin-left:auto"><button class="fm-btn" onclick="fmLoad(true)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>Atualizar</button></div></div>
+    <div id="fm-sec"><div class="fm-empty"><b>Carregando…</b></div></div>
   </div>
 
   <div class="page" id="pg-ligacoes">
@@ -9405,17 +9553,33 @@ function audSalvar(){
    o calendário do card. A tela só mostra; nenhuma regra é refeita aqui. */
 const FM={dados:null,aba:"NO_PRAZO",busca:"",sup:"",carregadoEm:0,vg:null,vgEm:0};
 const FM_ABAS=[
-  {id:"NO_PRAZO",rot:"No prazo",sit:["NO_PRAZO"]},
-  {id:"AGUARDANDO",rot:"Aguardando retorno",sit:["AGUARDANDO_RETORNO"]},
-  {id:"VENCIDO",rot:"Prazo vencido",sit:["PRAZO_VENCIDO"]},
-  {id:"COORD",rot:"Coordenação decide",sit:["COORDENACAO","VERIFICAR"]},
-  {id:"TRATADAS",rot:"Tratadas",sit:["TRATADA","TRATADA_FORA_DO_PRAZO"]},
-  {id:"ABONADAS",rot:"Abonadas"},
+  {id:"NO_PRAZO",rot:"No prazo",sit:["NO_PRAZO"],tom:"or"},
+  {id:"AGUARDANDO",rot:"Aguardando retorno",sit:["AGUARDANDO_RETORNO"],tom:"in"},
+  {id:"VENCIDO",rot:"Prazo vencido",sit:["PRAZO_VENCIDO"],tom:"da"},
+  {id:"COORD",rot:"Coordenação decide",sit:["COORDENACAO","VERIFICAR"],tom:"vi"},
+  {id:"TRATADAS",rot:"Tratadas",sit:["TRATADA","TRATADA_FORA_DO_PRAZO"],tom:"ok"},
+  {id:"ABONADAS",rot:"Abonadas",tom:"ab"},
   {id:"PAINEL",rot:"Painel"}
 ];
-const FM_SIT={NO_PRAZO:"No prazo",AGUARDANDO_RETORNO:"Aguardando retorno",PRAZO_VENCIDO:"Prazo vencido",COORDENACAO:"Coordenação decide",VERIFICAR:"⚠ Verificar",TRATADA:"Tratada",TRATADA_FORA_DO_PRAZO:"Tratada fora do prazo"};
+const FM_SIT={NO_PRAZO:"No prazo",AGUARDANDO_RETORNO:"Aguardando retorno",PRAZO_VENCIDO:"Prazo vencido",COORDENACAO:"Coordenação decide",VERIFICAR:"Verificar",TRATADA:"Tratada",TRATADA_FORA_DO_PRAZO:"Tratada fora do prazo"};
+// tom de cada situação (cores definidas no CSS do módulo: .k-or, .k-in, ...)
+const FM_TOM={NO_PRAZO:"or",AGUARDANDO_RETORNO:"in",PRAZO_VENCIDO:"da",COORDENACAO:"vi",VERIFICAR:"vi",TRATADA:"ok",TRATADA_FORA_DO_PRAZO:"wa"};
+const FM_TIPO={TRABALHOU:"trabalhou",FOLGA:"folga",FERIADO:"feriado",X:"sem registro",FALTA:"falta injustificada",ABONADA:"abonada",RETORNO:"retorno",RETORNO_PREVISTO:"retorno previsto",PRAZO:"prazo da medida",MEDIDA:"medida aplicada"};
 const FM_DIA=["dom","seg","ter","qua","qui","sex","sáb"];
+const FM_DIA_L=["domingo","segunda-feira","terça-feira","quarta-feira","quinta-feira","sexta-feira","sábado"];
+const FM_MES=["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
 const FM_ABONO={A:"Abonada",J:"Justificada",L:"Licença"};
+const _fmSvg=p=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const FM_IC={
+  or:_fmSvg('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
+  in:_fmSvg('<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>'),
+  da:_fmSvg('<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>'),
+  vi:_fmSvg('<path d="M4 21V4h11l-1 4 6 0-2 6H4"/>'),
+  ok:_fmSvg('<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>'),
+  wa:_fmSvg('<circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5h.01"/>'),
+  busca:_fmSvg('<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>'),
+  vazio:_fmSvg('<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>')
+};
 function fmDd(d){if(!d)return"—";const p=String(d).slice(0,10).split("-");return p[2]+"/"+p[1];}
 function fmDdS(d){if(!d)return"—";const x=new Date(String(d).slice(0,10)+"T12:00:00Z");return FM_DIA[x.getUTCDay()]+" "+fmDd(d);}
 function fmMedidaTxt(m){
@@ -9423,6 +9587,11 @@ function fmMedidaTxt(m){
   if(t.indexOf("SUSPENS")===0)return"Suspensão"+(Number(m.DIAS||m.dias)?" de "+Number(m.DIAS||m.dias)+" dia(s)":"");
   return"Advertência"+(g==="VERBAL"?" verbal":g==="ESCRITA"?" escrita":"");
 }
+function fmIniciais(nome){
+  const p=String(nome||"").trim().split(/\s+/).filter(w=>!/^(D[AEO]S?|E)$/i.test(w));
+  return _esc(((p[0]||"").charAt(0)+(p.length>1?p[p.length-1].charAt(0):"")).toUpperCase()||"?");
+}
+function fmVazio(t,s){return `<div class="fm-empty"><div class="ic">${FM_IC.vazio}</div><b>${t}</b>${s?`<span>${s}</span>`:""}</div>`;}
 function fmPedir(metodo,t,corpo){
   const op={method:metodo,headers:{}};
   if(corpo!==undefined){op.headers["Content-Type"]="application/json";op.body=JSON.stringify(corpo);}
@@ -9431,9 +9600,9 @@ function fmPedir(metodo,t,corpo){
 function fmLoad(forcar){
   const box=document.getElementById("fm-sec");
   if(!forcar&&FM.dados&&Date.now()-FM.carregadoEm<60000){fmRender();return;}
-  if(box&&!FM.dados)box.innerHTML='<div class="fm-vazio">Carregando…</div>';
+  if(box&&!FM.dados)box.innerHTML=fmVazio("Carregando…");
   return fmPedir("GET","casos").then(j=>{FM.dados=j;FM.carregadoEm=Date.now();FM.vg=j.resumo;FM.vgEm=Date.now();fmRender();fmVgPinta();})
-    .catch(e=>{if(box)box.innerHTML='<div class="fm-vazio">Não foi possível carregar: '+_esc(e.message)+'</div>';});
+    .catch(e=>{if(box)box.innerHTML=fmVazio("Não foi possível carregar",_esc(e.message));});
 }
 function fmFiltra(c){
   const q=FM.busca.trim().toLowerCase();
@@ -9450,77 +9619,127 @@ function fmContar(aba){
 function fmRender(){
   const box=document.getElementById("fm-sec"),j=FM.dados;if(!box||!j)return;
   const sups=[...new Set(j.casos.map(c=>c.supervisor).concat(j.abonadas.map(a=>a.supervisor)).filter(Boolean))].sort();
-  const abas=FM_ABAS.map(a=>{const n=fmContar(a);return `<div class="fm-aba${FM.aba===a.id?" on":""}" data-a="${a.id}" onclick="FM.aba=this.dataset.a;fmRender()">${_esc(a.rot)}${n==null?"":" <b>"+n+"</b>"}</div>`;}).join("");
-  const filtros=`<div class="fm-bar" style="margin-bottom:10px"><input class="fm-in" id="fm-busca" placeholder="Buscar nome, RE, posto…" value="${_esc(FM.busca)}" oninput="FM.busca=this.value;fmRenderCorpo()" style="width:230px">`+
-    `<select class="fm-in" onchange="FM.sup=this.value;fmRender()"><option value="">Todos os supervisores</option>${sups.map(s=>`<option${s===FM.sup?" selected":""}>${_esc(s)}</option>`).join("")}</select></div>`;
-  box.innerHTML=`<div class="fm-info">Planilha até <b>${fmDdS(j.dataBase)}</b> · hoje ${fmDdS(j.hoje)} · só faltas injustificadas do operacional, nas escalas 5x2, 6x1 e 12x36</div>`+
-    `<div class="fm-abas">${abas}</div>${filtros}<div id="fm-corpo"></div>`;
+  const abas=FM_ABAS.map(a=>{const n=fmContar(a);
+    return (a.id==="ABONADAS"?'<span class="fm-tab-sep"></span>':"")+
+      `<button type="button" role="tab" aria-selected="${FM.aba===a.id}" class="fm-tab${FM.aba===a.id?" on":""}" data-a="${a.id}" onclick="FM.aba=this.dataset.a;fmRender()">${a.tom?`<i class="dot k-${a.tom}"></i>`:""}${_esc(a.rot)}${n==null?"":`<span class="n">${n}</span>`}</button>`;}).join("");
+  const filtros=`<div class="fm-tool"><label class="fm-search">${FM_IC.busca}<input class="fm-in" id="fm-busca" placeholder="Buscar por nome, RE ou posto" value="${_esc(FM.busca)}" oninput="FM.busca=this.value;fmRenderCorpo()"></label>`+
+    `<select class="fm-in" onchange="FM.sup=this.value;fmRender()"><option value="">Todos os supervisores</option>${sups.map(s=>`<option${s===FM.sup?" selected":""}>${_esc(s)}</option>`).join("")}</select><span class="fm-count" id="fm-count"></span></div>`;
+  box.innerHTML=`<div class="fm-meta"><span class="fm-chip">Planilha <b>${fmDdS(j.dataBase)}</b></span><span class="fm-chip">Hoje <b>${fmDdS(j.hoje)}</b></span><span class="fm-chip">Escopo <b>faltas injustificadas do operacional · 5x2, 6x1 e 12x36</b></span></div>`+
+    `<div class="fm-kpis" id="fm-kpis"></div><div class="fm-tabs" role="tablist">${abas}</div>${filtros}<div id="fm-corpo"></div>`;
   fmRenderCorpo();
+}
+function fmKpis(){
+  const cs=FM.dados.casos.filter(fmFiltra),n=s=>cs.filter(c=>s.indexOf(c.situacao)>=0).length;
+  const np=n(["NO_PRAZO"]),ag=n(["AGUARDANDO_RETORNO"]),ve=n(["PRAZO_VENCIDO"]),co=n(["COORDENACAO","VERIFICAR"]),tr=n(["TRATADA"]),tf=n(["TRATADA_FORA_DO_PRAZO"]);
+  const enc=tr+tf+ve;
+  const k=(tom,aba,rot,v,sub)=>`<button type="button" class="fm-kpi k-${tom}" onclick="FM.aba='${aba}';fmRender()"><div class="fm-kpi-l">${rot}</div><div class="fm-kpi-v">${v}</div><div class="fm-kpi-s" title="${sub}">${sub}</div></button>`;
+  return k("or","NO_PRAZO","Em aberto",np+ag,`${np} no prazo · ${ag} aguardando retorno`)+
+    k("da","VENCIDO","Prazo vencido",ve,ve?"aplicar no mínimo advertência":"nenhum caso vencido")+
+    k("vi","COORD","Coordenação decide",co,"abandono, faltas seguidas ou medida a conferir")+
+    k("ok","TRATADAS","Tratadas no prazo",enc?Math.round(tr/enc*100)+"%":"—",enc?`${tr} de ${enc} casos com prazo encerrado`:"nenhum prazo encerrado ainda");
 }
 function fmRenderCorpo(){
   const el=document.getElementById("fm-corpo"),j=FM.dados;if(!el||!j)return;
-  document.querySelectorAll("#pg-faltasmed .fm-aba").forEach(a=>{const def=FM_ABAS.find(x=>x.id===a.dataset.a);const n=fmContar(def);const b=a.querySelector("b");if(b&&n!=null)b.textContent=n;});
+  const kp=document.getElementById("fm-kpis");if(kp)kp.innerHTML=fmKpis();
+  document.querySelectorAll("#pg-faltasmed .fm-tab").forEach(a=>{const def=FM_ABAS.find(x=>x.id===a.dataset.a);const n=fmContar(def);const b=a.querySelector(".n");if(b&&n!=null)b.textContent=n;});
+  const cnt=document.getElementById("fm-count"),conta=n=>{if(cnt)cnt.textContent=n==null?"":n+(n===1?" registro":" registros");};
   const aba=FM_ABAS.find(a=>a.id===FM.aba)||FM_ABAS[0];
-  if(aba.id==="ABONADAS"){el.innerHTML=fmAbonadas();return;}
-  if(aba.id==="PAINEL"){el.innerHTML=fmPainel();return;}
+  if(aba.id==="ABONADAS"){conta(fmContar(aba));el.innerHTML=fmAbonadas();return;}
+  if(aba.id==="PAINEL"){conta(null);el.innerHTML=fmPainel();return;}
   // mais urgente primeiro; nas tratadas, a medida mais recente primeiro
   const ordem={NO_PRAZO:c=>c.prazoFim,AGUARDANDO:c=>c.retornoPrevisto||c.primeiraFalta,VENCIDO:c=>c.prazoFim,COORD:c=>(c.situacao==="VERIFICAR"?"0":"1")+c.primeiraFalta,TRATADAS:c=>c.medida?c.medida.DATA:""}[aba.id];
   const lista=j.casos.filter(c=>aba.sit.indexOf(c.situacao)>=0&&fmFiltra(c)).sort((a,b)=>String(ordem(a)||"").localeCompare(String(ordem(b)||"")));
   if(aba.id==="TRATADAS")lista.reverse();
-  if(!lista.length){el.innerHTML='<div class="fm-vazio">Nenhum caso nesta situação.</div>';return;}
+  conta(lista.length);
+  if(!lista.length){el.innerHTML=fmVazio("Nenhum caso nesta situação",FM.busca||FM.sup?"Nada encontrado com o filtro aplicado.":"Quando houver, os casos aparecem aqui.");return;}
   el.innerHTML=fmLegenda()+'<div class="fm-lista">'+lista.map(fmCard).join("")+'</div>';
 }
 function fmLegenda(){
-  const it=[["FALTA","falta injustificada"],["ABONADA","abonada"],["RETORNO","retorno"],["RETORNO_PREVISTO","retorno previsto"],["PRAZO","prazo da medida"],["MEDIDA","medida aplicada"],["TRABALHOU","trabalhou"],["FOLGA","folga / sem registro"],["FERIADO","feriado"]];
-  return '<div class="fm-leg">'+it.map(([t,r])=>`<span><i class="fm-d t-${t}"></i>${r}</span>`).join("")+'<span><i class="fm-d hj"></i>hoje</span></div>';
+  const g=(t,it)=>`<div class="fm-leg-g"><span class="fm-leg-t">${t}</span>${it.map(([c,r])=>`<span class="fm-leg-i"><i class="fm-d ${c}"></i>${r}</span>`).join("")}</div>`;
+  return '<div class="fm-leg">'+
+    g("Presença",[["t-TRABALHOU","trabalhou"],["t-FOLGA","folga"],["t-FERIADO fer","feriado"],["t-X","sem registro"]])+
+    g("Ocorrência",[["t-FALTA","falta injustificada"],["t-ABONADA","abonada"]])+
+    g("Prazo",[["t-RETORNO","retorno"],["t-RETORNO_PREVISTO","retorno previsto"],["t-PRAZO","prazo"],["t-PRAZO fp","último dia"],["t-MEDIDA","medida aplicada"],["t-X hj","hoje"]])+
+    '</div>';
 }
 function fmCal(c){
-  return '<div class="fm-cal">'+(c.calendario||[]).map(d=>{
-    const comMedida=d.medida&&d.tipo!=="MEDIDA";
-    return `<div class="fm-d t-${d.tipo||"X"}${d.futuro?" fut":""}${d.hoje?" hj":""}${comMedida?" cm":""}" title="${fmDdS(d.data)}${comMedida?" · medida lançada neste dia":""}"><i>${FM_DIA[d.semana].charAt(0).toUpperCase()}</i>${d.dia}</div>`;
-  }).join("")+'</div>';
+  const cal=c.calendario||[];if(!cal.length)return"";
+  let h=["D","S","T","Q","Q","S","S"].map(w=>`<div class="fm-wd">${w}</div>`).join("");
+  for(let i=0;i<cal[0].semana;i++)h+="<div></div>";
+  cal.forEach((d,i)=>{
+    const comMedida=d.medida&&d.tipo!=="MEDIDA",tipo=d.tipo||"X";
+    const mes=(i===0||d.dia===1)?`<span class="m">${FM_MES[Number(d.data.slice(5,7))-1]}</span>`:"";
+    const cls=["fm-d","t-"+tipo,d.futuro?"fut":"",d.hoje?"hj":"",comMedida?"cm":"",d.feriado?"fer":"",d.fimDoPrazo&&tipo==="PRAZO"?"fp":""].filter(Boolean).join(" ");
+    const tit=[fmDdS(d.data),FM_TIPO[tipo],d.feriado&&tipo!=="FERIADO"?"feriado":"",d.fimDoPrazo?"último dia do prazo":"",comMedida?"medida lançada neste dia":"",d.hoje?"hoje":""].filter(Boolean).join(" · ");
+    h+=`<div class="${cls}" title="${_esc(tit)}">${mes}${d.dia}</div>`;
+  });
+  return `<div class="fm-calw"><div class="fm-calh"><span>Folha</span><b>${fmDd(cal[0].data)} – ${fmDd(cal[cal.length-1].data)}</b></div><div class="fm-cal">${h}</div></div>`;
 }
-function fmDestaque(c){
-  const un=c.familia==="12X36"?"2 plantões":"3 dias de trabalho";
-  const faltou="Faltou em "+c.faltas.map(fmDdS).join(", ")+".";
-  if(c.situacao==="AGUARDANDO_RETORNO")return `<div class="fm-dest">${faltou} <b>Retorno previsto: ${fmDdS(c.retornoPrevisto)}.</b> A partir do retorno, o supervisor tem ${un} para aplicar a medida.</div>`;
-  if(c.situacao==="NO_PRAZO")return `<div class="fm-dest">${faltou} Voltou em ${fmDdS(c.retorno)}. <b>Aplicar a medida até ${fmDdS(c.prazoFim)}</b> (prazo: ${c.prazo.map(fmDdS).join(", ")}).</div>`;
-  if(c.situacao==="VERIFICAR"||c.situacao==="COORDENACAO")return `<div class="fm-alerta">${_esc(c.motivo)}</div>`;
-  return `<div class="fm-dest">${faltou} ${_esc(c.motivo)}</div>`;
+/* Linha do tempo do caso: falta → retorno → fim do prazo → medida. */
+function fmLinha(c){
+  const hoje=FM.dados.hoje,nF=(c.faltas||[]).length,it=[];
+  it.push({c:"da",st:"done",l:"1ª falta",v:fmDdS(c.primeiraFalta)+(nF>1?`<em>+${nF-1} falta${nF>2?"s":""}</em>`:""),t:(c.faltas||[]).map(fmDdS).join(", ")});
+  if(c.retorno)it.push({c:"am",st:"done",l:"Retorno",v:fmDdS(c.retorno)});
+  else if(c.retornoPrevisto)it.push({c:"am",st:"pend",l:"Retorno previsto",v:fmDdS(c.retornoPrevisto)});
+  else it.push({st:"none",l:"Retorno",v:"não voltou"});
+  if(c.prazoFim)it.push({c:"or",st:(c.medida||hoje>c.prazoFim)?"done":"cur",l:"Prazo até",v:fmDdS(c.prazoFim)});
+  else it.push({st:"none",l:"Prazo",v:c.retornoPrevisto?"conta a partir do retorno":"—"});
+  it.push(c.medida?{c:"ok",st:"done",l:"Medida",v:fmDdS(c.medida.DATA)}:{st:"none",l:"Medida",v:"não aplicada"});
+  return '<ol class="fm-tl">'+it.map(x=>`<li class="${x.st}${x.c?" c-"+x.c:""}"${x.t?` title="${_esc(x.t)}"`:""}><span class="b"></span><span class="l">${x.l}</span><span class="v">${x.v}</span></li>`).join("")+'</ol>';
+}
+/* O recado principal do caso: o que fazer ou por que ele está nesta aba. */
+function fmNota(c){
+  const un=c.familia==="12X36"?"2 plantões":"3 dias de trabalho",tom=FM_TOM[c.situacao]||"in";
+  const m0=String(c.motivo||"").replace(/^⚠\s*/,""),motivo=_esc(m0.charAt(0).toUpperCase()+m0.slice(1));
+  const txt={
+    AGUARDANDO_RETORNO:[`Aguardando o retorno em ${fmDdS(c.retornoPrevisto)}`,`A partir do retorno, o supervisor tem ${un} para aplicar a medida.`],
+    NO_PRAZO:[`Aplicar a medida até ${fmDdS(c.prazoFim)}`,`Dias do prazo: ${(c.prazo||[]).map(fmDdS).join(", ")}.`],
+    PRAZO_VENCIDO:["Prazo vencido sem medida",motivo],
+    COORDENACAO:["Para a coordenação decidir",motivo],
+    VERIFICAR:["Medida a conferir",motivo],
+    TRATADA:["Tratada dentro do prazo",motivo],
+    TRATADA_FORA_DO_PRAZO:["Tratada fora do prazo",motivo]
+  }[c.situacao]||[FM_SIT[c.situacao]||c.situacao,motivo];
+  return `<div class="fm-note k-${tom}">${FM_IC[tom]||""}<div><b>${txt[0]}</b>${txt[1]?`<p>${txt[1]}</p>`:""}</div></div>`;
 }
 function fmCard(c){
-  const j=FM.dados;
-  const dados=[ "RE "+_esc(c.re), _esc(c.cargo), _esc(c.posto), _esc(c.escala), "Sup. "+_esc(c.supervisor||"—") ].filter(Boolean).join(" · ");
+  const j=FM.dados,tom=FM_TOM[c.situacao]||"in";
+  const attrs=[["Posto",c.posto],["Escala",c.escala],["Supervisor",c.supervisor]].map(([l,v])=>`<div><dt>${l}</dt><dd title="${_esc(v||"")}">${_esc(v||"—")}</dd></div>`).join("");
   let med="";
   if(c.medida){
-    const m=c.medida;
+    const m=c.medida,ch=_esc(m.chave);
     const motivo=j.pode_editar
-      ?`<textarea id="fm-mt-${_esc(m.chave)}" placeholder="Motivo da medida (texto livre)">${_esc(m.motivo||"")}</textarea><div class="fm-bar" style="margin-top:5px"><button class="fm-btn fm-pri" data-ch="${_esc(m.chave)}" onclick="fmSalvarMotivo(this.dataset.ch,this)">Salvar motivo</button>${m.motivo_editado_por?`<span class="fm-info" style="margin:0">editado por ${_esc(m.motivo_editado_por)} em ${fmDd(m.motivo_editado_em)}</span>`:""}</div>`
-      :`<div style="margin-top:4px">${m.motivo?_esc(m.motivo):'<span style="color:var(--g400)">sem motivo registrado</span>'}</div>`;
-    med=`<div class="fm-med"><b>${fmMedidaTxt(m)}</b> em ${fmDdS(m.DATA)}${m.MOTIVO?` · no SAR2G: ${_esc(m.MOTIVO)}`:""}<div class="fm-info" style="margin:6px 0 0">Motivo (JARVIS)</div>${motivo}</div>`;
+      ?`<textarea class="fm-ta" id="fm-mt-${ch}" placeholder="Descreva o motivo da medida">${_esc(m.motivo||"")}</textarea><div class="fm-md-f"><span class="fm-edit">${m.motivo_editado_por?`Editado por ${_esc(m.motivo_editado_por)} em ${fmDd(m.motivo_editado_em)}`:"Texto livre, salvo no JARVIS com histórico de edição"}</span><button class="fm-btn fm-pri sm" data-ch="${ch}" onclick="fmSalvarMotivo(this.dataset.ch,this)">Salvar motivo</button></div>`
+      :`<div class="fm-ro">${m.motivo?_esc(m.motivo):'<span class="fm-edit">Sem motivo registrado</span>'}</div>`;
+    med=`<div class="fm-md"><div class="fm-md-h"><span class="t">Medida</span><span class="fm-tag k-ok">${fmMedidaTxt(m)}</span><span>${fmDdS(m.DATA)}</span>${m.MOTIVO?`<span class="s">· SAR2G: ${_esc(m.MOTIVO)}</span>`:""}</div><label class="fm-lbl" for="fm-mt-${ch}">Motivo (JARVIS)</label>${motivo}</div>`;
   }
   const outras=((j.historico||{})[c.re]||[]).filter(h=>!c.medida||h.chave!==c.medida.chave);
-  const hist=outras.length?`<div class="fm-hist">Medidas anteriores: ${outras.map(h=>fmMedidaTxt({TIPO:h.tipo,GRAU:h.grau,DIAS:h.dias})+" em "+fmDd(h.data)).join(" · ")}</div>`:"";
-  return `<div class="fm-card s-${c.situacao}"><div class="fm-top"><div><div class="fm-nome">${_esc(c.nome)}</div><div class="fm-dados">${dados}</div></div><span class="fm-selo s-${c.situacao}">${FM_SIT[c.situacao]||c.situacao}</span></div>${fmDestaque(c)}${fmCal(c)}${med}${hist}</div>`;
+  const hist=outras.length?`<div class="fm-hist"><span>Medidas anteriores</span>${outras.map(h=>`<span class="fm-hchip">${fmMedidaTxt({TIPO:h.tipo,GRAU:h.grau,DIAS:h.dias})} · ${fmDd(h.data)}</span>`).join("")}</div>`:"";
+  return `<article class="fm-card k-${tom}"><header class="fm-ch"><div class="fm-av">${fmIniciais(c.nome)}</div><div class="fm-id"><div class="fm-nome" title="${_esc(c.nome)}">${_esc(c.nome)}</div><div class="fm-sub"><span class="fm-re">RE ${_esc(c.re)}</span><span>${_esc(c.cargo||"")}</span></div></div><span class="fm-pill k-${tom}"><i></i>${FM_SIT[c.situacao]||c.situacao}</span></header>`+
+    `<dl class="fm-attrs">${attrs}</dl>${fmNota(c)}<div class="fm-cb">${fmLinha(c)}${fmCal(c)}</div>${med}${hist}</article>`;
 }
 function fmAbonadas(){
   const l=FM.dados.abonadas.filter(fmFiltra).sort((a,b)=>String(b.data).localeCompare(String(a.data)));
-  if(!l.length)return'<div class="fm-vazio">Nenhuma falta abonada no período.</div>';
-  return '<div class="fm-info">Faltas que chegaram com atestado ou justificativa: saem da cobrança.</div><table class="fm-tb"><thead><tr><th>Dia</th><th>Colaborador</th><th>RE</th><th>Situação</th><th>Posto</th><th>Supervisor</th></tr></thead><tbody>'+
-    l.map(a=>`<tr><td>${fmDdS(a.data)}</td><td><b>${_esc(a.nome)}</b></td><td>${_esc(a.re)}</td><td>${_esc(FM_ABONO[a.codigo]||a.codigo)}</td><td>${_esc(a.posto)}</td><td>${_esc(a.supervisor)}</td></tr>`).join("")+'</tbody></table>';
+  if(!l.length)return fmVazio("Nenhuma falta abonada no período","Faltas com atestado, justificativa ou licença aparecem aqui.");
+  return '<p class="fm-p">Faltas que chegaram com atestado, justificativa ou licença: saem da cobrança da medida.</p><div class="fm-tbw"><table class="fm-tb"><thead><tr><th>Dia</th><th>Colaborador</th><th>Tipo</th><th>Posto</th><th>Supervisor</th></tr></thead><tbody>'+
+    l.map(a=>`<tr><td class="nw">${fmDdS(a.data)}</td><td><div class="fm-tn">${_esc(a.nome)}</div><div class="fm-ts">RE ${_esc(a.re)}</div></td><td><span class="fm-tag k-ab">${_esc(FM_ABONO[a.codigo]||a.codigo)}</span></td><td>${_esc(a.posto)}</td><td>${_esc(a.supervisor)}</td></tr>`).join("")+'</tbody></table></div>';
 }
 function fmPainel(){
   const j=FM.dados,por={};
   j.casos.filter(fmFiltra).forEach(c=>{const s=c.supervisor||"Sem supervisor";const x=(por[s]=por[s]||{t:0,NO_PRAZO:0,AGUARDANDO_RETORNO:0,PRAZO_VENCIDO:0,COORD:0,TRATADA:0,TRATADA_FORA_DO_PRAZO:0});x.t++;const k=(c.situacao==="COORDENACAO"||c.situacao==="VERIFICAR")?"COORD":c.situacao;x[k]=(x[k]||0)+1;});
-  const pct=x=>{const d=x.TRATADA+x.TRATADA_FORA_DO_PRAZO+x.PRAZO_VENCIDO;return d?Math.round(x.TRATADA/d*100)+"%":"—";};
+  const pct=x=>{const d=x.TRATADA+x.TRATADA_FORA_DO_PRAZO+x.PRAZO_VENCIDO;return d?Math.round(x.TRATADA/d*100):null;};
+  const num=(v,tom)=>!v?'<span class="fm-z">0</span>':tom?`<span class="fm-cnt k-${tom}">${v}</span>`:v;
+  const barra=p=>p==null?'<span class="fm-z">—</span>':`<span class="fm-pct k-${p>=80?"ok":p>=50?"wa":"da"}"><span class="trk"><i style="width:${p}%"></i></span><b>${p}%</b></span>`;
   const linhas=Object.entries(por).sort((a,b)=>(b[1].PRAZO_VENCIDO+b[1].COORD)-(a[1].PRAZO_VENCIDO+a[1].COORD)||a[0].localeCompare(b[0]));
-  let h='<div class="fm-info">% no prazo = casos tratados dentro do prazo ÷ casos cujo prazo já terminou (tratados no prazo, fora do prazo e vencidos).</div>';
-  h+=linhas.length?'<table class="fm-tb"><thead><tr><th>Supervisor</th><th>Casos</th><th>No prazo</th><th>Aguardando</th><th>Vencidos</th><th>Coordenação</th><th>Tratadas</th><th>Fora do prazo</th><th>% no prazo</th></tr></thead><tbody>'+
-    linhas.map(([s,x])=>`<tr><td><b>${_esc(s)}</b></td><td>${x.t}</td><td>${x.NO_PRAZO}</td><td>${x.AGUARDANDO_RETORNO}</td><td>${x.PRAZO_VENCIDO?`<b style="color:#b45309">${x.PRAZO_VENCIDO}</b>`:0}</td><td>${x.COORD}</td><td>${x.TRATADA}</td><td>${x.TRATADA_FORA_DO_PRAZO}</td><td><b>${pct(x)}</b></td></tr>`).join("")+'</tbody></table>':'<div class="fm-vazio">Nenhum caso no período.</div>';
-  h+='<div class="fm-sub2">Feriados</div><div class="fm-info">Feriado só conta como dia de trabalho se a pessoa teve presença nele.</div>';
-  h+=(j.feriados||[]).length?'<table class="fm-tb" style="max-width:520px"><tbody>'+j.feriados.map(f=>`<tr><td>${fmDdS(f.data)}/${String(f.data).slice(0,4)}</td><td>${_esc(f.descricao||"")}</td><td style="text-align:right">${j.pode_editar?`<button class="fm-btn" data-d="${_esc(String(f.data).slice(0,10))}" onclick="fmFeriadoRemover(this.dataset.d)">Remover</button>`:""}</td></tr>`).join("")+'</tbody></table>':'<div class="fm-info">Nenhum feriado cadastrado.</div>';
-  if(j.pode_editar)h+='<div class="fm-bar" style="margin-top:8px"><input type="date" class="fm-in" id="fm-fer-d"><input class="fm-in" id="fm-fer-t" placeholder="Descrição (ex.: Finados)" style="width:220px"><button class="fm-btn fm-pri" onclick="fmFeriadoSalvar()">Adicionar feriado</button></div>';
-  return h;
+  let h='<div class="fm-blk"><h3 class="fm-h2">Desempenho por supervisor</h3><p class="fm-p">% no prazo = casos tratados dentro do prazo ÷ casos cujo prazo já terminou (tratados no prazo, fora do prazo e vencidos). Quem tem mais vencidos e casos na coordenação aparece primeiro.</p>';
+  h+=linhas.length?'<div class="fm-tbw"><table class="fm-tb"><thead><tr><th>Supervisor</th><th class="num">Casos</th><th class="num">No prazo</th><th class="num">Aguardando</th><th class="num">Vencidos</th><th class="num">Coordenação</th><th class="num">Tratadas</th><th class="num">Fora do prazo</th><th class="num">% no prazo</th></tr></thead><tbody>'+
+    linhas.map(([s,x])=>`<tr><td class="fm-tn">${_esc(s)}</td><td class="num"><b>${x.t}</b></td><td class="num">${num(x.NO_PRAZO)}</td><td class="num">${num(x.AGUARDANDO_RETORNO)}</td><td class="num">${num(x.PRAZO_VENCIDO,"da")}</td><td class="num">${num(x.COORD,"vi")}</td><td class="num">${num(x.TRATADA)}</td><td class="num">${num(x.TRATADA_FORA_DO_PRAZO,"wa")}</td><td class="num">${barra(pct(x))}</td></tr>`).join("")+'</tbody></table></div>':fmVazio("Nenhum caso no período");
+  h+='</div><div class="fm-blk"><h3 class="fm-h2">Feriados</h3><p class="fm-p">Feriado só conta como dia de trabalho se a pessoa teve presença nele. No calendário, o feriado aparece com a faixa roxa.</p><div class="fm-fer">';
+  h+=(j.feriados||[]).length?j.feriados.map(f=>{const d=String(f.data).slice(0,10),x=new Date(d+"T12:00:00Z");
+      return `<div class="fm-fer-r"><div class="fm-dt"><span>${FM_MES[x.getUTCMonth()]}</span><b>${x.getUTCDate()}</b></div><div class="fm-fer-t"><b>${_esc(f.descricao||"Feriado")}</b><span>${FM_DIA_L[x.getUTCDay()]} · ${x.getUTCFullYear()}</span></div>${j.pode_editar?`<button class="fm-btn fm-del sm k-da" data-d="${_esc(d)}" onclick="fmFeriadoRemover(this.dataset.d)">Remover</button>`:""}</div>`;}).join("")
+    :'<div class="fm-fer-vz">Nenhum feriado cadastrado.</div>';
+  if(j.pode_editar)h+='<div class="fm-fer-add"><input type="date" class="fm-in" id="fm-fer-d" aria-label="Data do feriado"><input class="fm-in" id="fm-fer-t" placeholder="Descrição (ex.: Finados)" aria-label="Descrição do feriado"><button class="fm-btn fm-pri" onclick="fmFeriadoSalvar()">Adicionar feriado</button></div>';
+  return h+'</div></div>';
 }
 function fmSalvarMotivo(chave,btn){
   const ta=document.getElementById("fm-mt-"+chave);if(!ta)return;

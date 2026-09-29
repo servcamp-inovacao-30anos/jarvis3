@@ -314,10 +314,12 @@ function calendario(caso, opcoes) {
     else if (d === caso.retornoPrevisto) tipo = "RETORNO_PREVISTO";
     else if (prazo.has(d)) tipo = "PRAZO";
     else {
+      // feriado sem presença aparece como feriado; com presença, é dia trabalhado
+      // (a marca "feriado" vai junto, para a tela mostrar os dois)
       const t = trabalhouNoDia(dias[d]);
-      tipo = t === true ? "TRABALHOU" : t === false ? "FOLGA" : feriados.has(d) ? "FERIADO" : "";
+      tipo = t === true ? "TRABALHOU" : feriados.has(d) ? "FERIADO" : t === false ? "FOLGA" : "";
     }
-    out.push({ data: d, dia: Number(d.slice(8, 10)), semana: diaDaSemana(d), tipo, medida: d === medida, hoje: d === hoje, futuro: hoje ? d > hoje : false, noPrazo: prazo.has(d) });
+    out.push({ data: d, dia: Number(d.slice(8, 10)), semana: diaDaSemana(d), tipo, medida: d === medida, hoje: d === hoje, futuro: hoje ? d > hoje : false, noPrazo: prazo.has(d), feriado: feriados.has(d), fimDoPrazo: d === caso.prazoFim });
   }
   return out;
 }

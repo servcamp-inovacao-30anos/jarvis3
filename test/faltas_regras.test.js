@@ -201,6 +201,19 @@ test("calendário: falta no último dia da folha mostra o prazo que cai na folha
   assert.equal(cal.find(x => x.data === "2026-10-28").tipo, "PRAZO");
 });
 
+test("calendário: feriado sem presença é feriado; com presença é dia trabalhado com a marca de feriado", () => {
+  const dias = { ...presente("2026-10-06", "2026-10-08", "2026-10-14"), "2026-10-02": "FOLGA" };
+  const c = unico({ faltas: [falta("2026-10-07")], fichaDias: { 521: dias }, hoje: "2026-10-15", dataBase: "2026-10-15" });
+  const cal = R.calendario(c, { dias, feriados: ["2026-10-02", "2026-10-14", "2026-10-20"], hoje: "2026-10-15" });
+  const dia = d => cal.find(x => x.data === d);
+  assert.equal(dia("2026-10-02").tipo, "FERIADO", "folga no feriado: aparece o feriado");
+  assert.equal(dia("2026-10-14").tipo, "TRABALHOU");
+  assert.equal(dia("2026-10-14").feriado, true);
+  assert.equal(dia("2026-10-20").tipo, "FERIADO", "feriado futuro, ainda sem registro");
+  assert.equal(dia("2026-10-06").feriado, false);
+  assert.equal(cal.filter(x => x.fimDoPrazo).map(x => x.data).join(), c.prazoFim);
+});
+
 test("calendário: medida lançada num dia de falta mostra a falta, com a marca da medida", () => {
   const c = unico({ faltas: [falta("2026-10-07"), falta("2026-10-08")], fichaDias: { 521: presente("2026-10-09") }, medidas: [medida("2026-10-08")], hoje: "2026-10-09", dataBase: "2026-10-09" });
   const d = R.calendario(c, { dias: presente("2026-10-09"), hoje: "2026-10-09" }).find(x => x.data === "2026-10-08");
