@@ -216,3 +216,100 @@ insert into public.pt_config (chave, valor) values
   ('modelo_saida_apos_horario', E'SERVCAMP | ORIENTACAO DE PONTO\nOla, {{nome}}. Em {{data}} sua saida foi as {{horario_marcado}}, {{minutos}} apos o previsto ({{horario_previsto}}). Oriente-se a marcar no horario. RE {{re}}.'),
   ('modelo_ambas_no_mesmo_dia', E'SERVCAMP | ORIENTACAO DE PONTO\nOla, {{nome}}. Em {{data}} sua entrada foi as {{entrada_marcada}} e a saida as {{saida_marcada}}, fora do previsto ({{entrada_prevista}} as {{saida_prevista}}). Oriente-se a marcar no horario. RE {{re}}.')
 on conflict (chave) do nothing;
+
+-- ============================================================================
+-- Faltas x Medidas disciplinares
+-- Guarda o histórico que a planilha diária não guarda: ela traz só o mês até
+-- hoje, e cada envio substitui o anterior. Mesmo regime das demais tabelas:
+-- RLS ligado e SEM policies; só as funções da Vercel, com a SERVICE_ROLE KEY,
+-- leem e escrevem. Pode ser executado mais de uma vez.
+-- ============================================================================
+
+-- fm_faltas: uma linha por pessoa por dia de falta, de qualquer código.
+-- O código muda sozinho quando chega atestado (I vira A ou J na planilha seguinte).
+create table if not exists public.fm_faltas (
+  re            bigint not null,
+  data          date not null,
+  codigo        text,        -- I injustificada · A abonada · J justificada · L licença
+  nome          text,
+  cargo         text,
+  posto         text,
+  supervisor    text,
+  escala        text,
+  tipo          text,        -- CONTRATO | RESERVA (departamento fica fora do módulo)
+  criado_em     timestamptz not null default now(),
+  atualizado_em timestamptz not null default now(),
+  primary key (re, data)
+);
+
+-- fm_dias: situação de cada dia na Ficha de Presença, só de quem teve falta.
+-- É o que mostra em que dia a pessoa voltou a trabalhar.
+create table if not exists public.fm_dias (
+  re            bigint not null,
+  data          date not null,
+  situacao      text,        -- como vem do SAR2G; mais de uma no dia, separadas por "|"
+  atualizado_em timestamptz not null default now(),
+  primary key (re, data)
+);
+
+-- fm_medidas: advertências e suspensões da aba DISCIPLINA.
+-- "motivo" é o campo editável do JARVIS (texto livre): não muda nada no SAR2G.
+create table if not exists public.fm_medidas (
+  chave              text primary key,  -- número do processo (HISTDISCIPLINAR)
+  re                 bigint not null,
+  data               date not null,     -- dia em que a medida foi aplicada
+  tipo               text,              -- ADVERTÊNCIA | SUSPENSÃO
+  grau               text,              -- VERBAL | ESCRITA | SUSPENSÃO
+  dias               integer,
+  fase               text,              -- cancelada não cobre a falta
+  motivo_sar2g       text,
+  obs                text,
+  nome               text,
+  local              text,
+  motivo             text,
+  motivo_editado_por text,
+  motivo_editado_em  timestamptz,
+  criado_em          timestamptz not null default now(),
+  atualizado_em      timestamptz not null default now()
+);
+create index if not exists fm_medidas_re_idx on public.fm_medidas (re, data);
+
+-- fm_admissoes: data de admissão de quem tem o RE hoje. O RE é reaproveitado
+-- depois de uma demissão: falta e medida de antes da admissão são de outra pessoa.
+create table if not exists public.fm_admissoes (
+  re            bigint primary key,
+  admissao      date,
+  atualizado_em timestamptz not null default now()
+);
+
+-- fm_feriados: mantida pela coordenação. Feriado só conta como dia de trabalho
+-- se a pessoa teve presença nele.
+create table if not exists public.fm_feriados (
+  data      date primary key,
+  descricao text,
+  criado_em timestamptz not null default now()
+);
+
+-- fm_auditoria: quem editou o motivo de uma medida, quando, antes e depois.
+create table if not exists public.fm_auditoria (
+  id          bigint generated always as identity primary key,
+  ator        text,
+  acao        text not null,
+  entidade    text,
+  chave       text,
+  antes       jsonb,
+  depois      jsonb,
+  criado_em   timestamptz not null default now()
+);
+
+alter table public.fm_faltas    enable row level security;
+alter table public.fm_dias      enable row level security;
+alter table public.fm_medidas   enable row level security;
+alter table public.fm_admissoes enable row level security;
+alter table public.fm_feriados  enable row level security;
+alter table public.fm_auditoria enable row level security;
+
+revoke all on public.fm_faltas, public.fm_dias, public.fm_medidas, public.fm_admissoes,
+  public.fm_feriados, public.fm_auditoria from anon, authenticated;
+grant select, insert, update, delete on public.fm_faltas, public.fm_dias, public.fm_medidas,
+  public.fm_admissoes, public.fm_feriados, public.fm_auditoria to service_role;
