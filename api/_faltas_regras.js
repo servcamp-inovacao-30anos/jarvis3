@@ -265,11 +265,53 @@ function aplicarMedida(caso, medidas) {
   else { caso.situacao = SITUACOES.TRATADA_FORA_DO_PRAZO; caso.motivo = `${descreverMedida(m)} em ${ddmm(m.DATA)}, depois do prazo (acabava em ${ddmm(caso.prazoFim)}).`; }
 }
 
+// Folha do dia 26 ao dia 25 do mês seguinte (a mesma competência do ponto).
+function competenciaDe(d) {
+  let [a, m, dd] = iso(d).split("-").map(Number);
+  if (dd < 26) { m -= 1; if (m < 1) { m = 12; a -= 1; } }
+  const p = n => String(n).padStart(2, "0");
+  const inicio = `${a}-${p(m)}-26`;
+  let a2 = a, m2 = m + 1; if (m2 > 12) { m2 = 1; a2 += 1; }
+  return { inicio, fim: `${a2}-${p(m2)}-25` };
+}
+
+// Os quadradinhos do card: um por dia da folha em que a 1ª falta caiu.
+// Calculado aqui, com a mesma regra do prazo, para a tela nunca mostrar uma
+// cor que não bate com a conta.
+function calendario(caso, opcoes) {
+  const o = opcoes || {};
+  const dias = o.dias || {}, abon = new Set(o.abonadas || []), feriados = new Set((o.feriados || []).map(iso)), hoje = iso(o.hoje);
+  const faltas = new Set(caso.faltas || []), prazo = new Set(caso.prazo || []);
+  const medida = caso.medida && iso(caso.medida.DATA);
+  // A folha da 1ª falta; se o prazo (ou o retorno, ou a medida) passa para a
+  // folha seguinte, vai até ele: falta no dia 25 tem o prazo inteiro no mês seguinte.
+  const { inicio } = competenciaDe(caso.primeiraFalta);
+  const fim = [competenciaDe(caso.primeiraFalta).fim, caso.prazoFim, caso.retornoPrevisto, medida].filter(Boolean).sort().pop();
+  const out = [];
+  for (let d = inicio; d <= fim; d = somaDias(d, 1)) {
+    let tipo;
+    // medida lançada num dia de falta: o dia continua falta (é o que explica o
+    // alerta "medida com a pessoa ausente"), com a marca da medida por cima
+    if (faltas.has(d)) tipo = "FALTA";
+    else if (d === medida) tipo = "MEDIDA";
+    else if (abon.has(d)) tipo = "ABONADA";
+    else if (d === caso.retorno) tipo = "RETORNO";
+    else if (d === caso.retornoPrevisto) tipo = "RETORNO_PREVISTO";
+    else if (prazo.has(d)) tipo = "PRAZO";
+    else {
+      const t = trabalhouNoDia(dias[d]);
+      tipo = t === true ? "TRABALHOU" : t === false ? "FOLGA" : feriados.has(d) ? "FERIADO" : "";
+    }
+    out.push({ data: d, dia: Number(d.slice(8, 10)), semana: diaDaSemana(d), tipo, medida: d === medida, hoje: d === hoje, futuro: hoje ? d > hoje : false, noPrazo: prazo.has(d) });
+  }
+  return out;
+}
+
 function pessoa(f, extra) {
   return { re: reDe(f.RE), nome: f.NOME || "", cargo: f.CARGO || "", posto: f.LOCAL || "", supervisor: f.AREA || "", escala: f.ESCALA || "", ...extra };
 }
 
 module.exports = {
-  FAMILIAS, SITUACOES, familiaEscala, ehOperacional, trabalhouNoDia, montarCasos,
+  FAMILIAS, SITUACOES, familiaEscala, ehOperacional, trabalhouNoDia, montarCasos, reDe, competenciaDe, calendario,
   textoMedidaComAusencia, descreverMedida, somaDias, ddmm
 };
