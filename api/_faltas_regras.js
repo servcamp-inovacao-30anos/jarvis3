@@ -336,7 +336,9 @@ function calendario(caso, opcoes) {
 // (sem tabela nova): dias da mesma pessoa, com o mesmo código, um seguido do
 // outro. Pode pular até 4 dias em que ela não trabalhou (folga ou feriado no
 // meio do atestado); um dia trabalhado no meio separa em dois períodos.
-function periodosDeAbono(abonadas, fichaDias) {
+function periodosDeAbono(abonadas, fichaDias, lancadas) {
+  // lancadas: { "re|data": "AAAA-MM-DD" } = dia em que o sistema percebeu que a falta
+  // deixou de ser injustificada (o atestado chegou depois)
   const grupos = {};
   (abonadas || []).forEach(a => { const k = a.re + "|" + a.codigo; (grupos[k] = grupos[k] || []).push(a); });
   const out = [];
@@ -357,7 +359,12 @@ function periodosDeAbono(abonadas, fichaDias) {
       out.push(atual);
     });
   });
-  out.forEach(p => { p.dias = Math.round((Date.parse(p.fim) - Date.parse(p.inicio)) / 864e5) + 1; });
+  out.forEach(p => {
+    p.dias = Math.round((Date.parse(p.fim) - Date.parse(p.inicio)) / 864e5) + 1;
+    const quando = p.faltas.map(d => (lancadas || {})[p.re + "|" + d]).filter(Boolean).sort();
+    p.lancadoDepois = quando.length > 0;
+    p.lancadoEm = quando.length ? quando[quando.length - 1] : null;
+  });
   return out.sort((x, y) => y.fim.localeCompare(x.fim) || String(x.nome).localeCompare(String(y.nome)));
 }
 
@@ -366,6 +373,6 @@ function pessoa(f, extra) {
 }
 
 module.exports = {
-  FAMILIAS, SITUACOES, familiaEscala, ehOperacional, trabalhouNoDia, montarCasos, reDe, competenciaDe, calendario, periodosDeAbono,
+  FAMILIAS, SITUACOES, ABONADAS, familiaEscala, ehOperacional, trabalhouNoDia, montarCasos, reDe, competenciaDe, calendario, periodosDeAbono,
   textoMedidaComAusencia, descreverMedida, somaDias, ddmm
 };

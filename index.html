@@ -9693,7 +9693,8 @@ function fmAbonos(){
 function fmItemAbono(a){
   const rot=FM_ABONO[a.codigo]||"Abono",faixa=a.inicio===a.fim?fmDd(a.inicio):`${fmDd(a.inicio)} a ${fmDd(a.fim)}`;
   return{k:"ab|"+a.re+"|"+a.inicio,nome:a.nome,re:a.re,cargo:a.cargo,posto:a.posto,supervisor:a.supervisor,ord:String(a.fim||""),
-    acao:{tom:"ok",t:`${rot} cobriu ${faixa} (${a.dias} dia${a.dias===1?"":"s"})`,s:`Falta${a.faltas.length>1?"s":""} de ${fmLista(a.faltas.map(fmDdS))}`}};
+    tag:a.lancadoDepois?"lançado depois":"",
+    acao:{tom:"ok",t:`${rot} cobriu ${faixa} (${a.dias} dia${a.dias===1?"":"s"})`,s:`Falta${a.faltas.length>1?"s":""} de ${fmLista(a.faltas.map(fmDdS))}${a.lancadoDepois&&a.lancadoEm?` · ${rot.toLowerCase()} lançado em ${fmDd(a.lancadoEm)}, depois da falta`:""}`}};
 }
 function fmItemCaso(c,pref){return{k:(pref||"")+fmChave(c),caso:c,nome:c.nome,re:c.re,cargo:c.cargo,posto:c.posto,supervisor:c.supervisor,acao:fmAcao(c)};}
 /* Itens da aba: casos (clicáveis) e, em Resolvidas, as abonadas. */
@@ -9882,7 +9883,7 @@ function fmPainel(){
     `<button class="fm-btn" style="margin-left:auto" onclick="FM.fer=true;fmRender()">${FM_IC.cal}Feriados</button></div>`;
   const pl=(n,um,v)=>`<b>${n}</b> ${n===1?um:v}`,antes=casos.filter(c=>c.primeiraFalta<P.ini).length;
   h+=`<div class="fm-resumo"><span>${pl(casos.length,"caso de falta injustificada","casos de falta injustificada")}${antes?` (${antes} em aberto da folha anterior)`:""}</span><span class="k-da"><i></i>${pl(tot("da"),"atrasada","atrasadas")}</span><span class="k-am"><i></i>${pl(tot("am"),"no prazo","no prazo")} (${tot("hj")} ${tot("hj")===1?"vence":"vencem"} hoje)</span>`+
-    `<span class="k-gr"><i></i>${pl(tot("gr"),"esperando voltar","esperando voltar")}</span><span class="k-vi"><i></i>${pl(tot("vi"),"na coordenação","na coordenação")}</span><span class="k-ok"><i></i>${pl(tot("ok"),"resolvida","resolvidas")}</span><span class="k-ok"><i></i>${pl(abonos.length,"abonada","abonadas")}</span></div>`;
+    `<span class="k-gr"><i></i>${pl(tot("gr"),"esperando voltar","esperando voltar")}</span><span class="k-vi"><i></i>${pl(tot("vi"),"na coordenação","na coordenação")}</span><span class="k-ok"><i></i>${pl(tot("ok"),"resolvida","resolvidas")}</span><span class="k-ok"><i></i>${pl(abonos.length,"abonada","abonadas")}${abonos.some(a=>a.lancadoDepois)?` (${abonos.filter(a=>a.lancadoDepois).length} com atestado lançado depois)`:""}</span></div>`;
   if(!lista.length)return h+fmVazio("Nenhuma falta injustificada neste período",P.atual?"Tudo em dia.":"");
   h+=`<div class="fm-sups"><div class="fm-sups-c"><span></span><span>Supervisor</span><span>Casos para resolver</span><span class="num">Total</span><span class="num">Atrasadas</span><span class="num">Vencem hoje</span><span class="num">Resolvidas</span><span class="num">% no prazo</span></div>`;
   lista.forEach((x,idx)=>{

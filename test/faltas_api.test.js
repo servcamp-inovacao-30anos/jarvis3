@@ -97,6 +97,35 @@ test("GET casos: calcula a situação e diz quem pode editar", async t => {
   });
 });
 
+test("atestado que chega depois: a troca injustificada → abonada é anotada uma vez, e a que já nasce abonada não", async () => {
+  const t = tabelasVazias(); supabaseFalso(t);
+  // 1ª planilha: 10/10 injustificada; 11/10 já chega abonada
+  await faltas.materializar(planilha({ faltas: [falta(521, "2026-10-10"), falta(521, "2026-10-11", { ABONO: "A" })] }));
+  assert.equal(t.fm_auditoria.length, 0, "nada mudou ainda");
+  // 2ª planilha: o atestado chegou e 10/10 virou abonada
+  await faltas.materializar(planilha({ faltas: [falta(521, "2026-10-10", { ABONO: "A" }), falta(521, "2026-10-11", { ABONO: "A" })] }));
+  assert.deepEqual(t.fm_auditoria.map(a => [a.acao, a.chave, a.antes.codigo, a.depois.codigo, a.ator]), [["FALTA_ABONADA_DEPOIS", "521|2026-10-10", "I", "A", "sistema"]]);
+  // 3ª planilha igual: não anota de novo
+  await faltas.materializar(planilha({ faltas: [falta(521, "2026-10-10", { ABONO: "A" }), falta(521, "2026-10-11", { ABONO: "A" })] }));
+  assert.equal(t.fm_auditoria.length, 1);
+});
+
+test("GET casos: o período do atestado diz se foi lançado depois e quando", async () => {
+  const t = tabelasVazias();
+  [dia(-3), dia(-2)].forEach(d => t.fm_faltas.push({ re: 600, data: d, codigo: "A", nome: "JULIA", cargo: "PORTEIRO (A)", posto: "POSTO A", supervisor: "FRANK", escala: "5X2 SDF", tipo: "CONTRATO" }));
+  t.fm_faltas.push({ re: 601, data: dia(-3), codigo: "J", nome: "LUIZ", cargo: "PORTEIRO (A)", posto: "POSTO B", supervisor: "FRANK", escala: "5X2 SDF", tipo: "CONTRATO" });
+  // o sistema percebeu a troca da Julia no dia seguinte à 1ª falta (criado_em em UTC)
+  t.fm_auditoria.push({ acao: "FALTA_ABONADA_DEPOIS", chave: "600|" + dia(-3), criado_em: dia(-2) + "T15:00:00Z" });
+  supabaseFalso(t);
+  const r = await pedir("GET", "casos");
+  const de = re => r.body.abonos.find(a => String(a.re) === String(re));
+  assert.equal(de(600).lancadoDepois, true);
+  assert.equal(de(600).lancadoEm, dia(-2));
+  assert.equal(de(600).dias, 2);
+  assert.equal(de(601).lancadoDepois, false, "já chegou abonada");
+  assert.equal(de(601).lancadoEm, null);
+});
+
 test("PATCH motivo", async t => {
   await t.test("só aprovador", async () => {
     supabaseFalso(tabelasComCaso());

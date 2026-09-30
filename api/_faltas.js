@@ -15,6 +15,7 @@
 const R = require("./_faltas_regras");
 const ponto = require("./_ponto");
 
+const ACAO_ABONO_TARDIO = "FALTA_ABONADA_DEPOIS";
 const JANELA_DIAS = 150; // o que a tela carrega: casos mais antigos já se encerraram
 const DIAS_ACOMPANHADOS = 45; // quem faltou nesse período ainda tem os dias da ficha guardados
 
@@ -61,9 +62,11 @@ async function materializar(data, opcoes) {
   // banco e não veio mais (o RH corrigiu o lançamento) sai do módulo.
   const datas = faltas.map(f => f.data).concat(Object.values(data.fichaDias || {}).flatMap(m => Object.keys(m || {}))).filter(ehData).sort();
   let removidas = 0;
+  const codigoAntes = new Map(); // código que a falta tinha no banco antes desta planilha
   if (datas.length) {
     const de = datas[0], ate = datas[datas.length - 1];
-    const existentes = await db.listar(`fm_faltas?select=re,data&data=gte.${de}&data=lte.${ate}&order=re.asc,data.asc`);
+    const existentes = await db.listar(`fm_faltas?select=re,data,codigo&data=gte.${de}&data=lte.${ate}&order=re.asc,data.asc`);
+    existentes.forEach(x => { codigoAntes.set(x.re + "|" + String(x.data).slice(0, 10), x.codigo || null); });
     const novas = new Set(faltas.map(f => f.re + "|" + f.data));
     const sumiram = new Map();
     existentes.forEach(x => {
@@ -75,6 +78,7 @@ async function materializar(data, opcoes) {
     for (const [re, lista] of sumiram) { await db.remover(`fm_faltas?re=eq.${re}&data=in.(${lista.join(",")})`); removidas += lista.length; }
   }
   if (faltas.length) await db.upsert("fm_faltas", faltas, "re,data");
+  await anotarAbonosTardios(db, faltas, codigoAntes);
   if (dias.length) await db.upsert("fm_dias", dias, "re,data");
 
   // Medidas: o motivo editado no JARVIS não vai no upsert, então nunca é sobrescrito.
@@ -100,17 +104,35 @@ async function materializar(data, opcoes) {
   return { ok: true, faltas: faltas.length, removidas, dias: dias.length, medidas: medidas.length, admissoes: admissoes.length };
 }
 
+// Quando o atestado chega depois, o SAR2G troca a falta de injustificada para
+// abonada e o banco só guarda o código de agora. Para saber que a falta JÁ FOI
+// injustificada, anota-se a troca no momento em que ela é percebida (na tabela
+// de registros que já existe, sem coluna nova). Falta que já nasce abonada não
+// tem o que anotar.
+async function anotarAbonosTardios(db, faltas, codigoAntes) {
+  const trocas = faltas.filter(f => {
+    const k = f.re + "|" + f.data;
+    return codigoAntes.has(k) && !R.ABONADAS.has(codigoAntes.get(k)) && R.ABONADAS.has(f.codigo);
+  }).map(f => ({ ator: "sistema", acao: ACAO_ABONO_TARDIO, entidade: "fm_faltas", chave: f.re + "|" + f.data, antes: { codigo: codigoAntes.get(f.re + "|" + f.data) }, depois: { codigo: f.codigo } }));
+  if (!trocas.length) return;
+  try { await db.inserir("fm_auditoria", trocas); } catch (e) { console.error("faltas: não anotou abono tardio:", e && e.message); }
+}
+
 // ── leituras ────────────────────────────────────────────────────────────────
 
 async function verCasos({ res, db, ator }) {
   const hoje = hojeSP(), desde = R.somaDias(hoje, -JANELA_DIAS);
-  const [faltas, dias, medidas, adm, feriados] = await Promise.all([
+  const [faltas, dias, medidas, adm, feriados, trocas] = await Promise.all([
     db.listar(`fm_faltas?select=re,data,codigo,nome,cargo,posto,supervisor,escala,tipo&data=gte.${desde}&order=re.asc,data.asc`),
     db.listar(`fm_dias?select=re,data,situacao&data=gte.${desde}&order=re.asc,data.asc`),
     db.listar(`fm_medidas?select=chave,re,data,tipo,grau,dias,fase,motivo_sar2g,obs,motivo,motivo_editado_por,motivo_editado_em&data=gte.${desde}&order=re.asc,data.asc`),
     db.listar("fm_admissoes?select=re,admissao&order=re.asc"),
-    db.listar("fm_feriados?select=data,descricao&order=data.asc")
+    db.listar("fm_feriados?select=data,descricao&order=data.asc"),
+    db.listar(`fm_auditoria?select=chave,criado_em&acao=eq.${ACAO_ABONO_TARDIO}&order=criado_em.asc`)
   ]);
+  // dia (horário de Brasília) em que o sistema percebeu a troca injustificada → abonada
+  const lancadas = {};
+  trocas.forEach(t => { lancadas[t.chave] = new Date(new Date(t.criado_em).getTime() - 3 * 3600000).toISOString().slice(0, 10); });
   const fichaDias = {};
   dias.forEach(d => { (fichaDias[d.re] = fichaDias[d.re] || {})[String(d.data).slice(0, 10)] = d.situacao; });
   const admissoes = {};
@@ -143,7 +165,7 @@ async function verCasos({ res, db, ator }) {
   return res.status(200).json({
     ok: true, hoje, dataBase: r.dataBase, resumo, casos: r.casos, abonadas: r.abonadas,
     // abonadas juntadas pelo período que o atestado/justificativa cobriu
-    abonos: R.periodosDeAbono(r.abonadas, fichaDias),
+    abonos: R.periodosDeAbono(r.abonadas, fichaDias, lancadas),
     dias: diasDosCasos, historico, feriados, pode_editar: !!(ator && ponto.APROVADORES.has(ator))
   });
 }
