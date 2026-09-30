@@ -2314,7 +2314,7 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       }
     </style>
     <div class="sec-hdr"><span class="fm-ic-tile" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5v16.5M8 20h8"/><path d="M5 7h14"/><circle cx="12" cy="4.2" r=".9"/><path d="M5 7l-2.8 6.2a3 3 0 0 0 5.6 0z"/><path d="M19 7l-2.8 6.2a3 3 0 0 0 5.6 0z"/></svg></span><div><div class="sec-hdr-t">Faltas x Medidas</div><div class="sec-hdr-sub">Faltas injustificadas e prazo para aplicar a medida disciplinar</div></div>
-      <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap"><div class="fm-seg fm-vista" role="group" aria-label="Tela"><button type="button" id="fm-v-lista" class="on" onclick="FM.aba='AGIR';fmRender()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Lista de casos</button><button type="button" id="fm-v-painel" onclick="FM.animar=true;FM.aba='PAINEL';fmRender()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Painel dos supervisores</button></div><button class="fm-btn" onclick="fmLoad(true)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>Atualizar</button></div></div>
+      <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap"><div class="fm-seg fm-vista" role="group" aria-label="Tela"><button type="button" id="fm-v-lista" class="on" onclick="FM.aba='AGIR';fmRender()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Lista de casos</button><button type="button" id="fm-v-painel" onclick="FM.animar=true;FM.aba='PAINEL';fmRender()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Painel dos supervisores</button></div><button class="fm-btn" id="fm-bt-envio" style="display:none" onclick="fmEnviarPlanilha()" title="Envia o arquivo .xlsx do SAR2G, como o botão Novo arquivo Excel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>Enviar planilha</button><button class="fm-btn" onclick="fmLoad(true)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>Atualizar</button></div></div>
     <div id="fm-sec"><div class="fm-empty"><b>Carregando…</b></div></div>
   </div>
 
@@ -6355,11 +6355,13 @@ function syncToSupabase(data,fname){
   }).then(function(resp){
     if(!resp.ok)return resp.json().then(function(j){throw new Error(j&&j.error?j.error:("HTTP "+resp.status));});
     return resp.json();
-  }).then(function(){
+  }).then(function(j){
     if(statusEl)statusEl.textContent=statusEl.textContent+" · Sincronizado com Supabase";
+    if(typeof fmAposEnvio==="function")fmAposEnvio(true,j);
   }).catch(function(err){
     console.error("Falha ao sincronizar com Supabase:",err);
     if(statusEl)statusEl.textContent=statusEl.textContent+" · Falha ao sincronizar com Supabase";
+    if(typeof fmAposEnvio==="function")fmAposEnvio(false,err);
   });
 }
 /* ===== MÓDULO RH — CONTROLE DE VAGAS (acesso restrito admin) ===== */
@@ -9910,9 +9912,35 @@ function fmMaisLinhas(total,redesenha){
 /* Busca: espera a pessoa parar de digitar um instante antes de refazer a lista. */
 let _fmDebT=null;
 function fmDeb(fn){clearTimeout(_fmDebT);_fmDebT=setTimeout(fn,180);}
+/* Envio da planilha por dentro do módulo: usa o MESMO caminho do botão "Novo arquivo Excel"
+   (lê o arquivo aqui no navegador e manda para /api/import). */
+function fmEnviarPlanilha(){
+  const f=document.getElementById("fu");
+  if(!f){alert("O envio de planilha não está disponível nesta tela.");return;}
+  FM.envioPendente=true;f.click();
+}
+/* Chamado quando o envio termina (de onde quer que tenha vindo): diz o que o módulo recebeu. */
+function fmAposEnvio(ok,info){
+  const veioDoModulo=!!FM.envioPendente;FM.envioPendente=false;
+  const aberto=!!document.querySelector("#pg-faltasmed.active");
+  if(!ok){if(veioDoModulo||aberto)alert("Não foi possível enviar a planilha ao servidor."+(info&&info.message?"\n"+info.message:""));return;}
+  const r=info&&info.faltas_medidas;
+  if(r&&r.ok===false){alert("A planilha foi salva, mas o módulo Faltas x Medidas não conseguiu processá-la ("+(r.erro||r.motivo||"erro desconhecido")+").\nAvise o suporte: o restante do sistema foi atualizado normalmente.");}
+  else if(veioDoModulo||aberto){
+    const pl=(n,um,v)=>n+" "+(n===1?um:v);
+    ptToast(r&&r.ok&&!r.ignorado?"Planilha recebida. Módulo atualizado: "+pl(r.faltas,"falta","faltas")+", "+pl(r.medidas,"medida","medidas")+".":"Planilha recebida. Ela não trouxe faltas, então o módulo não mudou.");
+  }
+  if(FM.dados||veioDoModulo)fmLoad(true);
+}
+function fmEstadoInicial(){
+  const j=FM.dados;
+  return `<div class="fm-empty"><div class="ic">${FM_IC.cal}</div><b>O módulo ainda não recebeu nenhuma planilha</b><span>As faltas e as medidas aparecem aqui a partir do próximo envio da planilha do SAR2G. Uma planilha enviada antes desta atualização não serve, porque ela não guardava o dia a dia de cada pessoa.</span>${j.pode_editar?`<button class="fm-btn fm-pri" style="margin-top:14px" onclick="fmEnviarPlanilha()">Enviar planilha agora</button><span style="margin-top:8px">Use o mesmo arquivo .xlsx que o João envia (com as abas de presença, funcionários ativos e disciplina).</span>`:""}</div>`;
+}
 function fmRender(){
   FM.lim=FM_PAGINA;
   const box=document.getElementById("fm-sec"),j=FM.dados;if(!box||!j)return;
+  const be=document.getElementById("fm-bt-envio");if(be)be.style.display=j.pode_editar?"":"none";
+  if(j.vazio){box.innerHTML=fmEstadoInicial();return;}
   const vl=document.getElementById("fm-v-lista"),vp=document.getElementById("fm-v-painel");
   if(vl)vl.classList.toggle("on",FM.aba!=="PAINEL");if(vp)vp.classList.toggle("on",FM.aba==="PAINEL");
   const base=`<div class="fm-base">Dados da planilha: <b>${fmDdA(j.dataBase)}</b><i>|</i>Hoje: <b>${FM_DIA_C[fmSem(j.hoje)]}, ${fmDdA(j.hoje)}</b></div>`;

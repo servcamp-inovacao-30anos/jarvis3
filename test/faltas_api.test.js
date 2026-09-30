@@ -172,6 +172,9 @@ test("importar pelo api/import.js guarda as faltas junto", async () => {
   assert.equal(tab.dashboard_snapshots.length, 1);
   assert.equal(tab.fm_faltas.length, 1);
   assert.equal(tab.fm_medidas.length, 1);
+  // a resposta diz o que o módulo recebeu (a tela mostra isso para quem enviou)
+  assert.equal(r.body.faltas_medidas.ok, true);
+  assert.deepEqual([r.body.faltas_medidas.faltas, r.body.faltas_medidas.medidas], [1, 1]);
 });
 
 test("falha no módulo não derruba a importação da planilha", async () => {
@@ -180,6 +183,15 @@ test("falha no módulo não derruba a importação da planilha", async () => {
   const r = await chamar(importar, { method: "POST", headers: { "content-type": "application/json" }, body: { data: { ...planilha(), clientes: [] } } });
   assert.equal(r.statusCode, 200);
   assert.equal(tab.dashboard_snapshots.length, 1, "o snapshot foi salvo");
+  assert.equal(r.body.faltas_medidas.ok, false, "e a resposta avisa que o módulo falhou, em vez de calar");
+  assert.ok(r.body.faltas_medidas.erro, "com o motivo");
+});
+
+test("módulo sem nenhuma planilha recebida: a tela recebe 'vazio' e explica; com dados, não", async () => {
+  supabaseFalso(tabelasVazias());
+  assert.equal((await pedir("GET", "casos")).body.vazio, true);
+  supabaseFalso(tabelasComCaso());
+  assert.equal((await pedir("GET", "casos")).body.vazio, false);
 });
 
 test("retorno numa planilha seguinte: os dias de quem faltou antes continuam sendo guardados", async () => {

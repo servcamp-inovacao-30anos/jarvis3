@@ -192,7 +192,7 @@ async function verCasos({ res, db, ator }) {
   medidas.forEach(m => { if (doCaso.has(String(m.re))) (historico[m.re] = historico[m.re] || []).push(m); });
 
   return res.status(200).json({
-    ok: true, hoje, dataBase: r.dataBase, resumo, casos: r.casos, abonadas: r.abonadas,
+    ok: true, hoje, dataBase: r.dataBase, vazio: faltas.length === 0 && dias.length === 0, resumo, casos: r.casos, abonadas: r.abonadas,
     // abonadas juntadas pelo período que o atestado/justificativa cobriu
     abonos, atestados,
     dias: diasDosCasos, historico, feriados, pode_editar: !!(ator && ponto.APROVADORES.has(ator))
