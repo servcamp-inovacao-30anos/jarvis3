@@ -327,7 +327,7 @@ function calendario(caso, opcoes) {
       const t = trabalhouNoDia(dias[d]);
       tipo = t === true ? "TRABALHOU" : feriados.has(d) ? "FERIADO" : t === false ? "FOLGA" : "";
     }
-    out.push({ data: d, dia: Number(d.slice(8, 10)), semana: diaDaSemana(d), tipo, medida: d === medida, hoje: d === hoje, futuro: hoje ? d > hoje : false, noPrazo: prazo.has(d), feriado: feriados.has(d), fimDoPrazo: d === caso.prazoFim, naFolha: d >= folha.inicio && d <= folha.fim });
+    out.push({ data: d, dia: Number(d.slice(8, 10)), semana: diaDaSemana(d), tipo, medida: d === medida, hoje: d === hoje, futuro: hoje ? d > hoje : false, noPrazo: prazo.has(d), feriado: feriados.has(d), fimDoPrazo: d === caso.prazoFim, naFolha: d >= folha.inicio && d <= folha.fim, atestado: !!(o.atestado && d >= o.atestado.inicio && d <= o.atestado.fim) });
   }
   return out;
 }
@@ -399,11 +399,19 @@ function dobrarAtestados(eventos) {
   return { ativos, sem };
 }
 
+// Turno da noite: os colaboradores dos supervisores abaixo. Todos os demais são
+// diurnos. Regra definida pela coordenação; o turno não vem da planilha.
+const SUPERVISORES_NOTURNOS = ["PAULO", "RONALDO"];
+function turnoDoSupervisor(nome) {
+  const primeiro = String(nome || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim().split(/\s+/)[0];
+  return SUPERVISORES_NOTURNOS.includes(primeiro) ? "NOTURNO" : "DIURNO";
+}
+
 function pessoa(f, extra) {
   return { re: reDe(f.RE), nome: f.NOME || "", cargo: f.CARGO || "", posto: f.LOCAL || "", supervisor: f.AREA || "", escala: f.ESCALA || "", ...extra };
 }
 
 module.exports = {
-  FAMILIAS, SITUACOES, ABONADAS, familiaEscala, ehOperacional, trabalhouNoDia, montarCasos, reDe, competenciaDe, calendario, periodosDeAbono, dobrarAtestados,
+  FAMILIAS, SITUACOES, ABONADAS, familiaEscala, ehOperacional, trabalhouNoDia, montarCasos, reDe, competenciaDe, calendario, periodosDeAbono, dobrarAtestados, turnoDoSupervisor, SUPERVISORES_NOTURNOS,
   textoMedidaComAusencia, descreverMedida, somaDias, ddmm
 };

@@ -159,6 +159,8 @@ async function verCasos({ res, db, ator }) {
     a.manual = cob ? cob.chave : null;
     a.noSar2g = R.ABONADAS.has(codigoSar[a.re + "|" + dia]);
   });
+  r.casos.forEach(c => { c.turno = R.turnoDoSupervisor(c.supervisor); });
+  r.abonadas.forEach(a => { a.turno = R.turnoDoSupervisor(a.supervisor); });
   const resumo = {};
   r.casos.forEach(c => { resumo[c.situacao] = (resumo[c.situacao] || 0) + 1; });
   const abonadasPorRE = {};
@@ -170,6 +172,15 @@ async function verCasos({ res, db, ator }) {
     c.semAtestado = semAtestado[c.re + "|" + c.primeiraFalta] || null;
     c.calendario = R.calendario(c, { dias: fichaDias[c.re] || {}, abonadas: abonadasPorRE[c.re] || [], feriados: listaFeriados, hoje, meses: true });
   });
+  const abonos = R.periodosDeAbono(r.abonadas, fichaDias, lancadas, atestados);
+  abonos.forEach(p => {
+    p.turno = R.turnoDoSupervisor(p.supervisor);
+    p.primeiraFalta = p.inicio;
+    p.folha = R.competenciaDe(p.inicio);
+    // o calendário mostra as faltas abonadas e, marcados, os dias que o atestado cobriu
+    const cob = p.atestado ? { inicio: p.atestado.inicio, fim: p.atestado.fim } : { inicio: p.inicio, fim: p.fim };
+    p.calendario = R.calendario({ faltas: [], primeiraFalta: p.inicio, prazo: [], medida: null }, { dias: fichaDias[p.re] || {}, abonadas: p.faltas, feriados: listaFeriados, hoje, meses: true, atestado: cob });
+  });
   const doCaso = new Set(r.casos.map(c => String(c.re)));
   const diasDosCasos = {};
   Object.keys(fichaDias).forEach(re => { if (doCaso.has(String(re))) diasDosCasos[re] = fichaDias[re]; });
@@ -180,7 +191,7 @@ async function verCasos({ res, db, ator }) {
   return res.status(200).json({
     ok: true, hoje, dataBase: r.dataBase, resumo, casos: r.casos, abonadas: r.abonadas,
     // abonadas juntadas pelo período que o atestado/justificativa cobriu
-    abonos: R.periodosDeAbono(r.abonadas, fichaDias, lancadas, atestados), atestados,
+    abonos, atestados,
     dias: diasDosCasos, historico, feriados, pode_editar: !!(ator && ponto.APROVADORES.has(ator))
   });
 }
