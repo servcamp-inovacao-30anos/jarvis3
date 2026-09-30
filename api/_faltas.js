@@ -16,6 +16,8 @@ const R = require("./_faltas_regras");
 const ponto = require("./_ponto");
 
 const ACAO_ABONO_TARDIO = "FALTA_ABONADA_DEPOIS";
+const ACAO_ATESTADO = "ATESTADO_REGISTRADO";
+const ACAO_ATESTADO_FIM = "ATESTADO_REMOVIDO";
 const JANELA_DIAS = 150; // o que a tela carrega: casos mais antigos já se encerraram
 const DIAS_ACOMPANHADOS = 45; // quem faltou nesse período ainda tem os dias da ficha guardados
 
@@ -122,14 +124,20 @@ async function anotarAbonosTardios(db, faltas, codigoAntes) {
 
 async function verCasos({ res, db, ator }) {
   const hoje = hojeSP(), desde = R.somaDias(hoje, -JANELA_DIAS);
-  const [faltas, dias, medidas, adm, feriados, trocas] = await Promise.all([
+  const [faltas, dias, medidas, adm, feriados, trocas, eventosAtestado] = await Promise.all([
     db.listar(`fm_faltas?select=re,data,codigo,nome,cargo,posto,supervisor,escala,tipo&data=gte.${desde}&order=re.asc,data.asc`),
     db.listar(`fm_dias?select=re,data,situacao&data=gte.${desde}&order=re.asc,data.asc`),
     db.listar(`fm_medidas?select=chave,re,data,tipo,grau,dias,fase,motivo_sar2g,obs,motivo,motivo_editado_por,motivo_editado_em&data=gte.${desde}&order=re.asc,data.asc`),
     db.listar("fm_admissoes?select=re,admissao&order=re.asc"),
     db.listar("fm_feriados?select=data,descricao&order=data.asc"),
-    db.listar(`fm_auditoria?select=chave,criado_em&acao=eq.${ACAO_ABONO_TARDIO}&order=criado_em.asc`)
+    db.listar(`fm_auditoria?select=chave,criado_em&acao=eq.${ACAO_ABONO_TARDIO}&order=criado_em.asc`),
+    db.listar(`fm_auditoria?select=id,ator,acao,chave,depois,criado_em&acao=in.(${ACAO_ATESTADO},${ACAO_ATESTADO_FIM})&order=criado_em.asc,id.asc`)
   ]);
+  // atestados registrados à mão: valem já, sem esperar o lançamento no SAR2G
+  const { ativos: atestados, sem: semAtestado } = R.dobrarAtestados(eventosAtestado);
+  const cobertura = (re, dia) => atestados.find(a => a.re === String(re) && dia >= a.inicio && dia <= a.fim) || null;
+  const codigoSar = {};
+  faltas.forEach(f => { codigoSar[f.re + "|" + String(f.data).slice(0, 10)] = f.codigo; });
   // dia (horário de Brasília) em que o sistema percebeu a troca injustificada → abonada
   const lancadas = {};
   trocas.forEach(t => { lancadas[t.chave] = new Date(new Date(t.criado_em).getTime() - 3 * 3600000).toISOString().slice(0, 10); });
@@ -142,10 +150,15 @@ async function verCasos({ res, db, ator }) {
     hoje,
     feriados: feriados.map(f => String(f.data).slice(0, 10)),
     admissoes, fichaDias,
-    faltas: faltas.map(f => ({ RE: f.re, DATA: f.data, ABONO: f.codigo, NOME: f.nome, CARGO: f.cargo, LOCAL: f.posto, AREA: f.supervisor, ESCALA: f.escala, TIPO: f.tipo })),
+    faltas: faltas.map(f => ({ RE: f.re, DATA: f.data, ABONO: (!R.ABONADAS.has(f.codigo) && cobertura(f.re, String(f.data).slice(0, 10))) ? "A" : f.codigo, NOME: f.nome, CARGO: f.cargo, LOCAL: f.posto, AREA: f.supervisor, ESCALA: f.escala, TIPO: f.tipo })),
     medidas: medidas.map(m => ({ RE: m.re, DATA: m.data, TIPO: m.tipo, GRAU: m.grau, DIAS: m.dias, FASE: m.fase, HIST: m.chave, MOTIVO: m.motivo_sar2g, chave: m.chave, motivo: m.motivo, motivo_editado_por: m.motivo_editado_por, motivo_editado_em: m.motivo_editado_em }))
   });
 
+  r.abonadas.forEach(a => {
+    const dia = String(a.data).slice(0, 10), cob = cobertura(a.re, dia);
+    a.manual = cob ? cob.chave : null;
+    a.noSar2g = R.ABONADAS.has(codigoSar[a.re + "|" + dia]);
+  });
   const resumo = {};
   r.casos.forEach(c => { resumo[c.situacao] = (resumo[c.situacao] || 0) + 1; });
   const abonadasPorRE = {};
@@ -153,6 +166,8 @@ async function verCasos({ res, db, ator }) {
   const listaFeriados = feriados.map(f => String(f.data).slice(0, 10));
   r.casos.forEach(c => {
     c.folha = R.competenciaDe(c.primeiraFalta);
+    c.atestados = atestados.filter(a => a.re === String(c.re));
+    c.semAtestado = semAtestado[c.re + "|" + c.primeiraFalta] || null;
     c.calendario = R.calendario(c, { dias: fichaDias[c.re] || {}, abonadas: abonadasPorRE[c.re] || [], feriados: listaFeriados, hoje, meses: true });
   });
   const doCaso = new Set(r.casos.map(c => String(c.re)));
@@ -165,7 +180,7 @@ async function verCasos({ res, db, ator }) {
   return res.status(200).json({
     ok: true, hoje, dataBase: r.dataBase, resumo, casos: r.casos, abonadas: r.abonadas,
     // abonadas juntadas pelo período que o atestado/justificativa cobriu
-    abonos: R.periodosDeAbono(r.abonadas, fichaDias, lancadas),
+    abonos: R.periodosDeAbono(r.abonadas, fichaDias, lancadas, atestados), atestados,
     dias: diasDosCasos, historico, feriados, pode_editar: !!(ator && ponto.APROVADORES.has(ator))
   });
 }
@@ -204,13 +219,66 @@ async function salvarFeriado({ res, db, ator, body }) {
   return res.status(200).json({ ok: true, data: dia, descricao });
 }
 
+// Registro do atestado à mão. Fica como evento na tabela de registros: o último
+// evento de cada atestado é o que vale; quem registrou e quando já ficam anotados.
+async function salvarAtestado({ res, db, ator, body }) {
+  const re = reNum(body.re);
+  if (re == null) return erro(res, 400, "Informe o colaborador.", "SEM_RE");
+  const [existe] = await db.obter(`fm_faltas?select=re&re=eq.${re}&limit=1`);
+  if (!existe) return erro(res, 404, "Este colaborador não tem falta registrada no módulo.", "NAO_ENCONTRADA");
+  const hoje = hojeSP();
+  const ultimo = async chave => (await db.obter(`fm_auditoria?select=acao,depois&entidade=eq.fm_atestados&chave=eq.${encodeURIComponent(chave)}&order=criado_em.desc,id.desc&limit=1`))[0] || null;
+  const ev = (acao, chave, depois) => ({ ator, acao, entidade: "fm_atestados", chave, antes: null, depois });
+
+  if (body.remover === true) {
+    const chave = String(body.chave || "").trim();
+    if (!chave.startsWith(re + "|")) return erro(res, 400, "Atestado inválido.", "CHAVE_INVALIDA");
+    const u = await ultimo(chave);
+    if (!u || u.acao !== ACAO_ATESTADO) return res.status(200).json({ ok: true, alterado: false });
+    await db.inserir("fm_auditoria", [ev(ACAO_ATESTADO_FIM, chave, null)]);
+    return res.status(200).json({ ok: true, alterado: true, removido: chave });
+  }
+
+  if (body.tem === false) {
+    const caso = String(body.caso || "").slice(0, 10);
+    if (!ehData(caso)) return erro(res, 400, "Informe a data da primeira falta do caso.", "CASO_INVALIDO");
+    const chave = `${re}|sem|${caso}`, depois = { re, tem: false, caso };
+    const u = await ultimo(chave);
+    if (u && u.acao === ACAO_ATESTADO) return res.status(200).json({ ok: true, alterado: false, chave });
+    await db.inserir("fm_auditoria", [ev(ACAO_ATESTADO, chave, depois)]);
+    return res.status(200).json({ ok: true, alterado: true, chave });
+  }
+
+  const inicio = String(body.inicio || "").slice(0, 10);
+  if (!ehData(inicio)) return erro(res, 400, "Informe a data do atestado.", "DATA_INVALIDA");
+  if (inicio < R.somaDias(hoje, -JANELA_DIAS) || inicio > R.somaDias(hoje, 30)) return erro(res, 400, "Data do atestado fora do período aceito.", "DATA_FORA");
+  const dias = Number(body.dias);
+  if (!Number.isInteger(dias) || dias < 1 || dias > 180) return erro(res, 400, "Informe a quantidade de dias (de 1 a 180).", "DIAS_INVALIDOS");
+  const envio = String(body.envio || "").slice(0, 10) || null;
+  if (envio && !ehData(envio)) return erro(res, 400, "Data de envio inválida.", "ENVIO_INVALIDO");
+  if (envio && envio > hoje) return erro(res, 400, "A data de envio não pode ser no futuro.", "ENVIO_FUTURO");
+  const chave = `${re}|${inicio}`, depois = { re, tem: true, inicio, dias, envio, codigo: "A" };
+  const u = await ultimo(chave);
+  const novos = [];
+  const velha = String(body.substitui || "").trim();
+  if (velha && velha !== chave && velha.startsWith(re + "|")) { const uv = await ultimo(velha); if (uv && uv.acao === ACAO_ATESTADO) novos.push(ev(ACAO_ATESTADO_FIM, velha, null)); }
+  const d0 = u && u.acao === ACAO_ATESTADO && u.depois;
+  const igual = d0 && d0.tem === true && iso10(d0.inicio) === inicio && Number(d0.dias) === dias && (iso10(d0.envio) || null) === envio;
+  if (!igual) novos.push(ev(ACAO_ATESTADO, chave, depois));
+  if (!novos.length) return res.status(200).json({ ok: true, alterado: false, chave });
+  await db.inserir("fm_auditoria", novos);
+  return res.status(200).json({ ok: true, alterado: true, chave, inicio, fim: R.somaDias(inicio, dias - 1), dias, envio });
+}
+const iso10 = v => (v == null ? "" : String(v).slice(0, 10));
+
 // ── roteamento ──────────────────────────────────────────────────────────────
 
 const ROTAS = {
   "GET casos": { fn: verCasos },
   "GET feriados": { fn: verFeriados },
   "PATCH motivo": { aprovador: true, fn: editarMotivo },
-  "POST feriados": { aprovador: true, fn: salvarFeriado }
+  "POST feriados": { aprovador: true, fn: salvarFeriado },
+  "POST atestado": { aprovador: true, fn: salvarAtestado }
 };
 
 module.exports = async function faltas(req, res) {

@@ -336,9 +336,13 @@ function calendario(caso, opcoes) {
 // (sem tabela nova): dias da mesma pessoa, com o mesmo código, um seguido do
 // outro. Pode pular até 4 dias em que ela não trabalhou (folga ou feriado no
 // meio do atestado); um dia trabalhado no meio separa em dois períodos.
-function periodosDeAbono(abonadas, fichaDias, lancadas) {
+function periodosDeAbono(abonadas, fichaDias, lancadas, atestados) {
   // lancadas: { "re|data": "AAAA-MM-DD" } = dia em que o sistema percebeu que a falta
   // deixou de ser injustificada (o atestado chegou depois)
+  // atestados: os registrados à mão (dobrarAtestados); cada abonada traz .manual (a
+  // chave do atestado que a cobre) e .noSar2g (o SAR2G já a mostra como abonada)
+  const porChave = {};
+  (atestados || []).forEach(a => { porChave[a.chave] = a; });
   const grupos = {};
   (abonadas || []).forEach(a => { const k = a.re + "|" + a.codigo; (grupos[k] = grupos[k] || []).push(a); });
   const out = [];
@@ -354,9 +358,12 @@ function periodosDeAbono(abonadas, fichaDias, lancadas) {
         for (let x = somaDias(atual.fim, 1); x < d; x = somaDias(x, 1)) vazios.push(x);
         junta = vazios.length <= 4 && vazios.every(x => trabalhouNoDia(dias[x]) !== true);
       }
-      if (junta) { atual.fim = d; atual.faltas.push(d); return; }
-      atual = { re: a.re, nome: a.nome, cargo: a.cargo, posto: a.posto, supervisor: a.supervisor, escala: a.escala, codigo: a.codigo, faltas: [d], inicio: d, fim: d };
-      out.push(atual);
+      if (!junta) {
+        atual = { re: a.re, nome: a.nome, cargo: a.cargo, posto: a.posto, supervisor: a.supervisor, escala: a.escala, codigo: a.codigo, faltas: [], inicio: d, fim: d, _chaves: new Set(), _pendentes: 0 };
+        out.push(atual);
+      }
+      atual.fim = d; atual.faltas.push(d);
+      if (a.manual) { atual._chaves.add(a.manual); if (!a.noSar2g) atual._pendentes++; }
     });
   });
   out.forEach(p => {
@@ -364,8 +371,32 @@ function periodosDeAbono(abonadas, fichaDias, lancadas) {
     const quando = p.faltas.map(d => (lancadas || {})[p.re + "|" + d]).filter(Boolean).sort();
     p.lancadoDepois = quando.length > 0;
     p.lancadoEm = quando.length ? quando[quando.length - 1] : null;
+    // atestado registrado à mão: manda a data e os dias que a pessoa informou
+    p.manuais = [...p._chaves].map(c => porChave[c]).filter(Boolean);
+    p.aguardaSar2g = p._pendentes > 0;
+    p.atestado = p.manuais.length === 1 ? p.manuais[0] : null;
+    if (p.manuais.length) { p.lancadoDepois = false; p.lancadoEm = null; }
+    delete p._chaves; delete p._pendentes;
   });
   return out.sort((x, y) => y.fim.localeCompare(x.fim) || String(x.nome).localeCompare(String(y.nome)));
+}
+
+// Os atestados registrados à mão ficam como eventos na tabela de registros
+// (quem registrou, quando). O estado de agora é o último evento de cada chave:
+// ATESTADO_REGISTRADO vale, ATESTADO_REMOVIDO apaga. Recebe os eventos do mais
+// antigo para o mais novo.
+function dobrarAtestados(eventos) {
+  const ultimo = new Map();
+  (eventos || []).forEach(e => ultimo.set(e.chave, e));
+  const ativos = [], sem = {};
+  ultimo.forEach((e, chave) => {
+    if (e.acao !== "ATESTADO_REGISTRADO" || !e.depois) return;
+    const d = e.depois, em = e.criado_em || null, por = e.ator || null;
+    if (d.tem === false) { sem[d.re + "|" + d.caso] = { chave, por, em, caso: d.caso }; return; }
+    const inicio = iso(d.inicio), dias = Number(d.dias) || 1;
+    ativos.push({ chave, re: String(d.re), inicio, dias, fim: somaDias(inicio, dias - 1), envio: d.envio ? iso(d.envio) : null, codigo: d.codigo || "A", por, em });
+  });
+  return { ativos, sem };
 }
 
 function pessoa(f, extra) {
@@ -373,6 +404,6 @@ function pessoa(f, extra) {
 }
 
 module.exports = {
-  FAMILIAS, SITUACOES, ABONADAS, familiaEscala, ehOperacional, trabalhouNoDia, montarCasos, reDe, competenciaDe, calendario, periodosDeAbono,
+  FAMILIAS, SITUACOES, ABONADAS, familiaEscala, ehOperacional, trabalhouNoDia, montarCasos, reDe, competenciaDe, calendario, periodosDeAbono, dobrarAtestados,
   textoMedidaComAusencia, descreverMedida, somaDias, ddmm
 };

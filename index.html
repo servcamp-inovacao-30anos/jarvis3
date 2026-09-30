@@ -2028,6 +2028,21 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       #pg-faltasmed .fm-mleg b{font-size:.74rem;font-weight:700;color:var(--fm-text)}
       #pg-faltasmed .fm-mleg span{font-size:.66rem;color:var(--fm-muted)}
 
+      /* atestado registrado à mão */
+      #pg-faltasmed .fm-lbl{display:block;font-size:.62rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--fm-muted);margin:0 0 6px}
+      #pg-faltasmed .fm-at{margin-top:12px}
+      #pg-faltasmed .fm-at-g{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
+      #pg-faltasmed .fm-at-g label{display:block;font-size:.66rem;font-weight:600;color:var(--fm-muted)}
+      #pg-faltasmed .fm-at-g .fm-in{display:block;width:100%;box-sizing:border-box;margin-top:4px}
+      #pg-faltasmed .fm-at-prev{font-size:.74rem;line-height:1.5;color:var(--fm-text2);margin:10px 0 0}
+      #pg-faltasmed .fm-at-i{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;font-size:.78rem;color:var(--fm-text);padding:8px 0;border-bottom:1px solid var(--fm-line2)}
+      #pg-faltasmed .fm-at-i span{font-size:.7rem;color:var(--fm-muted)}
+      #pg-faltasmed .fm-at-i .fm-btn{margin-left:auto}
+      #pg-faltasmed .fm-tg.am{color:#b54708;background:#fffaeb;border-color:#fedf89}
+      html[data-theme="dark"] #pg-faltasmed .fm-tg.am{color:#fec84b;background:rgba(245,176,0,.12);border-color:rgba(245,176,0,.38)}
+      #pg-faltasmed .fm-det.um{grid-template-columns:1fr}
+      @media (max-width:760px){#pg-faltasmed .fm-at-g{grid-template-columns:1fr}}
+
       /* calendário do mês, com a palavra escrita em cada dia */
       #pg-faltasmed .fm-mes-h{display:grid;grid-template-columns:36px 1fr 36px;align-items:center;gap:8px;margin-bottom:12px}
       #pg-faltasmed .fm-mes-h div{text-align:center}
@@ -9602,7 +9617,7 @@ function audSalvar(){
 /* ═════════ FALTAS x MEDIDAS — prazo para a medida disciplinar ═════════
    Os casos vêm prontos do servidor (api/_faltas_regras.js): situação, prazo e
    o calendário do card. A tela só mostra; nenhuma regra é refeita aqui. */
-const FM={dados:null,aba:"AGIR",busca:"",sup:"",agrupar:false,aberto:{},mes:{},per:null,supAberto:{},resolvAberto:{},fer:false,carregadoEm:0,vg:null,vgEm:0};
+const FM={dados:null,at:{},aba:"AGIR",busca:"",sup:"",agrupar:false,aberto:{},mes:{},per:null,supAberto:{},resolvAberto:{},fer:false,carregadoEm:0,vg:null,vgEm:0};
 // Quatro abas, com nome de ação. O painel dos supervisores fica num botão à parte.
 const FM_ABAS=[
   {id:"AGIR",rot:"Fazer agora",sit:["PRAZO_VENCIDO","NO_PRAZO"]},
@@ -9691,10 +9706,18 @@ function fmAbonos(){
   return j.abonos||(j.abonadas||[]).map(a=>({...a,faltas:[a.data],inicio:a.data,fim:a.data,dias:1}));
 }
 function fmItemAbono(a){
-  const rot=FM_ABONO[a.codigo]||"Abono",faixa=a.inicio===a.fim?fmDd(a.inicio):`${fmDd(a.inicio)} a ${fmDd(a.fim)}`;
-  return{k:"ab|"+a.re+"|"+a.inicio,nome:a.nome,re:a.re,cargo:a.cargo,posto:a.posto,supervisor:a.supervisor,ord:String(a.fim||""),
-    tag:a.lancadoDepois?"lançado depois":"",
-    acao:{tom:"ok",t:`${rot} cobriu ${faixa} (${a.dias} dia${a.dias===1?"":"s"})`,s:`Falta${a.faltas.length>1?"s":""} de ${fmLista(a.faltas.map(fmDdS))}${a.lancadoDepois&&a.lancadoEm?` · ${rot.toLowerCase()} lançado em ${fmDd(a.lancadoEm)}, depois da falta`:""}`}};
+  const rot=FM_ABONO[a.codigo]||"Abono",at=a.atestado;
+  // atestado registrado à mão: valem a data e os dias que foram informados
+  const ini=at?at.inicio:a.inicio,fim=at?at.fim:a.fim,dias=at?at.dias:a.dias;
+  const faixa=ini===fim?fmDd(ini):`${fmDd(ini)} a ${fmDd(fim)}`;
+  const manual=a.manuais&&a.manuais.length;
+  const tag=a.aguardaSar2g?"lançar no SAR2G":(manual?"confirmado no SAR2G":(a.lancadoDepois?"lançado depois":""));
+  let s=`Falta${a.faltas.length>1?"s":""} de ${fmLista(a.faltas.map(fmDdS))}`;
+  if(at&&at.envio)s+=` · enviado em ${fmDd(at.envio)}`;
+  else if(a.lancadoDepois&&a.lancadoEm)s+=` · ${rot.toLowerCase()} lançado em ${fmDd(a.lancadoEm)}, depois da falta`;
+  return{k:"ab|"+a.re+"|"+a.inicio,abono:a,nome:a.nome,re:a.re,cargo:a.cargo,posto:a.posto,supervisor:a.supervisor,ord:String(a.fim||""),
+    tag,tagAm:!!a.aguardaSar2g,
+    acao:{tom:"ok",t:`${rot} cobriu ${faixa} (${dias} dia${dias===1?"":"s"})`,s}};
 }
 function fmItemCaso(c,pref){return{k:(pref||"")+fmChave(c),caso:c,nome:c.nome,re:c.re,cargo:c.cargo,posto:c.posto,supervisor:c.supervisor,acao:fmAcao(c)};}
 /* Itens da aba: casos (clicáveis) e, em Resolvidas, as abonadas. */
@@ -9745,20 +9768,104 @@ function fmRenderCorpo(){
     const g={};it.forEach(x=>{(g[x.supervisor||"Sem supervisor"]=g[x.supervisor||"Sem supervisor"]||[]).push(x);});
     Object.keys(g).sort().forEach(s=>{h+=`<div class="fm-grp">${_esc(s)}<span>${g[s].length} ${g[s].length===1?"pessoa":"pessoas"}</span></div>`+g[s].map(x=>fmLinhaItem(x)).join("");});
   }else h=it.map(x=>fmLinhaItem(x)).join("");
-  const dica=it.some(x=>x.caso)?'<p class="fm-dica">Selecione uma pessoa para ver o calendário e os detalhes.</p>':"";
-  el.innerHTML=dica+'<div class="fm-lista">'+fmCols()+h+'</div>';
+  const dica=it.some(x=>x.caso||x.abono)?'<p class="fm-dica">Selecione uma pessoa para ver o calendário e os detalhes.</p>':"";
+  const pend=aba.id==="RESOLVIDAS"?fmAbonos().filter(fmFiltra).filter(a=>a.aguardaSar2g).length:0;
+  const aviso=pend?`<div class="fm-aviso k-am">${FM_IC.cal}<span><b>${pend}</b> ${pend===1?"atestado registrado aqui ainda não consta":"atestados registrados aqui ainda não constam"} no SAR2G: falta lançar lá. Quando a planilha trouxer o abono, a marca "lançar no SAR2G" sai sozinha.</span></div>`:"";
+  el.innerHTML=aviso+dica+'<div class="fm-lista">'+fmCols()+h+'</div>';
 }
 function fmCols(semSup){return `<div class="fm-cols${semSup?" p":""}"><span>Colaborador</span><span>Posto</span>${semSup?"":"<span>Supervisor</span>"}<span>Prazo e orientação</span><span></span></div>`;}
 function fmLinhaItem(x,semSup){
-  const a=x.acao,aberto=x.caso&&FM.aberto[x.k];
-  const clique=x.caso?` role="button" tabindex="0" aria-expanded="${!!aberto}" data-k="${_esc(x.k)}" onclick="fmAbrir(this.dataset.k)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();fmAbrir(this.dataset.k)}"`:"";
-  return `<div class="fm-row k-${a.tom}${semSup?" p":""}${aberto?" on":""}${x.caso?"":" fixa"}"${clique}>`+
-    `<div style="min-width:0"><div class="fm-nm" title="${_esc(x.nome)}">${_esc(x.nome)}</div><div class="fm-sb"><span class="fm-re">RE ${_esc(x.re)}</span>${_esc(x.cargo||"")}${x.tag?`<span class="fm-tg">${x.tag}</span>`:""}</div></div>`+
+  const a=x.acao,clic=x.caso||x.abono,aberto=clic&&FM.aberto[x.k];
+  const clique=clic?` role="button" tabindex="0" aria-expanded="${!!aberto}" data-k="${_esc(x.k)}" onclick="fmAbrir(this.dataset.k)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();fmAbrir(this.dataset.k)}"`:"";
+  return `<div class="fm-row k-${a.tom}${semSup?" p":""}${aberto?" on":""}${clic?"":" fixa"}"${clique}>`+
+    `<div style="min-width:0"><div class="fm-nm" title="${_esc(x.nome)}">${_esc(x.nome)}</div><div class="fm-sb"><span class="fm-re">RE ${_esc(x.re)}</span>${_esc(x.cargo||"")}${x.tag?`<span class="fm-tg${x.tagAm?" am":""}">${x.tag}</span>`:""}</div></div>`+
     `<div class="fm-cv" data-l="Posto" title="${_esc(x.posto||"")}">${_esc(x.posto||"—")}</div>`+
     (semSup?"":`<div class="fm-cv" data-l="Supervisor" title="${_esc(x.supervisor||"")}">${_esc(x.supervisor||"—")}</div>`)+
     `<div class="fm-acao"><b><i></i>${_esc(a.t)}</b>${a.s?`<span>${_esc(a.s)}</span>`:""}</div>`+
-    `${x.caso?`<span class="fm-chev">${FM_IC.chev}</span>`:"<span></span>"}</div>`+
-    (aberto?fmDetalhe(x.caso):"");
+    `${clic?`<span class="fm-chev">${FM_IC.chev}</span>`:"<span></span>"}</div>`+
+    (aberto?(x.caso?fmDetalhe(x.caso):fmDetalheAbono(x.abono)):"");
+}
+
+/* ═════════ ATESTADO REGISTRADO À MÃO ═════════
+   Quem lança os atestados pode registrar aqui na hora: vale já, sem esperar o
+   SAR2G nem a planilha do dia. Quando a planilha trouxer o abono, a marca
+   "lançar no SAR2G" sai sozinha. Fica salvo quem registrou e quando. */
+const fmId=k=>String(k).replace(/[^A-Za-z0-9]/g,"_");
+function fmSomaDias(d,n){const x=new Date(String(d).slice(0,10)+"T12:00:00Z");x.setUTCDate(x.getUTCDate()+n);return x.toISOString().slice(0,10);}
+function fmAtSt(k,def){if(!FM.at[k])FM.at[k]=Object.assign({modo:"com",inicio:"",dias:1,envio:FM.dados.hoje},def);return FM.at[k];}
+function fmAtPrevTxt(st){
+  if(st.modo==="sem")return"";
+  const dias=Number(st.dias);
+  if(!st.inicio||!(dias>=1))return"Preencha a data e a quantidade de dias para ver quais faltas o atestado cobre.";
+  const fim=fmSomaDias(st.inicio,Math.floor(dias)-1),fl=st.faltas||[];
+  const cobre=fl.filter(d=>d>=st.inicio&&d<=fim),fora=fl.filter(d=>d<st.inicio||d>fim);
+  let t=`Período: ${fmDdS(st.inicio)} a ${fmDdS(fim)} (${Math.floor(dias)} dia${dias<2?"":"s"}).`;
+  t+=cobre.length?` Vai abonar: ${fmLista(cobre.map(fmDdS))}.`:" Nenhuma falta deste caso cai nesse período.";
+  if(cobre.length&&fora.length)t+=` Continua em cobrança: ${fmLista(fora.map(fmDdS))}.`;
+  return t;
+}
+function fmAtForm(k,def,botao,comOpcaoSem){
+  const st=fmAtSt(k,def),ka=_esc(k);
+  const modo=comOpcaoSem?`<div class="fm-seg" role="group" aria-label="Tem atestado?"><button type="button" class="${st.modo==="com"?"on":""}" data-k="${ka}" onclick="fmAtModo(this.dataset.k,'com')">Com atestado</button><button type="button" class="${st.modo==="sem"?"on":""}" data-k="${ka}" onclick="fmAtModo(this.dataset.k,'sem')">Sem atestado</button></div>`:"";
+  const campo=(c,rot,tipo,extra)=>`<label>${rot}<input type="${tipo}" class="fm-in" data-k="${ka}" data-c="${c}" value="${_esc(st[c]==null?"":st[c])}" ${extra||""} oninput="fmAtCampo(this)"></label>`;
+  const corpo=st.modo==="sem"
+    ?'<p class="fm-at-prev">Fica anotado que a pessoa não entregou atestado. O prazo da medida não muda.</p>'
+    :`<div class="fm-at-g">${campo("inicio","Início do atestado","date")}${campo("dias","Quantidade de dias","number",'min="1" max="180" step="1"')}${campo("envio","Enviado em","date",`max="${FM.dados.hoje}"`)}</div><p class="fm-at-prev" id="fm-atp-${fmId(k)}">${_esc(fmAtPrevTxt(st))}</p>`;
+  return `<div class="fm-at">${modo}${corpo}<div class="fm-md-f"><span class="fm-edit">Vale na hora, sem esperar o SAR2G</span><button class="fm-btn fm-pri sm" data-k="${ka}" onclick="fmAtSalvar(this.dataset.k,this)">${botao||"Salvar"}</button></div></div>`;
+}
+function fmAtModo(k,m){if(FM.at[k]){FM.at[k].modo=m;fmRenderCorpo();}}
+function fmAtCampo(el){
+  const st=FM.at[el.dataset.k];if(!st)return;
+  st[el.dataset.c]=el.value;
+  const p=document.getElementById("fm-atp-"+fmId(el.dataset.k));if(p)p.textContent=fmAtPrevTxt(st);
+}
+function fmAtSalvar(k,btn){
+  const st=FM.at[k];if(!st)return;
+  let body;
+  if(st.modo==="sem")body={re:st.re,tem:false,caso:st.caso};
+  else{
+    const dias=Number(st.dias);
+    if(!st.inicio){alert("Informe a data do atestado.");return;}
+    if(!Number.isInteger(dias)||dias<1||dias>180){alert("Informe a quantidade de dias (de 1 a 180).");return;}
+    if(st.envio&&st.envio>FM.dados.hoje){alert("A data de envio não pode ser no futuro.");return;}
+    body={re:st.re,tem:true,inicio:st.inicio,dias,envio:st.envio||"",substitui:st.chave||undefined};
+  }
+  btn.disabled=true;
+  fmPedir("POST","atestado",body).then(r=>{
+    delete FM.at[k];
+    ptToast(st.modo==="sem"?"Anotado: sem atestado":r.alterado===false?"Nada mudou":"Atestado registrado");
+    return fmLoad(true);
+  }).catch(e=>{alert(e.message);btn.disabled=false;});
+}
+function fmAtRemover(re,chave){
+  if(!confirm("Remover este registro? As faltas voltam a ser cobradas, a menos que o SAR2G já as mostre como abonadas."))return;
+  fmPedir("POST","atestado",{re,remover:true,chave}).then(()=>{ptToast("Registro removido");return fmLoad(true);}).catch(e=>alert(e.message));
+}
+function fmAtReg(a){return fmDd(String(a.em||"").slice(0,10));}
+/* No detalhe do caso: o que já foi registrado e o formulário para registrar. */
+function fmAtCaso(c){
+  const j=FM.dados,ats=c.atestados||[],sem=!ats.length&&c.semAtestado;
+  if(!j.pode_editar&&!ats.length&&!sem)return"";
+  const lista=ats.map(a=>`<div class="fm-at-i"><b>${fmDd(a.inicio)} a ${fmDd(a.fim)}</b> · ${a.dias} dia${a.dias===1?"":"s"}${a.envio?` · enviado em ${fmDd(a.envio)}`:""}<span>registrado por ${_esc(a.por||"—")} em ${fmAtReg(a)}</span></div>`).join("");
+  const semTxt=sem?`<div class="fm-at-i"><b>Sem atestado</b><span>confirmado por ${_esc(c.semAtestado.por||"—")} em ${fmAtReg(c.semAtestado)}</span>${j.pode_editar?`<button class="fm-btn fm-del sm k-da" data-r="${_esc(c.re)}" data-c="${_esc(c.semAtestado.chave)}" onclick="fmAtRemover(this.dataset.r,this.dataset.c)">Desfazer</button>`:""}</div>`:"";
+  const form=j.pode_editar?fmAtForm("at|"+c.re+"|"+c.primeiraFalta,{re:c.re,caso:c.primeiraFalta,inicio:c.primeiraFalta,faltas:c.faltas||[],modo:sem?"sem":"com"},"Salvar",true):"";
+  return `<div class="fm-md"><div class="fm-md-h"><b>Atestado</b><span class="s">${ats.length||sem?"registrado neste sistema":"nenhum registrado para este colaborador"}</span></div>${lista}${semTxt}${form}</div>`;
+}
+/* Detalhe de uma falta abonada: período, envio, quem registrou e se já está no SAR2G. */
+function fmDetalheAbono(a){
+  const j=FM.dados,rot=FM_ABONO[a.codigo]||"Abono",r=rot.toLowerCase(),at=a.atestado,manuais=a.manuais||[];
+  const ini=at?at.inicio:a.inicio,fim=at?at.fim:a.fim,dias=at?at.dias:a.dias;
+  let aviso;
+  if(a.aguardaSar2g)aviso=`<div class="fm-aviso k-am">${FM_IC.cal}<span>Registrado aqui, mas ainda não consta no SAR2G. Falta lançar o ${r} lá.</span></div>`;
+  else if(manuais.length)aviso=`<div class="fm-aviso k-ok">${FM_IC.vazio}<span>Já consta no SAR2G: o ${r} foi lançado lá.</span></div>`;
+  else aviso=`<div class="fm-aviso k-ok">${FM_IC.vazio}<span>Consta no SAR2G como ${r}${a.lancadoDepois&&a.lancadoEm?` (o sistema percebeu em ${fmDd(a.lancadoEm)}, depois da falta)`:""}.</span></div>`;
+  const big=`<dl class="fm-big"><div><dt>Falta</dt><dd>${fmDd(a.faltas[0])}${a.faltas.length>1?`<small>+${a.faltas.length-1}</small>`:""}</dd></div><div><dt>${rot} cobriu</dt><dd>${fmDd(ini)} a ${fmDd(fim)}</dd></div><div><dt>Dias</dt><dd>${dias}</dd></div></dl>`;
+  const kv=[["Faltas cobertas",fmLista(a.faltas.map(fmDdS))]];
+  if(at)kv.push(["Enviado em",at.envio?fmDdS(at.envio):"Não informado"],["Registrado por",`${at.por||"—"} em ${fmAtReg(at)}`]);
+  kv.push(["Escala",a.escala||"—"],["Cargo",a.cargo||"—"]);
+  const rem=j.pode_editar?manuais.map(m=>`<div class="fm-at-i"><b>${fmDd(m.inicio)} a ${fmDd(m.fim)}</b> · ${m.dias} dia${m.dias===1?"":"s"}<button class="fm-btn fm-del sm k-da" data-r="${_esc(a.re)}" data-c="${_esc(m.chave)}" onclick="fmAtRemover(this.dataset.r,this.dataset.c)">Remover registro</button></div>`).join(""):"";
+  const form=j.pode_editar&&at?`<span class="fm-lbl" style="margin-top:14px">Corrigir os dados</span>${fmAtForm("ab|"+a.re+"|"+at.chave,{re:a.re,chave:at.chave,inicio:at.inicio,dias:at.dias,envio:at.envio||"",faltas:a.faltas,caso:a.faltas[0],modo:"com"},"Salvar correção",false)}`:"";
+  return `<div class="fm-det um"><div><h4 class="fm-h3">${rot} registrado</h4>${aviso}${big}<dl class="fm-kv">${kv.map(([l,v])=>`<dt>${l}</dt><dd>${_esc(v)}</dd>`).join("")}</dl>${rem}${form}</div></div>`;
 }
 function fmAbrir(k){FM.aberto[k]=!FM.aberto[k];fmRenderCorpo();}
 /* O aviso do topo do detalhe: o prazo em uma frase. */
@@ -9802,7 +9909,7 @@ function fmDetalhe(c){
     `<div><i style="border:2px solid var(--fm-brand)"></i><b>Retorno</b><span>Dia de retorno</span></div>`+
     `<div><i style="background:var(--m-fim);border:1px solid var(--m-fim-bd)"></i><b>Prazo</b><span>Dias do prazo para aplicar a medida</span></div></div>`;
   return `<div class="fm-det"><div><h4 class="fm-h3">Detalhes da ocorrência</h4>${fmAviso(c)}<p class="fm-frase">${_esc(frase)}</p>${big}`+
-    `<dl class="fm-kv">${kv.map(([l,v])=>`<dt>${l}</dt><dd>${_esc(v)}</dd>`).join("")}</dl>${med}${leg}</div>`+
+    `<dl class="fm-kv">${kv.map(([l,v])=>`<dt>${l}</dt><dd>${_esc(v)}</dd>`).join("")}</dl>${fmAtCaso(c)}${med}${leg}</div>`+
     `<div><h4 class="fm-h3">Calendário da ocorrência</h4>${fmMes(c)}</div></div>`;
 }
 /* Calendário do mês (dia 1 ao último), com a palavra de cada dia, a folha
@@ -9883,7 +9990,7 @@ function fmPainel(){
     `<button class="fm-btn" style="margin-left:auto" onclick="FM.fer=true;fmRender()">${FM_IC.cal}Feriados</button></div>`;
   const pl=(n,um,v)=>`<b>${n}</b> ${n===1?um:v}`,antes=casos.filter(c=>c.primeiraFalta<P.ini).length;
   h+=`<div class="fm-resumo"><span>${pl(casos.length,"caso de falta injustificada","casos de falta injustificada")}${antes?` (${antes} em aberto da folha anterior)`:""}</span><span class="k-da"><i></i>${pl(tot("da"),"atrasada","atrasadas")}</span><span class="k-am"><i></i>${pl(tot("am"),"no prazo","no prazo")} (${tot("hj")} ${tot("hj")===1?"vence":"vencem"} hoje)</span>`+
-    `<span class="k-gr"><i></i>${pl(tot("gr"),"esperando voltar","esperando voltar")}</span><span class="k-vi"><i></i>${pl(tot("vi"),"na coordenação","na coordenação")}</span><span class="k-ok"><i></i>${pl(tot("ok"),"resolvida","resolvidas")}</span><span class="k-ok"><i></i>${pl(abonos.length,"abonada","abonadas")}${abonos.some(a=>a.lancadoDepois)?` (${abonos.filter(a=>a.lancadoDepois).length} com atestado lançado depois)`:""}</span></div>`;
+    `<span class="k-gr"><i></i>${pl(tot("gr"),"esperando voltar","esperando voltar")}</span><span class="k-vi"><i></i>${pl(tot("vi"),"na coordenação","na coordenação")}</span><span class="k-ok"><i></i>${pl(tot("ok"),"resolvida","resolvidas")}</span><span class="k-ok"><i></i>${pl(abonos.length,"abonada","abonadas")}${abonos.some(a=>a.lancadoDepois)?` (${abonos.filter(a=>a.lancadoDepois).length} com atestado lançado depois)`:""}${abonos.some(a=>a.aguardaSar2g)?` · <b>${abonos.filter(a=>a.aguardaSar2g).length}</b> para lançar no SAR2G`:""}</span></div>`;
   if(!lista.length)return h+fmVazio("Nenhuma falta injustificada neste período",P.atual?"Tudo em dia.":"");
   h+=`<div class="fm-sups"><div class="fm-sups-c"><span></span><span>Supervisor</span><span>Casos para resolver</span><span class="num">Total</span><span class="num">Atrasadas</span><span class="num">Vencem hoje</span><span class="num">Resolvidas</span><span class="num">% no prazo</span></div>`;
   lista.forEach((x,idx)=>{
