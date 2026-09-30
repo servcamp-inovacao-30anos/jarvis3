@@ -938,6 +938,7 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
   <div class="cnt">
   <!-- VISÃO GERAL -->
   <div class="page active" id="pg-visao">
+    <div id="vg-contrato" hidden></div>
     <div class="vg-kpis" style="grid-template-columns:repeat(3,1fr)">
       <div class="sk sk-bl clickable" onclick="skDet('vg','clientes',this)"><div class="sk-top"><span class="sk-ic">🏢</span><span class="sk-tag t-bl">Fixo</span></div><div class="sk-lbl">Clientes Ativos</div><div class="sk-v" id="vg-cl">—</div><div class="sk-sub" id="vg-cls">—</div></div>
       <div class="sk clickable" onclick="_showNovosClientes()" style="background:linear-gradient(135deg,#fff7e6,#ffedcc);border:2px solid #f5a623;box-shadow:0 4px 18px rgba(245,166,35,.25);position:relative;overflow:hidden">
@@ -2097,6 +2098,7 @@ function _abrirSessao(u){
   applyUserUI();
   if(typeof hqBeat==="function")hqBeat(); // já aparece na Sede Virtual
   tvModoChecar(); // se abriu a TV sem estar logado ainda, ativa só depois do login
+  vgContrato();
 }
 /* Troca de senha. modo: "primeiro" (ainda na senha padrão), "obrigatoria" (must_change
    marcado no banco) ou "voluntaria" (menu do perfil — pede a senha atual). */
@@ -2187,12 +2189,94 @@ function showWelcome(){
   setTimeout(function(){
     div.style.transition="opacity .4s ease";
     div.style.opacity="0";
-    setTimeout(function(){div.remove();},400);
+    setTimeout(function(){div.remove();_celebrarContrato();},400);
   },2200);
 }
+
+/* ── Contrato fechado em destaque ──────────────────────────────────────────
+   Toda proposta do Comercial que vira FECHADO aparece sozinha, por 7 dias
+   contados do fechado_em: faixa no topo da Visão Geral (dá para fechar) e,
+   uma vez por pessoa, um cartão logo depois das boas-vindas. Sem valores em
+   R$ (COM_VALORES segue desligado). */
+const CONTRATO_DIAS_DESTAQUE=7;
+let _contratosRecentes=null;
+function _ctLs(fn){try{return fn(window.localStorage);}catch(e){return null;}}
+function _ctEsc(t){return String(t==null?"":t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function _ctTitulo(t){return String(t||"").toLowerCase().replace(/(^|\s)\S/g,c=>c.toUpperCase());}
+function _ctData(iso){const s=String(iso||"");return s.length>=10?s.slice(8,10)+"/"+s.slice(5,7):"—";}
+function contratosRecentes(){
+  if(!_contratosRecentes){
+    _contratosRecentes=fetch("/api/comercial?t=propostas").then(r=>r.json()).then(j=>{
+      const hoje=new Date(Date.now()-3*3600000).toISOString().slice(0,10); // Brasília
+      const limite=new Date(Date.parse(hoje+"T12:00:00Z")-(CONTRATO_DIAS_DESTAQUE-1)*86400000).toISOString().slice(0,10);
+      return ((j&&j.rows)||[]).filter(p=>p.status==="FECHADO"&&p.fechado_em&&String(p.fechado_em).slice(0,10)>=limite&&String(p.fechado_em).slice(0,10)<=hoje)
+        .sort((a,b)=>String(b.fechado_em)<String(a.fechado_em)?-1:1);
+    }).catch(()=>{_contratosRecentes=null;return[];});
+  }
+  return _contratosRecentes;
+}
+function _ctLinha(p){
+  const det=[p.servico&&_ctTitulo(p.servico),p.cidade&&_ctTitulo(p.cidade)].filter(Boolean).join(" · ");
+  return {nome:_ctEsc(p.nome),det:_ctEsc(det),quem:_ctEsc(p.responsavel||"Comercial"),quando:_ctData(p.fechado_em)};
+}
+function vgContrato(){
+  const el=document.getElementById("vg-contrato");if(!el)return;
+  contratosRecentes().then(lista=>{
+    const vis=lista.filter(p=>!_ctLs(ls=>ls.getItem("jv_contrato_oculto_"+p.id)));
+    if(!vis.length){el.hidden=true;el.innerHTML="";return;}
+    el.innerHTML=vis.slice(0,3).map(p=>{const l=_ctLinha(p);return(
+      '<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:12px;padding:14px 18px;border-radius:14px;'+
+      'background:linear-gradient(135deg,#fff7e6,#ffedcc);border:2px solid #f5a623;box-shadow:0 4px 18px rgba(245,166,35,.22)">'+
+        '<span style="font-size:1.7rem;line-height:1">🏆</span>'+
+        '<div style="flex:1;min-width:220px">'+
+          '<div style="font-size:.66rem;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:#a3650c">Novo contrato fechado</div>'+
+          '<div style="font-size:1.05rem;font-weight:900;color:#0d1f35">'+l.nome+(l.det?' <span style="font-size:.78rem;font-weight:700;color:#b5790f">· '+l.det+'</span>':'')+'</div>'+
+          '<div style="font-size:.74rem;color:#7c5a17">Fechado em '+l.quando+' por <b>'+l.quem+'</b>. Parabéns ao Comercial!</div>'+
+        '</div>'+
+        '<button type="button" onclick="vgContratoFechar('+Number(p.id)+')" title="Ocultar este destaque" '+
+          'style="background:none;border:1px solid #f5c26b;color:#a3650c;border-radius:8px;padding:5px 10px;font-size:.7rem;font-weight:700;cursor:pointer">Ocultar</button>'+
+      '</div>');}).join("");
+    el.hidden=false;
+  });
+}
+function vgContratoFechar(id){_ctLs(ls=>ls.setItem("jv_contrato_oculto_"+id,"1"));vgContrato();}
+// Cartão de comemoração: logo depois das boas-vindas, uma vez por pessoa e contrato.
+function _celebrarContrato(){
+  const u=sessionStorage.getItem("userKey")||"";
+  contratosRecentes().then(lista=>{
+    const novos=lista.filter(p=>!_ctLs(ls=>ls.getItem("jv_contrato_visto_"+p.id+"_"+u)));
+    if(!novos.length||document.getElementById("contratoOverlay"))return;
+    novos.forEach(p=>_ctLs(ls=>ls.setItem("jv_contrato_visto_"+p.id+"_"+u,"1")));
+    const l=_ctLinha(novos[0]),mais=novos.length-1;
+    const div=document.createElement("div");
+    div.id="contratoOverlay";
+    div.style.cssText="position:fixed;inset:0;background:rgba(13,31,53,.85);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;animation:fadeIn .3s ease";
+    const fechar=()=>{div.style.transition="opacity .3s ease";div.style.opacity="0";setTimeout(()=>div.remove(),300);};
+    div.onclick=e=>{if(e.target===div)fechar();};
+    const cor=["#f5a623","#2e8fef","#16a34a","#ffffff","#fbbf24"];
+    const confete=matchMedia("(prefers-reduced-motion: reduce)").matches?"":Array.from({length:26},(_,i)=>
+      '<i style="position:absolute;top:-12px;left:'+(4+i*3.6).toFixed(1)+'%;width:7px;height:12px;border-radius:2px;background:'+cor[i%cor.length]+
+      ';opacity:.9;animation:ctCai '+(1.8+(i%5)*.35).toFixed(2)+'s ease-in '+((i%7)*.12).toFixed(2)+'s forwards"></i>').join("");
+    div.innerHTML='<div style="position:relative;overflow:hidden;background:linear-gradient(135deg,#0d1f35,#1e4d8c);border-radius:18px;padding:38px 40px 30px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4);max-width:440px;width:100%;animation:popIn .4s ease">'+
+      confete+
+      '<div style="font-size:2.6rem;margin-bottom:8px">🏆</div>'+
+      '<div style="color:#fbbf24;font-size:.76rem;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px">Novo contrato fechado</div>'+
+      '<div style="color:#fff;font-size:1.6rem;font-weight:900;line-height:1.15;margin-bottom:6px">'+l.nome+'</div>'+
+      (l.det?'<div style="color:#b9cce8;font-size:.9rem;font-weight:700;margin-bottom:14px">'+l.det+'</div>':'')+
+      '<div style="display:inline-block;background:rgba(255,255,255,.14);color:#fff;font-size:.8rem;font-weight:700;padding:6px 16px;border-radius:20px;margin-bottom:18px">Fechado em '+l.quando+' por '+l.quem+'</div>'+
+      '<div style="color:#e2ecf8;font-size:.86rem;margin-bottom:20px">Parabéns ao Comercial pela conquista!'+(mais>0?'<br><span style="color:#9ec5f5;font-size:.76rem">e mais '+mais+' contrato'+(mais>1?'s':'')+' nesta semana</span>':'')+'</div>'+
+      '<button type="button" id="contratoOk" style="width:100%;padding:11px;border-radius:8px;border:none;background:linear-gradient(135deg,#f5a623,#d97706);color:#fff;font-weight:800;font-size:.86rem;cursor:pointer">Entrar no Dashboard</button>'+
+      '</div><style>@keyframes ctCai{to{transform:translateY(520px) rotate(540deg);opacity:0}}'+
+      '@keyframes fadeIn{from{opacity:0}to{opacity:1}}@keyframes popIn{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}</style>';
+    document.body.appendChild(div);
+    document.getElementById("contratoOk").onclick=fechar;
+  });
+}
+
 if(sessionStorage.getItem("logged")==="1"){
   document.getElementById("loginOverlay").classList.add("hidden");
   applyUserUI();
+  vgContrato();
 }
 function _cnt(arr,key,n){var m={};arr.forEach(function(x){var v=x[key]||"—";m[v]=(m[v]||0)+1;});return Object.entries(m).sort(function(a,b){return b[1]-a[1]}).slice(0,n||10).map(function(e){return e[0]+": "+e[1]}).join("; ");}
 function _chatContext(){
