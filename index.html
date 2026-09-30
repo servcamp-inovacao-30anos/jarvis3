@@ -2217,6 +2217,42 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
 
       #pg-faltasmed .fm-mais-l{display:flex;align-items:center;justify-content:center;gap:12px;padding:12px;font-size:.74rem;color:var(--fm-muted)}
       #pg-faltasmed .fm-mais-l b{color:var(--fm-text)}
+      /* cartões de supervisor */
+      #pg-faltasmed .fm-scw{margin:0 0 12px}
+      #pg-faltasmed .fm-sct{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;font-size:.8rem;font-weight:700;color:var(--fm-text2);margin:0 0 8px}
+      #pg-faltasmed .fm-sct span{font-weight:500;font-size:.7rem;color:var(--fm-muted)}
+      #pg-faltasmed .fm-sc{display:flex;gap:10px;overflow-x:auto;padding:3px 3px 12px;scrollbar-width:thin}
+      #pg-faltasmed .fm-scard{flex:0 0 auto;min-width:152px;max-width:210px;text-align:left;display:flex;flex-direction:column;gap:3px;padding:10px 14px 11px;border:1px solid var(--fm-line);border-radius:12px;background:var(--fm-surface);box-shadow:var(--fm-sh);cursor:pointer;font:inherit;color:inherit;transition:border-color .12s,background .12s,box-shadow .12s}
+      #pg-faltasmed .fm-scard:hover{border-color:var(--g300);background:var(--fm-subtle)}
+      #pg-faltasmed .fm-scard.on{border-color:var(--fm-brand);background:var(--fm-brand-soft);box-shadow:0 0 0 3px var(--fm-ring)}
+      #pg-faltasmed .fm-scard:focus-visible{outline:none;box-shadow:0 0 0 4px var(--fm-ring)}
+      #pg-faltasmed .fm-scard .nm{font-size:.82rem;font-weight:700;color:var(--fm-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      #pg-faltasmed .fm-scard.on .nm{color:var(--fm-brand-tx)}
+      #pg-faltasmed .fm-scard .ct{font-size:.7rem;color:var(--fm-muted)}
+      #pg-faltasmed .fm-scard .ct b{font-size:1.1rem;color:var(--fm-text);margin-right:2px}
+      #pg-faltasmed .fm-scard em{font-style:normal;font-size:.66rem;font-weight:700;border-radius:8px;padding:1px 7px;align-self:flex-start;margin-top:2px}
+      #pg-faltasmed .fm-scard em.al{background:#fef3f2;color:#b42318;border:1px solid #fecdca}
+      #pg-faltasmed .fm-scard em.an{background:#fffaeb;color:#b54708;border:1px solid #fedf89}
+      html[data-theme="dark"] #pg-faltasmed .fm-scard em.al{background:rgba(240,68,56,.16);color:#fda29b;border-color:rgba(240,68,56,.4)}
+      html[data-theme="dark"] #pg-faltasmed .fm-scard em.an{background:rgba(245,176,0,.12);color:#fec84b;border-color:rgba(245,176,0,.38)}
+      /* gráfico por situação (um supervisor) e cores de concluídas/abonadas */
+      #pg-faltasmed .cat-ok{--cc:#079455;--ct:#fff}
+      #pg-faltasmed .cat-ab{--cc:#0e9aa7;--ct:#fff}
+      html[data-theme="dark"] #pg-faltasmed .cat-ok{--cc:#17b26a;--ct:#0b1220}
+      html[data-theme="dark"] #pg-faltasmed .cat-ab{--cc:#22c3d2;--ct:#0b1220}
+      #pg-faltasmed .fm-col.sit{flex:0 0 100px}
+      #pg-faltasmed .fm-col.sit .fm-bar{width:56%;max-width:64px;gap:0}
+      #pg-faltasmed .fm-col.sit .fm-sg{min-height:6px;border-radius:8px 8px 0 0;font-size:0;border-top:0}
+      #pg-faltasmed .fm-col-l.sit .lc{display:none}#pg-faltasmed .fm-col-l.sit{white-space:normal;line-height:1.25;height:40px;max-width:96px}
+      #pg-faltasmed .fm-sepv{flex:0 0 1px;background:var(--fm-line);align-self:stretch;margin:0 6px 40px}
+      #pg-faltasmed .fm-col-t.z{color:var(--g400);cursor:default}
+      #pg-faltasmed .fm-col-t.z:hover{background:none;color:var(--g400)}
+      #pg-faltasmed .fm-cols-sit{justify-content:flex-start;gap:14px}
+      /* ao passar o mouse numa coluna, as outras esmaecem */
+      #pg-faltasmed .fm-col{transition:opacity .15s}
+      #pg-faltasmed .fm-cols-g:hover .fm-col:not(:hover){opacity:.55}
+      @media (max-width:760px){#pg-faltasmed .fm-scard{min-width:140px}#pg-faltasmed .fm-cols-sit{gap:2px;min-width:0}#pg-faltasmed .fm-col.sit{flex:1 1 0;min-width:0}#pg-faltasmed .fm-col-l.sit{font-size:.54rem;letter-spacing:-.01em;max-width:none;height:44px;}#pg-faltasmed .fm-col-l.sit .lf{display:none}#pg-faltasmed .fm-col-l.sit .lc{display:inline}#pg-faltasmed .fm-sepv{margin:0 2px 44px}}
+
       /* separação entre folhas */
       #pg-faltasmed .fm-fh{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 18px 10px 22px;font-size:.82rem;border-top:1px solid var(--fm-line);border-bottom:1px solid var(--fm-line)}
       #pg-faltasmed .fm-fh b{font-weight:700}
@@ -9827,7 +9863,7 @@ function fmLoad(forcar){
     .catch(e=>{if(box)box.innerHTML=fmVazio("Não foi possível carregar",_esc(e.message));});
 }
 function fmFiltraG(c){
-  if(FM.sup&&(c.supervisor||"")!==FM.sup)return false;
+  if(FM.sup&&(c.supervisor||"Sem supervisor")!==FM.sup)return false;
   if(FM.turno&&(c.turno||"DIURNO")!==FM.turno)return false;
   if(FM.escala&&fmFam(c.escala)!==FM.escala)return false;
   if(FM.posto&&(c.posto||"")!==FM.posto)return false;
@@ -10315,19 +10351,28 @@ function fmContaPeriodo(casos,abonos,P,hoje){
 /*fim fmContaPeriodo*/
 
 /* Estado da lista de ocorrências do painel. */
-function fmPlPadrao(){return{tab:"tratar",cats:[],sub:"",sup:"",busca:"",de:"",ate:"",porPosto:false};}
+function fmPlPadrao(){return{tab:"tratar",cats:[],sub:"",busca:"",de:"",ate:"",porPosto:false};}
 function fmPl(){return FM.pl||(FM.pl=fmPlPadrao());}
 /* Um clique no alto (indicador, coluna, legenda, supervisor) vira um filtro da lista. */
 function fmPlAttr(o){return `data-pl="${_esc(JSON.stringify(o))}" onclick="fmPlClick(this,event)"`;}
-function fmPlIgual(o){const p=fmPl();return p.tab===(o.tab||"tratar")&&(p.cats||[]).join()===(o.cats||[]).join()&&p.sub===(o.sub||"")&&p.sup===(o.sup||"");}
+function fmPlIgual(o){const p=fmPl();return p.tab===(o.tab||"tratar")&&(p.cats||[]).join()===(o.cats||[]).join()&&p.sub===(o.sub||"");}
 function fmPlClick(el,ev){
   if(ev)ev.stopPropagation();
   const o=JSON.parse(el.dataset.pl||"{}"),p=fmPl();
-  if(fmPlIgual(o)){FM.pl=Object.assign(fmPlPadrao(),{busca:p.busca,de:p.de,ate:p.ate,porPosto:p.porPosto,tab:p.tab});}
-  else FM.pl=Object.assign(fmPlPadrao(),{busca:p.busca,de:p.de,ate:p.ate,porPosto:p.porPosto},o);
-  FM.aberto={};FM.lim=FM_PAGINA;
+  const manter={busca:p.busca,de:p.de,ate:p.ate,porPosto:p.porPosto};
+  let rolar=true;
+  if(o.sup!==undefined){
+    // escolher um supervisor (cartão, coluna ou linha da tabela): a tela toda passa a mostrar só os
+    // dados dele; clicar de novo no mesmo cartão volta para todos
+    const soSup=Object.keys(o).length===1;
+    FM.sup=(soSup&&o.sup===FM.sup)?"":o.sup;delete o.sup;
+    FM.pl=Object.assign(fmPlPadrao(),manter,{tab:"tratar"},o);
+    rolar=!soSup;
+  }else if(fmPlIgual(o)){FM.pl=Object.assign(fmPlPadrao(),manter,{tab:p.tab});}
+  else FM.pl=Object.assign(fmPlPadrao(),manter,o);
+  FM.aberto={};FM.lim=FM_PAGINA;FM.animar=true;
   fmRenderCorpo();
-  const s=document.getElementById("fm-ocor");if(s)s.scrollIntoView({behavior:"smooth",block:"start"});
+  if(rolar){const sc=document.getElementById("fm-ocor");if(sc)sc.scrollIntoView({behavior:"smooth",block:"start"});}
 }
 function fmPlSet(campo,v){fmPl()[campo]=v;FM.lim=FM_PAGINA;fmRenderOcor();}
 function fmPlToggleCat(k){const p=fmPl(),i=p.cats.indexOf(k);if(i>=0)p.cats.splice(i,1);else p.cats.push(k);FM.lim=FM_PAGINA;fmRenderOcor();}
@@ -10342,7 +10387,7 @@ function fmGrafColunas(R,rotPer){
   const grade=marcas.map(v=>`<div class="fm-gl" style="bottom:${v/topo*100}%"><span>${v}</span></div>`).join("");
   const tot=FM_CATS_ABERTAS.reduce((o,k)=>(o[k]=R.n[k],o),{});
   const barras=cols.map(x=>{
-    const segs=FM_CATS_ABERTAS.map(k=>x.n[k]?`<button type="button" class="fm-sg cat-${k}${fmPlIgual({tab:"tratar",cats:[k],sup:x.nome})?" sel":""}" style="flex:${x.n[k]}" aria-label="${_esc(x.nome)}: ${x.n[k]} ${FM_CAT[k].rot.toLowerCase()}" ${fmPlAttr({tab:"tratar",cats:[k],sup:x.nome})}>${x.n[k]}</button>`:"");
+    const segs=FM_CATS_ABERTAS.map(k=>x.n[k]?`<button type="button" class="fm-sg cat-${k}" style="flex:${x.n[k]}" aria-label="${_esc(x.nome)}: ${x.n[k]} ${FM_CAT[k].rot.toLowerCase()}" ${fmPlAttr({tab:"tratar",cats:[k],sup:x.nome})}>${x.n[k]}</button>`:"");
     const tip=`<div class="fm-tip" role="tooltip"><b>${_esc(x.nome)}</b><em>${x.abertos} em aberto ${rotPer}</em>`+
       FM_CATS_ABERTAS.filter(k=>x.n[k]).map(k=>`<span><i class="cat-${k}"></i>${FM_CAT[k].rot}<b>${x.n[k]}</b></span>`).join("")+`</div>`;
     return `<div class="fm-col"><div class="fm-col-a"><div class="fm-bar" style="height:${(x.abertos/topo*100).toFixed(2)}%">`+
@@ -10357,10 +10402,53 @@ function fmGrafColunas(R,rotPer){
     `<div class="fm-lgs">${leg}</div></div>`;
 }
 
+/* Nome bonito para o cartão: "CARLOS NOGUEIRA" → "Carlos Nogueira". */
+function fmNomeCard(n){return String(n||"").toLowerCase().replace(/(^|\s|-)(\S)/g,(m,a,b)=>a+b.toUpperCase());}
+/* Faixa de cartõezinhos, um por supervisor. Clicar num cartão faz a tela toda mostrar só os
+   dados dele; o cartão "Todos" volta para a visão geral. Os números dos cartões ignoram o
+   supervisor escolhido (senão os outros cartões sumiriam). */
+function fmCartoesSup(RG){
+  const mes=FM.per.modo==="mes";
+  const lista=RG.sups.slice();
+  if(FM.sup&&!lista.some(x=>x.nome===FM.sup))lista.push({nome:FM.sup,abertos:0,ant:0,n:{da:0,hj:0,np:0,gr:0,vi:0}});
+  const card=(attr,on,nome,titulo,abertos,da,ant,cls)=>`<button type="button" class="fm-scard${cls?" "+cls:""}${on?" on":""}" aria-pressed="${!!on}" ${attr}><span class="nm" title="${_esc(titulo)}">${_esc(nome)}</span><span class="ct"><b>${abertos}</b> em aberto</span>${da?`<em class="al">${da} ${da===1?"atrasada":"atrasadas"}</em>`:""}${ant?`<em class="an">${ant} ${mes?"do mês anterior":"da folha anterior"}</em>`:""}</button>`;
+  return `<div class="fm-scw"><div class="fm-sct">Supervisores<span>Clique num cartão para ver só a área dele</span></div><div class="fm-sc">`+
+    card(fmPlAttr({sup:""}),!FM.sup,"Todos","Todos os supervisores",RG.abertos.length,RG.n.da,RG.anteriores.length,"geral")+
+    lista.map(x=>card(fmPlAttr({sup:x.nome}),FM.sup===x.nome,fmNomeCard(x.nome),x.nome,x.abertos,x.n.da,x.ant)).join("")+`</div></div>`;
+}
+/* Gráfico de UM supervisor: uma coluna para cada situação da área dele. */
+function fmGrafSituacoes(R,rotPer,P){
+  const nome=FM.sup,mes=FM.per.modo==="mes";
+  const cols=[
+    {k:"da",rot:"Atrasada",n:R.n.da,o:{tab:"tratar",cats:["da"]}},
+    {k:"hj",rot:"Vence hoje",n:R.n.hj,o:{tab:"tratar",cats:["hj"]}},
+    {k:"np",rot:"No prazo",n:R.n.np,o:{tab:"tratar",cats:["np"]}},
+    {k:"gr",rot:"Esperando voltar",curto:"Esperando",n:R.n.gr,o:{tab:"tratar",cats:["gr"]}},
+    {k:"vi",rot:"Coordenação",curto:"Coord.",n:R.n.vi,o:{tab:"tratar",cats:["vi"]}},
+    "sep",
+    {k:"ok",rot:"Concluídas (medida)",curto:"Concluídas",n:R.concluidas.length,o:{tab:"concluidas",sub:"medida"}},
+    {k:"ab",rot:"Abonadas",n:R.abonos.length,o:{tab:"concluidas",sub:"ab"}}
+  ];
+  const max=Math.max(1,...cols.filter(c=>c!=="sep").map(c=>c.n)),passo=max<=5?1:Math.ceil(max/5),topo=passo*Math.ceil(max/passo);
+  const marcas=[];for(let v=0;v<=topo;v+=passo)marcas.push(v);
+  const grade=marcas.map(v=>`<div class="fm-gl" style="bottom:${v/topo*100}%"><span>${v}</span></div>`).join("");
+  const barras=cols.map(c=>c==="sep"?'<div class="fm-sepv"></div>':
+    `<div class="fm-col sit"><div class="fm-col-a"><div class="fm-bar" style="height:${c.n?(c.n/topo*100).toFixed(2):0}%">`+
+    (c.n?`<button type="button" class="fm-col-t" ${fmPlAttr(c.o)} aria-label="Ver as ${c.n} pessoas: ${c.rot.toLowerCase()}">${c.n}</button><button type="button" class="fm-sg cat-${c.k}${fmPlIgual(c.o)?" sel":""}" style="flex:1" ${fmPlAttr(c.o)} title="${_esc(c.rot)}: ${c.n}" aria-label="${_esc(c.rot)}: ${c.n}"></button>`:'<span class="fm-col-t z">0</span>')+
+    `</div></div><div class="fm-col-l sit" title="${_esc(c.rot)}"><span class="lf">${c.rot}</span><span class="lc">${c.curto||c.rot}</span></div></div>`).join("");
+  const anim=FM.animar?" anim":"";FM.animar=false;
+  const ant=P.atual&&R.anteriores.length?`<div class="fm-lgs"><button type="button" class="fm-lg" ${fmPlAttr({tab:"anterior"})}><i class="ant"></i>${mes?"Do mês anterior":"Da folha anterior"}, à parte<b>${R.anteriores.length}</b></button></div>`:"";
+  return `<div class="fm-gc"><div class="fm-gc-h"><div><h4>Situação dos casos de ${_esc(fmNomeCard(nome))}</h4><p>${R.abertos.length} ${R.abertos.length===1?"caso em aberto":"casos em aberto"} ${rotPer}. Clique numa coluna para ver as pessoas.</p></div>`+
+    `<button type="button" class="fm-btn sm" ${fmPlAttr({sup:""})}>${FM_IC.ant}Ver todos os supervisores</button></div>`+
+    `<div class="fm-plot${anim}"><div class="fm-grade">${grade}</div><div class="fm-cols-g fm-cols-sit">${barras}</div></div>${ant}</div>`;
+}
+
 function fmPainel(){
   const j=FM.dados,P=fmPeriodo(),hoje=j.hoje,mes=FM.per.modo==="mes";
   const R=fmContaPeriodo(j.casos.filter(fmFiltraG),fmAbonos().filter(fmFiltraG),P,hoje);
   FM._R=R;FM._P=P;
+  // visão geral (sem o supervisor escolhido): alimenta os cartões, que não podem sumir ao escolher um
+  const RG=FM.sup?(()=>{const s0=FM.sup;FM.sup="";try{return fmContaPeriodo(j.casos.filter(fmFiltraG),fmAbonos().filter(fmFiltraG),P,hoje);}finally{FM.sup=s0;}})():R;
   const rotAnt=mes?"do mês anterior":"da folha anterior",rotPer=mes?"no mês":"na folha";
   const dias=new Date(Date.UTC(FM.per.a,FM.per.m,0)).getUTCDate();
   let h=`<div class="fm-fbar"><div class="fm-seg" role="group" aria-label="Ver por"><button class="${!mes?"on":""}" onclick="fmPerModo('folha')">Folha (26 a 25)</button><button class="${mes?"on":""}" onclick="fmPerModo('mes')">Mês (1 a ${dias})</button></div>`+
@@ -10378,10 +10466,10 @@ function fmPainel(){
     kp(!P.atual?"":R.anteriores.length?(R.nAnt.da?"v-da":"v-am"):"",mes?"Do mês anterior":"Da folha anterior",P.atual?R.anteriores.length:"—",!P.atual?"só aparece no<br>período atual":R.anteriores.length?`em aberto, à parte<br>${R.nAnt.da?R.nAnt.da+(R.nAnt.da===1?" atrasada":" atrasadas"):"nenhuma atrasada"}`:"nada pendente<br>de antes",{tab:"anterior"})+
     kp("v-ab","Abonadas",R.abonos.length,pendSar?`fora da conta<br>${pendSar} para lançar no SAR2G`:"fora da conta<br>(atestado ou justificativa)",{tab:"concluidas",sub:"ab"})+`</div>`;
 
-  h+=fmGrafColunas(R,rotPer);
+  h+=fmCartoesSup(RG)+(FM.sup?fmGrafSituacoes(R,rotPer,P):fmGrafColunas(R,rotPer));
 
-  // supervisores
-  if(R.sups.length){
+  // tabela dos supervisores: só na visão geral (escolhido um supervisor, a tela é só dele)
+  if(!FM.sup&&R.sups.length){
     const tip=t=>`<span class="fm-inf" tabindex="0" data-tip="${_esc(t)}" aria-label="${_esc(t)}">${FM_IC.info}</span>`;
     const nb=(v,o,cls)=>v?`<button type="button" class="fm-nb ${cls||""}" ${fmPlAttr(o)}>${v}</button>`:'<span class="fm-z">0</span>';
     h+=`<div class="fm-sups"><div class="fm-sups-h">Supervisores<span>Clique numa linha para ver as ocorrências do supervisor</span></div>`+
@@ -10391,7 +10479,7 @@ function fmPainel(){
       `<span class="num">Tratado ${tip("Faltas injustificadas dos casos que começaram neste período, com medida aplicada ÷ todas as faltas desses casos. As abonadas e os casos de períodos anteriores não entram na conta.")}</span><span></span></div>`;
     R.sups.forEach((x,i)=>{
       const o={tab:"tratar",sup:x.nome};
-      h+=`<div class="fm-sup${fmPlIgual(o)?" on":""}" role="button" tabindex="0" ${fmPlAttr(o)} onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();fmPlClick(this,event)}">`+
+      h+=`<div class="fm-sup${FM.sup===x.nome?" on":""}" role="button" tabindex="0" ${fmPlAttr(o)} onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();fmPlClick(this,event)}">`+
         `<div class="fm-sup-n">${_esc(x.nome)}${i===0&&x.abertos>0?'<span class="fm-top">Mais casos para resolver</span>':""}</div>`+
         `<span class="num" data-l="Em aberto">${nb(x.abertos,o,"t")}</span>`+
         `<span class="num" data-l="Atrasadas">${nb(x.n.da,{tab:"tratar",sup:x.nome,cats:["da"]},"da")}</span>`+
@@ -10408,7 +10496,7 @@ function fmPainel(){
 function fmOcorItens(R,P){
   const p=fmPl(),mes=FM.per.modo==="mes";
   const q=p.busca.trim().toLowerCase(),naData=l=>(!p.de&&!p.ate)||(l||[]).some(d=>(!p.de||d>=p.de)&&(!p.ate||d<=p.ate));
-  const passa=x=>(!p.sup||(x.supervisor||"Sem supervisor")===p.sup)&&(!q||[x.nome,x.re,x.posto].some(v=>String(v==null?"":v).toLowerCase().indexOf(q)>=0))&&naData(x.faltas);
+  const passa=x=>(!q||[x.nome,x.re,x.posto].some(v=>String(v==null?"":v).toLowerCase().indexOf(q)>=0))&&naData(x.faltas);
   const ORD=["da","hj","np","gr","vi"];
   if(p.tab==="concluidas"){
     const med=R.concluidas.filter(passa),ab=R.abonos.filter(passa);
@@ -10442,13 +10530,13 @@ function fmOcorHtml(R,P){
     ?`<div class="fm-aviso k-am">${FM_IC.cal}<span>Estes casos começaram <b>antes de ${fmDd(P.ini)}</b> e continuam sem medida. Eles <b>não entram</b> nos números, no gráfico nem na lista ${mes?"deste mês":"desta folha"}: ficam só aqui, pra não confundir.</span></div>`
     :p.tab==="tratar"?`<p class="fm-oc-lim">Só os casos que começaram ${mes?"em":"na folha"} <b>${_esc(P.rot.replace(/^Folha /,""))}</b>.${P.atual&&nAnt?` Os ${nAnt} abertos de antes estão na aba <a href="#" onclick="fmPlTab('anterior');return false">${rotAnt}</a>.`:""}</p>`:"";
   const ativos=[];
-  if(p.sup)ativos.push(`<button type="button" class="fm-at-f" onclick="fmPlSet('sup','')">Supervisor: <b>${_esc(p.sup)}</b>${FM_IC.x}</button>`);
+  if(FM.sup)ativos.push(`<button type="button" class="fm-at-f" onclick="FM.sup='';FM.pl=fmPlPadrao();fmRenderCorpo()">Supervisor: <b>${_esc(fmNomeCard(FM.sup))}</b>${FM_IC.x}</button>`);
   if(p.de||p.ate)ativos.push(`<button type="button" class="fm-at-f" onclick="fmPl().de='';fmPl().ate='';fmRenderOcor()">Data da falta: <b>${p.de?fmDd(p.de):"…"} a ${p.ate?fmDd(p.ate):"…"}</b>${FM_IC.x}</button>`);
   if(p.busca)ativos.push(`<button type="button" class="fm-at-f" onclick="fmPlSet('busca','')">Busca: <b>${_esc(p.busca)}</b>${FM_IC.x}</button>`);
   const tool=`<div class="fm-tool fm-oc-tool"><label class="fm-search">${FM_IC.busca}<input class="fm-in" id="fm-pl-busca" placeholder="Nome ou RE do colaborador" value="${_esc(p.busca)}" oninput="const v=this.value;fmDeb(()=>{fmPl().busca=v;FM.lim=FM_PAGINA;fmRenderOcorLista();})"></label>`+
     `<label class="fm-fl">Falta de<input type="date" class="fm-in" value="${_esc(p.de)}" onchange="fmPlSet('de',this.value)"></label><label class="fm-fl">até<input type="date" class="fm-in" value="${_esc(p.ate)}" onchange="fmPlSet('ate',this.value)"></label>`+
     `<button class="fm-btn${p.porPosto?" on":""}" aria-pressed="${!!p.porPosto}" onclick="fmPlSet('porPosto',${!p.porPosto})">${FM_IC.grupo}Agrupar por posto</button></div>`;
-  return `<div class="fm-oc-h"><div><h4>Ocorrências</h4><p>Todas as pessoas, sem separar por supervisor. Selecione uma pessoa para ver o calendário.</p></div></div>${tabs}${aviso}${tool}${chips}`+
+  return `<div class="fm-oc-h"><div><h4>Ocorrências</h4><p>${FM.sup?`Só as pessoas da área de ${_esc(fmNomeCard(FM.sup))}.`:"Todas as pessoas, sem separar por supervisor."} Selecione uma pessoa para ver o calendário.</p></div></div>${tabs}${aviso}${tool}${chips}`+
     (ativos.length?`<div class="fm-ativos">${ativos.join("")}<button type="button" class="fm-lnk" onclick="FM.pl=fmPlPadrao();FM.pl.tab='${p.tab}';fmRenderOcor()">Limpar filtros</button></div>`:"")+
     `<div id="fm-oc-lista">${fmOcorLista(it)}</div>`;
 }

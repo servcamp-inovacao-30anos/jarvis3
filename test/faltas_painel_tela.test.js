@@ -147,3 +147,33 @@ test("colunas da lista: vínculo (efetivo no posto / reserva técnica) e datas d
   assert.equal(fmFaltasTxt([]), "—");
   assert.equal(fmFaltasTxt(undefined), "—");
 });
+
+// ── cartões de supervisor: o supervisor escolhido vale para a tela toda ──
+const pega = nome => {
+  const i = html.indexOf("function " + nome + "("); assert.ok(i > 0, nome + " não encontrada");
+  let d = 0, k = html.indexOf("{", i);
+  for (; k < html.length; k++) { if (html[k] === "{") d++; else if (html[k] === "}" && --d === 0) break; }
+  return html.slice(i, k + 1);
+};
+
+test("nome no cartão: 'CARLOS NOGUEIRA' vira 'Carlos Nogueira', com acento e hífen", () => {
+  const fmNomeCard = new Function(pega("fmNomeCard") + "\nreturn fmNomeCard;")();
+  assert.equal(fmNomeCard("CARLOS NOGUEIRA"), "Carlos Nogueira");
+  assert.equal(fmNomeCard("PAULO SÉRGIO"), "Paulo Sérgio");
+  assert.equal(fmNomeCard("ANA-MARIA DA SILVA"), "Ana-Maria Da Silva");
+  assert.equal(fmNomeCard(""), "");
+});
+
+test("filtro por supervisor: só a área dele; 'Sem supervisor' também dá para escolher", () => {
+  const mk = FM => new Function("FM", "fmFam", pega("fmFiltraG") + "\nreturn fmFiltraG;")(FM, x => x);
+  const f = mk({ sup: "CARLOS NOGUEIRA", turno: "", escala: "", posto: "" });
+  assert.equal(f({ supervisor: "CARLOS NOGUEIRA" }), true);
+  assert.equal(f({ supervisor: "EDNEY FERRAZ" }), false);
+  assert.equal(f({ supervisor: "" }), false);
+  const g = mk({ sup: "Sem supervisor", turno: "", escala: "", posto: "" });
+  assert.equal(g({ supervisor: "" }), true);
+  assert.equal(g({ supervisor: null }), true);
+  assert.equal(g({ supervisor: "CARLOS NOGUEIRA" }), false);
+  const t = mk({ sup: "", turno: "", escala: "", posto: "" });
+  assert.equal(t({ supervisor: "QUALQUER" }), true);
+});
