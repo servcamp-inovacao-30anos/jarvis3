@@ -185,14 +185,14 @@ function montarCasos(entrada) {
     lista.filter(f => f.codigo !== "I" && !ABONADAS.has(f.codigo)).forEach(f => semCodigo.push(pessoa(f, { data: f.data })));
     const injust = lista.filter(f => f.codigo === "I");
     const medidas = medidasPorRE.get(re) || [];
-    const ref = injust[injust.length - 1] || lista[lista.length - 1];
+    const usadas = new Set(); // medidas que já explicaram um caso anterior desta pessoa
 
     let i = 0;
     while (i < injust.length) {
       const f1 = injust[i];
       const F = FAMILIAS[f1.familia];
       const dia = agenda({ familia: f1.familia, escala: f1.ESCALA, ancora: f1.data, dias: fichaDias[re] || {}, faltasPorDia, feriados, dataBase });
-      const caso = pessoa(ref, {});
+      const caso = pessoa(f1, {});
       Object.assign(caso, { familia: f1.familia, escala: f1.ESCALA || "", primeiraFalta: f1.data, faltas: [f1.data], retorno: null, retornoPrevisto: null, prazo: [], prazoFim: null, medida: null, situacao: null, motivo: "" });
 
       // 1. depois da 1ª falta: volta ou continua faltando?
@@ -217,7 +217,7 @@ function montarCasos(entrada) {
         let k = injust.findIndex(f => f.data > ultimaFalta);
         while (k >= 0 && k < injust.length && !presencaEntre(dia, ultimaFalta, injust[k].data)) { caso.faltas.push(injust[k].data); ultimaFalta = injust[k].data; k++; }
         caso.faltas = [...new Set(caso.faltas)].sort();
-        aplicarMedida(caso, medidas);
+        aplicarMedida(caso, medidas, usadas);
         casos.push(caso);
         if (k < 0 || k >= injust.length) break;
         i = k;
@@ -230,7 +230,7 @@ function montarCasos(entrada) {
         // sem registro na planilha, o próximo depois do último dia da planilha
         const inicio = somaDias(ultimaFalta >= dataBase ? ultimaFalta : dataBase, 1);
         caso.retornoPrevisto = proximosDiasDeTrabalho(dia, inicio, 1)[0] || null;
-        aplicarMedida(caso, medidas);
+        aplicarMedida(caso, medidas, usadas);
         casos.push(caso);
         i = injust.findIndex(f => f.data > ultimaFalta);
         if (i < 0) break;
@@ -239,13 +239,15 @@ function montarCasos(entrada) {
 
       // 2. voltou: o prazo são os próximos dias de trabalho, contando o retorno
       caso.retorno = retorno;
-      caso.prazo = proximosDiasDeTrabalho(dia, retorno, F.prazo);
+      // 12x36: se voltou num dia trocado, os plantões seguintes contam a partir do retorno
+      const diaPrazo = F.alternado ? agenda({ familia: f1.familia, escala: f1.ESCALA, ancora: retorno, dias: fichaDias[re] || {}, faltasPorDia, feriados, dataBase }) : dia;
+      caso.prazo = proximosDiasDeTrabalho(diaPrazo, retorno, F.prazo);
       caso.prazoFim = caso.prazo[caso.prazo.length - 1] || retorno;
       // falta de novo dentro do prazo: mesmo caso, o prazo não muda
       injust.forEach(f => { if (f.data > retorno && f.data <= caso.prazoFim) caso.faltas.push(f.data); });
       caso.faltas = [...new Set(caso.faltas)].sort();
       caso.situacao = hoje > caso.prazoFim ? SITUACOES.PRAZO_VENCIDO : SITUACOES.NO_PRAZO;
-      aplicarMedida(caso, medidas);
+      aplicarMedida(caso, medidas, usadas);
       casos.push(caso);
       i = injust.findIndex(f => f.data > caso.prazoFim);
       if (i < 0) break;
@@ -259,9 +261,18 @@ function presencaEntre(dia, de, ate) {
   return false;
 }
 
-// A primeira medida válida a partir da 1ª falta decide o caso.
-function aplicarMedida(caso, medidas) {
-  const validas = medidas.filter(m => m.DATA >= caso.primeiraFalta);
+// A primeira medida válida a partir da 1ª falta decide o caso. Uma medida cobre
+// todas as faltas anteriores a ela (pode resolver mais de um caso). Mas a medida
+// que já resolveu um caso anterior e foi lançada antes de ESTE caso voltar é
+// daquele caso: não vale aqui (nem vira o alerta de "medida com a pessoa ausente").
+const chaveMedida = m => m.HIST || m.chave || [m.RE, m.DATA, m.TIPO, m.GRAU].join("|");
+function aplicarMedida(caso, medidas, usadas) {
+  const u = usadas || new Set();
+  const validas = medidas.filter(m => m.DATA >= caso.primeiraFalta && !(u.has(chaveMedida(m)) && (caso.retorno ? m.DATA < caso.retorno : true)));
+  aplicarMedidaValida(caso, validas);
+  if (caso.medida) u.add(chaveMedida(caso.medida));
+}
+function aplicarMedidaValida(caso, validas) {
   if (!validas.length) {
     if (caso.situacao === SITUACOES.PRAZO_VENCIDO) caso.motivo = `Voltou em ${ddmm(caso.retorno)} e o prazo acabou em ${ddmm(caso.prazoFim)} sem medida. Aplicar no mínimo uma advertência.`;
     return;

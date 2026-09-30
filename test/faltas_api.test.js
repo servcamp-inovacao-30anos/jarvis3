@@ -198,3 +198,10 @@ test("a cópia da planilha que as telas carregam não leva os dias da ficha", as
   assert.equal(tab.dashboard_snapshots[0].data.fichaDias, undefined);
   assert.equal(tab.fm_dias.length, 2, "mas o módulo guardou");
 });
+
+test("revisão: falta sem código que vira abonada não é marcada como 'lançado depois'", async () => {
+  const t = tabelasVazias(); supabaseFalso(t);
+  await faltas.materializar(planilha({ faltas: [falta(521, "2026-10-10", { ABONO: "—" })] }));
+  await faltas.materializar(planilha({ faltas: [falta(521, "2026-10-10", { ABONO: "A" })] }));
+  assert.equal(t.fm_auditoria.length, 0);
+});

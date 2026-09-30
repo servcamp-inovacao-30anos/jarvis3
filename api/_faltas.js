@@ -50,7 +50,7 @@ async function materializar(data, opcoes) {
   // Dias da ficha interessam de quem faltou nesta planilha e de quem faltou
   // antes (está no banco): é assim que se vê o retorno numa planilha seguinte.
   const reDoModulo = new Set(faltas.map(f => String(f.re)));
-  const recentes = await db.listar(`fm_faltas?select=re&data=gte.${R.somaDias(new Date().toISOString().slice(0, 10), -DIAS_ACOMPANHADOS)}&order=re.asc`);
+  const recentes = await db.listar(`fm_faltas?select=re&data=gte.${R.somaDias(new Date().toISOString().slice(0, 10), -DIAS_ACOMPANHADOS)}&order=re.asc,data.asc`);
   recentes.forEach(x => reDoModulo.add(String(x.re)));
 
   const dias = [];
@@ -114,7 +114,7 @@ async function materializar(data, opcoes) {
 async function anotarAbonosTardios(db, faltas, codigoAntes) {
   const trocas = faltas.filter(f => {
     const k = f.re + "|" + f.data;
-    return codigoAntes.has(k) && !R.ABONADAS.has(codigoAntes.get(k)) && R.ABONADAS.has(f.codigo);
+    return codigoAntes.get(k) === "I" && R.ABONADAS.has(f.codigo);
   }).map(f => ({ ator: "sistema", acao: ACAO_ABONO_TARDIO, entidade: "fm_faltas", chave: f.re + "|" + f.data, antes: { codigo: codigoAntes.get(f.re + "|" + f.data) }, depois: { codigo: f.codigo } }));
   if (!trocas.length) return;
   try { await db.inserir("fm_auditoria", trocas); } catch (e) { console.error("faltas: não anotou abono tardio:", e && e.message); }
@@ -127,10 +127,10 @@ async function verCasos({ res, db, ator }) {
   const [faltas, dias, medidas, adm, feriados, trocas, eventosAtestado] = await Promise.all([
     db.listar(`fm_faltas?select=re,data,codigo,nome,cargo,posto,supervisor,escala,tipo&data=gte.${desde}&order=re.asc,data.asc`),
     db.listar(`fm_dias?select=re,data,situacao&data=gte.${desde}&order=re.asc,data.asc`),
-    db.listar(`fm_medidas?select=chave,re,data,tipo,grau,dias,fase,motivo_sar2g,obs,motivo,motivo_editado_por,motivo_editado_em&data=gte.${desde}&order=re.asc,data.asc`),
+    db.listar(`fm_medidas?select=chave,re,data,tipo,grau,dias,fase,motivo_sar2g,obs,motivo,motivo_editado_por,motivo_editado_em&data=gte.${desde}&order=re.asc,data.asc,chave.asc`),
     db.listar("fm_admissoes?select=re,admissao&order=re.asc"),
     db.listar("fm_feriados?select=data,descricao&order=data.asc"),
-    db.listar(`fm_auditoria?select=chave,criado_em&acao=eq.${ACAO_ABONO_TARDIO}&order=criado_em.asc`),
+    db.listar(`fm_auditoria?select=id,chave,criado_em&acao=eq.${ACAO_ABONO_TARDIO}&order=criado_em.asc,id.asc`),
     db.listar(`fm_auditoria?select=id,ator,acao,chave,depois,criado_em&acao=in.(${ACAO_ATESTADO},${ACAO_ATESTADO_FIM})&order=criado_em.asc,id.asc`)
   ]);
   // atestados registrados à mão: valem já, sem esperar o lançamento no SAR2G
@@ -168,7 +168,9 @@ async function verCasos({ res, db, ator }) {
   const listaFeriados = feriados.map(f => String(f.data).slice(0, 10));
   r.casos.forEach(c => {
     c.folha = R.competenciaDe(c.primeiraFalta);
-    c.atestados = atestados.filter(a => a.re === String(c.re));
+    const ultimo = [c.prazoFim, c.retornoPrevisto, ...(c.faltas || [])].filter(Boolean).sort().pop() || c.primeiraFalta;
+    const desdeCaso = R.somaDias(c.primeiraFalta, -7); // atestado que abonou a(s) primeira(s) falta(s) do caso
+    c.atestados = atestados.filter(a => a.re === String(c.re) && a.fim >= desdeCaso && a.inicio <= ultimo);
     c.semAtestado = semAtestado[c.re + "|" + c.primeiraFalta] || null;
     c.calendario = R.calendario(c, { dias: fichaDias[c.re] || {}, abonadas: abonadasPorRE[c.re] || [], feriados: listaFeriados, hoje, meses: true });
   });
@@ -273,6 +275,7 @@ async function salvarAtestado({ res, db, ator, body }) {
   const novos = [];
   const velha = String(body.substitui || "").trim();
   if (velha && velha !== chave && velha.startsWith(re + "|")) { const uv = await ultimo(velha); if (uv && uv.acao === ACAO_ATESTADO) novos.push(ev(ACAO_ATESTADO_FIM, velha, null)); }
+  if (velha && velha !== chave && u && u.acao === ACAO_ATESTADO) return erro(res, 409, "Já existe outro atestado registrado começando nesse dia. Remova ou corrija aquele primeiro.", "JA_EXISTE");
   const d0 = u && u.acao === ACAO_ATESTADO && u.depois;
   const igual = d0 && d0.tem === true && iso10(d0.inicio) === inicio && Number(d0.dias) === dias && (iso10(d0.envio) || null) === envio;
   if (!igual) novos.push(ev(ACAO_ATESTADO, chave, depois));

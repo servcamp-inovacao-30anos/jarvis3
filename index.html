@@ -2035,6 +2035,8 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       #pg-faltasmed .fm-at-g label{display:block;font-size:.66rem;font-weight:600;color:var(--fm-muted)}
       #pg-faltasmed .fm-at-g .fm-in{display:block;width:100%;box-sizing:border-box;margin-top:4px}
       #pg-faltasmed .fm-at-prev{font-size:.74rem;line-height:1.5;color:var(--fm-text2);margin:10px 0 0}
+      #pg-faltasmed .fm-nota-am{padding:8px 10px;border-radius:8px;background:#fffaeb;border:1px solid #fedf89;color:#7a4b00}
+      html[data-theme="dark"] #pg-faltasmed .fm-nota-am{background:rgba(245,176,0,.12);border-color:rgba(245,176,0,.38);color:#fec84b}
       #pg-faltasmed .fm-at-i{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;font-size:.78rem;color:var(--fm-text);padding:8px 0;border-bottom:1px solid var(--fm-line2)}
       #pg-faltasmed .fm-at-i span{font-size:.7rem;color:var(--fm-muted)}
       #pg-faltasmed .fm-at-i .fm-btn{margin-left:auto}
@@ -2207,6 +2209,8 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       #pg-faltasmed .fm-pct b{min-width:34px;text-align:right;font-weight:700;font-size:.8rem;color:var(--fm-text)}
       #pg-faltasmed .fm-pct em{font-style:normal;font-size:.66rem;color:var(--fm-muted);min-width:44px;text-align:right}
 
+      #pg-faltasmed .fm-mais-l{display:flex;align-items:center;justify-content:center;gap:12px;padding:12px;font-size:.74rem;color:var(--fm-muted)}
+      #pg-faltasmed .fm-mais-l b{color:var(--fm-text)}
       /* ocorrências do painel */
       #pg-faltasmed .fm-oc{scroll-margin-top:90px}
       #pg-faltasmed .fm-oc-h h4{font-size:1rem;font-weight:700;color:var(--fm-text);margin:0}
@@ -9842,10 +9846,16 @@ function fmAbonos(){
   const j=FM.dados;
   return j.abonos||(j.abonadas||[]).map(a=>({...a,faltas:[a.data],inicio:a.data,fim:a.data,dias:1}));
 }
+/* Período coberto: o do atestado registrado; com mais de um, do primeiro início ao último fim. */
+function fmCobertura(a){
+  const ms=a.manuais||[];
+  if(ms.length){const ini=ms.map(m=>m.inicio).sort()[0],fim=ms.map(m=>m.fim).sort().pop();return{ini,fim,dias:fmDif(ini,fim)+1};}
+  return{ini:a.inicio,fim:a.fim,dias:a.dias};
+}
 function fmItemAbono(a){
-  const rot=FM_ABONO[a.codigo]||"Abono",at=a.atestado;
+  const rot=FM_ABONO[a.codigo]||"Abono",at=a.atestado,ms=a.manuais||[];
   // atestado registrado à mão: valem a data e os dias que foram informados
-  const ini=at?at.inicio:a.inicio,fim=at?at.fim:a.fim,dias=at?at.dias:a.dias;
+  const cob=fmCobertura(a);const ini=cob.ini,fim=cob.fim,dias=cob.dias;
   const faixa=ini===fim?fmDd(ini):`${fmDd(ini)} a ${fmDd(fim)}`;
   const manual=a.manuais&&a.manuais.length;
   const tag=a.aguardaSar2g?"lançar no SAR2G":(manual?"confirmado no SAR2G":(a.lancadoDepois?"lançado depois":""));
@@ -9876,7 +9886,18 @@ function fmItens(aba){
   if(aba.id==="RESOLVIDAS")it.reverse();
   return it;
 }
+/* Listas grandes: mostra de 100 em 100 (a tela fica rápida com muita demanda). */
+const FM_PAGINA=100;
+function fmLim(){return FM.lim||FM_PAGINA;}
+function fmMaisLinhas(total,redesenha){
+  const lim=fmLim();if(total<=lim)return"";
+  return `<div class="fm-mais-l"><span>Mostrando <b>${lim}</b> de <b>${total}</b></span><button type="button" class="fm-btn sm" onclick="FM.lim=fmLim()+FM_PAGINA;${redesenha}">Mostrar mais ${Math.min(FM_PAGINA,total-lim)}</button></div>`;
+}
+/* Busca: espera a pessoa parar de digitar um instante antes de refazer a lista. */
+let _fmDebT=null;
+function fmDeb(fn){clearTimeout(_fmDebT);_fmDebT=setTimeout(fn,180);}
 function fmRender(){
+  FM.lim=FM_PAGINA;
   const box=document.getElementById("fm-sec"),j=FM.dados;if(!box||!j)return;
   const vl=document.getElementById("fm-v-lista"),vp=document.getElementById("fm-v-painel");
   if(vl)vl.classList.toggle("on",FM.aba!=="PAINEL");if(vp)vp.classList.toggle("on",FM.aba==="PAINEL");
@@ -9891,7 +9912,7 @@ function fmRender(){
     return `<button type="button" role="tab" aria-selected="${FM.aba===a.id}" class="fm-tab${FM.aba===a.id?" on":""}" data-a="${a.id}" onclick="FM.aba=this.dataset.a;fmRender()">${_esc(a.rot)}<span class="n${alerta?" alerta":""}">${n}</span></button>`;
   }).join("");
   box.innerHTML=base+`<div class="fm-tabs" role="tablist">${abas}</div>`+
-    `<div class="fm-tool"><label class="fm-search">${FM_IC.busca}<input class="fm-in" id="fm-busca" placeholder="Buscar por nome, RE ou posto" value="${_esc(FM.busca)}" oninput="FM.busca=this.value;fmRenderCorpo()"></label>${fmFTurno()}${fmFSup()}${fmFMais()}`+
+    `<div class="fm-tool"><label class="fm-search">${FM_IC.busca}<input class="fm-in" id="fm-busca" placeholder="Buscar por nome, RE ou posto" value="${_esc(FM.busca)}" oninput="const v=this.value;fmDeb(()=>{FM.busca=v;FM.lim=FM_PAGINA;fmRenderCorpo();})"></label>${fmFTurno()}${fmFSup()}${fmFMais()}`+
     `<button class="fm-btn${FM.agrupar?" on":""}" aria-pressed="${FM.agrupar}" onclick="FM.agrupar=!FM.agrupar;fmRender()">${FM_IC.grupo}Agrupar por supervisor</button><span class="fm-count" id="fm-count"></span></div>${fmFMaisLinha()}<div id="fm-corpo"></div>`+modal;
   fmRenderCorpo();
 }
@@ -9901,17 +9922,18 @@ function fmRenderCorpo(){
   const aba=FM_ABAS.find(a=>a.id===FM.aba)||FM_ABAS[0];
   const it=fmItens(aba);
   document.querySelectorAll("#pg-faltasmed .fm-tab").forEach(t=>{const n=t.querySelector(".n"),def=FM_ABAS.find(x=>x.id===t.dataset.a);if(n&&def)n.textContent=fmItens(def).length;});
-  const cnt=document.getElementById("fm-count");if(cnt)cnt.textContent=it.length+(it.length===1?" pessoa":" pessoas");
+  const cnt=document.getElementById("fm-count");if(cnt)cnt.textContent=it.length+(it.length===1?" ocorrência":" ocorrências");
   if(!it.length){el.innerHTML=fmVazio(FM.busca||FM.sup?"Nada encontrado com esse filtro":{AGIR:"Nenhuma medida para aplicar agora",COORD:"Nada para a coordenação decidir",ESPERA:"Ninguém aguardando retorno",RESOLVIDAS:"Nenhum caso concluído ainda"}[aba.id],aba.id==="AGIR"&&!FM.busca&&!FM.sup?"Tudo em dia.":"");return;}
   let h="";
   if(FM.agrupar){
     const g={};it.forEach(x=>{(g[x.supervisor||"Sem supervisor"]=g[x.supervisor||"Sem supervisor"]||[]).push(x);});
-    Object.keys(g).sort().forEach(s=>{h+=`<div class="fm-grp">${_esc(s)}<span>${g[s].length} ${g[s].length===1?"pessoa":"pessoas"}</span></div>`+g[s].map(x=>fmLinhaItem(x)).join("");});
-  }else h=it.map(x=>fmLinhaItem(x)).join("");
+    let resta=fmLim();
+    Object.keys(g).sort().forEach(s=>{const vis=g[s].slice(0,Math.max(0,resta));resta-=vis.length;h+=`<div class="fm-grp">${_esc(s)}<span>${g[s].length} ${g[s].length===1?"pessoa":"pessoas"}${vis.length<g[s].length?" · "+(g[s].length-vis.length)+" ocultas":""}</span></div>`+vis.map(x=>fmLinhaItem(x)).join("");});
+  }else h=it.slice(0,fmLim()).map(x=>fmLinhaItem(x)).join("");
   const dica=it.some(x=>x.caso||x.abono)?'<p class="fm-dica">Selecione uma pessoa para ver o calendário e os detalhes.</p>':"";
   const pend=aba.id==="RESOLVIDAS"?fmAbonos().filter(fmFiltra).filter(a=>a.aguardaSar2g).length:0;
   const aviso=pend?`<div class="fm-aviso k-am">${FM_IC.cal}<span><b>${pend}</b> ${pend===1?"atestado registrado aqui ainda não consta":"atestados registrados aqui ainda não constam"} no SAR2G: falta lançar lá. Quando a planilha trouxer o abono, a marca "lançar no SAR2G" sai sozinha.</span></div>`:"";
-  el.innerHTML=aviso+dica+'<div class="fm-lista">'+fmCols()+h+'</div>';
+  el.innerHTML=aviso+dica+'<div class="fm-lista">'+fmCols()+h+'</div>'+fmMaisLinhas(it.length,"fmRenderCorpo()");
 }
 function fmCols(semSup){return `<div class="fm-cols${semSup?" p":""}"><span>Colaborador</span><span>Posto</span>${semSup?"":"<span>Supervisor</span>"}<span>Prazo e orientação</span><span></span></div>`;}
 function fmLinhaItem(x,semSup){
@@ -9932,7 +9954,7 @@ function fmLinhaItem(x,semSup){
    "lançar no SAR2G" sai sozinha. Fica salvo quem registrou e quando. */
 const fmId=k=>String(k).replace(/[^A-Za-z0-9]/g,"_");
 function fmSomaDias(d,n){const x=new Date(String(d).slice(0,10)+"T12:00:00Z");x.setUTCDate(x.getUTCDate()+n);return x.toISOString().slice(0,10);}
-function fmAtSt(k,def){if(!FM.at[k])FM.at[k]=Object.assign({modo:"com",inicio:"",dias:1,envio:FM.dados.hoje},def);return FM.at[k];}
+function fmAtSt(k,def){if(!FM.at[k])FM.at[k]=Object.assign({modo:"com",inicio:"",dias:1,envio:""},def);return FM.at[k];}
 function fmAtPrevTxt(st){
   if(st.modo==="sem")return"";
   const dias=Number(st.dias);
@@ -9984,19 +10006,19 @@ function fmAtRemover(re,chave){
 function fmAtReg(a){return fmDd(String(a.em||"").slice(0,10));}
 /* No detalhe do caso: o que já foi registrado e o formulário para registrar. */
 function fmAtCaso(c){
-  const j=FM.dados,ats=c.atestados||[],sem=!ats.length&&c.semAtestado;
+  const j=FM.dados,ats=c.atestados||[],sem=c.semAtestado;
   if(!j.pode_editar&&!ats.length&&!sem)return"";
   const lista=ats.map(a=>`<div class="fm-at-i"><b>${fmDd(a.inicio)} a ${fmDd(a.fim)}</b> · ${a.dias} dia${a.dias===1?"":"s"}${a.envio?` · enviado em ${fmDd(a.envio)}`:""}<span>registrado por ${_esc(a.por||"—")} em ${fmAtReg(a)}</span></div>`).join("");
   const semTxt=sem?`<div class="fm-at-i"><b>Sem atestado</b><span>confirmado por ${_esc(c.semAtestado.por||"—")} em ${fmAtReg(c.semAtestado)}</span>${j.pode_editar?`<button class="fm-btn fm-del sm k-da" data-r="${_esc(c.re)}" data-c="${_esc(c.semAtestado.chave)}" onclick="fmAtRemover(this.dataset.r,this.dataset.c)">Desfazer</button>`:""}</div>`:"";
   const form=j.pode_editar?fmAtForm("at|"+c.re+"|"+c.primeiraFalta,{re:c.re,caso:c.primeiraFalta,inicio:c.primeiraFalta,faltas:c.faltas||[],modo:sem?"sem":"com"},"Salvar",true):"";
-  return `<div class="fm-md"><div class="fm-md-h"><b>Atestado</b><span class="s">${ats.length||sem?"registrado neste sistema":"nenhum registrado para este colaborador"}</span></div>${lista}${semTxt}${form}</div>`;
+  return `<div class="fm-md"><div class="fm-md-h"><b>Atestado</b><span class="s">${ats.length||sem?"registrado neste sistema":"nenhum registrado para este caso"}</span></div>${fmFolhaFechada(c.primeiraFalta)?`<p class="fm-at-prev fm-nota-am">Esta falta é de uma folha já fechada: a planilha do SAR2G não traz mais esse dia. Se chegar atestado, registre aqui — o sistema não vai receber o abono pela planilha.</p>`:""}${lista}${semTxt}${form}</div>`;
 }
 /* Detalhe de uma falta abonada: período, envio, quem registrou e se já está no SAR2G. */
 function fmDetalheAbono(a){
-  const j=FM.dados,rot=FM_ABONO[a.codigo]||"Abono",r=rot.toLowerCase(),at=a.atestado,manuais=a.manuais||[];
-  const ini=at?at.inicio:a.inicio,fim=at?at.fim:a.fim,dias=at?at.dias:a.dias;
+  const j=FM.dados,rot=FM_ABONO[a.codigo]||"Abono",r=rot.toLowerCase(),manuais=a.manuais||[],at=a.atestado||manuais[0]||null;
+  const cob=fmCobertura(a);const ini=cob.ini,fim=cob.fim,dias=cob.dias;
   let aviso;
-  if(a.aguardaSar2g)aviso=`<div class="fm-aviso k-am">${FM_IC.cal}<span>Registrado aqui, mas ainda não consta no SAR2G. Falta lançar o ${r} lá.</span></div>`;
+  if(a.aguardaSar2g)aviso=`<div class="fm-aviso k-am">${FM_IC.cal}<span>Registrado aqui, mas ainda não consta no SAR2G. Falta lançar o ${r} lá.${(a.faltas||[]).some(fmFolhaFechada)?" Como a falta é de uma folha já fechada, a planilha não traz mais esse dia: a marca não vai sair sozinha.":""}</span></div>`;
   else if(manuais.length)aviso=`<div class="fm-aviso k-ok">${FM_IC.vazio}<span>Já consta no SAR2G: o ${r} foi lançado lá.</span></div>`;
   else aviso=`<div class="fm-aviso k-ok">${FM_IC.vazio}<span>Consta no SAR2G como ${r}${a.lancadoDepois&&a.lancadoEm?` (o sistema percebeu em ${fmDd(a.lancadoEm)}, depois da falta)`:""}.</span></div>`;
   const big=`<dl class="fm-big"><div><dt>Falta</dt><dd>${fmDd(a.faltas[0])}${a.faltas.length>1?`<small>+${a.faltas.length-1}</small>`:""}</dd></div><div><dt>${rot} cobriu</dt><dd>${fmDd(ini)} a ${fmDd(fim)}</dd></div><div><dt>Dias</dt><dd>${dias}</dd></div></dl>`;
@@ -10097,7 +10119,10 @@ function fmPerPadrao(modo){
   return d>=26?(m===12?{modo,a:a+1,m:1}:{modo,a,m:m+1}):{modo,a,m}; // folha = mês em que ela fecha (dia 25)
 }
 function fmPeriodo(){
-  const p=FM.per||(FM.per=fmPerPadrao("folha"));
+  if(FM.per&&FM.perAuto&&FM.perHoje!==FM.dados.hoje)FM.per=fmPerPadrao(FM.per.modo);
+  if(!FM.per)FM.per=fmPerPadrao("folha");
+  if(FM.perHoje!==FM.dados.hoje){FM.perHoje=FM.dados.hoje;if(FM.perAuto===undefined)FM.perAuto=true;}
+  const p=FM.per;
   const ult=new Date(Date.UTC(p.a,p.m,0)).getUTCDate();
   let ini,fim,rot;
   if(p.modo==="mes"){ini=`${p.a}-${_fmP2(p.m)}-01`;fim=`${p.a}-${_fmP2(p.m)}-${_fmP2(ult)}`;rot=`${FM_MES_L[p.m-1]} de ${p.a}`;}
@@ -10105,13 +10130,13 @@ function fmPeriodo(){
   const h=FM.dados.hoje;
   return{ini,fim,rot,atual:h>=ini&&h<=fim};
 }
-function fmPerIr(n){const p=FM.per;let m=p.m+n,a=p.a;while(m<1){m+=12;a--;}while(m>12){m-=12;a++;}FM.per={modo:p.modo,a,m};FM.animar=true;fmRenderCorpo();}
-function fmPerModo(modo){FM.per=fmPerPadrao(modo);FM.animar=true;fmRenderCorpo();}
+function fmPerIr(n){const p=FM.per;let m=p.m+n,a=p.a;while(m<1){m+=12;a--;}while(m>12){m-=12;a++;}FM.per={modo:p.modo,a,m};FM.perAuto=false;FM.animar=true;fmRenderCorpo();}
+function fmPerModo(modo){FM.per=fmPerPadrao(modo);FM.perAuto=true;FM.animar=true;fmRenderCorpo();}
 /* Filtros compartilhados entre a lista e o painel: turno, supervisor, posto e escala. */
 FM_IC.filtro=_fmSvg('<path d="M22 3H2l8 9.5V19l4 2v-8.5z"/>');
 FM_IC.info=_fmSvg('<circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/>');
 FM_IC.seta=_fmSvg('<path d="M5 12h14M13 6l6 6-6 6"/>');
-function fmFam(esc){const t=String(esc||"").toUpperCase();return t.indexOf("12X36")>=0?"12X36":t.indexOf("6X1")===0?"6X1":t.indexOf("5X2")===0?"5X2":"";}
+function fmFam(esc){const t=String(esc||"").toUpperCase().replace(/\s+/g,"");return t.indexOf("12X36")>=0?"12X36":t.indexOf("6X1")===0?"6X1":t.indexOf("5X2")===0?"5X2":"";}
 function fmSupsLista(){return [...new Set(FM.dados.casos.map(c=>c.supervisor).concat(fmAbonos().map(a=>a.supervisor)).filter(Boolean))].sort();}
 function fmPostosLista(){return [...new Set(FM.dados.casos.map(c=>c.posto).concat(fmAbonos().map(a=>a.posto)).filter(Boolean))].sort();}
 function fmFSel(rot,onchange,valor,ops){
@@ -10131,6 +10156,8 @@ function fmFMaisLinha(){
   return `<div class="fm-mais">${fmFSel("Escala","FM.escala=this.value;fmRender()",FM.escala,[["","Todas"],["5X2","5x2"],["6X1","6x1"],["12X36","12x36"]])}`+
     `${posto?fmFPosto():""}${FM.escala||(posto&&FM.posto)?`<button class="fm-btn sm" onclick="FM.escala='';${posto?"FM.posto='';":""}fmRender()">Limpar</button>`:""}</div>`;
 }
+/* A planilha só traz a folha de hoje: dia de antes dela nunca mais é atualizado pelo SAR2G. */
+function fmFolhaFechada(d){return !!d&&String(d)<fmIniFolhaAtual();}
 /* Início da folha de hoje (26 do mês anterior ou deste mês). */
 function fmIniFolhaAtual(){
   const [a,m,d]=FM.dados.hoje.split("-").map(Number);
@@ -10167,6 +10194,8 @@ function fmNomeCurto(n){
    - Faltas injustificadas: dias de falta injustificada dentro do período. As
      abonadas não entram (nem no total, nem no tratado).
    - Tratado: faltas cujo caso já teve medida aplicada (dentro ou fora do prazo).
+     Concluídas = esses mesmos casos (com falta no período e medida), para o
+     número do indicador e a lista baterem.
    - Em aberto: casos da folha/mês ainda sem medida; no período atual, também os
      que continuam em aberto desde o período anterior ("da folha anterior"). */
 function fmContaPeriodo(casos,abonos,P,hoje){
@@ -10186,12 +10215,13 @@ function fmContaPeriodo(casos,abonos,P,hoje){
   const reg=s=>por[s]=por[s]||{nome:s,abertos:0,ant:0,n:zero(),nAnt:zero(),faltas:0,tratadas:0,concluidas:0,abonadas:0};
   abertos.forEach(c=>{const x=reg(sup(c)),k=cat(c);x.abertos++;x.n[k]++;if(anterior(c)){x.ant++;x.nAnt[k]++;}});
   comFalta.forEach(c=>{const x=reg(sup(c));x.faltas+=nPer(c);if(tratado(c))x.tratadas+=nPer(c);});
-  base.filter(tratado).forEach(c=>{reg(sup(c)).concluidas++;});
+  const concluidas=comFalta.filter(tratado);
+  concluidas.forEach(c=>{reg(sup(c)).concluidas++;});
   abon.forEach(a=>{reg(sup(a)).abonadas++;});
   const pct=(t,f)=>f?Math.round(t/f*100):null;
   const sups=Object.values(por).map(x=>Object.assign(x,{pct:pct(x.tratadas,x.faltas)}))
     .sort((a,b)=>b.abertos-a.abertos||b.n.da-a.n.da||a.nome.localeCompare(b.nome));
-  return{base,abertos,concluidas:base.filter(tratado),anteriores:abertos.filter(anterior),abonos:abon,faltas,tratadas,pct:pct(tratadas,faltas),ocorrencias:comFalta.length,n,sups,cat,anterior};
+  return{base,abertos,concluidas,anteriores:abertos.filter(anterior),abonos:abon,faltas,tratadas,pct:pct(tratadas,faltas),ocorrencias:comFalta.length,n,sups,cat,anterior};
 }
 /*fim fmContaPeriodo*/
 
@@ -10206,13 +10236,13 @@ function fmPlClick(el,ev){
   const o=JSON.parse(el.dataset.pl||"{}"),p=fmPl();
   if(fmPlIgual(o)){FM.pl=Object.assign(fmPlPadrao(),{busca:p.busca,de:p.de,ate:p.ate,porPosto:p.porPosto,tab:p.tab});}
   else FM.pl=Object.assign(fmPlPadrao(),{busca:p.busca,de:p.de,ate:p.ate,porPosto:p.porPosto},o);
-  FM.aberto={};
+  FM.aberto={};FM.lim=FM_PAGINA;
   fmRenderCorpo();
   const s=document.getElementById("fm-ocor");if(s)s.scrollIntoView({behavior:"smooth",block:"start"});
 }
-function fmPlSet(campo,v){fmPl()[campo]=v;fmRenderOcor();}
-function fmPlToggleCat(k){const p=fmPl(),i=p.cats.indexOf(k);if(i>=0)p.cats.splice(i,1);else p.cats.push(k);fmRenderOcor();}
-function fmPlTab(t){const p=fmPl();p.tab=t;p.cats=[];p.origem="";p.sub="";FM.aberto={};fmRenderCorpo();}
+function fmPlSet(campo,v){fmPl()[campo]=v;FM.lim=FM_PAGINA;fmRenderOcor();}
+function fmPlToggleCat(k){const p=fmPl(),i=p.cats.indexOf(k);if(i>=0)p.cats.splice(i,1);else p.cats.push(k);FM.lim=FM_PAGINA;fmRenderOcor();}
+function fmPlTab(t){const p=fmPl();p.tab=t;p.cats=[];p.origem="";p.sub="";FM.aberto={};FM.lim=FM_PAGINA;fmRenderCorpo();}
 
 function fmGrafColunas(R){
   const cols=R.sups.filter(x=>x.abertos>0),ordem=FM.ordGraf||"casos";
@@ -10300,7 +10330,7 @@ function fmOcorItens(R,P){
   if(p.tab==="concluidas"){
     const med=R.concluidas.filter(passa),ab=R.abonos.filter(passa);
     const it=(p.sub==="ab"?[]:med.map(c=>Object.assign(fmItemCaso(c,"o|"),{ord:String(c.medida?c.medida.DATA:""),nFaltas:(c.faltas||[]).length})))
-      .concat(p.sub==="medida"?[]:ab.map(a=>Object.assign(fmItemAbono(a),{ord:String(a.fim||""),nFaltas:(a.faltas||[]).length})));
+      .concat(p.sub==="medida"?[]:ab.map(a=>{const x=fmItemAbono(a);return Object.assign(x,{k:"o|"+x.k,ord:String(a.fim||""),nFaltas:(a.faltas||[]).length});}));
     it.sort((a,b)=>b.ord.localeCompare(a.ord));
     return{it,cont:{medida:med.length,ab:ab.length}};
   }
@@ -10327,7 +10357,7 @@ function fmOcorHtml(R,P){
   if(p.sup)ativos.push(`<button type="button" class="fm-at-f" onclick="fmPlSet('sup','')">Supervisor: <b>${_esc(p.sup)}</b>${FM_IC.x}</button>`);
   if(p.de||p.ate)ativos.push(`<button type="button" class="fm-at-f" onclick="fmPl().de='';fmPl().ate='';fmRenderOcor()">Data da falta: <b>${p.de?fmDd(p.de):"…"} a ${p.ate?fmDd(p.ate):"…"}</b>${FM_IC.x}</button>`);
   if(p.busca)ativos.push(`<button type="button" class="fm-at-f" onclick="fmPlSet('busca','')">Busca: <b>${_esc(p.busca)}</b>${FM_IC.x}</button>`);
-  const tool=`<div class="fm-tool fm-oc-tool"><label class="fm-search">${FM_IC.busca}<input class="fm-in" id="fm-pl-busca" placeholder="Nome ou RE do colaborador" value="${_esc(p.busca)}" oninput="fmPl().busca=this.value;fmRenderOcorLista()"></label>`+
+  const tool=`<div class="fm-tool fm-oc-tool"><label class="fm-search">${FM_IC.busca}<input class="fm-in" id="fm-pl-busca" placeholder="Nome ou RE do colaborador" value="${_esc(p.busca)}" oninput="const v=this.value;fmDeb(()=>{fmPl().busca=v;FM.lim=FM_PAGINA;fmRenderOcorLista();})"></label>`+
     `<label class="fm-fl">Falta de<input type="date" class="fm-in" value="${_esc(p.de)}" onchange="fmPlSet('de',this.value)"></label><label class="fm-fl">até<input type="date" class="fm-in" value="${_esc(p.ate)}" onchange="fmPlSet('ate',this.value)"></label>`+
     `<button class="fm-btn${p.porPosto?" on":""}" aria-pressed="${!!p.porPosto}" onclick="fmPlSet('porPosto',${!p.porPosto})">${FM_IC.grupo}Agrupar por posto</button></div>`;
   return `<div class="fm-oc-h"><div><h4>Ocorrências</h4><p>Todas as pessoas, sem separar por supervisor. Selecione uma pessoa para ver o calendário.</p></div></div>${tabs}${tool}${chips}`+
@@ -10338,11 +10368,14 @@ function fmOcorLista(it){
   const p=fmPl();
   const n=it.length,nf=it.reduce((s,x)=>s+(x.nFaltas||0),0);
   const cont=`<p class="fm-oc-n"><b>${n}</b> ${n===1?"ocorrência":"ocorrências"} · <b>${nf}</b> ${nf===1?"falta":"faltas"}</p>`;
+  if(p.de&&p.ate&&p.de>p.ate)return fmVazio("A data inicial está depois da data final",`Você pediu faltas de ${fmDd(p.de)} até ${fmDd(p.ate)}. Troque as datas para ver as ocorrências.`);
   if(!n)return cont+fmVazio(p.tab==="tratar"?"Nenhuma ocorrência a tratar com esses filtros":"Nenhuma ocorrência concluída com esses filtros","Mude os filtros ou limpe-os para ver mais.");
-  if(!p.porPosto)return cont+`<div class="fm-lista">${fmCols()}${it.map(x=>fmLinhaItem(x)).join("")}</div>`;
+  const mais=fmMaisLinhas(n,"fmRenderOcorLista()");
+  if(!p.porPosto)return cont+`<div class="fm-lista">${fmCols()}${it.slice(0,fmLim()).map(x=>fmLinhaItem(x)).join("")}</div>`+mais;
   const g={};it.forEach(x=>{(g[x.posto||"Sem posto"]=g[x.posto||"Sem posto"]||[]).push(x);});
   const grupos=Object.entries(g).map(([posto,l])=>({posto,l,f:l.reduce((s,x)=>s+(x.nFaltas||0),0)})).sort((a,b)=>b.l.length-a.l.length||b.f-a.f||a.posto.localeCompare(b.posto));
-  return cont+`<div class="fm-lista">${fmCols()}${grupos.map(gr=>`<div class="fm-grp">${_esc(gr.posto)}<span>${gr.l.length} ${gr.l.length===1?"ocorrência":"ocorrências"} · ${gr.f} ${gr.f===1?"falta":"faltas"}</span></div>`+gr.l.map(x=>fmLinhaItem(x)).join("")).join("")}</div>`;
+  let resta=fmLim();
+  return cont+`<div class="fm-lista">${fmCols()}${grupos.map(gr=>{const vis=gr.l.slice(0,Math.max(0,resta));resta-=vis.length;return `<div class="fm-grp">${_esc(gr.posto)}<span>${gr.l.length} ${gr.l.length===1?"ocorrência":"ocorrências"} · ${gr.f} ${gr.f===1?"falta":"faltas"}${vis.length<gr.l.length?" · "+(gr.l.length-vis.length)+" ocultas":""}</span></div>`+vis.map(x=>fmLinhaItem(x)).join("");}).join("")}</div>`+mais;
 }
 /* Redesenha só a seção de ocorrências (não mexe no gráfico nem rola a página). */
 function fmRenderOcor(){const s=document.getElementById("fm-ocor");if(s)s.innerHTML=fmOcorHtml();else fmRenderCorpo();}
@@ -10359,7 +10392,7 @@ function fmFeriadosModal(){
   return h+"</div></div>";
 }
 function fmSalvarMotivo(chave,btn){
-  const ta=document.getElementById("fm-mt-"+chave);if(!ta)return;
+  const bloco=btn&&btn.closest(".fm-md"),ta=(bloco&&bloco.querySelector("textarea"))||document.getElementById("fm-mt-"+chave);if(!ta)return;
   btn.disabled=true;
   fmPedir("PATCH","motivo",{chave,motivo:ta.value}).then(r=>{
     FM.dados.casos.forEach(c=>{if(c.medida&&c.medida.chave===chave){c.medida.motivo=r.motivo;if(r.alterado){c.medida.motivo_editado_por=r.motivo_editado_por;c.medida.motivo_editado_em=r.motivo_editado_em;}}});

@@ -272,3 +272,34 @@ test("abonadas: juntadas pelo período que o atestado cobriu (lido da ficha)", (
   assert.deepEqual(de(2), ["A:2026-09-21>2026-09-21:1:1", "A:2026-09-23>2026-09-23:1:1"]);
   assert.deepEqual(de(3), ["A:2026-09-23>2026-09-23:1:1", "J:2026-09-22>2026-09-22:1:1"]);
 });
+
+// ── correções da revisão (30/09) ─────────────────────────────────────────────
+test("revisão: uma medida cobre as faltas anteriores de mais de um caso (regra combinada)", () => {
+  const dias = presente("2026-10-02", "2026-10-05", "2026-10-06", "2026-10-07", "2026-10-09", "2026-10-12");
+  const cs = casos({ faltas: [falta("2026-10-01"), falta("2026-10-08")], fichaDias: { 521: dias }, medidas: [medida("2026-10-12")], hoje: "2026-10-15", dataBase: "2026-10-15" });
+  assert.deepEqual(cs.map(c => c.situacao), [S.TRATADA_FORA_DO_PRAZO, S.TRATADA]);
+});
+
+test("revisão: medida atrasada de um caso, lançada no dia da falta do caso seguinte, não vira alerta no caso seguinte", () => {
+  const dias = presente("2026-10-02", "2026-10-05", "2026-10-06", "2026-10-07", "2026-10-09");
+  const cs = casos({ faltas: [falta("2026-10-01"), falta("2026-10-08")], fichaDias: { 521: dias }, medidas: [medida("2026-10-08")], hoje: "2026-10-15", dataBase: "2026-10-15" });
+  assert.equal(cs[0].situacao, S.TRATADA_FORA_DO_PRAZO, "a medida é do 1º caso");
+  assert.equal(cs[1].situacao, S.PRAZO_VENCIDO, "o 2º caso continua sem medida");
+  assert.equal(cs[1].medida, null);
+});
+
+test("revisão: medida lançada com a pessoa ausente, sem caso anterior, continua indo para a coordenação conferir", () => {
+  const c = unico({ faltas: [falta("2026-10-07"), falta("2026-10-08")], fichaDias: { 521: presente("2026-10-09") }, medidas: [medida("2026-10-08")], hoje: "2026-10-09", dataBase: "2026-10-09" });
+  assert.equal(c.situacao, S.VERIFICAR);
+});
+
+test("revisão: o caso mostra o supervisor e o posto da época da falta, não os de hoje", () => {
+  const cs = casos({ faltas: [falta("2026-09-01", { AREA: "ANTIGO", LOCAL: "POSTO VELHO" }), falta("2026-10-01", { AREA: "NOVO", LOCAL: "POSTO NOVO" })], fichaDias: { 521: presente("2026-09-02", "2026-09-03", "2026-09-04", "2026-10-02") }, hoje: "2026-10-02", dataBase: "2026-10-02" });
+  assert.deepEqual(cs.map(c => [c.supervisor, c.posto]), [["ANTIGO", "POSTO VELHO"], ["NOVO", "POSTO NOVO"]]);
+});
+
+test("revisão: 12x36 que volta num dia trocado — os plantões do prazo contam a partir do retorno", () => {
+  const c = unico({ faltas: [falta("2026-10-10", { ESCALA: "12X36" })], fichaDias: { 521: presente("2026-10-11") }, hoje: "2026-10-11", dataBase: "2026-10-11" });
+  assert.equal(c.retorno, "2026-10-11");
+  assert.deepEqual(c.prazo, ["2026-10-11", "2026-10-13"]);
+});

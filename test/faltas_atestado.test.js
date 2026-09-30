@@ -159,3 +159,22 @@ test("períodos de abono com atestado registrado à mão", () => {
   const semManual = R.periodosDeAbono([ab("2026-10-05", { noSar2g: true })], {}, {}, []);
   assert.deepEqual([semManual[0].manuais.length, semManual[0].atestado, semManual[0].aguardaSar2g], [0, null, false]);
 });
+
+test("revisão: corrigir para uma data em que já existe outro atestado é recusado (não sobrescreve)", async () => {
+  const t = tabelas(); supabaseFalso(t);
+  const a = await pedir("POST", "atestado", { body: atestado({ inicio: dia(-6), dias: 1 }) });
+  await pedir("POST", "atestado", { body: atestado({ inicio: dia(-4), dias: 1 }) });
+  const r = await pedir("POST", "atestado", { body: atestado({ inicio: dia(-4), dias: 2, substitui: a.body.chave }) });
+  assert.equal(r.statusCode, 409);
+  assert.equal(r.body.codigo, "JA_EXISTE");
+  assert.equal((await pedir("GET", "casos")).body.atestados.length, 2, "os dois continuam como estavam");
+});
+
+test("revisão: o card do caso só lista os atestados daquela época", async () => {
+  const t = tabelas();
+  t.fm_faltas.push({ re: 700, data: dia(-60), codigo: "A", nome: "CARLA", cargo: "PORTEIRO (A)", posto: "POSTO A", supervisor: "FRANK", escala: "5X2 SDF", tipo: "CONTRATO" });
+  supabaseFalso(t);
+  await pedir("POST", "atestado", { body: { re: 700, tem: true, inicio: dia(-60), dias: 1 } }); // atestado antigo
+  const c = (await pedir("GET", "casos")).body.casos.find(x => String(x.re) === "700");
+  assert.equal(c.atestados.length, 0, "o atestado de 60 dias atrás não é deste caso");
+});

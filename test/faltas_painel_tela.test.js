@@ -78,3 +78,11 @@ test("sem faltas no período: % tratado fica vazio (e não 0%)", () => {
   assert.equal(R.faltas, 0);
   assert.deepEqual(R.sups, []);
 });
+
+test("revisão: Concluídas é o mesmo conjunto do % tratado (caso tratado que atravessa o dia 26 entra na folha nova)", () => {
+  const c = caso(30, "ANA", "TRATADA", ["2026-09-24", "2026-09-25", "2026-09-26"]);
+  const R = fmContaPeriodo([c], [], P, HOJE);
+  assert.equal(R.faltas, 1);
+  assert.equal(R.tratadas, 1);
+  assert.deepEqual(R.concluidas.map(x => x.re), [30], "o indicador diz 1 tratada; a lista mostra esse caso");
+});
