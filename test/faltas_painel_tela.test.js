@@ -130,3 +130,20 @@ test("calendário compacto: ida e volta não perde nada, e a tela expande igual 
   assert.deepEqual(fmCalDe({}), [], "caso sem calendário não quebra");
   assert.deepEqual(R.expandirCalendario(R.compactarCalendario([])), []);
 });
+
+// ── colunas "Faltas" e "Vínculo" das listas ────────────────────────────────────────────
+test("colunas da lista: vínculo (efetivo no posto / reserva técnica) e datas das faltas", () => {
+  const i3 = html.indexOf("/*ini colunas*/"), f3 = html.indexOf("/*fim colunas*/");
+  assert.ok(i3 > 0 && f3 > i3, "funções das colunas não encontradas no index.html");
+  const { fmVinculoRot, fmFaltasTxt } = new Function(html.slice(i3, f3) + "\nreturn { fmVinculoRot, fmFaltasTxt };")();
+  assert.deepEqual([fmVinculoRot("CONTRATO").t, fmVinculoRot("contrato").c], ["Efetivo", "ef"], "CONTRATO = efetivo no posto (maiúsculas não importam)");
+  assert.deepEqual([fmVinculoRot("RESERVA").t, fmVinculoRot("RESERVA").c], ["Reserva técnica", "rt"]);
+  assert.equal(fmVinculoRot("").t, "—", "sem a informação, mostra traço");
+  assert.equal(fmVinculoRot(null).d, "Vínculo não informado");
+  assert.equal(fmFaltasTxt(["2026-09-25", "2026-09-24"]), "24/09 · 25/09", "em ordem, dia/mês");
+  assert.equal(fmFaltasTxt(["2026-09-24", "2026-09-24"]), "24/09", "sem repetir");
+  assert.equal(fmFaltasTxt(["2026-09-24", "2026-09-25", "2026-09-28", "2026-09-29"]), "24/09 · 25/09 · 28/09 · 29/09", "até 4 datas aparecem todas");
+  assert.equal(fmFaltasTxt(["2026-09-22", "2026-09-23", "2026-09-24", "2026-09-25", "2026-09-28", "2026-09-29"]), "22/09 · 23/09 · 24/09 · +3", "mais de 4: as 3 primeiras e quantas faltam");
+  assert.equal(fmFaltasTxt([]), "—");
+  assert.equal(fmFaltasTxt(undefined), "—");
+});

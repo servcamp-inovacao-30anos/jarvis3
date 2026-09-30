@@ -68,3 +68,13 @@ test("calendário: sem atestado registrado, marca o período das faltas abonadas
   assert.equal(ab.atestado, null);
   assert.deepEqual([-7, -6, -4, -3].map(x => R.expandirCalendario(ab.cal).find(c => c.data === dia(x)).atestado), [false, true, true, false]);
 });
+
+test("GET casos: o vínculo (efetivo no posto / reserva técnica) vai junto, nos casos e nas abonadas", async () => {
+  const t = tabelas();
+  t.fm_faltas.find(f => f.re === 1).tipo = "RESERVA";
+  supabaseFalso(t);
+  const r = await pedir("GET", "casos");
+  assert.equal(r.body.casos.find(c => String(c.re) === "1").tipo, "RESERVA");
+  assert.equal(r.body.casos.find(c => String(c.re) === "2").tipo, "CONTRATO");
+  assert.equal(r.body.abonos.find(a => String(a.re) === "3").tipo, "CONTRATO");
+});

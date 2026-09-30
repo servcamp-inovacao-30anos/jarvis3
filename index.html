@@ -1974,8 +1974,12 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
 
       /* lista: uma pessoa por linha */
       #pg-faltasmed .fm-lista{background:var(--fm-surface);border:1px solid var(--fm-line);border-radius:12px;box-shadow:var(--fm-sh);overflow:hidden}
-      #pg-faltasmed .fm-cols,#pg-faltasmed .fm-row{display:grid;grid-template-columns:minmax(170px,1.2fr) minmax(120px,1fr) minmax(120px,1fr) minmax(230px,1.3fr) 22px;gap:16px;align-items:center;padding:0 18px 0 22px}
-      #pg-faltasmed .fm-cols.p,#pg-faltasmed .fm-row.p{grid-template-columns:minmax(170px,1.2fr) minmax(120px,1fr) minmax(230px,1.3fr) 22px}
+      #pg-faltasmed .fm-cols,#pg-faltasmed .fm-row{display:grid;grid-template-columns:minmax(150px,1.15fr) minmax(118px,.85fr) minmax(96px,.6fr) minmax(100px,.9fr) minmax(100px,.9fr) minmax(190px,1.2fr) 22px;gap:14px;align-items:center;padding:0 18px 0 22px}
+      #pg-faltasmed .fm-cols.p,#pg-faltasmed .fm-row.p{grid-template-columns:minmax(150px,1.15fr) minmax(118px,.85fr) minmax(96px,.6fr) minmax(100px,.9fr) minmax(190px,1.2fr) 22px}
+      #pg-faltasmed .fm-cv.fl{white-space:normal;line-height:1.35;font-size:.74rem;font-weight:500;color:var(--fm-text)}
+      #pg-faltasmed .fm-vin{display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:11px;font-size:.7rem;font-weight:600;border:1px solid var(--fm-line);background:var(--fm-subtle);color:var(--fm-text2);white-space:nowrap}
+      #pg-faltasmed .fm-vin.rt{background:var(--fm-brand-soft);border-color:rgba(29,111,196,.3);color:var(--fm-brand-tx)}
+      @media (min-width:761px) and (max-width:1180px){#pg-faltasmed .fm-lista{overflow-x:auto}#pg-faltasmed .fm-cols,#pg-faltasmed .fm-row{min-width:880px}}
       #pg-faltasmed .fm-cols{padding-top:10px;padding-bottom:10px;border-bottom:1px solid var(--fm-line);font-size:.64rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--fm-muted)}
       #pg-faltasmed .fm-grp{display:flex;justify-content:space-between;align-items:center;padding:9px 18px 9px 22px;background:var(--fm-subtle);border-bottom:1px solid var(--fm-line2);font-size:.74rem;font-weight:700;color:var(--fm-text)}
       #pg-faltasmed .fm-grp span{font-weight:500;color:var(--fm-muted)}
@@ -9877,14 +9881,14 @@ function fmItemAbono(a){
   let s=`Falta${a.faltas.length>1?"s":""} de ${fmLista(a.faltas.map(fmDdS))}`;
   if(at&&at.envio)s+=` · enviado em ${fmDd(at.envio)}`;
   else if(a.lancadoDepois&&a.lancadoEm)s+=` · ${rot.toLowerCase()} lançado em ${fmDd(a.lancadoEm)}, depois da falta`;
-  return{k:"ab|"+a.re+"|"+a.inicio,abono:a,folhaIni:(a.folha||{}).inicio||"",folhaFim:(a.folha||{}).fim||"",nome:a.nome,re:a.re,cargo:a.cargo,posto:a.posto,supervisor:a.supervisor,turno:a.turno,faltas:a.faltas,ord:String(a.fim||""),
+  return{k:"ab|"+a.re+"|"+a.inicio,abono:a,tipo:a.tipo,folhaIni:(a.folha||{}).inicio||"",folhaFim:(a.folha||{}).fim||"",nome:a.nome,re:a.re,cargo:a.cargo,posto:a.posto,supervisor:a.supervisor,turno:a.turno,faltas:a.faltas,ord:String(a.fim||""),
     tag,tagAm:!!a.aguardaSar2g,
     acao:{tom:"ok",t:`${rot} cobriu ${faixa} (${dias} dia${dias===1?"":"s"})`,s}};
 }
 function fmItemCaso(c,pref,ini,mes){
   const aberto=FM_ABERTAS.indexOf(c.situacao)>=0,ref=ini||fmIniFolhaAtual();
   const ant=aberto&&c.primeiraFalta<ref?`${mes?"Mês anterior":"Folha anterior"} · desde ${fmDd(c.primeiraFalta)}`:"";
-  return{k:(pref||"")+fmChave(c),caso:c,folhaIni:(c.folha||{}).inicio||"",folhaFim:(c.folha||{}).fim||"",nome:c.nome,re:c.re,cargo:c.cargo,posto:c.posto,supervisor:c.supervisor,turno:c.turno,ant,faltas:c.faltas,acao:fmAcao(c)};
+  return{k:(pref||"")+fmChave(c),caso:c,tipo:c.tipo,folhaIni:(c.folha||{}).inicio||"",folhaFim:(c.folha||{}).fim||"",nome:c.nome,re:c.re,cargo:c.cargo,posto:c.posto,supervisor:c.supervisor,turno:c.turno,ant,faltas:c.faltas,acao:fmAcao(c)};
 }
 /* Itens da aba: casos (clicáveis) e, em Resolvidas, as abonadas. */
 function fmItens(aba){
@@ -9984,12 +9988,27 @@ function fmRenderCorpo(){
   const aviso=pend?`<div class="fm-aviso k-am">${FM_IC.cal}<span><b>${pend}</b> ${pend===1?"atestado registrado aqui ainda não consta":"atestados registrados aqui ainda não constam"} no SAR2G: falta lançar lá. Quando a planilha trouxer o abono, a marca "lançar no SAR2G" sai sozinha.</span></div>`:"";
   el.innerHTML=aviso+dica+'<div class="fm-lista">'+fmCols()+h+'</div>'+fmMaisLinhas(it.length,"fmRenderCorpo()");
 }
-function fmCols(semSup){return `<div class="fm-cols${semSup?" p":""}"><span>Colaborador</span><span>Posto</span>${semSup?"":"<span>Supervisor</span>"}<span>Prazo e orientação</span><span></span></div>`;}
+/*ini colunas*/
+/* Vínculo: CONTRATO na planilha = efetivo no posto; RESERVA = reserva técnica. */
+function fmVinculoRot(tipo){
+  const t=String(tipo||"").toUpperCase();
+  return t==="CONTRATO"?{t:"Efetivo",c:"ef",d:"Efetivo no posto"}:t==="RESERVA"?{t:"Reserva técnica",c:"rt",d:"Reserva técnica"}:{t:"—",c:"",d:"Vínculo não informado"};
+}
+/* Datas das faltas: 24/09 · 25/09 · 28/09 (passando de 4, as 3 primeiras e quantas faltam). */
+function fmFaltasTxt(faltas){
+  const l=[...new Set(faltas||[])].sort(),dd=d=>{const p=String(d).slice(0,10).split("-");return p[2]+"/"+p[1];};
+  if(!l.length)return"—";
+  return l.length>4?l.slice(0,3).map(dd).join(" · ")+" · +"+(l.length-3):l.map(dd).join(" · ");
+}
+/*fim colunas*/
+function fmCols(semSup){return `<div class="fm-cols${semSup?" p":""}"><span>Colaborador</span><span>Faltas</span><span>Vínculo</span><span>Posto</span>${semSup?"":"<span>Supervisor</span>"}<span>Prazo e orientação</span><span></span></div>`;}
 function fmLinhaItem(x,semSup){
-  const a=x.acao,clic=x.caso||x.abono,aberto=clic&&FM.aberto[x.k];
+  const a=x.acao,clic=x.caso||x.abono,aberto=clic&&FM.aberto[x.k],v=fmVinculoRot(x.tipo);
   const clique=clic?` role="button" tabindex="0" aria-expanded="${!!aberto}" data-k="${_esc(x.k)}" onclick="fmAbrir(this.dataset.k)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();fmAbrir(this.dataset.k)}"`:"";
   return `<div class="fm-row k-${a.tom}${semSup?" p":""}${aberto?" on":""}${clic?"":" fixa"}"${clique}>`+
     `<div style="min-width:0"><div class="fm-nm" title="${_esc(x.nome)}">${_esc(x.nome)}</div><div class="fm-sb"><span class="fm-re">RE ${_esc(x.re)}</span>${_esc(x.cargo||"")}${x.ant?`<span class="fm-tg ant">${x.ant}</span>`:""}${x.turno==="NOTURNO"?'<span class="fm-tg">noturno</span>':""}${x.tag?`<span class="fm-tg${x.tagAm?" am":""}">${x.tag}</span>`:""}</div></div>`+
+    `<div class="fm-cv fl" data-l="Faltas" title="${_esc(fmLista([...new Set(x.faltas||[])].sort().map(fmDdS)))}">${_esc(fmFaltasTxt(x.faltas))}</div>`+
+    `<div class="fm-cv" data-l="Vínculo"><span class="fm-vin ${v.c}" title="${_esc(v.d)}">${_esc(v.t)}</span></div>`+
     `<div class="fm-cv" data-l="Posto" title="${_esc(x.posto||"")}">${_esc(x.posto||"—")}</div>`+
     (semSup?"":`<div class="fm-cv" data-l="Supervisor" title="${_esc(x.supervisor||"")}">${_esc(x.supervisor||"—")}</div>`)+
     `<div class="fm-acao"><b><i></i>${_esc(a.t)}</b>${a.s?`<span>${_esc(a.s)}</span>`:""}</div>`+

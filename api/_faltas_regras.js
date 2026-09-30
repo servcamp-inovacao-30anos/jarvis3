@@ -391,7 +391,7 @@ function periodosDeAbono(abonadas, fichaDias, lancadas, atestados) {
         junta = vazios.length <= 4 && vazios.every(x => trabalhouNoDia(dias[x]) !== true);
       }
       if (!junta) {
-        atual = { re: a.re, nome: a.nome, cargo: a.cargo, posto: a.posto, supervisor: a.supervisor, escala: a.escala, codigo: a.codigo, faltas: [], inicio: d, fim: d, _chaves: new Set(), _pendentes: 0 };
+        atual = { re: a.re, nome: a.nome, cargo: a.cargo, posto: a.posto, supervisor: a.supervisor, escala: a.escala, tipo: a.tipo, codigo: a.codigo, faltas: [], inicio: d, fim: d, _chaves: new Set(), _pendentes: 0 };
         out.push(atual);
       }
       atual.fim = d; atual.faltas.push(d);
@@ -466,7 +466,7 @@ function expandirCalendario(k) {
 }
 
 function pessoa(f, extra) {
-  return { re: reDe(f.RE), nome: f.NOME || "", cargo: f.CARGO || "", posto: f.LOCAL || "", supervisor: f.AREA || "", escala: f.ESCALA || "", ...extra };
+  return { re: reDe(f.RE), nome: f.NOME || "", cargo: f.CARGO || "", posto: f.LOCAL || "", supervisor: f.AREA || "", escala: f.ESCALA || "", tipo: f.TIPO || "", ...extra };
 }
 
 module.exports = {
