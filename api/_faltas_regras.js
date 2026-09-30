@@ -300,8 +300,16 @@ function calendario(caso, opcoes) {
   const medida = caso.medida && iso(caso.medida.DATA);
   // A folha da 1ª falta; se o prazo (ou o retorno, ou a medida) passa para a
   // folha seguinte, vai até ele: falta no dia 25 tem o prazo inteiro no mês seguinte.
-  const { inicio } = competenciaDe(caso.primeiraFalta);
-  const fim = [competenciaDe(caso.primeiraFalta).fim, caso.prazoFim, caso.retornoPrevisto, medida].filter(Boolean).sort().pop();
+  const folha = competenciaDe(caso.primeiraFalta);
+  let inicio = folha.inicio;
+  let fim = [folha.fim, caso.prazoFim, caso.retornoPrevisto, medida].filter(Boolean).sort().pop();
+  // meses: calendário de mês cheio (dia 1 ao último), com um mês a mais de
+  // cada lado, para a tela poder passar de um mês para o outro
+  if (o.meses) {
+    const mes = (d, n) => { let [a, m] = d.split("-").map(Number); m += n; while (m < 1) { m += 12; a -= 1; } while (m > 12) { m -= 12; a += 1; } return `${a}-${String(m).padStart(2, "0")}-01`; };
+    inicio = mes(caso.primeiraFalta, -1);
+    fim = somaDias(mes([fim, hoje].filter(Boolean).sort().pop(), 2), -1);
+  }
   const out = [];
   for (let d = inicio; d <= fim; d = somaDias(d, 1)) {
     let tipo;
@@ -319,7 +327,7 @@ function calendario(caso, opcoes) {
       const t = trabalhouNoDia(dias[d]);
       tipo = t === true ? "TRABALHOU" : feriados.has(d) ? "FERIADO" : t === false ? "FOLGA" : "";
     }
-    out.push({ data: d, dia: Number(d.slice(8, 10)), semana: diaDaSemana(d), tipo, medida: d === medida, hoje: d === hoje, futuro: hoje ? d > hoje : false, noPrazo: prazo.has(d), feriado: feriados.has(d), fimDoPrazo: d === caso.prazoFim });
+    out.push({ data: d, dia: Number(d.slice(8, 10)), semana: diaDaSemana(d), tipo, medida: d === medida, hoje: d === hoje, futuro: hoje ? d > hoje : false, noPrazo: prazo.has(d), feriado: feriados.has(d), fimDoPrazo: d === caso.prazoFim, naFolha: d >= folha.inicio && d <= folha.fim });
   }
   return out;
 }

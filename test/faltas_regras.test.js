@@ -214,6 +214,21 @@ test("calendário: feriado sem presença é feriado; com presença é dia trabal
   assert.equal(cal.filter(x => x.fimDoPrazo).map(x => x.data).join(), c.prazoFim);
 });
 
+test("calendário em meses cheios: do mês anterior à falta até o mês seguinte, marcando a folha", () => {
+  const dias = presente("2026-10-08");
+  const c = unico({ faltas: [falta("2026-10-07")], fichaDias: { 521: dias }, hoje: "2026-10-09", dataBase: "2026-10-09" });
+  const cal = R.calendario(c, { dias, hoje: "2026-10-09", meses: true });
+  assert.equal(cal[0].data, "2026-09-01");
+  assert.equal(cal[cal.length - 1].data, "2026-11-30", "fim da folha (25/10) → outubro inteiro + novembro");
+  const dia = d => cal.find(x => x.data === d);
+  assert.equal(dia("2026-09-25").naFolha, false);
+  assert.equal(dia("2026-09-26").naFolha, true);
+  assert.equal(dia("2026-10-25").naFolha, true);
+  assert.equal(dia("2026-10-26").naFolha, false);
+  assert.equal(dia("2026-10-07").tipo, "FALTA");
+  assert.equal(dia("2026-10-08").tipo, "RETORNO");
+});
+
 test("calendário: medida lançada num dia de falta mostra a falta, com a marca da medida", () => {
   const c = unico({ faltas: [falta("2026-10-07"), falta("2026-10-08")], fichaDias: { 521: presente("2026-10-09") }, medidas: [medida("2026-10-08")], hoje: "2026-10-09", dataBase: "2026-10-09" });
   const d = R.calendario(c, { dias: presente("2026-10-09"), hoje: "2026-10-09" }).find(x => x.data === "2026-10-08");
