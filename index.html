@@ -1901,199 +1901,257 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       #pg-faltasmed{
         --fm-surface:var(--wh);--fm-subtle:#f8fafc;--fm-line:var(--g200);--fm-line2:var(--g100);
         --fm-text:var(--g800);--fm-text2:var(--g600);--fm-muted:var(--g500);
-        --fm-brand:#1d6fc4;--fm-brand-tx:#1e4d8c;--fm-brand-soft:#e8f1fc;--fm-ring:rgba(29,111,196,.22);
-        --fm-sh:0 1px 2px rgba(16,24,40,.05);
-        --m-falta:#d92d20;--m-fim:#ea580c;--m-med:#079455;
-        --m-prazo:#fff1e6;--m-prazo-bd:#fdba8c;--m-prazo-tx:#9a3412;
-        --m-abon:#ecfdf3;--m-abon-bd:#abefc6;--m-abon-tx:#067647;
-        --m-ret-bd:#475467;--m-folga:#f2f4f7;--m-fer:#f4f0ff;--m-fer-bd:#c4b5fd;--m-fer-tx:#5b21b6;
+        --fm-brand:#1d6fc4;--fm-brand-tx:#1e4d8c;--fm-brand-soft:#e8f1fc;--fm-sel:#f0f6ff;--fm-ring:rgba(29,111,196,.22);
+        --fm-sh:0 1px 2px rgba(16,24,40,.05);--fm-navy:#1e3a5f;
+        --m-falta-bg:#fef3f2;--m-falta-bd:#f97066;--m-falta-tx:#b42318;
+        --m-prazo:#fef7d6;--m-prazo-bd:#fde68a;--m-prazo-tx:#854d0e;
+        --m-fim:#fbd24e;--m-fim-bd:#f5b000;--m-fim-tx:#3d2800;
+        --m-med:#dcfae6;--m-med-bd:#47cd89;--m-med-tx:#067647;
+        --m-abon:#e6f6f4;--m-abon-bd:#5fe9d0;--m-abon-tx:#107569;
+        --m-folga:#eef1f5;--m-fer:#eaf2ff;--m-fer-bd:#b2ccff;--m-fer-tx:#1d4ed8;
         font-variant-numeric:tabular-nums;
       }
       html[data-theme="dark"] #pg-faltasmed{
-        --fm-subtle:#131d2c;--fm-brand:#5aafff;--fm-brand-tx:#8cc6ff;--fm-brand-soft:rgba(46,143,239,.18);--fm-ring:rgba(90,175,255,.3);
-        --fm-sh:0 1px 2px rgba(0,0,0,.35);
-        --m-prazo:rgba(249,115,22,.16);--m-prazo-bd:#9a4a1a;--m-prazo-tx:#fdba74;
-        --m-abon:rgba(7,148,85,.15);--m-abon-bd:#1f6b46;--m-abon-tx:#75e0a7;
-        --m-ret-bd:#98a2b3;--m-folga:#1a2435;--m-fer:rgba(124,58,237,.18);--m-fer-bd:#6d4fc7;--m-fer-tx:#d2c2ff;
+        --fm-subtle:#131d2c;--fm-brand:#5aafff;--fm-brand-tx:#8cc6ff;--fm-brand-soft:rgba(46,143,239,.18);--fm-sel:rgba(46,143,239,.10);--fm-ring:rgba(90,175,255,.3);
+        --fm-sh:0 1px 2px rgba(0,0,0,.35);--fm-navy:#8cc6ff;
+        --m-falta-bg:rgba(240,68,56,.14);--m-falta-bd:#b42318;--m-falta-tx:#fda29b;
+        --m-prazo:rgba(245,176,0,.12);--m-prazo-bd:#8a6512;--m-prazo-tx:#fcd34d;
+        --m-fim:#d4a106;--m-fim-bd:#f5b000;--m-fim-tx:#1f1500;
+        --m-med:rgba(23,178,106,.15);--m-med-bd:#1f6b46;--m-med-tx:#75e0a7;
+        --m-abon:rgba(21,183,158,.14);--m-abon-bd:#107569;--m-abon-tx:#5fe9d0;
+        --m-folga:#1a2435;--m-fer:rgba(46,143,239,.16);--m-fer-bd:#2e5c96;--m-fer-tx:#93c5fd;
       }
       /* as 5 cores de situação: --k (cor), --kbg (fundo), --kbd (borda), --ktx (texto) */
-      #pg-faltasmed .k-da{--k:#d92d20;--kbg:#fef3f2;--kbd:#fecdca;--ktx:#b42318}
-      #pg-faltasmed .k-or{--k:#ea580c;--kbg:#fff4ed;--kbd:#fdd5b5;--ktx:#b93815}
+      #pg-faltasmed .k-da{--k:#e5322d;--kbg:#fef3f2;--kbd:#fecdca;--ktx:#d92d20}
+      #pg-faltasmed .k-am{--k:#f5b000;--kbg:#fffaeb;--kbd:#fde68a;--ktx:#c77700}
       #pg-faltasmed .k-gr{--k:#667085;--kbg:#f2f4f7;--kbd:#d0d5dd;--ktx:#475467}
       #pg-faltasmed .k-vi{--k:#7a5af8;--kbg:#f4f3ff;--kbd:#d9d6fe;--ktx:#5925dc}
       #pg-faltasmed .k-ok{--k:#079455;--kbg:#ecfdf3;--kbd:#abefc6;--ktx:#067647}
       html[data-theme="dark"] #pg-faltasmed .k-da{--k:#f04438;--kbg:rgba(217,45,32,.15);--kbd:rgba(240,68,56,.4);--ktx:#fda29b}
-      html[data-theme="dark"] #pg-faltasmed .k-or{--kbg:rgba(234,88,12,.14);--kbd:rgba(234,88,12,.38);--ktx:#fdba74}
+      html[data-theme="dark"] #pg-faltasmed .k-am{--kbg:rgba(245,176,0,.12);--kbd:rgba(245,176,0,.38);--ktx:#fec84b}
       html[data-theme="dark"] #pg-faltasmed .k-gr{--k:#98a2b3;--kbg:rgba(152,162,179,.12);--kbd:rgba(152,162,179,.3);--ktx:#cfd4dc}
       html[data-theme="dark"] #pg-faltasmed .k-vi{--k:#9b8afb;--kbg:rgba(122,90,248,.16);--kbd:rgba(155,138,251,.4);--ktx:#c7bdff}
       html[data-theme="dark"] #pg-faltasmed .k-ok{--k:#17b26a;--kbg:rgba(7,148,85,.15);--kbd:rgba(23,178,106,.38);--ktx:#75e0a7}
 
       /* controles */
-      #pg-faltasmed .fm-btn{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 14px;border:1px solid var(--fm-line);border-radius:8px;background:var(--fm-surface);color:var(--fm-text);font:inherit;font-size:.76rem;font-weight:600;cursor:pointer;box-shadow:var(--fm-sh);transition:background .15s,border-color .15s,box-shadow .15s;white-space:nowrap}
-      #pg-faltasmed .fm-btn svg{width:15px;height:15px}
+      #pg-faltasmed .fm-btn{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border:1px solid var(--fm-line);border-radius:8px;background:var(--fm-surface);color:var(--fm-text);font:inherit;font-size:.78rem;font-weight:600;cursor:pointer;box-shadow:var(--fm-sh);transition:background .15s,border-color .15s,box-shadow .15s;white-space:nowrap}
+      #pg-faltasmed .fm-btn svg{width:16px;height:16px}
       #pg-faltasmed .fm-btn:hover{background:var(--fm-subtle);border-color:var(--g300)}
       #pg-faltasmed .fm-btn.on{background:var(--fm-brand-soft);border-color:var(--fm-brand);color:var(--fm-brand-tx)}
       #pg-faltasmed .fm-btn.fm-pri{background:var(--b7);border-color:var(--b7);color:#fff}
       #pg-faltasmed .fm-btn.fm-pri:hover{background:#173f75;border-color:#173f75}
       #pg-faltasmed .fm-btn.fm-del{background:transparent;border-color:transparent;box-shadow:none;color:var(--ktx)}
       #pg-faltasmed .fm-btn.fm-del:hover{background:var(--kbg);border-color:var(--kbd)}
-      #pg-faltasmed .fm-btn.sm{height:28px;padding:0 10px;font-size:.7rem}
+      #pg-faltasmed .fm-btn.sm{height:30px;padding:0 10px;font-size:.72rem}
+      #pg-faltasmed .fm-btn.ic{width:36px;padding:0;justify-content:center}
       #pg-faltasmed .fm-btn:disabled{opacity:.4;cursor:default}
-      #pg-faltasmed .fm-in{height:34px;padding:0 12px;border:1px solid var(--fm-line);border-radius:8px;background:var(--fm-surface);color:var(--fm-text);font:inherit;font-size:.78rem;box-shadow:var(--fm-sh);outline:none;transition:border-color .15s,box-shadow .15s}
+      #pg-faltasmed .fm-in{height:36px;padding:0 12px;border:1px solid var(--fm-line);border-radius:8px;background:var(--fm-surface);color:var(--fm-text);font:inherit;font-size:.78rem;box-shadow:var(--fm-sh);outline:none;transition:border-color .15s,box-shadow .15s}
       #pg-faltasmed .fm-in::placeholder,#pg-faltasmed .fm-ta::placeholder{color:var(--g400)}
       #pg-faltasmed .fm-in:focus,#pg-faltasmed .fm-ta:focus{border-color:var(--fm-brand);box-shadow:0 0 0 4px var(--fm-ring)}
-      #pg-faltasmed .fm-btn:focus-visible,#pg-faltasmed .fm-tab:focus-visible,#pg-faltasmed .fm-row:focus-visible{outline:none;box-shadow:0 0 0 4px var(--fm-ring)}
+      #pg-faltasmed .fm-btn:focus-visible,#pg-faltasmed .fm-tab:focus-visible,#pg-faltasmed .fm-row:focus-visible,#pg-faltasmed .fm-sup:focus-visible,#pg-faltasmed .fm-seg button:focus-visible{outline:none;box-shadow:0 0 0 4px var(--fm-ring)}
+      #pg-faltasmed .fm-seg{display:inline-flex;border:1px solid var(--fm-line);border-radius:8px;overflow:hidden;box-shadow:var(--fm-sh);background:var(--fm-surface)}
+      #pg-faltasmed .fm-seg button{appearance:none;border:0;background:none;font:inherit;font-size:.76rem;font-weight:600;color:var(--fm-text2);padding:0 14px;height:34px;cursor:pointer}
+      #pg-faltasmed .fm-seg button+button{border-left:1px solid var(--fm-line)}
+      #pg-faltasmed .fm-seg button.on{background:var(--fm-brand);color:#fff}
 
       /* topo: base da planilha, abas, filtros */
-      #pg-faltasmed .fm-base{font-size:.72rem;color:var(--fm-muted);margin:-4px 0 12px}
-      #pg-faltasmed .fm-base b{color:var(--fm-text2);font-weight:600}
-      #pg-faltasmed .fm-tabs{display:flex;flex-wrap:wrap;gap:4px;border-bottom:1px solid var(--fm-line);margin-bottom:14px}
-      #pg-faltasmed .fm-tab{appearance:none;background:none;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;padding:11px 14px;font:inherit;font-size:.82rem;font-weight:600;color:var(--fm-text2);cursor:pointer;display:inline-flex;align-items:center;gap:8px;white-space:nowrap;border-radius:6px 6px 0 0}
+      #pg-faltasmed .fm-base{font-size:.74rem;color:var(--fm-muted);margin:-2px 0 14px;padding-bottom:12px;border-bottom:1px solid var(--fm-line2)}
+      #pg-faltasmed .fm-base b{color:var(--fm-text);font-weight:600}
+      #pg-faltasmed .fm-base i{font-style:normal;color:var(--g300);margin:0 8px}
+      #pg-faltasmed .fm-tabs{display:flex;flex-wrap:wrap;gap:6px;border-bottom:1px solid var(--fm-line);margin-bottom:14px}
+      #pg-faltasmed .fm-tab{appearance:none;background:none;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;padding:10px 12px;font:inherit;font-size:.84rem;font-weight:500;color:var(--fm-text2);cursor:pointer;display:inline-flex;align-items:center;gap:10px;white-space:nowrap;border-radius:6px 6px 0 0}
       #pg-faltasmed .fm-tab:hover{color:var(--fm-text)}
-      #pg-faltasmed .fm-tab.on{color:var(--fm-brand-tx);border-bottom-color:var(--fm-brand)}
-      #pg-faltasmed .fm-tab .n{min-width:22px;height:20px;padding:0 7px;border-radius:10px;background:var(--g100);color:var(--fm-text2);font-size:.68rem;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
-      #pg-faltasmed .fm-tab.on .n{background:var(--fm-brand-soft);color:var(--fm-brand-tx)}
+      #pg-faltasmed .fm-tab.on{color:var(--fm-brand-tx);font-weight:600;border-bottom-color:var(--fm-brand)}
+      #pg-faltasmed .fm-tab .n{min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--g100);color:var(--fm-text2);font-size:.7rem;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
       #pg-faltasmed .fm-tab .n.alerta{background:#d92d20;color:#fff}
+      #pg-faltasmed .fm-tab.on .n{background:var(--fm-brand);color:#fff}
       #pg-faltasmed .fm-tool{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
       #pg-faltasmed .fm-search{position:relative;display:inline-flex}
       #pg-faltasmed .fm-search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--g400);pointer-events:none}
       #pg-faltasmed .fm-search .fm-in{padding-left:34px;width:260px;max-width:calc(100vw - 64px)}
-      #pg-faltasmed .fm-count{margin-left:auto;font-size:.72rem;color:var(--fm-muted)}
-      #pg-faltasmed .fm-dica{font-size:.72rem;color:var(--fm-muted);margin:0 0 10px}
+      #pg-faltasmed .fm-count{margin-left:auto;font-size:.74rem;color:var(--fm-muted)}
+      #pg-faltasmed .fm-dica{font-size:.74rem;color:var(--fm-muted);margin:0 0 10px}
 
       /* lista: uma pessoa por linha */
       #pg-faltasmed .fm-lista{background:var(--fm-surface);border:1px solid var(--fm-line);border-radius:12px;box-shadow:var(--fm-sh);overflow:hidden}
-      #pg-faltasmed .fm-cols,#pg-faltasmed .fm-row{display:grid;grid-template-columns:minmax(170px,1.3fr) minmax(120px,1fr) minmax(120px,1fr) minmax(220px,1.4fr) 20px;gap:16px;align-items:center;padding:0 16px 0 20px}
-      #pg-faltasmed .fm-cols{padding-top:9px;padding-bottom:9px;background:var(--fm-subtle);border-bottom:1px solid var(--fm-line);font-size:.62rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--fm-muted)}
-      #pg-faltasmed .fm-grp{display:flex;justify-content:space-between;align-items:center;padding:9px 16px 9px 20px;background:var(--fm-subtle);border-bottom:1px solid var(--fm-line2);font-size:.72rem;font-weight:700;color:var(--fm-text)}
+      #pg-faltasmed .fm-cols,#pg-faltasmed .fm-row{display:grid;grid-template-columns:minmax(170px,1.2fr) minmax(120px,1fr) minmax(120px,1fr) minmax(230px,1.3fr) 22px;gap:16px;align-items:center;padding:0 18px 0 22px}
+      #pg-faltasmed .fm-cols.p,#pg-faltasmed .fm-row.p{grid-template-columns:minmax(170px,1.2fr) minmax(120px,1fr) minmax(230px,1.3fr) 22px}
+      #pg-faltasmed .fm-cols{padding-top:10px;padding-bottom:10px;border-bottom:1px solid var(--fm-line);font-size:.64rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--fm-muted)}
+      #pg-faltasmed .fm-grp{display:flex;justify-content:space-between;align-items:center;padding:9px 18px 9px 22px;background:var(--fm-subtle);border-bottom:1px solid var(--fm-line2);font-size:.74rem;font-weight:700;color:var(--fm-text)}
       #pg-faltasmed .fm-grp span{font-weight:500;color:var(--fm-muted)}
-      #pg-faltasmed .fm-row{position:relative;padding-top:12px;padding-bottom:12px;border-bottom:1px solid var(--fm-line2);cursor:pointer;transition:background .12s}
+      #pg-faltasmed .fm-row{position:relative;padding-top:13px;padding-bottom:13px;border-bottom:1px solid var(--fm-line2);cursor:pointer;transition:background .12s}
       #pg-faltasmed .fm-row::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--k)}
       #pg-faltasmed .fm-row:hover{background:var(--fm-subtle)}
-      #pg-faltasmed .fm-row.on{background:var(--fm-subtle);border-bottom-color:transparent}
+      #pg-faltasmed .fm-row.on{background:var(--fm-sel);border-bottom-color:var(--fm-line)}
+      #pg-faltasmed .fm-row.on::before{background:var(--fm-brand)}
       #pg-faltasmed .fm-row.fixa{cursor:default}
       #pg-faltasmed .fm-lista>:last-child{border-bottom:0}
-      #pg-faltasmed .fm-nm{font-size:.82rem;font-weight:700;color:var(--fm-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-      #pg-faltasmed .fm-sb{display:flex;align-items:center;gap:8px;font-size:.68rem;color:var(--fm-muted);margin-top:2px;white-space:nowrap;overflow:hidden}
-      #pg-faltasmed .fm-re{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.66rem;font-weight:600;color:var(--fm-text2);background:var(--g100);border-radius:4px;padding:1px 6px}
-      #pg-faltasmed .fm-cv{font-size:.76rem;color:var(--fm-text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-      #pg-faltasmed .fm-acao b{display:flex;align-items:center;gap:8px;font-size:.84rem;font-weight:700;color:var(--ktx)}
+      #pg-faltasmed .fm-nm{font-size:.84rem;font-weight:700;color:var(--fm-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      #pg-faltasmed .fm-sb{display:flex;align-items:center;gap:8px;font-size:.7rem;color:var(--fm-muted);margin-top:3px;white-space:nowrap;overflow:hidden}
+      #pg-faltasmed .fm-re{font-size:.66rem;font-weight:700;color:var(--fm-text2);background:var(--g100);border-radius:4px;padding:1px 6px}
+      #pg-faltasmed .fm-tg{font-size:.62rem;font-weight:600;color:var(--fm-muted);border:1px solid var(--fm-line);border-radius:4px;padding:0 5px}
+      #pg-faltasmed .fm-cv{font-size:.78rem;color:var(--fm-text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      #pg-faltasmed .fm-acao b{display:flex;align-items:center;gap:8px;font-size:.86rem;font-weight:700;color:var(--ktx)}
       #pg-faltasmed .fm-acao b i{flex:0 0 8px;height:8px;border-radius:50%;background:var(--k)}
-      #pg-faltasmed .fm-acao span{display:block;font-size:.7rem;color:var(--fm-muted);margin:2px 0 0 16px}
-      #pg-faltasmed .fm-chev{width:18px;height:18px;color:var(--g400);transition:transform .15s}
-      #pg-faltasmed .fm-row.on .fm-chev{transform:rotate(180deg)}
-      @media (max-width:760px){
-        #pg-faltasmed .fm-cols{display:none}
-        #pg-faltasmed .fm-row{grid-template-columns:1fr 20px;gap:6px 10px}
-        #pg-faltasmed .fm-row>.fm-cv{grid-column:1;font-size:.7rem}
-        #pg-faltasmed .fm-row>.fm-cv::before{content:attr(data-l) ": ";color:var(--fm-muted)}
-        #pg-faltasmed .fm-row>.fm-acao{grid-column:1}
-        #pg-faltasmed .fm-row>.fm-chev{grid-column:2;grid-row:1}
-        #pg-faltasmed .fm-det{padding:4px 10px 14px 12px}
-        #pg-faltasmed .fm-mg{gap:2px}
-        #pg-faltasmed .fm-c{min-height:46px;padding:3px}
-        #pg-faltasmed .fm-c .w{font-size:.5rem;overflow-wrap:anywhere}
-        #pg-faltasmed .fm-c .f,#pg-faltasmed .fm-c .h{font-size:.44rem}
-      }
+      #pg-faltasmed .fm-acao span{display:block;font-size:.72rem;color:var(--fm-muted);margin:3px 0 0 16px}
+      #pg-faltasmed .fm-chev{width:20px;height:20px;color:var(--fm-text2);transition:transform .15s}
+      #pg-faltasmed .fm-row.on .fm-chev{transform:rotate(180deg);color:var(--fm-brand)}
 
       /* detalhe (abre ao clicar na linha) */
-      #pg-faltasmed .fm-det{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:20px;padding:4px 16px 18px 20px;background:var(--fm-subtle);border-bottom:1px solid var(--fm-line)}
-      @media (max-width:1000px){#pg-faltasmed .fm-det{grid-template-columns:1fr}}
-      #pg-faltasmed .fm-lbl{display:block;font-size:.62rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--fm-muted);margin:0 0 6px}
-      #pg-faltasmed .fm-txt{font-size:.78rem;line-height:1.55;color:var(--fm-text);margin:0 0 14px}
-      #pg-faltasmed .fm-fatos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 16px;margin:0 0 14px;padding:12px 14px;background:var(--fm-surface);border:1px solid var(--fm-line);border-radius:10px}
-      #pg-faltasmed .fm-fatos dt{font-size:.62rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--fm-muted)}
-      #pg-faltasmed .fm-fatos dd{font-size:.78rem;font-weight:600;color:var(--fm-text);margin-top:2px}
-      #pg-faltasmed .fm-md{padding:12px 14px;background:var(--fm-surface);border:1px solid var(--fm-line);border-radius:10px;margin-bottom:12px}
-      #pg-faltasmed .fm-md-h{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:.76rem;color:var(--fm-text)}
-      #pg-faltasmed .fm-md-h .s{color:var(--fm-muted);font-size:.7rem}
-      #pg-faltasmed .fm-tag{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:6px;border:1px solid var(--kbd);background:var(--kbg);color:var(--ktx);font-size:.7rem;font-weight:600}
-      #pg-faltasmed .fm-ta{display:block;width:100%;box-sizing:border-box;min-height:56px;margin-top:10px;border:1px solid var(--fm-line);border-radius:8px;padding:8px 10px;font:inherit;font-size:.76rem;line-height:1.45;background:var(--fm-surface);color:var(--fm-text);resize:vertical;outline:none;transition:border-color .15s,box-shadow .15s}
+      #pg-faltasmed .fm-det{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);background:var(--fm-surface);border-bottom:1px solid var(--fm-line)}
+      #pg-faltasmed .fm-det>div{padding:18px 22px 20px}
+      #pg-faltasmed .fm-det>div+div{border-left:1px solid var(--fm-line)}
+      @media (max-width:1000px){#pg-faltasmed .fm-det{grid-template-columns:1fr}#pg-faltasmed .fm-det>div+div{border-left:0;border-top:1px solid var(--fm-line)}}
+      #pg-faltasmed .fm-h3{font-size:.92rem;font-weight:700;color:var(--fm-text);margin:0 0 12px}
+      #pg-faltasmed .fm-aviso{display:flex;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--kbd);background:var(--kbg);border-radius:6px;font-size:.78rem;color:var(--fm-text);margin-bottom:14px}
+      #pg-faltasmed .fm-aviso svg{flex:0 0 18px;width:18px;height:18px;color:var(--ktx)}
+      #pg-faltasmed .fm-frase{font-size:.8rem;line-height:1.55;color:var(--fm-text);margin:0 0 16px}
+      #pg-faltasmed .fm-big{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--fm-line)}
+      #pg-faltasmed .fm-big>div{padding:2px 16px;border-left:2px solid var(--fm-line)}
+      #pg-faltasmed .fm-big dt{font-size:.62rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fm-muted)}
+      #pg-faltasmed .fm-big dd{font-size:1.02rem;font-weight:700;color:var(--fm-text);margin-top:4px}
+      #pg-faltasmed .fm-big dd small{font-size:.66rem;font-weight:600;color:var(--fm-muted);margin-left:4px}
+      #pg-faltasmed .fm-kv{display:grid;grid-template-columns:minmax(110px,150px) 1fr;gap:10px 16px;font-size:.78rem;margin:0 0 16px}
+      #pg-faltasmed .fm-kv dt{color:var(--fm-text2)}
+      #pg-faltasmed .fm-kv dd{color:var(--fm-text);font-weight:500}
+      #pg-faltasmed .fm-md{padding:12px 14px;background:var(--fm-subtle);border:1px solid var(--fm-line);border-radius:10px;margin-bottom:16px}
+      #pg-faltasmed .fm-md-h{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:.78rem;color:var(--fm-text)}
+      #pg-faltasmed .fm-md-h .s{color:var(--fm-muted);font-size:.72rem}
+      #pg-faltasmed .fm-tag{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:6px;border:1px solid var(--kbd);background:var(--kbg);color:var(--ktx);font-size:.72rem;font-weight:600}
+      #pg-faltasmed .fm-ta{display:block;width:100%;box-sizing:border-box;min-height:56px;margin-top:10px;border:1px solid var(--fm-line);border-radius:8px;padding:8px 10px;font:inherit;font-size:.78rem;line-height:1.45;background:var(--fm-surface);color:var(--fm-text);resize:vertical;outline:none;transition:border-color .15s,box-shadow .15s}
       #pg-faltasmed .fm-md-f{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:8px}
-      #pg-faltasmed .fm-edit{font-size:.66rem;color:var(--fm-muted)}
-      #pg-faltasmed .fm-ro{font-size:.76rem;color:var(--fm-text);line-height:1.45;margin-top:8px}
-      #pg-faltasmed .fm-hist{font-size:.7rem;color:var(--fm-muted)}
-      #pg-faltasmed .fm-hist b{color:var(--fm-text2);font-weight:600}
+      #pg-faltasmed .fm-edit{font-size:.68rem;color:var(--fm-muted)}
+      #pg-faltasmed .fm-ro{font-size:.78rem;color:var(--fm-text);line-height:1.45;margin-top:8px}
+      #pg-faltasmed .fm-mleg{display:flex;gap:28px;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--fm-line)}
+      #pg-faltasmed .fm-mleg>div{display:grid;grid-template-columns:16px auto;gap:0 8px;align-items:center}
+      #pg-faltasmed .fm-mleg i{width:16px;height:16px;border-radius:3px;grid-row:span 2;align-self:start;margin-top:1px}
+      #pg-faltasmed .fm-mleg b{font-size:.74rem;font-weight:700;color:var(--fm-text)}
+      #pg-faltasmed .fm-mleg span{font-size:.66rem;color:var(--fm-muted)}
 
       /* calendário do mês, com a palavra escrita em cada dia */
-      #pg-faltasmed .fm-mes{background:var(--fm-surface);border:1px solid var(--fm-line);border-radius:12px;padding:12px}
-      #pg-faltasmed .fm-mes-h{display:flex;align-items:center;gap:8px;margin-bottom:4px}
-      #pg-faltasmed .fm-mes-h b{flex:1;text-align:center;font-size:.86rem;font-weight:700;color:var(--fm-text)}
-      #pg-faltasmed .fm-mes-h .fm-btn{width:32px;padding:0;justify-content:center}
-      #pg-faltasmed .fm-mes-f{text-align:center;font-size:.7rem;color:var(--fm-muted);margin-bottom:10px}
-      #pg-faltasmed .fm-mes-f b{color:var(--fm-brand-tx);font-weight:600}
-      #pg-faltasmed .fm-mg{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
-      #pg-faltasmed .fm-wd{font-size:.62rem;font-weight:700;color:var(--fm-muted);text-align:center;padding-bottom:2px}
-      #pg-faltasmed .fm-c{position:relative;min-height:54px;padding:4px 5px;border-radius:8px;border:1px solid var(--fm-line2);background:var(--fm-surface);display:flex;flex-direction:column;gap:1px;overflow:hidden;box-sizing:border-box}
-      #pg-faltasmed .fm-c .n{font-size:.74rem;font-weight:700;color:var(--fm-text)}
-      #pg-faltasmed .fm-c .w{font-size:.62rem;font-weight:600;line-height:1.15;color:var(--fm-text2)}
-      #pg-faltasmed .fm-c .f{font-size:.56rem;font-weight:700;line-height:1.15;color:var(--fm-brand-tx);margin-top:auto}
-      #pg-faltasmed .fm-c .h{position:absolute;top:3px;right:4px;font-size:.52rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#fff;background:var(--fm-brand);border-radius:4px;padding:1px 4px}
-      #pg-faltasmed .fm-c.pad{border:0;background:transparent}
-      #pg-faltasmed .fm-c.fora{opacity:.4}
-      #pg-faltasmed .fm-c.hj{box-shadow:0 0 0 2px var(--fm-brand)}
-      #pg-faltasmed .fm-c.ffim{box-shadow:inset -3px 0 0 var(--fm-brand)}
-      #pg-faltasmed .fm-c.fini{box-shadow:inset 3px 0 0 var(--fm-brand)}
-      #pg-faltasmed .fm-c.hj.ffim{box-shadow:0 0 0 2px var(--fm-brand),inset -3px 0 0 var(--fm-brand)}
-      #pg-faltasmed .fm-c.hj.fini{box-shadow:0 0 0 2px var(--fm-brand),inset 3px 0 0 var(--fm-brand)}
-      #pg-faltasmed .fm-c.t-TRABALHOU .w{color:var(--fm-muted);font-weight:500}
-      #pg-faltasmed .fm-c.t-FOLGA{background:var(--m-folga)}
-      #pg-faltasmed .fm-c.t-FOLGA .w,#pg-faltasmed .fm-c.t-FOLGA .n{color:var(--fm-muted)}
+      #pg-faltasmed .fm-mes-h{display:grid;grid-template-columns:36px 1fr 36px;align-items:center;gap:8px;margin-bottom:12px}
+      #pg-faltasmed .fm-mes-h div{text-align:center}
+      #pg-faltasmed .fm-mes-h b{display:block;font-size:.92rem;font-weight:700;color:var(--fm-text)}
+      #pg-faltasmed .fm-mes-h span{display:block;font-size:.72rem;color:var(--fm-muted);margin-top:2px}
+      #pg-faltasmed .fm-mg{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+      #pg-faltasmed .fm-wd{font-size:.66rem;font-weight:600;color:var(--fm-text2);text-align:center;padding-bottom:4px}
+      #pg-faltasmed .fm-c{position:relative;min-height:54px;padding:6px 8px;border-radius:8px;border:1px solid var(--fm-line);background:var(--fm-surface);display:flex;flex-direction:column;gap:2px;overflow:hidden;box-sizing:border-box}
+      #pg-faltasmed .fm-c .n{font-size:.76rem;font-weight:700;color:var(--fm-text)}
+      #pg-faltasmed .fm-c .w{font-size:.66rem;line-height:1.2;color:var(--fm-text2)}
+      #pg-faltasmed .fm-c .f{font-size:.62rem;line-height:1.15;color:inherit}
+      #pg-faltasmed .fm-c .h{position:absolute;top:5px;right:5px;font-size:.54rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#fff;background:var(--fm-navy);border-radius:4px;padding:2px 5px}
+      html[data-theme="dark"] #pg-faltasmed .fm-c .h{color:#0b1220}
+      #pg-faltasmed .fm-c.pad{border:0;background:var(--fm-subtle)}
+      #pg-faltasmed .fm-c.fora{opacity:.45}
+      #pg-faltasmed .fm-c.t-FOLGA{background:var(--m-folga);border-color:transparent}
+      #pg-faltasmed .fm-c.t-FOLGA .n,#pg-faltasmed .fm-c.t-FOLGA .w{color:var(--fm-muted)}
       #pg-faltasmed .fm-c.t-FERIADO{background:var(--m-fer);border-color:var(--m-fer-bd)}
-      #pg-faltasmed .fm-c.t-FERIADO .w,#pg-faltasmed .fm-c.t-FERIADO .n{color:var(--m-fer-tx)}
-      #pg-faltasmed .fm-c.t-FALTA{background:var(--m-falta);border-color:var(--m-falta)}
-      #pg-faltasmed .fm-c.t-MEDIDA{background:var(--m-med);border-color:var(--m-med)}
-      #pg-faltasmed .fm-c.fp{background:var(--m-fim);border-color:var(--m-fim)}
-      #pg-faltasmed .fm-c.t-FALTA .n,#pg-faltasmed .fm-c.t-FALTA .w,#pg-faltasmed .fm-c.t-MEDIDA .n,#pg-faltasmed .fm-c.t-MEDIDA .w,#pg-faltasmed .fm-c.fp .n,#pg-faltasmed .fm-c.fp .w{color:#fff}
-      #pg-faltasmed .fm-c.t-FALTA .f,#pg-faltasmed .fm-c.t-MEDIDA .f,#pg-faltasmed .fm-c.fp .f{color:#fff;opacity:.9}
-      #pg-faltasmed .fm-c.t-FALTA .h,#pg-faltasmed .fm-c.t-MEDIDA .h,#pg-faltasmed .fm-c.fp .h{background:#fff;color:var(--b7)}
-      #pg-faltasmed .fm-c.t-PRAZO:not(.fp){background:var(--m-prazo);border-color:var(--m-prazo-bd)}
-      #pg-faltasmed .fm-c.t-PRAZO:not(.fp) .w,#pg-faltasmed .fm-c.t-PRAZO:not(.fp) .n{color:var(--m-prazo-tx)}
+      #pg-faltasmed .fm-c.t-FERIADO .n,#pg-faltasmed .fm-c.t-FERIADO .w{color:var(--m-fer-tx)}
+      #pg-faltasmed .fm-c.t-FALTA{background:var(--m-falta-bg);border-color:var(--m-falta-bd);color:var(--m-falta-tx)}
+      #pg-faltasmed .fm-c.t-FALTA .n,#pg-faltasmed .fm-c.t-FALTA .w{color:var(--m-falta-tx)}
+      #pg-faltasmed .fm-c.t-RETORNO{border:2px solid var(--fm-brand)}
+      #pg-faltasmed .fm-c.t-RETORNO .w,#pg-faltasmed .fm-c.t-RETORNO_PREVISTO .w{color:var(--fm-text);font-weight:700}
+      #pg-faltasmed .fm-c.t-RETORNO_PREVISTO{border:2px dashed var(--fm-brand)}
+      #pg-faltasmed .fm-c.t-PRAZO{background:var(--m-prazo);border-color:var(--m-prazo-bd)}
+      #pg-faltasmed .fm-c.t-PRAZO .n,#pg-faltasmed .fm-c.t-PRAZO .w{color:var(--m-prazo-tx)}
+      #pg-faltasmed .fm-c.fp{background:var(--m-fim);border-color:var(--m-fim-bd)}
+      #pg-faltasmed .fm-c.fp .n,#pg-faltasmed .fm-c.fp .w{color:var(--m-fim-tx);font-weight:700}
+      #pg-faltasmed .fm-c.t-MEDIDA{background:var(--m-med);border-color:var(--m-med-bd)}
+      #pg-faltasmed .fm-c.t-MEDIDA .n,#pg-faltasmed .fm-c.t-MEDIDA .w{color:var(--m-med-tx)}
       #pg-faltasmed .fm-c.t-ABONADA{background:var(--m-abon);border-color:var(--m-abon-bd)}
-      #pg-faltasmed .fm-c.t-ABONADA .w,#pg-faltasmed .fm-c.t-ABONADA .n{color:var(--m-abon-tx)}
-      #pg-faltasmed .fm-c.t-RETORNO{border:2px solid var(--m-ret-bd)}
-      #pg-faltasmed .fm-c.t-RETORNO .w{color:var(--fm-text);font-weight:700}
-      #pg-faltasmed .fm-c.t-RETORNO_PREVISTO{border:2px dashed var(--m-ret-bd)}
-      #pg-faltasmed .fm-c.t-RETORNO_PREVISTO .w{color:var(--fm-text);font-weight:700}
+      #pg-faltasmed .fm-c.t-ABONADA .n,#pg-faltasmed .fm-c.t-ABONADA .w{color:var(--m-abon-tx)}
+      #pg-faltasmed .fm-c.hj{box-shadow:0 0 0 2px var(--fm-navy)}
+      #pg-faltasmed .fm-mes-p{font-size:.68rem;color:var(--fm-muted);margin-top:10px}
 
-      /* painel e feriados */
-      #pg-faltasmed .fm-h2{font-size:.86rem;font-weight:700;color:var(--fm-text);margin:0 0 3px}
-      #pg-faltasmed .fm-p{font-size:.72rem;color:var(--fm-muted);margin:0 0 12px;line-height:1.5}
-      #pg-faltasmed .fm-blk+.fm-blk{margin-top:26px}
-      #pg-faltasmed .fm-tbw{border:1px solid var(--fm-line);border-radius:12px;overflow:auto;background:var(--fm-surface);box-shadow:var(--fm-sh)}
-      #pg-faltasmed table.fm-tb{width:100%;border-collapse:collapse;font-size:.76rem}
-      #pg-faltasmed table.fm-tb th{text-align:left;font-size:.62rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--fm-muted);padding:10px 14px;border-bottom:1px solid var(--fm-line);background:var(--fm-subtle);white-space:nowrap}
-      #pg-faltasmed table.fm-tb td{padding:11px 14px;border-bottom:1px solid var(--fm-line2);color:var(--fm-text);vertical-align:middle}
-      #pg-faltasmed table.fm-tb tbody tr:last-child td{border-bottom:0}
-      #pg-faltasmed table.fm-tb tbody tr:hover td{background:var(--fm-subtle)}
-      #pg-faltasmed table.fm-tb .num{text-align:right;white-space:nowrap}
-      #pg-faltasmed .fm-tn{font-weight:600;color:var(--fm-text);white-space:nowrap}
-      #pg-faltasmed .fm-z{color:var(--g300)}
-      #pg-faltasmed .fm-cnt{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:22px;padding:0 7px;border-radius:11px;border:1px solid var(--kbd);background:var(--kbg);color:var(--ktx);font-weight:700;font-size:.7rem}
-      #pg-faltasmed .fm-pct{display:inline-flex;align-items:center;gap:8px;justify-content:flex-end}
-      #pg-faltasmed .fm-pct .trk{width:72px;height:6px;border-radius:3px;background:var(--g100);overflow:hidden}
+      /* painel da supervisão */
+      #pg-faltasmed .fm-ph{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+      #pg-faltasmed .fm-ph h3{font-size:1rem;font-weight:700;color:var(--fm-text);margin:0 auto 0 0}
+      #pg-faltasmed .fm-per{display:inline-flex;align-items:center;gap:6px}
+      #pg-faltasmed .fm-per b{min-width:170px;text-align:center;font-size:.82rem;font-weight:700;color:var(--fm-text)}
+      #pg-faltasmed .fm-resumo{display:flex;flex-wrap:wrap;gap:8px 22px;padding:12px 16px;margin-bottom:14px;border:1px solid var(--fm-line);border-radius:12px;background:var(--fm-surface);box-shadow:var(--fm-sh);font-size:.76rem;color:var(--fm-text2)}
+      #pg-faltasmed .fm-resumo span{display:inline-flex;align-items:center;gap:7px}
+      #pg-faltasmed .fm-resumo b{font-size:.96rem;font-weight:700;color:var(--fm-text)}
+      #pg-faltasmed .fm-resumo i{width:8px;height:8px;border-radius:50%;background:var(--k)}
+      #pg-faltasmed .fm-sups{background:var(--fm-surface);border:1px solid var(--fm-line);border-radius:12px;box-shadow:var(--fm-sh);overflow:hidden}
+      #pg-faltasmed .fm-sups-c,#pg-faltasmed .fm-sup{display:grid;grid-template-columns:22px minmax(170px,1.3fr) minmax(140px,1.4fr) repeat(4,minmax(64px,.5fr)) minmax(96px,.7fr);gap:14px;align-items:center;padding:0 18px}
+      #pg-faltasmed .fm-sups-c{padding-top:10px;padding-bottom:10px;border-bottom:1px solid var(--fm-line);font-size:.62rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--fm-muted)}
+      #pg-faltasmed .fm-sups-c .num,#pg-faltasmed .fm-sup .num{text-align:right}
+      #pg-faltasmed .fm-sup{padding-top:14px;padding-bottom:14px;border-bottom:1px solid var(--fm-line2);cursor:pointer;transition:background .12s}
+      #pg-faltasmed .fm-sup:hover{background:var(--fm-subtle)}
+      #pg-faltasmed .fm-sup.on{background:var(--fm-sel)}
+      #pg-faltasmed .fm-sup .fm-chev{transform:rotate(-90deg)}
+      #pg-faltasmed .fm-sup.on .fm-chev{transform:none;color:var(--fm-brand)}
+      #pg-faltasmed .fm-sup-n{font-size:.84rem;font-weight:700;color:var(--fm-text);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+      #pg-faltasmed .fm-top{font-size:.6rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#fff;background:#d92d20;border-radius:4px;padding:2px 6px}
+      #pg-faltasmed .fm-bar{display:flex;height:10px;border-radius:5px;background:var(--g100);overflow:hidden}
+      #pg-faltasmed .fm-bar i{display:block;height:100%;background:var(--k)}
+      #pg-faltasmed .fm-sup .v{font-size:.84rem;font-weight:700;color:var(--fm-text)}
+      #pg-faltasmed .fm-sup .v.big{font-size:1rem}
+      #pg-faltasmed .fm-sup .v.z{color:var(--g300);font-weight:500}
+      #pg-faltasmed .fm-sup .v.k{color:var(--ktx)}
+      #pg-faltasmed .fm-pct{display:inline-flex;align-items:center;gap:8px;justify-content:flex-end;width:100%}
+      #pg-faltasmed .fm-pct .trk{flex:1;max-width:60px;height:6px;border-radius:3px;background:var(--g100);overflow:hidden}
       #pg-faltasmed .fm-pct .trk i{display:block;height:100%;border-radius:3px;background:var(--k)}
-      #pg-faltasmed .fm-pct b{min-width:34px;text-align:right;font-weight:700}
-      #pg-faltasmed .fm-fer{border:1px solid var(--fm-line);border-radius:12px;background:var(--fm-surface);box-shadow:var(--fm-sh);max-width:640px;overflow:hidden}
-      #pg-faltasmed .fm-fer-r{display:flex;align-items:center;gap:14px;padding:10px 14px;border-bottom:1px solid var(--fm-line2)}
+      #pg-faltasmed .fm-pct b{min-width:34px;text-align:right;font-weight:700;font-size:.8rem;color:var(--fm-text)}
+      #pg-faltasmed .fm-sup-x{background:var(--fm-subtle);border-bottom:1px solid var(--fm-line);padding:6px 18px 16px 58px}
+      #pg-faltasmed .fm-pg-h{display:flex;align-items:center;gap:8px;margin:12px 0 6px;font-size:.74rem;font-weight:700;color:var(--ktx)}
+      #pg-faltasmed .fm-pg-h i{width:8px;height:8px;border-radius:50%;background:var(--k)}
+      #pg-faltasmed .fm-pg-h span{font-weight:500;color:var(--fm-muted)}
+      #pg-faltasmed .fm-pg-h button{margin-left:auto}
+      #pg-faltasmed .fm-sup-x .fm-lista{box-shadow:none}
+      @media (max-width:900px){
+        #pg-faltasmed .fm-sups-c{display:none}
+        #pg-faltasmed .fm-sup{grid-template-columns:22px 1fr auto;gap:6px 10px}
+        #pg-faltasmed .fm-sup>.fm-bar{grid-column:2 / 4}
+        #pg-faltasmed .fm-sup>.num{grid-column:2 / 4;text-align:left;font-size:.72rem}
+        #pg-faltasmed .fm-sup>.num::before{content:attr(data-l) ": ";color:var(--fm-muted);font-weight:500}
+        #pg-faltasmed .fm-sup-x{padding-left:12px;padding-right:12px}
+        #pg-faltasmed .fm-sup .fm-pct{width:auto;justify-content:flex-start;vertical-align:middle}
+        #pg-faltasmed .fm-sup .fm-pct .trk{width:60px;flex:none}
+      }
+
+      /* janela de feriados */
+      #pg-faltasmed .fm-modal{position:fixed;inset:0;z-index:900;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;padding:16px}
+      #pg-faltasmed .fm-modal-c{width:min(560px,100%);max-height:calc(100vh - 32px);overflow:auto;background:var(--fm-surface);border-radius:14px;box-shadow:0 20px 50px rgba(0,0,0,.3)}
+      #pg-faltasmed .fm-modal-h{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 10px}
+      #pg-faltasmed .fm-modal-h b{font-size:.96rem;color:var(--fm-text)}
+      #pg-faltasmed .fm-modal-c .fm-p{padding:0 18px}
+      #pg-faltasmed .fm-p{font-size:.74rem;color:var(--fm-muted);margin:0 0 12px;line-height:1.5}
+      #pg-faltasmed .fm-fer-r{display:flex;align-items:center;gap:14px;padding:10px 18px;border-top:1px solid var(--fm-line2)}
       #pg-faltasmed .fm-dt{flex:0 0 42px;border:1px solid var(--m-fer-bd);border-radius:8px;overflow:hidden;text-align:center;background:var(--fm-surface)}
-      #pg-faltasmed .fm-dt span{display:block;background:#7c3aed;color:#fff;font-size:.54rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 0}
+      #pg-faltasmed .fm-dt span{display:block;background:var(--fm-brand);color:#fff;font-size:.54rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 0}
       #pg-faltasmed .fm-dt b{display:block;font-size:.92rem;font-weight:700;color:var(--fm-text);padding:3px 0 4px}
       #pg-faltasmed .fm-fer-t{flex:1;min-width:0}
-      #pg-faltasmed .fm-fer-t b{display:block;font-size:.78rem;font-weight:600;color:var(--fm-text)}
-      #pg-faltasmed .fm-fer-t span{font-size:.68rem;color:var(--fm-muted)}
-      #pg-faltasmed .fm-fer-vz{padding:16px 14px;font-size:.74rem;color:var(--fm-muted);border-bottom:1px solid var(--fm-line2)}
-      #pg-faltasmed .fm-fer-add{display:flex;gap:8px;flex-wrap:wrap;padding:12px 14px;background:var(--fm-subtle)}
-      #pg-faltasmed .fm-fer-add .fm-in:nth-child(2){flex:1;min-width:180px}
+      #pg-faltasmed .fm-fer-t b{display:block;font-size:.8rem;font-weight:600;color:var(--fm-text)}
+      #pg-faltasmed .fm-fer-t span{font-size:.7rem;color:var(--fm-muted)}
+      #pg-faltasmed .fm-fer-vz{padding:16px 18px;font-size:.76rem;color:var(--fm-muted);border-top:1px solid var(--fm-line2)}
+      #pg-faltasmed .fm-fer-add{display:flex;gap:8px;flex-wrap:wrap;padding:14px 18px;background:var(--fm-subtle);border-top:1px solid var(--fm-line2)}
+      #pg-faltasmed .fm-fer-add .fm-in:nth-child(2){flex:1;min-width:160px}
 
       /* estado vazio */
       #pg-faltasmed .fm-empty{padding:48px 20px;text-align:center;border:1px dashed var(--fm-line);border-radius:12px;background:var(--fm-surface)}
       #pg-faltasmed .fm-empty .ic{width:44px;height:44px;margin:0 auto 12px;border-radius:50%;background:var(--g100);color:var(--fm-muted);display:flex;align-items:center;justify-content:center}
       #pg-faltasmed .fm-empty .ic svg{width:20px;height:20px}
-      #pg-faltasmed .fm-empty b{display:block;font-size:.84rem;font-weight:700;color:var(--fm-text)}
-      #pg-faltasmed .fm-empty span{display:block;font-size:.74rem;color:var(--fm-muted);margin-top:4px}
+      #pg-faltasmed .fm-empty b{display:block;font-size:.86rem;font-weight:700;color:var(--fm-text)}
+      #pg-faltasmed .fm-empty span{display:block;font-size:.76rem;color:var(--fm-muted);margin-top:4px}
+
+      @media (max-width:760px){
+        #pg-faltasmed .fm-cols{display:none}
+        #pg-faltasmed .fm-row,#pg-faltasmed .fm-row.p{grid-template-columns:1fr 22px;gap:6px 10px}
+        #pg-faltasmed .fm-row>.fm-cv{grid-column:1;font-size:.72rem}
+        #pg-faltasmed .fm-row>.fm-cv::before{content:attr(data-l) ": ";color:var(--fm-muted)}
+        #pg-faltasmed .fm-row>.fm-acao{grid-column:1}
+        #pg-faltasmed .fm-row>.fm-chev{grid-column:2;grid-row:1}
+        #pg-faltasmed .fm-det>div{padding:14px 12px 16px}
+        #pg-faltasmed .fm-big>div{padding:2px 8px}
+        #pg-faltasmed .fm-big dd{font-size:.9rem}
+        #pg-faltasmed .fm-mg{gap:2px}
+        #pg-faltasmed .fm-c{min-height:46px;padding:3px 4px}
+        #pg-faltasmed .fm-c .w{font-size:.5rem;overflow-wrap:anywhere}
+        #pg-faltasmed .fm-c .f,#pg-faltasmed .fm-c .h{font-size:.44rem}
+      }
     </style>
-    <div class="sec-hdr"><span class="sec-hdr-ic">⚖️</span><div><div class="sec-hdr-t">Faltas x Medidas</div><div class="sec-hdr-sub">Faltas injustificadas e o prazo para aplicar a medida disciplinar</div></div>
+    <div class="sec-hdr"><span class="sec-hdr-ic">⚖️</span><div><div class="sec-hdr-t">Faltas x Medidas</div><div class="sec-hdr-sub">Faltas injustificadas e prazo para aplicar a medida disciplinar</div></div>
       <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap"><button class="fm-btn" id="fm-bt-painel" onclick="FM.aba=FM.aba==='PAINEL'?'AGIR':'PAINEL';fmRender()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Painel dos supervisores</button><button class="fm-btn" onclick="fmLoad(true)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>Atualizar</button></div></div>
     <div id="fm-sec"><div class="fm-empty"><b>Carregando…</b></div></div>
   </div>
@@ -9544,7 +9602,7 @@ function audSalvar(){
 /* ═════════ FALTAS x MEDIDAS — prazo para a medida disciplinar ═════════
    Os casos vêm prontos do servidor (api/_faltas_regras.js): situação, prazo e
    o calendário do card. A tela só mostra; nenhuma regra é refeita aqui. */
-const FM={dados:null,aba:"AGIR",busca:"",sup:"",agrupar:false,aberto:{},mes:{},carregadoEm:0,vg:null,vgEm:0};
+const FM={dados:null,aba:"AGIR",busca:"",sup:"",agrupar:false,aberto:{},mes:{},per:null,supAberto:{},resolvAberto:{},fer:false,carregadoEm:0,vg:null,vgEm:0};
 // Quatro abas, com nome de ação. O painel dos supervisores fica num botão à parte.
 const FM_ABAS=[
   {id:"AGIR",rot:"Fazer agora",sit:["PRAZO_VENCIDO","NO_PRAZO"]},
@@ -9552,11 +9610,14 @@ const FM_ABAS=[
   {id:"ESPERA",rot:"Esperando voltar",sit:["AGUARDANDO_RETORNO"]},
   {id:"RESOLVIDAS",rot:"Resolvidas",sit:["TRATADA","TRATADA_FORA_DO_PRAZO"],abonadas:true}
 ];
+const FM_ABERTAS=["PRAZO_VENCIDO","NO_PRAZO","AGUARDANDO_RETORNO","COORDENACAO","VERIFICAR"];
 const FM_DIA=["dom","seg","ter","qua","qui","sex","sáb"];
+const FM_DIA_C=["domingo","segunda","terça","quarta","quinta","sexta","sábado"];
 const FM_DIA_L=["domingo","segunda-feira","terça-feira","quarta-feira","quinta-feira","sexta-feira","sábado"];
 const FM_MES=["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
-const FM_MES_L=["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
-const FM_ABONO={A:"Abonada",J:"Justificada",L:"Licença"};
+const FM_MES_L=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+// o que cobriu a falta abonada, pelo código da Ficha de Presença
+const FM_ABONO={A:"Atestado",J:"Justificativa",L:"Licença"};
 // palavra escrita dentro de cada dia do calendário (assim não precisa de legenda)
 const FM_PALAVRA={TRABALHOU:"trabalhou",FOLGA:"folga",FERIADO:"feriado",FALTA:"faltou",ABONADA:"abonada",RETORNO:"voltou",RETORNO_PREVISTO:"deve voltar",PRAZO:"prazo",MEDIDA:"medida"};
 const _fmSvg=p=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
@@ -9566,11 +9627,18 @@ const FM_IC={
   chev:_fmSvg('<path d="m6 9 6 6 6-6"/>'),
   ant:_fmSvg('<path d="m15 18-6-6 6-6"/>'),
   prox:_fmSvg('<path d="m9 18 6-6-6-6"/>'),
-  grupo:_fmSvg('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>')
+  cal:_fmSvg('<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>'),
+  grupo:_fmSvg('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>'),
+  x:_fmSvg('<path d="M18 6 6 18M6 6l12 12"/>')
 };
+const _fmP2=n=>String(n).padStart(2,"0");
 function fmDd(d){if(!d)return"—";const p=String(d).slice(0,10).split("-");return p[2]+"/"+p[1];}
-function fmDdS(d){if(!d)return"—";const x=new Date(String(d).slice(0,10)+"T12:00:00Z");return FM_DIA[x.getUTCDay()]+" "+fmDd(d);}
+function fmDdA(d){if(!d)return"—";const p=String(d).slice(0,10).split("-");return p[2]+"/"+p[1]+"/"+p[0];}
+function fmSem(d){return new Date(String(d).slice(0,10)+"T12:00:00Z").getUTCDay();}
+function fmDdS(d){return d?FM_DIA[fmSem(d)]+" "+fmDd(d):"—";}
+function fmDdL(d){return d?FM_DIA_C[fmSem(d)]+", "+fmDd(d):"—";}
 function fmDif(a,b){return Math.round((Date.parse(String(b).slice(0,10)+"T12:00:00Z")-Date.parse(String(a).slice(0,10)+"T12:00:00Z"))/864e5);}
+function fmLista(l){l=l||[];return l.length<2?l.join(""):l.slice(0,-1).join(", ")+" e "+l[l.length-1];}
 function fmMedidaTxt(m){
   if(!m)return"";const t=String(m.TIPO||"").toUpperCase(),g=String(m.GRAU||"").toUpperCase();
   if(t.indexOf("SUSPENS")===0)return"Suspensão"+(Number(m.DIAS||m.dias)?" de "+Number(m.DIAS||m.dias)+" dia(s)":"");
@@ -9596,39 +9664,49 @@ function fmFiltra(c){
   if(!q)return true;
   return [c.nome,c.re,c.posto,c.supervisor].some(v=>String(v==null?"":v).toLowerCase().indexOf(q)>=0);
 }
-/* A frase do que fazer, em palavras e com uma das 5 cores:
-   vermelho = atrasado · laranja = prazo correndo · cinza = esperando ·
+/* A frase do prazo, em palavras e com uma das 5 cores:
+   vermelho = atrasado · amarelo = prazo correndo · cinza = esperando ·
    roxo = coordenação · verde = resolvido. */
 function fmAcao(c){
   const hoje=FM.dados.hoje;
   switch(c.situacao){
-    case"PRAZO_VENCIDO":{const n=fmDif(c.prazoFim,hoje);return{tom:"da",t:`Atrasada há ${n} dia${n===1?"":"s"}`,s:"aplicar no mínimo advertência"};}
-    case"NO_PRAZO":{const n=fmDif(hoje,c.prazoFim);return{tom:"or",t:n<=0?"Vence hoje":n===1?`Vence amanhã (${fmDdS(c.prazoFim)})`:`Vence ${fmDdS(c.prazoFim)}`,s:"aplicar a medida disciplinar"};}
-    case"AGUARDANDO_RETORNO":return{tom:"gr",t:(c.retornoPrevisto&&c.retornoPrevisto<hoje?"Deveria ter voltado ":"Volta ao trabalho ")+fmDdS(c.retornoPrevisto),s:"o prazo começa quando a pessoa voltar"};
-    case"VERIFICAR":return{tom:"vi",t:"Medida com a pessoa ausente",s:"conferir a data da medida no SAR2G"};
+    case"PRAZO_VENCIDO":{const n=fmDif(c.prazoFim,hoje);return{tom:"da",t:`Atrasada há ${n} dia${n===1?"":"s"}`,s:"Aplicar no mínimo advertência"};}
+    case"NO_PRAZO":{const n=fmDif(hoje,c.prazoFim);return{tom:"am",t:n<=0?"Vence hoje":n===1?"Vence amanhã":`Vence ${fmDdS(c.prazoFim)}`,s:"Aplicar a medida disciplinar"};}
+    case"AGUARDANDO_RETORNO":return{tom:"gr",t:(c.retornoPrevisto&&c.retornoPrevisto<hoje?"Deveria ter voltado ":"Volta ao trabalho ")+fmDdS(c.retornoPrevisto),s:"O prazo começa quando a pessoa voltar"};
+    case"VERIFICAR":return{tom:"vi",t:"Medida com a pessoa ausente",s:"Conferir a data da medida no SAR2G"};
     case"COORDENACAO":
-      if(/ABANDONO/i.test(c.posto||"")||/ABANDONO/i.test(c.motivo||""))return{tom:"vi",t:"Abandono",s:"marcado como abandono no SAR2G"};
+      if(/ABANDONO/i.test(c.posto||"")||/ABANDONO/i.test(c.motivo||""))return{tom:"vi",t:"Abandono",s:"Marcado como abandono no SAR2G"};
       if(/^Continua/i.test(c.motivo||""))return{tom:"vi",t:"Continua faltando",s:`${(c.faltas||[]).length} faltas sem voltar ao trabalho`};
       return{tom:"vi",t:"Coordenação decide",s:""};
-    case"TRATADA":return{tom:"ok",t:`${fmMedidaTxt(c.medida)} em ${fmDd(c.medida&&c.medida.DATA)}`,s:"dentro do prazo"};
-    case"TRATADA_FORA_DO_PRAZO":return{tom:"ok",t:`${fmMedidaTxt(c.medida)} em ${fmDd(c.medida&&c.medida.DATA)}`,s:"fora do prazo"};
+    case"TRATADA":return{tom:"ok",t:`${fmMedidaTxt(c.medida)} em ${fmDd(c.medida&&c.medida.DATA)}`,s:"Dentro do prazo"};
+    case"TRATADA_FORA_DO_PRAZO":return{tom:"ok",t:`${fmMedidaTxt(c.medida)} em ${fmDd(c.medida&&c.medida.DATA)}`,s:"Fora do prazo"};
   }
   return{tom:"gr",t:c.situacao,s:""};
 }
 function fmChave(c){return c.re+"|"+c.primeiraFalta;}
+/* Faltas abonadas, juntadas pelo período que o atestado cobriu (vem pronto do
+   servidor, lido da Ficha de Presença). */
+function fmAbonos(){
+  const j=FM.dados;
+  return j.abonos||(j.abonadas||[]).map(a=>({...a,faltas:[a.data],inicio:a.data,fim:a.data,dias:1}));
+}
+function fmItemAbono(a){
+  const rot=FM_ABONO[a.codigo]||"Abono",faixa=a.inicio===a.fim?fmDd(a.inicio):`${fmDd(a.inicio)} a ${fmDd(a.fim)}`;
+  return{k:"ab|"+a.re+"|"+a.inicio,nome:a.nome,re:a.re,cargo:a.cargo,posto:a.posto,supervisor:a.supervisor,ord:String(a.fim||""),
+    acao:{tom:"ok",t:`${rot} cobriu ${faixa} (${a.dias} dia${a.dias===1?"":"s"})`,s:`Falta${a.faltas.length>1?"s":""} de ${fmLista(a.faltas.map(fmDdS))}`}};
+}
+function fmItemCaso(c,pref){return{k:(pref||"")+fmChave(c),caso:c,nome:c.nome,re:c.re,cargo:c.cargo,posto:c.posto,supervisor:c.supervisor,acao:fmAcao(c)};}
 /* Itens da aba: casos (clicáveis) e, em Resolvidas, as abonadas. */
 function fmItens(aba){
   const j=FM.dados;
-  const casos=j.casos.filter(c=>aba.sit.indexOf(c.situacao)>=0&&fmFiltra(c));
   const ordem={
     AGIR:c=>(c.situacao==="PRAZO_VENCIDO"?"0":"1")+c.prazoFim,
     COORD:c=>(c.situacao==="VERIFICAR"?"0":"1")+c.primeiraFalta,
     ESPERA:c=>c.retornoPrevisto||c.primeiraFalta,
     RESOLVIDAS:c=>c.medida?c.medida.DATA:""
   }[aba.id];
-  let it=casos.map(c=>({k:fmChave(c),caso:c,nome:c.nome,re:c.re,cargo:c.cargo,posto:c.posto,supervisor:c.supervisor,acao:fmAcao(c),ord:String(ordem(c)||"")}));
-  if(aba.abonadas)it=it.concat(j.abonadas.filter(fmFiltra).map(a=>({k:"ab|"+a.re+"|"+a.data,nome:a.nome,re:a.re,cargo:a.cargo,posto:a.posto,supervisor:a.supervisor,ord:String(a.data||""),
-    acao:{tom:"ok",t:FM_ABONO[a.codigo]||a.codigo,s:`falta de ${fmDdS(a.data)} saiu da cobrança`}})));
+  let it=j.casos.filter(c=>aba.sit.indexOf(c.situacao)>=0&&fmFiltra(c)).map(c=>Object.assign(fmItemCaso(c),{ord:String(ordem(c)||"")}));
+  if(aba.abonadas)it=it.concat(fmAbonos().filter(fmFiltra).map(fmItemAbono));
   it.sort((a,b)=>a.ord.localeCompare(b.ord));
   if(aba.id==="RESOLVIDAS")it.reverse();
   return it;
@@ -9636,11 +9714,12 @@ function fmItens(aba){
 function fmRender(){
   const box=document.getElementById("fm-sec"),j=FM.dados;if(!box||!j)return;
   const bt=document.getElementById("fm-bt-painel");if(bt)bt.classList.toggle("on",FM.aba==="PAINEL");
-  const sups=[...new Set(j.casos.map(c=>c.supervisor).concat(j.abonadas.map(a=>a.supervisor)).filter(Boolean))].sort();
+  const sups=[...new Set(j.casos.map(c=>c.supervisor).concat(fmAbonos().map(a=>a.supervisor)).filter(Boolean))].sort();
   const selSup=`<select class="fm-in" onchange="FM.sup=this.value;fmRender()"><option value="">Todos os supervisores</option>${sups.map(s=>`<option${s===FM.sup?" selected":""}>${_esc(s)}</option>`).join("")}</select>`;
-  const base=`<div class="fm-base">Dados da planilha de <b>${fmDdS(j.dataBase)}</b> · hoje é <b>${fmDdS(j.hoje)}</b></div>`;
+  const base=`<div class="fm-base">Dados da planilha: <b>${fmDdA(j.dataBase)}</b><i>|</i>Hoje: <b>${FM_DIA_C[fmSem(j.hoje)]}, ${fmDdA(j.hoje)}</b></div>`;
+  const modal=FM.fer?fmFeriadosModal():"";
   if(FM.aba==="PAINEL"){
-    box.innerHTML=base+`<div class="fm-tool"><button class="fm-btn" onclick="FM.aba='AGIR';fmRender()">${FM_IC.ant}Voltar para a lista</button>${selSup}</div><div id="fm-corpo"></div>`;
+    box.innerHTML=base+`<div id="fm-corpo"></div>`+modal;
     fmRenderCorpo();return;
   }
   const abas=FM_ABAS.map(a=>{
@@ -9649,7 +9728,7 @@ function fmRender(){
   }).join("");
   box.innerHTML=base+`<div class="fm-tabs" role="tablist">${abas}</div>`+
     `<div class="fm-tool"><label class="fm-search">${FM_IC.busca}<input class="fm-in" id="fm-busca" placeholder="Buscar por nome, RE ou posto" value="${_esc(FM.busca)}" oninput="FM.busca=this.value;fmRenderCorpo()"></label>${selSup}`+
-    `<button class="fm-btn${FM.agrupar?" on":""}" aria-pressed="${FM.agrupar}" onclick="FM.agrupar=!FM.agrupar;fmRender()">${FM_IC.grupo}Agrupar por supervisor</button><span class="fm-count" id="fm-count"></span></div><div id="fm-corpo"></div>`;
+    `<button class="fm-btn${FM.agrupar?" on":""}" aria-pressed="${FM.agrupar}" onclick="FM.agrupar=!FM.agrupar;fmRender()">${FM_IC.grupo}Agrupar por supervisor</button><span class="fm-count" id="fm-count"></span></div><div id="fm-corpo"></div>`+modal;
   fmRenderCorpo();
 }
 function fmRenderCorpo(){
@@ -9660,62 +9739,79 @@ function fmRenderCorpo(){
   document.querySelectorAll("#pg-faltasmed .fm-tab").forEach(t=>{const n=t.querySelector(".n"),def=FM_ABAS.find(x=>x.id===t.dataset.a);if(n&&def)n.textContent=fmItens(def).length;});
   const cnt=document.getElementById("fm-count");if(cnt)cnt.textContent=it.length+(it.length===1?" pessoa":" pessoas");
   if(!it.length){el.innerHTML=fmVazio(FM.busca||FM.sup?"Nada encontrado com esse filtro":{AGIR:"Nenhuma medida para aplicar agora",COORD:"Nada para a coordenação decidir",ESPERA:"Ninguém aguardando retorno",RESOLVIDAS:"Nenhum caso resolvido ainda"}[aba.id],aba.id==="AGIR"&&!FM.busca&&!FM.sup?"Tudo em dia.":"");return;}
-  const cols='<div class="fm-cols"><span>Colaborador</span><span>Posto</span><span>Supervisor</span><span>O que fazer</span><span></span></div>';
   let h="";
   if(FM.agrupar){
     const g={};it.forEach(x=>{(g[x.supervisor||"Sem supervisor"]=g[x.supervisor||"Sem supervisor"]||[]).push(x);});
-    Object.keys(g).sort().forEach(s=>{h+=`<div class="fm-grp">${_esc(s)}<span>${g[s].length} ${g[s].length===1?"pessoa":"pessoas"}</span></div>`+g[s].map(fmLinhaItem).join("");});
-  }else h=it.map(fmLinhaItem).join("");
-  const dica=aba.id!=="RESOLVIDAS"||it.some(x=>x.caso)?'<p class="fm-dica">Clique em uma pessoa para ver o calendário e os detalhes.</p>':"";
-  el.innerHTML=dica+'<div class="fm-lista">'+cols+h+'</div>';
+    Object.keys(g).sort().forEach(s=>{h+=`<div class="fm-grp">${_esc(s)}<span>${g[s].length} ${g[s].length===1?"pessoa":"pessoas"}</span></div>`+g[s].map(x=>fmLinhaItem(x)).join("");});
+  }else h=it.map(x=>fmLinhaItem(x)).join("");
+  const dica=it.some(x=>x.caso)?'<p class="fm-dica">Selecione uma pessoa para ver o calendário e os detalhes.</p>':"";
+  el.innerHTML=dica+'<div class="fm-lista">'+fmCols()+h+'</div>';
 }
-function fmLinhaItem(x){
+function fmCols(semSup){return `<div class="fm-cols${semSup?" p":""}"><span>Colaborador</span><span>Posto</span>${semSup?"":"<span>Supervisor</span>"}<span>Prazo e orientação</span><span></span></div>`;}
+function fmLinhaItem(x,semSup){
   const a=x.acao,aberto=x.caso&&FM.aberto[x.k];
   const clique=x.caso?` role="button" tabindex="0" aria-expanded="${!!aberto}" data-k="${_esc(x.k)}" onclick="fmAbrir(this.dataset.k)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();fmAbrir(this.dataset.k)}"`:"";
-  return `<div class="fm-row k-${a.tom}${aberto?" on":""}${x.caso?"":" fixa"}"${clique}>`+
-    `<div style="min-width:0"><div class="fm-nm" title="${_esc(x.nome)}">${_esc(x.nome)}</div><div class="fm-sb"><span class="fm-re">RE ${_esc(x.re)}</span>${_esc(x.cargo||"")}</div></div>`+
+  return `<div class="fm-row k-${a.tom}${semSup?" p":""}${aberto?" on":""}${x.caso?"":" fixa"}"${clique}>`+
+    `<div style="min-width:0"><div class="fm-nm" title="${_esc(x.nome)}">${_esc(x.nome)}</div><div class="fm-sb"><span class="fm-re">RE ${_esc(x.re)}</span>${_esc(x.cargo||"")}${x.tag?`<span class="fm-tg">${x.tag}</span>`:""}</div></div>`+
     `<div class="fm-cv" data-l="Posto" title="${_esc(x.posto||"")}">${_esc(x.posto||"—")}</div>`+
-    `<div class="fm-cv" data-l="Supervisor" title="${_esc(x.supervisor||"")}">${_esc(x.supervisor||"—")}</div>`+
+    (semSup?"":`<div class="fm-cv" data-l="Supervisor" title="${_esc(x.supervisor||"")}">${_esc(x.supervisor||"—")}</div>`)+
     `<div class="fm-acao"><b><i></i>${_esc(a.t)}</b>${a.s?`<span>${_esc(a.s)}</span>`:""}</div>`+
     `${x.caso?`<span class="fm-chev">${FM_IC.chev}</span>`:"<span></span>"}</div>`+
     (aberto?fmDetalhe(x.caso):"");
 }
 function fmAbrir(k){FM.aberto[k]=!FM.aberto[k];fmRenderCorpo();}
-/* Detalhe: o que aconteceu, as datas, a medida e o calendário do mês. */
+/* O aviso do topo do detalhe: o prazo em uma frase. */
+function fmAviso(c){
+  const hoje=FM.dados.hoje,a=fmAcao(c);
+  let t;
+  if(c.situacao==="NO_PRAZO"){const n=fmDif(hoje,c.prazoFim);t=n<=0?`O prazo deste caso vence hoje, ${fmDd(c.prazoFim)}.`:n===1?`O prazo deste caso vence amanhã, ${fmDd(c.prazoFim)}.`:`O prazo deste caso vence ${fmDdL(c.prazoFim)}.`;}
+  else if(c.situacao==="PRAZO_VENCIDO")t=`Prazo vencido há ${fmDif(c.prazoFim,hoje)} dia(s), em ${fmDd(c.prazoFim)}. Aplicar no mínimo advertência.`;
+  else if(c.situacao==="AGUARDANDO_RETORNO")t=`Aguardando retorno, previsto para ${fmDdL(c.retornoPrevisto)}. O prazo começa quando a pessoa voltar.`;
+  else if(c.situacao==="VERIFICAR")t="Medida lançada enquanto a pessoa estava ausente. Conferir no SAR2G.";
+  else if(c.situacao==="TRATADA")t=`Tratada dentro do prazo: ${fmMedidaTxt(c.medida)} em ${fmDd(c.medida.DATA)}.`;
+  else if(c.situacao==="TRATADA_FORA_DO_PRAZO")t=`Tratada fora do prazo: ${fmMedidaTxt(c.medida)} em ${fmDd(c.medida.DATA)} (o prazo acabava em ${fmDd(c.prazoFim)}).`;
+  else t=a.t+(a.s?": "+a.s.charAt(0).toLowerCase()+a.s.slice(1)+".":".");
+  return `<div class="fm-aviso k-${a.tom}">${FM_IC.cal}<span>${_esc(t)}</span></div>`;
+}
+/* Detalhe: aviso, o que aconteceu, 3 datas principais, dados, medida e o calendário. */
 function fmDetalhe(c){
-  const j=FM.dados,un=c.familia==="12X36"?"2 plantões":"3 dias de trabalho";
-  const faltou="Faltou em "+(c.faltas||[]).map(fmDdS).join(", ")+".";
-  let txt;
-  if(c.situacao==="NO_PRAZO")txt=`${faltou} Voltou em ${fmDdS(c.retorno)}. O supervisor tem até <b>${fmDdS(c.prazoFim)}</b> para aplicar a medida (dias do prazo: ${(c.prazo||[]).map(fmDdS).join(", ")}).`;
-  else if(c.situacao==="AGUARDANDO_RETORNO")txt=`${faltou} Deve voltar em <b>${fmDdS(c.retornoPrevisto)}</b>. A partir do retorno, o supervisor tem ${un} para aplicar a medida.`;
-  else if(c.situacao==="VERIFICAR"||/^Continua/i.test(c.motivo||""))txt=_esc(fmMaiusc(c.motivo));
-  else txt=`${faltou} ${_esc(fmMaiusc(c.motivo))}`;
-  const fato=(l,v)=>`<div><dt>${l}</dt><dd>${v}</dd></div>`;
-  const fatos=fato("Faltou",(c.faltas||[]).map(fmDd).join(", "))+
-    (c.retorno?fato("Voltou",fmDdS(c.retorno)):fato("Deve voltar",c.retornoPrevisto?fmDdS(c.retornoPrevisto):"não voltou"))+
-    fato("Prazo até",c.prazoFim?fmDdS(c.prazoFim):c.situacao==="AGUARDANDO_RETORNO"?"começa no retorno":"—")+
-    fato("Medida",c.medida?fmMedidaTxt(c.medida)+" em "+fmDd(c.medida.DATA):"não aplicada")+
-    fato("Escala",_esc(c.escala||"—"))+fato("Cargo",_esc(c.cargo||"—"));
+  const j=FM.dados,fl=c.faltas||[];
+  let frase=`Faltou em ${fmLista(fl.map(fmDdL))}.`;
+  if(c.retorno)frase+=` Retornou em ${fmDdL(c.retorno)}.`;
+  else if(c.retornoPrevisto)frase+=` Deve retornar em ${fmDdL(c.retornoPrevisto)}.`;
+  if(c.prazoFim)frase+=` Prazo até ${fmDdL(c.prazoFim)}.`;
+  if(["COORDENACAO","VERIFICAR"].indexOf(c.situacao)>=0&&c.motivo)frase=/^Continua/i.test(c.motivo)||c.situacao==="VERIFICAR"?fmMaiusc(c.motivo):frase+" "+fmMaiusc(c.motivo);
+  const big=`<dl class="fm-big"><div><dt>Falta</dt><dd>${fmDd(c.primeiraFalta)}${fl.length>1?`<small>+${fl.length-1}</small>`:""}</dd></div>`+
+    `<div><dt>${c.retorno||!c.retornoPrevisto?"Retorno":"Retorno previsto"}</dt><dd>${c.retorno?fmDd(c.retorno):c.retornoPrevisto?fmDd(c.retornoPrevisto):"—"}</dd></div>`+
+    `<div><dt>Prazo até</dt><dd>${c.prazoFim?fmDd(c.prazoFim):"—"}</dd></div></dl>`;
+  const outras=((j.historico||{})[c.re]||[]).filter(h=>!c.medida||h.chave!==c.medida.chave);
+  const kv=[["Medida",c.medida?fmMedidaTxt(c.medida)+" em "+fmDd(c.medida.DATA):"Não aplicada"],["Escala",c.escala||"—"],["Cargo",c.cargo||"—"],
+    ["Dias do prazo",(c.prazo||[]).length?fmLista(c.prazo.map(fmDd)):(c.situacao==="AGUARDANDO_RETORNO"?"Começa no retorno":"—")]];
+  if(fl.length>1)kv.push(["Faltas no caso",fmLista(fl.map(fmDd))]);
+  if(outras.length)kv.push(["Medidas anteriores",outras.map(h=>fmMedidaTxt({TIPO:h.tipo,GRAU:h.grau,DIAS:h.dias})+" em "+fmDd(h.data)).join(" · ")]);
   let med="";
   if(c.medida){
     const m=c.medida,ch=_esc(m.chave);
     const motivo=j.pode_editar
-      ?`<textarea class="fm-ta" id="fm-mt-${ch}" placeholder="Escreva aqui o motivo da medida" onclick="event.stopPropagation()">${_esc(m.motivo||"")}</textarea><div class="fm-md-f"><span class="fm-edit">${m.motivo_editado_por?`Editado por ${_esc(m.motivo_editado_por)} em ${fmDd(m.motivo_editado_em)}`:"Fica salvo no JARVIS"}</span><button class="fm-btn fm-pri sm" data-ch="${ch}" onclick="fmSalvarMotivo(this.dataset.ch,this)">Salvar motivo</button></div>`
+      ?`<textarea class="fm-ta" id="fm-mt-${ch}" placeholder="Escreva aqui o motivo da medida">${_esc(m.motivo||"")}</textarea><div class="fm-md-f"><span class="fm-edit">${m.motivo_editado_por?`Editado por ${_esc(m.motivo_editado_por)} em ${fmDd(m.motivo_editado_em)}`:"Fica salvo no JARVIS"}</span><button class="fm-btn fm-pri sm" data-ch="${ch}" onclick="fmSalvarMotivo(this.dataset.ch,this)">Salvar motivo</button></div>`
       :`<div class="fm-ro">${m.motivo?_esc(m.motivo):'<span class="fm-edit">Sem motivo registrado</span>'}</div>`;
-    med=`<span class="fm-lbl">Medida aplicada</span><div class="fm-md"><div class="fm-md-h"><span class="fm-tag k-ok">${fmMedidaTxt(m)}</span><span>${fmDdS(m.DATA)}</span>${m.MOTIVO?`<span class="s">SAR2G: ${_esc(m.MOTIVO)}</span>`:""}</div>${motivo}</div>`;
+    med=`<div class="fm-md"><div class="fm-md-h"><b>Motivo da medida</b><span class="fm-tag k-ok">${fmMedidaTxt(m)}</span>${m.MOTIVO?`<span class="s">SAR2G: ${_esc(m.MOTIVO)}</span>`:""}</div>${motivo}</div>`;
   }
-  const outras=((j.historico||{})[c.re]||[]).filter(h=>!c.medida||h.chave!==c.medida.chave);
-  const hist=outras.length?`<div class="fm-hist"><b>Medidas anteriores:</b> ${outras.map(h=>fmMedidaTxt({TIPO:h.tipo,GRAU:h.grau,DIAS:h.dias})+" em "+fmDd(h.data)).join(" · ")}</div>`:"";
-  return `<div class="fm-det"><div><span class="fm-lbl">O que aconteceu</span><p class="fm-txt">${txt}</p><dl class="fm-fatos">${fatos}</dl>${med}${hist}</div><div>${fmMes(c)}</div></div>`;
+  const leg=`<div class="fm-mleg"><div><i style="background:var(--m-falta-bg);border:1.5px solid var(--m-falta-bd)"></i><b>Falta</b><span>Dia de ausência</span></div>`+
+    `<div><i style="border:2px solid var(--fm-brand)"></i><b>Retorno</b><span>Dia de retorno</span></div>`+
+    `<div><i style="background:var(--m-fim);border:1px solid var(--m-fim-bd)"></i><b>Prazo</b><span>Dias do prazo para aplicar a medida</span></div></div>`;
+  return `<div class="fm-det"><div><h4 class="fm-h3">Detalhes da ocorrência</h4>${fmAviso(c)}<p class="fm-frase">${_esc(frase)}</p>${big}`+
+    `<dl class="fm-kv">${kv.map(([l,v])=>`<dt>${l}</dt><dd>${_esc(v)}</dd>`).join("")}</dl>${med}${leg}</div>`+
+    `<div><h4 class="fm-h3">Calendário da ocorrência</h4>${fmMes(c)}</div></div>`;
 }
 /* Calendário do mês (dia 1 ao último), com a palavra de cada dia, a folha
-   (26 → 25) destacada e as setas para o mês anterior e o seguinte. */
+   (26 → 25) marcada e as setas para o mês anterior e o seguinte. */
 function fmMes(c){
   const cal=c.calendario||[];if(!cal.length)return"";
   const k=fmChave(c);
   const meses=[...new Set(cal.map(d=>d.data.slice(0,7)))];
   const foco=String(c.prazoFim||c.retornoPrevisto||c.retorno||c.primeiraFalta).slice(0,7);
-  let mes=FM.mes[k]&&meses.indexOf(FM.mes[k])>=0?FM.mes[k]:(meses.indexOf(foco)>=0?foco:meses[0]);
+  const mes=FM.mes[k]&&meses.indexOf(FM.mes[k])>=0?FM.mes[k]:(meses.indexOf(foco)>=0?foco:meses[0]);
   const i=meses.indexOf(mes),dias=cal.filter(d=>d.data.slice(0,7)===mes);
   const [a,m]=mes.split("-").map(Number);
   const f=c.folha||{};
@@ -9728,32 +9824,115 @@ function fmMes(c){
     if(d.medida&&tipo!=="MEDIDA")w+=(w?" · ":"")+"medida";
     if(d.feriado&&tipo!=="FERIADO")w+=(w?" · ":"")+"feriado";
     const marca=d.data===f.fim?"fecha a folha":d.data===f.inicio?"abre a folha":"";
-    const cls=["fm-c","t-"+(tipo||"X"),fp?"fp":"",d.hoje?"hj":"",!d.naFolha&&!evento?"fora":"",d.data===f.fim?"ffim":"",d.data===f.inicio?"fini":""].filter(Boolean).join(" ");
-    g+=`<div class="${cls}" title="${_esc(FM_DIA_L[d.semana]+", "+fmDd(d.data)+(w?" · "+w:""))}"><span class="n">${d.dia}</span>${d.hoje?'<span class="h">hoje</span>':""}${w?`<span class="w">${w}</span>`:""}${marca?`<span class="f">${marca}</span>`:""}</div>`;
+    const cls=["fm-c","t-"+(tipo||"X"),fp?"fp":"",d.hoje?"hj":"",!d.naFolha&&!evento?"fora":""].filter(Boolean).join(" ");
+    g+=`<div class="${cls}" title="${_esc(FM_DIA_L[d.semana]+", "+fmDd(d.data)+(w?" · "+w:""))}"><span class="n">${d.dia}</span>${d.hoje?'<span class="h">Hoje</span>':""}${w?`<span class="w">${w}</span>`:""}${marca?`<span class="f">${marca}</span>`:""}</div>`;
   });
-  return `<span class="fm-lbl">Calendário</span><div class="fm-mes"><div class="fm-mes-h">`+
-    `<button class="fm-btn sm" aria-label="Mês anterior" ${i<=0?"disabled":""} data-k="${_esc(k)}" onclick="event.stopPropagation();fmMesIr(this.dataset.k,'${meses[i-1]||""}')">${FM_IC.ant}</button>`+
-    `<b>${fmMaiusc(FM_MES_L[m-1])} de ${a}</b>`+
-    `<button class="fm-btn sm" aria-label="Próximo mês" ${i>=meses.length-1?"disabled":""} data-k="${_esc(k)}" onclick="event.stopPropagation();fmMesIr(this.dataset.k,'${meses[i+1]||""}')">${FM_IC.prox}</button></div>`+
-    `<div class="fm-mes-f">Folha deste caso: <b>${fmDd(f.inicio)} a ${fmDd(f.fim)}</b> · dias fora da folha ficam apagados</div><div class="fm-mg">${g}</div></div>`;
+  const resto=(7-(dias[0].semana+dias.length)%7)%7;
+  for(let p=0;p<resto;p++)g+='<div class="fm-c pad"></div>';
+  return `<div class="fm-mes-h">`+
+    `<button class="fm-btn ic" aria-label="Mês anterior" ${i<=0?"disabled":""} data-k="${_esc(k)}" onclick="fmMesIr(this.dataset.k,'${meses[i-1]||""}')">${FM_IC.ant}</button>`+
+    `<div><b>${FM_MES_L[m-1]} de ${a}</b><span>Folha: ${fmDd(f.inicio)} a ${fmDd(f.fim)}</span></div>`+
+    `<button class="fm-btn ic" aria-label="Próximo mês" ${i>=meses.length-1?"disabled":""} data-k="${_esc(k)}" onclick="fmMesIr(this.dataset.k,'${meses[i+1]||""}')">${FM_IC.prox}</button></div>`+
+    `<div class="fm-mg">${g}</div><p class="fm-mes-p">Os dias fora da folha deste caso ficam apagados.</p>`;
 }
 function fmMesIr(k,mes){if(!mes)return;FM.mes[k]=mes;fmRenderCorpo();}
+
+/* ═════════ PAINEL DA SUPERVISÃO ═════════
+   Por período (modo folha 26 → 25 ou modo mês 1 → 31): quem tem mais casos
+   para resolver, e cada supervisor aberto com os colaboradores agrupados pela
+   data em que o prazo vence. */
+function fmPerPadrao(modo){
+  const [a,m,d]=FM.dados.hoje.split("-").map(Number);
+  if(modo==="mes")return{modo,a,m};
+  return d>=26?(m===12?{modo,a:a+1,m:1}:{modo,a,m:m+1}):{modo,a,m}; // folha = mês em que ela fecha (dia 25)
+}
+function fmPeriodo(){
+  const p=FM.per||(FM.per=fmPerPadrao("folha"));
+  const ult=new Date(Date.UTC(p.a,p.m,0)).getUTCDate();
+  let ini,fim,rot;
+  if(p.modo==="mes"){ini=`${p.a}-${_fmP2(p.m)}-01`;fim=`${p.a}-${_fmP2(p.m)}-${_fmP2(ult)}`;rot=`${FM_MES_L[p.m-1]} de ${p.a}`;}
+  else{const pa=p.m===1?p.a-1:p.a,pm=p.m===1?12:p.m-1;ini=`${pa}-${_fmP2(pm)}-26`;fim=`${p.a}-${_fmP2(p.m)}-25`;rot=`Folha ${fmDd(ini)} a ${fmDd(fim)}`;}
+  const h=FM.dados.hoje;
+  return{ini,fim,rot,atual:h>=ini&&h<=fim};
+}
+function fmPerIr(n){const p=FM.per;let m=p.m+n,a=p.a;while(m<1){m+=12;a--;}while(m>12){m-=12;a++;}FM.per={modo:p.modo,a,m};fmRenderCorpo();}
+function fmPerModo(modo){FM.per=fmPerPadrao(modo);fmRenderCorpo();}
 function fmPainel(){
-  const j=FM.dados,por={};
-  j.casos.filter(fmFiltra).forEach(c=>{const s=c.supervisor||"Sem supervisor";const x=(por[s]=por[s]||{t:0,NO_PRAZO:0,AGUARDANDO_RETORNO:0,PRAZO_VENCIDO:0,COORD:0,TRATADA:0,TRATADA_FORA_DO_PRAZO:0});x.t++;const k=(c.situacao==="COORDENACAO"||c.situacao==="VERIFICAR")?"COORD":c.situacao;x[k]=(x[k]||0)+1;});
-  const pct=x=>{const d=x.TRATADA+x.TRATADA_FORA_DO_PRAZO+x.PRAZO_VENCIDO;return d?Math.round(x.TRATADA/d*100):null;};
-  const num=(v,tom)=>!v?'<span class="fm-z">0</span>':tom?`<span class="fm-cnt k-${tom}">${v}</span>`:v;
-  const barra=p=>p==null?'<span class="fm-z">—</span>':`<span class="fm-pct k-${p>=80?"ok":p>=50?"or":"da"}"><span class="trk"><i style="width:${p}%"></i></span><b>${p}%</b></span>`;
-  const linhas=Object.entries(por).sort((a,b)=>(b[1].PRAZO_VENCIDO+b[1].COORD)-(a[1].PRAZO_VENCIDO+a[1].COORD)||a[0].localeCompare(b[0]));
-  let h='<div class="fm-blk"><h3 class="fm-h2">Desempenho por supervisor</h3><p class="fm-p">% no prazo = casos tratados dentro do prazo ÷ casos cujo prazo já terminou (tratados no prazo, fora do prazo e atrasados). Quem tem mais atrasados e casos na coordenação aparece primeiro.</p>';
-  h+=linhas.length?'<div class="fm-tbw"><table class="fm-tb"><thead><tr><th>Supervisor</th><th class="num">Casos</th><th class="num">Atrasadas</th><th class="num">No prazo</th><th class="num">Esperando voltar</th><th class="num">Coordenação</th><th class="num">Tratadas no prazo</th><th class="num">Fora do prazo</th><th class="num">% no prazo</th></tr></thead><tbody>'+
-    linhas.map(([s,x])=>`<tr><td class="fm-tn">${_esc(s)}</td><td class="num"><b>${x.t}</b></td><td class="num">${num(x.PRAZO_VENCIDO,"da")}</td><td class="num">${num(x.NO_PRAZO,"or")}</td><td class="num">${num(x.AGUARDANDO_RETORNO)}</td><td class="num">${num(x.COORD,"vi")}</td><td class="num">${num(x.TRATADA)}</td><td class="num">${num(x.TRATADA_FORA_DO_PRAZO)}</td><td class="num">${barra(pct(x))}</td></tr>`).join("")+'</tbody></table></div>':fmVazio("Nenhum caso no período");
-  h+='</div><div class="fm-blk"><h3 class="fm-h2">Feriados</h3><p class="fm-p">Feriado só conta como dia de trabalho se a pessoa teve presença nele.</p><div class="fm-fer">';
+  const j=FM.dados,P=fmPeriodo(),hoje=j.hoje;
+  const noPer=d=>d>=P.ini&&d<=P.fim;
+  // casos da folha/mês; no período atual, os que ainda estão abertos de antes também entram
+  const casos=j.casos.filter(fmFiltra).filter(c=>noPer(c.primeiraFalta)||(P.atual&&c.primeiraFalta<P.ini&&FM_ABERTAS.indexOf(c.situacao)>=0));
+  const abonos=fmAbonos().filter(fmFiltra).filter(a=>(a.faltas||[]).some(noPer));
+  const por={};
+  const reg=s=>por[s]=por[s]||{nome:s,casos:[],abonos:[],da:0,am:0,gr:0,vi:0,ok:0,hj:0,noPrazo:0,fora:0};
+  casos.forEach(c=>{const x=reg(c.supervisor||"Sem supervisor");x.casos.push(c);const t=fmAcao(c).tom;x[t]++;
+    if(c.situacao==="NO_PRAZO"&&fmDif(hoje,c.prazoFim)<=0)x.hj++;
+    if(c.situacao==="TRATADA")x.noPrazo++;if(c.situacao==="TRATADA_FORA_DO_PRAZO")x.fora++;});
+  abonos.forEach(a=>reg(a.supervisor||"Sem supervisor").abonos.push(a));
+  const lista=Object.values(por).map(x=>Object.assign(x,{resolver:x.da+x.am+x.gr+x.vi}))
+    .sort((a,b)=>b.resolver-a.resolver||b.da-a.da||a.nome.localeCompare(b.nome));
+  const max=Math.max(1,...lista.map(x=>x.resolver));
+  const tot=k=>lista.reduce((s,x)=>s+x[k],0);
+  const per=`<div class="fm-seg" role="group" aria-label="Ver por"><button class="${FM.per.modo==="folha"?"on":""}" onclick="fmPerModo('folha')">Folha (26 a 25)</button><button class="${FM.per.modo==="mes"?"on":""}" onclick="fmPerModo('mes')">Mês (1 a ${new Date(Date.UTC(FM.per.a,FM.per.m,0)).getUTCDate()})</button></div>`+
+    `<span class="fm-per"><button class="fm-btn ic" aria-label="Período anterior" onclick="fmPerIr(-1)">${FM_IC.ant}</button><b>${P.rot}</b><button class="fm-btn ic" aria-label="Próximo período" onclick="fmPerIr(1)">${FM_IC.prox}</button></span>`;
+  const sups=[...new Set(j.casos.map(c=>c.supervisor).filter(Boolean))].sort();
+  let h=`<div class="fm-ph"><h3>Painel da supervisão</h3>${per}</div>`+
+    `<div class="fm-tool"><button class="fm-btn" onclick="FM.aba='AGIR';fmRender()">${FM_IC.ant}Voltar para a lista</button>`+
+    `<select class="fm-in" onchange="FM.sup=this.value;fmRender()"><option value="">Todos os supervisores</option>${sups.map(s=>`<option${s===FM.sup?" selected":""}>${_esc(s)}</option>`).join("")}</select>`+
+    `<button class="fm-btn" style="margin-left:auto" onclick="FM.fer=true;fmRender()">${FM_IC.cal}Feriados</button></div>`;
+  const pl=(n,um,v)=>`<b>${n}</b> ${n===1?um:v}`,antes=casos.filter(c=>c.primeiraFalta<P.ini).length;
+  h+=`<div class="fm-resumo"><span>${pl(casos.length,"caso de falta injustificada","casos de falta injustificada")}${antes?` (${antes} em aberto da folha anterior)`:""}</span><span class="k-da"><i></i>${pl(tot("da"),"atrasada","atrasadas")}</span><span class="k-am"><i></i>${pl(tot("am"),"no prazo","no prazo")} (${tot("hj")} ${tot("hj")===1?"vence":"vencem"} hoje)</span>`+
+    `<span class="k-gr"><i></i>${pl(tot("gr"),"esperando voltar","esperando voltar")}</span><span class="k-vi"><i></i>${pl(tot("vi"),"na coordenação","na coordenação")}</span><span class="k-ok"><i></i>${pl(tot("ok"),"resolvida","resolvidas")}</span><span class="k-ok"><i></i>${pl(abonos.length,"abonada","abonadas")}</span></div>`;
+  if(!lista.length)return h+fmVazio("Nenhuma falta injustificada neste período",P.atual?"Tudo em dia.":"");
+  h+=`<div class="fm-sups"><div class="fm-sups-c"><span></span><span>Supervisor</span><span>Casos para resolver</span><span class="num">Total</span><span class="num">Atrasadas</span><span class="num">Vencem hoje</span><span class="num">Resolvidas</span><span class="num">% no prazo</span></div>`;
+  lista.forEach((x,idx)=>{
+    const ab=!!FM.supAberto[x.nome],enc=x.noPrazo+x.fora+x.da,pct=enc?Math.round(x.noPrazo/enc*100):null;
+    const seg=["da","am","gr","vi"].map(t=>x[t]?`<i class="k-${t}" style="width:${x[t]/max*100}%" title="${x[t]}"></i>`:"").join("");
+    h+=`<div class="fm-sup${ab?" on":""}" role="button" tabindex="0" aria-expanded="${ab}" data-s="${_esc(x.nome)}" onclick="fmSupAbrir(this.dataset.s)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();fmSupAbrir(this.dataset.s)}">`+
+      `<span class="fm-chev">${FM_IC.chev}</span><div class="fm-sup-n">${_esc(x.nome)}${idx===0&&x.resolver>0?'<span class="fm-top">Mais casos para resolver</span>':""}</div>`+
+      `<div class="fm-bar">${seg}</div>`+
+      `<span class="num v big${x.resolver?"":" z"}" data-l="Para resolver">${x.resolver}</span>`+
+      `<span class="num v k-da${x.da?" k":" z"}" data-l="Atrasadas">${x.da}</span>`+
+      `<span class="num v k-am${x.hj?" k":" z"}" data-l="Vencem hoje">${x.hj}</span>`+
+      `<span class="num v${x.ok+x.abonos.length?"":" z"}" data-l="Resolvidas">${x.ok+x.abonos.length}</span>`+
+      `<span class="num" data-l="% no prazo">${pct==null?'<span class="v z">—</span>':`<span class="fm-pct k-${pct>=80?"ok":pct>=50?"am":"da"}"><span class="trk"><i style="width:${pct}%"></i></span><b>${pct}%</b></span>`}</span></div>`;
+    if(ab)h+=`<div class="fm-sup-x">${fmSupGrupos(x,P)}</div>`;
+  });
+  return h+"</div>";
+}
+function fmSupAbrir(s){FM.supAberto[s]=!FM.supAberto[s];fmRenderCorpo();}
+/* Colaboradores de um supervisor, agrupados pela data em que o prazo vence. */
+function fmSupGrupos(x,P){
+  const hoje=FM.dados.hoje,grupos=[];
+  const item=c=>{const it=fmItemCaso(c,"p|");if(c.primeiraFalta<P.ini)it.tag="folha anterior";return it;};
+  const add=(tom,titulo,cs,extra)=>{if(cs.length)grupos.push({tom,titulo,itens:cs,extra});};
+  const por=(s,f)=>x.casos.filter(c=>s.indexOf(c.situacao)>=0).sort((a,b)=>String(f(a)).localeCompare(String(f(b))));
+  add("da","Atrasadas",por(["PRAZO_VENCIDO"],c=>c.prazoFim).map(item));
+  const venc={};por(["NO_PRAZO"],c=>c.prazoFim).forEach(c=>(venc[c.prazoFim]=venc[c.prazoFim]||[]).push(c));
+  Object.keys(venc).sort().forEach(d=>{const n=fmDif(hoje,d);add("am",n<=0?`Vence hoje · ${fmDdS(d)}`:n===1?`Vence amanhã · ${fmDdS(d)}`:`Vence ${fmDdS(d)}`,venc[d].map(item));});
+  add("gr","Esperando voltar",por(["AGUARDANDO_RETORNO"],c=>c.retornoPrevisto).map(item));
+  add("vi","Coordenação",por(["VERIFICAR","COORDENACAO"],c=>c.primeiraFalta).map(item));
+  const resolv=por(["TRATADA","TRATADA_FORA_DO_PRAZO"],c=>c.medida?c.medida.DATA:"").reverse().map(item).concat(x.abonos.map(fmItemAbono));
+  add("ok","Resolvidas",resolv,true);
+  if(!grupos.length)return fmVazio("Nenhum caso deste supervisor no período");
+  return grupos.map(g=>{
+    const fechado=g.extra&&!FM.resolvAberto[x.nome];
+    const bt=g.extra?`<button class="fm-btn sm" data-s="${_esc(x.nome)}" onclick="event.stopPropagation();fmResolvAbrir(this.dataset.s)">${fechado?"Mostrar":"Esconder"}</button>`:"";
+    return `<div class="fm-pg-h k-${g.tom}"><i></i>${_esc(g.titulo)}<span>${g.itens.length} ${g.itens.length===1?"pessoa":"pessoas"}</span>${bt}</div>`+
+      (fechado?"":`<div class="fm-lista">${fmCols(true)}${g.itens.map(it=>fmLinhaItem(it,true)).join("")}</div>`);
+  }).join("");
+}
+function fmResolvAbrir(s){FM.resolvAberto[s]=!FM.resolvAberto[s];fmRenderCorpo();}
+/* Janela de feriados (abre pelo botão do painel). */
+function fmFeriadosModal(){
+  const j=FM.dados;
+  let h=`<div class="fm-modal" onclick="if(event.target===this){FM.fer=false;fmRender()}"><div class="fm-modal-c" role="dialog" aria-label="Feriados"><div class="fm-modal-h"><b>Feriados</b><button class="fm-btn ic sm" aria-label="Fechar" onclick="FM.fer=false;fmRender()">${FM_IC.x}</button></div>`+
+    `<p class="fm-p">Feriado só conta como dia de trabalho se a pessoa teve presença nele.</p>`;
   h+=(j.feriados||[]).length?j.feriados.map(f=>{const d=String(f.data).slice(0,10),x=new Date(d+"T12:00:00Z");
       return `<div class="fm-fer-r"><div class="fm-dt"><span>${FM_MES[x.getUTCMonth()]}</span><b>${x.getUTCDate()}</b></div><div class="fm-fer-t"><b>${_esc(f.descricao||"Feriado")}</b><span>${FM_DIA_L[x.getUTCDay()]} · ${x.getUTCFullYear()}</span></div>${j.pode_editar?`<button class="fm-btn fm-del sm k-da" data-d="${_esc(d)}" onclick="fmFeriadoRemover(this.dataset.d)">Remover</button>`:""}</div>`;}).join("")
     :'<div class="fm-fer-vz">Nenhum feriado cadastrado.</div>';
-  if(j.pode_editar)h+='<div class="fm-fer-add"><input type="date" class="fm-in" id="fm-fer-d" aria-label="Data do feriado"><input class="fm-in" id="fm-fer-t" placeholder="Descrição (ex.: Finados)" aria-label="Descrição do feriado"><button class="fm-btn fm-pri" onclick="fmFeriadoSalvar()">Adicionar feriado</button></div>';
-  return h+'</div></div>';
+  if(j.pode_editar)h+='<div class="fm-fer-add"><input type="date" class="fm-in" id="fm-fer-d" aria-label="Data do feriado"><input class="fm-in" id="fm-fer-t" placeholder="Descrição (ex.: Finados)" aria-label="Descrição do feriado"><button class="fm-btn fm-pri" onclick="fmFeriadoSalvar()">Adicionar</button></div>';
+  return h+"</div></div>";
 }
 function fmSalvarMotivo(chave,btn){
   const ta=document.getElementById("fm-mt-"+chave);if(!ta)return;

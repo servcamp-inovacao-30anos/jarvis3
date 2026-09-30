@@ -257,3 +257,18 @@ test("5X2 DSF folga domingo e segunda: faltou sexta, volta terça", () => {
   const c = unico({ faltas: [falta("2026-10-09", esc)], fichaDias: { 521: presente("2026-10-10") }, hoje: "2026-10-10", dataBase: "2026-10-10" });
   assert.deepEqual(c.prazo, ["2026-10-10", "2026-10-13", "2026-10-14"], "sábado, terça e quarta (domingo e segunda são folga)");
 });
+
+test("abonadas: juntadas pelo período que o atestado cobriu (lido da ficha)", () => {
+  const ab = (re, data, codigo) => ({ re, data, codigo: codigo || "A", nome: "P" + re, cargo: "", posto: "X", supervisor: "S", escala: "5X2 SDF" });
+  const lista = [
+    ab(1, "2026-09-25"), ab(1, "2026-09-28"), ab(1, "2026-09-29"),  // sex + seg/ter: o fim de semana (folga) fica no meio
+    ab(2, "2026-09-21"), ab(2, "2026-09-23"),                       // trabalhou no dia 22: são dois períodos
+    ab(3, "2026-09-22", "J"), ab(3, "2026-09-23", "A")              // códigos diferentes não se juntam
+  ];
+  const ficha = { 1: { "2026-09-26": "FOLGA", "2026-09-27": "FOLGA" }, 2: { "2026-09-22": "TRABALHO" } };
+  const p = R.periodosDeAbono(lista, ficha);
+  const de = re => p.filter(x => x.re === re).map(x => `${x.codigo}:${x.inicio}>${x.fim}:${x.dias}:${x.faltas.length}`).sort();
+  assert.deepEqual(de(1), ["A:2026-09-25>2026-09-29:5:3"]);
+  assert.deepEqual(de(2), ["A:2026-09-21>2026-09-21:1:1", "A:2026-09-23>2026-09-23:1:1"]);
+  assert.deepEqual(de(3), ["A:2026-09-23>2026-09-23:1:1", "J:2026-09-22>2026-09-22:1:1"]);
+});

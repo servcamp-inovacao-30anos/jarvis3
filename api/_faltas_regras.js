@@ -332,11 +332,40 @@ function calendario(caso, opcoes) {
   return out;
 }
 
+// Abonadas juntadas pelo período que o abono cobriu, lido da Ficha de Presença
+// (sem tabela nova): dias da mesma pessoa, com o mesmo código, um seguido do
+// outro. Pode pular até 4 dias em que ela não trabalhou (folga ou feriado no
+// meio do atestado); um dia trabalhado no meio separa em dois períodos.
+function periodosDeAbono(abonadas, fichaDias) {
+  const grupos = {};
+  (abonadas || []).forEach(a => { const k = a.re + "|" + a.codigo; (grupos[k] = grupos[k] || []).push(a); });
+  const out = [];
+  Object.values(grupos).forEach(lista => {
+    lista.sort((x, y) => iso(x.data).localeCompare(iso(y.data)));
+    const dias = (fichaDias || {})[lista[0].re] || {};
+    let atual = null;
+    lista.forEach(a => {
+      const d = iso(a.data);
+      let junta = false;
+      if (atual && d > atual.fim) {
+        const vazios = [];
+        for (let x = somaDias(atual.fim, 1); x < d; x = somaDias(x, 1)) vazios.push(x);
+        junta = vazios.length <= 4 && vazios.every(x => trabalhouNoDia(dias[x]) !== true);
+      }
+      if (junta) { atual.fim = d; atual.faltas.push(d); return; }
+      atual = { re: a.re, nome: a.nome, cargo: a.cargo, posto: a.posto, supervisor: a.supervisor, escala: a.escala, codigo: a.codigo, faltas: [d], inicio: d, fim: d };
+      out.push(atual);
+    });
+  });
+  out.forEach(p => { p.dias = Math.round((Date.parse(p.fim) - Date.parse(p.inicio)) / 864e5) + 1; });
+  return out.sort((x, y) => y.fim.localeCompare(x.fim) || String(x.nome).localeCompare(String(y.nome)));
+}
+
 function pessoa(f, extra) {
   return { re: reDe(f.RE), nome: f.NOME || "", cargo: f.CARGO || "", posto: f.LOCAL || "", supervisor: f.AREA || "", escala: f.ESCALA || "", ...extra };
 }
 
 module.exports = {
-  FAMILIAS, SITUACOES, familiaEscala, ehOperacional, trabalhouNoDia, montarCasos, reDe, competenciaDe, calendario,
+  FAMILIAS, SITUACOES, familiaEscala, ehOperacional, trabalhouNoDia, montarCasos, reDe, competenciaDe, calendario, periodosDeAbono,
   textoMedidaComAusencia, descreverMedida, somaDias, ddmm
 };

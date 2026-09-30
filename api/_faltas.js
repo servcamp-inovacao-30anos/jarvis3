@@ -142,6 +142,8 @@ async function verCasos({ res, db, ator }) {
 
   return res.status(200).json({
     ok: true, hoje, dataBase: r.dataBase, resumo, casos: r.casos, abonadas: r.abonadas,
+    // abonadas juntadas pelo período que o atestado/justificativa cobriu
+    abonos: R.periodosDeAbono(r.abonadas, fichaDias),
     dias: diasDosCasos, historico, feriados, pode_editar: !!(ator && ponto.APROVADORES.has(ator))
   });
 }
