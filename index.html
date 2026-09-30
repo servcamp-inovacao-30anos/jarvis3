@@ -7484,7 +7484,8 @@ function comDet(kind){
     const arr=P.filter(p=>["PROPOSTA","NEGOCIAÇÃO","CONTRATO"].includes(p.status));
     title="💰 Receita em Negociação — "+soma(arr);rows=arr.sort((a,b)=>(Number(b.valor)||0)-(Number(a.valor)||0)).map(det);
   }else if(kind==="fechadaMes"){
-    const arr=P.filter(p=>p.status==="FECHADO"&&noMes(p.fechado_em));
+    // pela data do fechamento, como o card (ver comDashRender)
+    const arr=comVisBase().filter(p=>p.status==="FECHADO"&&noMes(p.fechado_em));
     title="🏆 Fechadas no Mês"+_mes+" — "+soma(arr);
     headers=["Cliente","Tipo","Cidade","Serviço","Valor","Envio","Fechamento","Dias p/ fechar","Resp."];
     rows=arr.map(p=>[p.nome,p.tipo_cliente==="CONDOMINIO"?"COND":"EMP",p.cidade||"—",p.servico||"—",fmtBRL(p.valor),p.data_envio_proposta?rhFmt(p.data_envio_proposta):"—",rhFmt(p.fechado_em),comDias(p),(p.responsavel||"—").split(" ")[0]]);
@@ -7494,12 +7495,15 @@ function comDet(kind){
     headers=["Cliente","Tipo","Cidade","Valor","Origem","Motivo da perda","Resp."];
     rows=arr.map(p=>[p.nome,p.tipo_cliente==="CONDOMINIO"?"COND":"EMP",p.cidade||"—",fmtBRL(p.valor),p.origem_lead||"—",p.motivo_perda||"—",(p.responsavel||"—").split(" ")[0]]);
   }else if(kind==="conversao"){
-    const arr=P.filter(p=>noMes(p.data_envio_proposta));
-    const fec=arr.filter(p=>p.status==="FECHADO").length;
-    title=`🎯 Conversão do Mês${_mes} — ${fec} fechada(s) de ${arr.length} enviada(s)`;
-    rows=arr.sort((a,b)=>(a.status==="FECHADO"?-1:1)-(b.status==="FECHADO"?-1:1)).map(det);
+    // Mesma conta do card: fechadas NO MÊS (pela data do fechamento) sobre
+    // enviadas no mês. A fechada que foi enviada antes também aparece na lista.
+    const env=P.filter(p=>noMes(p.data_envio_proposta));
+    const fecM=comVisBase().filter(p=>p.status==="FECHADO"&&noMes(p.fechado_em));
+    const arr=env.concat(fecM.filter(p=>!env.includes(p)));
+    title=`🎯 Conversão do Mês${_mes} — ${fecM.length} fechada(s) no mês · ${env.length} enviada(s)`;
+    rows=arr.sort((a,b)=>(fecM.includes(a)?-1:1)-(fecM.includes(b)?-1:1)).map(det);
   }else if(kind==="ticket"){
-    const arr=P.filter(p=>p.status==="FECHADO");
+    const arr=comVisBase().filter(p=>p.status==="FECHADO");
     const t=arr.length?arr.reduce((s,p)=>s+(Number(p.valor)||0),0)/arr.length:0;
     title="📈 Contratos Fechados — ticket médio "+fmtBRL(t);
     headers=["Cliente","Tipo","Cidade","Serviço","Valor","Fechamento","Resp."];
@@ -7527,7 +7531,7 @@ function comDet(kind){
     headers=["Cliente","Tipo","Cidade","Status","Últ. visita","Quem visitou","Total visitas"];
     rows=arr.map(p=>[p.nome,p.tipo_cliente==="CONDOMINIO"?"COND":"EMP",p.cidade||"—",p.status,rhFmt(p.ultima_visita),p.visita_por||"— (não registrado)",p.visitas||0]);
   }else if(kind==="tempo"){
-    const arr=P.filter(p=>p.status==="FECHADO"&&p.data_envio_proposta&&p.fechado_em);
+    const arr=comVisBase().filter(p=>p.status==="FECHADO"&&p.data_envio_proposta&&p.fechado_em);
     title="⏱️ Tempo de Fechamento (proposta → contrato)";
     headers=["Cliente","Cidade","Valor","Envio","Fechamento","Dias p/ fechar"];
     rows=arr.map(p=>({p,d:comDias(p)})).sort((a,b)=>b.d-a.d).map(o=>[o.p.nome,o.p.cidade||"—",fmtBRL(o.p.valor),rhFmt(o.p.data_envio_proposta),rhFmt(o.p.fechado_em),o.d]);
@@ -10376,13 +10380,18 @@ function comDashRender(){
   const noMes=d=>comNoMes(d,_M);
   const noMesAnt=d=>comNoMesAnt(d,_M);
   const P=comPF();
+  // Fechamento conta pela DATA DO FECHAMENTO, com qualquer data de cadastro.
+  // Em comPF() proposta FECHADA só entra se foi criada no período: a LABMASS,
+  // cadastrada em julho e fechada em 29/09, sumia de setembro (0 fechadas).
+  // Mesmo motivo de comVisBase() para as visitas.
+  const PF=comVisBase();
   const envMes=P.filter(p=>noMes(p.data_envio_proposta)),envAnt=P.filter(p=>noMesAnt(p.data_envio_proposta));
-  const fecMes=P.filter(p=>p.status==="FECHADO"&&noMes(p.fechado_em)),fecAnt=P.filter(p=>p.status==="FECHADO"&&noMesAnt(p.fechado_em));
+  const fecMes=PF.filter(p=>p.status==="FECHADO"&&noMes(p.fechado_em)),fecAnt=PF.filter(p=>p.status==="FECHADO"&&noMesAnt(p.fechado_em));
   const visMes=comVisBase().filter(p=>noMes(p.ultima_visita));
   const emp=envMes.filter(p=>p.tipo_cliente!=="CONDOMINIO").length,cond=envMes.filter(p=>p.tipo_cliente==="CONDOMINIO").length;
   const taxa=envMes.length?Math.round(fecMes.length/envMes.length*100):null;
   const taxaAnt=envAnt.length?Math.round(fecAnt.length/envAnt.length*100):null;
-  const fechTodas=P.filter(p=>p.status==="FECHADO"&&p.data_envio_proposta&&p.fechado_em);
+  const fechTodas=PF.filter(p=>p.status==="FECHADO"&&p.data_envio_proposta&&p.fechado_em);
   const tempoMedio=fechTodas.length?(fechTodas.reduce((s,p)=>s+comDias(p),0)/fechTodas.length).toFixed(1):"—";
   const ativas=P.filter(p=>COM_ST_ATIVOS.includes(p.status));
   const emNeg=P.filter(p=>["PROPOSTA","NEGOCIAÇÃO","CONTRATO"].includes(p.status));
