@@ -50,9 +50,10 @@ test("GET casos: a abonada vem com o calendário, marcando a falta abonada e os 
   await pedir("POST", "atestado", { re: 3, tem: true, inicio: dia(-6), dias: 4, envio: dia(-6) });
   const r = await pedir("GET", "casos");
   const ab = r.body.abonos.find(a => String(a.re) === "3");
-  assert.ok(ab.calendario.length >= 28, "meses cheios");
+  assert.ok(R.expandirCalendario(ab.cal).length >= 28, "meses cheios");
   assert.ok(ab.folha && ab.folha.inicio && ab.folha.fim);
-  const d = x => ab.calendario.find(c => c.data === dia(x));
+  const cal = R.expandirCalendario(ab.cal);
+  const d = x => cal.find(c => c.data === dia(x));
   assert.equal(d(-6).tipo, "ABONADA");
   assert.equal(d(-5).tipo, "ABONADA");
   assert.equal(d(-4).tipo, "ABONADA");
@@ -65,5 +66,5 @@ test("calendário: sem atestado registrado, marca o período das faltas abonadas
   supabaseFalso(tabelas());
   const ab = (await pedir("GET", "casos")).body.abonos.find(a => String(a.re) === "3");
   assert.equal(ab.atestado, null);
-  assert.deepEqual([-7, -6, -4, -3].map(x => ab.calendario.find(c => c.data === dia(x)).atestado), [false, true, true, false]);
+  assert.deepEqual([-7, -6, -4, -3].map(x => R.expandirCalendario(ab.cal).find(c => c.data === dia(x)).atestado), [false, true, true, false]);
 });

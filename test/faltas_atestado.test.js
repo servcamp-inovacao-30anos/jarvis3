@@ -178,3 +178,39 @@ test("revisão: o card do caso só lista os atestados daquela época", async () 
   const c = (await pedir("GET", "casos")).body.casos.find(x => String(x.re) === "700");
   assert.equal(c.atestados.length, 0, "o atestado de 60 dias atrás não é deste caso");
 });
+
+test("'já lancei no SAR2G': marca, desmarca e tira o aviso de lançamento pendente", async () => {
+  const t = tabelas(); supabaseFalso(t);
+  const a = await pedir("POST", "atestado", { body: atestado() });
+  const pend = async () => (await pedir("GET", "casos")).body.abonos.find(x => String(x.re) === "700");
+  assert.equal((await pend()).aguardaSar2g, true);
+  const m = await pedir("POST", "atestado", { body: { re: 700, chave: a.body.chave, lancado: true } });
+  assert.equal(m.body.alterado, true);
+  let ab = await pend();
+  assert.equal(ab.aguardaSar2g, false, "marcado como lançado");
+  assert.equal(ab.atestado.lancadoSar2g, true);
+  assert.equal(ab.atestado.lancadoPor, "aprovador");
+  assert.equal((await pedir("POST", "atestado", { body: { re: 700, chave: a.body.chave, lancado: true } })).body.alterado, false, "marcar de novo não duplica");
+  await pedir("POST", "atestado", { body: { re: 700, chave: a.body.chave, lancado: false } });
+  ab = await pend();
+  assert.equal(ab.aguardaSar2g, true, "desmarcado: volta a aguardar");
+  assert.equal(ab.atestado.lancadoSar2g, false);
+});
+
+test("'já lancei no SAR2G': corrigir o atestado depois de marcar volta a pedir o lançamento", async () => {
+  const t = tabelas(); supabaseFalso(t);
+  const a = await pedir("POST", "atestado", { body: atestado({ dias: 1 }) });
+  await pedir("POST", "atestado", { body: { re: 700, chave: a.body.chave, lancado: true } });
+  await pedir("POST", "atestado", { body: atestado({ dias: 2 }) });   // mesma data, mais um dia: é outra versão
+  const ab = (await pedir("GET", "casos")).body.abonos.find(x => String(x.re) === "700");
+  assert.equal(ab.atestado.lancadoSar2g, false, "o que foi lançado era outra versão");
+  assert.equal(ab.aguardaSar2g, true);
+});
+
+test("'já lancei no SAR2G': só aprovador, só de atestado que existe e da própria pessoa", async () => {
+  const t = tabelas(); supabaseFalso(t);
+  const a = await pedir("POST", "atestado", { body: atestado() });
+  assert.equal((await pedir("POST", "atestado", { usuario: "supervisor.fulano", body: { re: 700, chave: a.body.chave, lancado: true } })).statusCode, 403);
+  assert.equal((await pedir("POST", "atestado", { body: { re: 700, chave: "700|2020-01-01", lancado: true } })).statusCode, 404);
+  assert.equal((await pedir("POST", "atestado", { body: { re: 700, chave: "999|2026-01-01", lancado: true } })).body.codigo, "CHAVE_INVALIDA");
+});

@@ -18,6 +18,7 @@ const ponto = require("./_ponto");
 const ACAO_ABONO_TARDIO = "FALTA_ABONADA_DEPOIS";
 const ACAO_ATESTADO = "ATESTADO_REGISTRADO";
 const ACAO_ATESTADO_FIM = "ATESTADO_REMOVIDO";
+const ACAO_ATESTADO_LANCADO = "ATESTADO_LANCADO_SAR2G"; // o usuário marcou que já lançou no SAR2G
 const JANELA_DIAS = 150; // o que a tela carrega: casos mais antigos já se encerraram
 const DIAS_ACOMPANHADOS = 45; // quem faltou nesse período ainda tem os dias da ficha guardados
 
@@ -131,7 +132,7 @@ async function verCasos({ res, db, ator }) {
     db.listar("fm_admissoes?select=re,admissao&order=re.asc"),
     db.listar("fm_feriados?select=data,descricao&order=data.asc"),
     db.listar(`fm_auditoria?select=id,chave,criado_em&acao=eq.${ACAO_ABONO_TARDIO}&order=criado_em.asc,id.asc`),
-    db.listar(`fm_auditoria?select=id,ator,acao,chave,depois,criado_em&acao=in.(${ACAO_ATESTADO},${ACAO_ATESTADO_FIM})&order=criado_em.asc,id.asc`)
+    db.listar(`fm_auditoria?select=id,ator,acao,chave,depois,criado_em&acao=in.(${ACAO_ATESTADO},${ACAO_ATESTADO_FIM},${ACAO_ATESTADO_LANCADO})&order=criado_em.asc,id.asc`)
   ]);
   // atestados registrados à mão: valem já, sem esperar o lançamento no SAR2G
   const { ativos: atestados, sem: semAtestado } = R.dobrarAtestados(eventosAtestado);
@@ -157,7 +158,7 @@ async function verCasos({ res, db, ator }) {
   r.abonadas.forEach(a => {
     const dia = String(a.data).slice(0, 10), cob = cobertura(a.re, dia);
     a.manual = cob ? cob.chave : null;
-    a.noSar2g = R.ABONADAS.has(codigoSar[a.re + "|" + dia]);
+    a.noSar2g = R.ABONADAS.has(codigoSar[a.re + "|" + dia]) || !!(cob && cob.lancadoSar2g);
   });
   r.casos.forEach(c => { c.turno = R.turnoDoSupervisor(c.supervisor); });
   r.abonadas.forEach(a => { a.turno = R.turnoDoSupervisor(a.supervisor); });
@@ -172,7 +173,7 @@ async function verCasos({ res, db, ator }) {
     const desdeCaso = R.somaDias(c.primeiraFalta, -7); // atestado que abonou a(s) primeira(s) falta(s) do caso
     c.atestados = atestados.filter(a => a.re === String(c.re) && a.fim >= desdeCaso && a.inicio <= ultimo);
     c.semAtestado = semAtestado[c.re + "|" + c.primeiraFalta] || null;
-    c.calendario = R.calendario(c, { dias: fichaDias[c.re] || {}, abonadas: abonadasPorRE[c.re] || [], feriados: listaFeriados, hoje, meses: true });
+    c.cal = R.compactarCalendario(R.calendario(c, { dias: fichaDias[c.re] || {}, abonadas: abonadasPorRE[c.re] || [], feriados: listaFeriados, hoje, meses: true }));
   });
   const abonos = R.periodosDeAbono(r.abonadas, fichaDias, lancadas, atestados);
   abonos.forEach(p => {
@@ -181,7 +182,7 @@ async function verCasos({ res, db, ator }) {
     p.folha = R.competenciaDe(p.inicio);
     // o calendário mostra as faltas abonadas e, marcados, os dias que o atestado cobriu
     const cob = p.atestado ? { inicio: p.atestado.inicio, fim: p.atestado.fim } : { inicio: p.inicio, fim: p.fim };
-    p.calendario = R.calendario({ faltas: [], primeiraFalta: p.inicio, prazo: [], medida: null }, { dias: fichaDias[p.re] || {}, abonadas: p.faltas, feriados: listaFeriados, hoje, meses: true, atestado: cob });
+    p.cal = R.compactarCalendario(R.calendario({ faltas: [], primeiraFalta: p.inicio, prazo: [], medida: null }, { dias: fichaDias[p.re] || {}, abonadas: p.faltas, feriados: listaFeriados, hoje, meses: true, atestado: cob }));
   });
   const doCaso = new Set(r.casos.map(c => String(c.re)));
   const diasDosCasos = {};
@@ -240,8 +241,20 @@ async function salvarAtestado({ res, db, ator, body }) {
   const [existe] = await db.obter(`fm_faltas?select=re&re=eq.${re}&limit=1`);
   if (!existe) return erro(res, 404, "Este colaborador não tem falta registrada no módulo.", "NAO_ENCONTRADA");
   const hoje = hojeSP();
-  const ultimo = async chave => (await db.obter(`fm_auditoria?select=acao,depois&entidade=eq.fm_atestados&chave=eq.${encodeURIComponent(chave)}&order=criado_em.desc,id.desc&limit=1`))[0] || null;
+  const ultimo = async chave => (await db.obter(`fm_auditoria?select=id,acao,depois&entidade=eq.fm_atestados&chave=eq.${encodeURIComponent(chave)}&order=criado_em.desc,id.desc&limit=1`))[0] || null;
   const ev = (acao, chave, depois) => ({ ator, acao, entidade: "fm_atestados", chave, antes: null, depois });
+
+  if (body.lancado === true || body.lancado === false) {
+    const chave = String(body.chave || "").trim();
+    if (!chave.startsWith(re + "|")) return erro(res, 400, "Atestado inválido.", "CHAVE_INVALIDA");
+    const u = await ultimo(chave);
+    if (!u || u.acao !== ACAO_ATESTADO) return erro(res, 404, "Atestado não encontrado.", "NAO_ENCONTRADA");
+    const ul = await ultimo("lancado|" + chave);
+    const atual = !!(ul && ul.depois && ul.depois.lancado === true && Number(ul.id) > Number(u.id));
+    if (atual === body.lancado) return res.status(200).json({ ok: true, alterado: false, lancado: atual });
+    await db.inserir("fm_auditoria", [ev(ACAO_ATESTADO_LANCADO, "lancado|" + chave, { re, chave, lancado: body.lancado })]);
+    return res.status(200).json({ ok: true, alterado: true, lancado: body.lancado });
+  }
 
   if (body.remover === true) {
     const chave = String(body.chave || "").trim();

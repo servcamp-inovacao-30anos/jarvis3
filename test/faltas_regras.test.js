@@ -293,13 +293,50 @@ test("revisão: medida lançada com a pessoa ausente, sem caso anterior, continu
   assert.equal(c.situacao, S.VERIFICAR);
 });
 
-test("revisão: o caso mostra o supervisor e o posto da época da falta, não os de hoje", () => {
-  const cs = casos({ faltas: [falta("2026-09-01", { AREA: "ANTIGO", LOCAL: "POSTO VELHO" }), falta("2026-10-01", { AREA: "NOVO", LOCAL: "POSTO NOVO" })], fichaDias: { 521: presente("2026-09-02", "2026-09-03", "2026-09-04", "2026-10-02") }, hoje: "2026-10-02", dataBase: "2026-10-02" });
-  assert.deepEqual(cs.map(c => [c.supervisor, c.posto]), [["ANTIGO", "POSTO VELHO"], ["NOVO", "POSTO NOVO"]]);
+test("supervisor: o caso mostra quem cuida da área hoje (o antigo saiu, o novo assumiu)", () => {
+  const cs = casos({ faltas: [falta("2026-09-01", { AREA: "RAFAEL", LOCAL: "POSTO A" }), falta("2026-10-01", { AREA: "CARLOS", LOCAL: "POSTO A" })], fichaDias: { 521: presente("2026-09-02", "2026-09-03", "2026-09-04", "2026-10-02") }, hoje: "2026-10-02", dataBase: "2026-10-02" });
+  assert.deepEqual(cs.map(c => c.supervisor), ["CARLOS", "CARLOS"], "os dois casos ficam com o supervisor atual");
 });
 
 test("revisão: 12x36 que volta num dia trocado — os plantões do prazo contam a partir do retorno", () => {
   const c = unico({ faltas: [falta("2026-10-10", { ESCALA: "12X36" })], fichaDias: { 521: presente("2026-10-11") }, hoje: "2026-10-11", dataBase: "2026-10-11" });
   assert.equal(c.retorno, "2026-10-11");
   assert.deepEqual(c.prazo, ["2026-10-11", "2026-10-13"]);
+});
+
+// ── faltas seguidas depois do retorno (opção B, definida pela coordenação) ──────
+test("volta um dia e falta de novo 4 dias seguidos: um caso só, na coordenação", () => {
+  const cs = casos({ faltas: ["2026-10-07", "2026-10-09", "2026-10-12", "2026-10-13", "2026-10-14"].map(d => falta(d)), fichaDias: { 521: presente("2026-10-08") }, hoje: "2026-10-15", dataBase: "2026-10-15" });
+  assert.equal(cs.length, 1, "não abre um segundo caso");
+  assert.equal(cs[0].situacao, S.COORDENACAO);
+  assert.deepEqual(cs[0].faltas, ["2026-10-07", "2026-10-09", "2026-10-12", "2026-10-13", "2026-10-14"]);
+  assert.match(cs[0].motivo, /^Continua faltando: voltou em qui 08\/10, mas faltou de novo em sex 09\/10 e em mais 3 dias de trabalho seguidos sem voltar/);
+});
+
+test("faltas seguidas que passam do fim do prazo, mas ainda não chegam a 4: entram no mesmo caso (sem coordenação)", () => {
+  const cs = casos({ faltas: ["2026-10-07", "2026-10-09", "2026-10-12", "2026-10-13"].map(d => falta(d)), fichaDias: { 521: presente("2026-10-08", "2026-10-14") }, hoje: "2026-10-15", dataBase: "2026-10-15" });
+  assert.equal(cs.length, 1);
+  assert.equal(cs[0].situacao, S.PRAZO_VENCIDO, "o prazo continua o do 1º retorno");
+  assert.deepEqual(cs[0].faltas, ["2026-10-07", "2026-10-09", "2026-10-12", "2026-10-13"]);
+});
+
+test("falta depois da pessoa trabalhar de novo (não é seguida): caso novo", () => {
+  const cs = casos({ faltas: ["2026-10-07", "2026-10-09", "2026-10-14"].map(d => falta(d)), fichaDias: { 521: presente("2026-10-08", "2026-10-12", "2026-10-13") }, hoje: "2026-10-15", dataBase: "2026-10-15" });
+  assert.equal(cs.length, 2);
+  assert.deepEqual(cs[0].faltas, ["2026-10-07", "2026-10-09"]);
+  assert.deepEqual(cs[1].faltas, ["2026-10-14"]);
+});
+
+test("12x36: faltar 3 plantões seguidos depois do retorno vai para a coordenação", () => {
+  const cs = casos({ faltas: ["2026-10-10", "2026-10-14", "2026-10-16", "2026-10-18"].map(d => falta(d, { ESCALA: "12X36" })), fichaDias: { 521: presente("2026-10-12") }, hoje: "2026-10-19", dataBase: "2026-10-19" });
+  assert.equal(cs.length, 1);
+  assert.equal(cs[0].situacao, S.COORDENACAO);
+  assert.deepEqual(cs[0].faltas, ["2026-10-10", "2026-10-14", "2026-10-16", "2026-10-18"]);
+});
+
+test("sequência que fecha coordenação não atrapalha o caso seguinte da pessoa", () => {
+  const cs = casos({ faltas: ["2026-10-07", "2026-10-09", "2026-10-12", "2026-10-13", "2026-10-14", "2026-10-21"].map(d => falta(d)), fichaDias: { 521: presente("2026-10-08", "2026-10-15", "2026-10-16", "2026-10-19", "2026-10-20") }, hoje: "2026-10-22", dataBase: "2026-10-22" });
+  assert.equal(cs.length, 2);
+  assert.equal(cs[0].situacao, S.COORDENACAO);
+  assert.deepEqual(cs[1].faltas, ["2026-10-21"]);
 });

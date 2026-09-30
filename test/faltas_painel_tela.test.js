@@ -86,3 +86,22 @@ test("revisão: Concluídas é o mesmo conjunto do % tratado (caso tratado que a
   assert.equal(R.tratadas, 1);
   assert.deepEqual(R.concluidas.map(x => x.re), [30], "o indicador diz 1 tratada; a lista mostra esse caso");
 });
+
+// ── calendário compacto: servidor e tela precisam dar exatamente o mesmo resultado ─────
+test("calendário compacto: ida e volta não perde nada, e a tela expande igual ao servidor", () => {
+  const R = require("../api/_faltas_regras");
+  const ini = html.indexOf("const FM_TIPOS_CAL="), fim = html.indexOf("/* Calendário do mês (dia 1 ao último)");
+  assert.ok(ini > 0 && fim > ini, "fmCalDe não encontrada no index.html");
+  const fmCalDe = new Function(html.slice(ini, fim) + "\nreturn fmCalDe;")();
+  const presente = (...d) => Object.fromEntries(d.map(x => [x, "TRABALHO"]));
+  const c = { faltas: ["2026-10-07", "2026-10-09"], primeiraFalta: "2026-10-07", retorno: "2026-10-08", prazo: ["2026-10-08", "2026-10-09", "2026-10-12"], prazoFim: "2026-10-12", medida: { DATA: "2026-10-09" } };
+  const cal = R.calendario(c, { dias: { ...presente("2026-10-06", "2026-10-08"), "2026-10-04": "FOLGA" }, abonadas: ["2026-10-05"], feriados: ["2026-10-02", "2026-10-14"], hoje: "2026-10-09", meses: true, atestado: { inicio: "2026-10-04", fim: "2026-10-05" } });
+  const compacto = R.compactarCalendario(cal);
+  const volta = R.expandirCalendario(compacto);
+  const tirarNoPrazo = l => l.map(({ noPrazo, ...resto }) => resto);
+  assert.deepEqual(volta, tirarNoPrazo(cal), "servidor: compactar e expandir devolve o mesmo calendário");
+  assert.deepEqual(fmCalDe({ cal: compacto }), volta, "tela: expande igual ao servidor");
+  assert.ok(JSON.stringify(compacto).length < JSON.stringify(cal).length / 10, "e ocupa menos de um décimo");
+  assert.deepEqual(fmCalDe({}), [], "caso sem calendário não quebra");
+  assert.deepEqual(R.expandirCalendario(R.compactarCalendario([])), []);
+});

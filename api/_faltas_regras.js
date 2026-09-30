@@ -185,6 +185,8 @@ function montarCasos(entrada) {
     lista.filter(f => f.codigo !== "I" && !ABONADAS.has(f.codigo)).forEach(f => semCodigo.push(pessoa(f, { data: f.data })));
     const injust = lista.filter(f => f.codigo === "I");
     const medidas = medidasPorRE.get(re) || [];
+    // supervisor, posto e cargo do caso: os mais recentes da pessoa (quem cuida da área hoje)
+    const ref = injust[injust.length - 1] || lista[lista.length - 1];
     const usadas = new Set(); // medidas que já explicaram um caso anterior desta pessoa
 
     let i = 0;
@@ -192,7 +194,7 @@ function montarCasos(entrada) {
       const f1 = injust[i];
       const F = FAMILIAS[f1.familia];
       const dia = agenda({ familia: f1.familia, escala: f1.ESCALA, ancora: f1.data, dias: fichaDias[re] || {}, faltasPorDia, feriados, dataBase });
-      const caso = pessoa(f1, {});
+      const caso = pessoa(ref, {});
       Object.assign(caso, { familia: f1.familia, escala: f1.ESCALA || "", primeiraFalta: f1.data, faltas: [f1.data], retorno: null, retornoPrevisto: null, prazo: [], prazoFim: null, medida: null, situacao: null, motivo: "" });
 
       // 1. depois da 1ª falta: volta ou continua faltando?
@@ -243,13 +245,32 @@ function montarCasos(entrada) {
       const diaPrazo = F.alternado ? agenda({ familia: f1.familia, escala: f1.ESCALA, ancora: retorno, dias: fichaDias[re] || {}, faltasPorDia, feriados, dataBase }) : dia;
       caso.prazo = proximosDiasDeTrabalho(diaPrazo, retorno, F.prazo);
       caso.prazoFim = caso.prazo[caso.prazo.length - 1] || retorno;
-      // falta de novo dentro do prazo: mesmo caso, o prazo não muda
-      injust.forEach(f => { if (f.data > retorno && f.data <= caso.prazoFim) caso.faltas.push(f.data); });
+      // Falta de novo dentro do prazo: mesmo caso, o prazo continua o do 1º retorno.
+      // Faltas seguidas (sem presença no meio) também entram no caso, mesmo passando
+      // do fim do prazo. Passando de F.prazo dias seguidos sem voltar, a coordenação decide.
+      const depois = injust.filter(f => f.data > retorno);
+      let fimCaso = caso.prazoFim, sequenciaCoord = null;
+      for (let k = 0; k < depois.length; k++) {
+        if (depois[k].data > caso.prazoFim) break;
+        const seq = [depois[k].data];
+        let j = k + 1;
+        while (j < depois.length && !presencaEntre(dia, seq[seq.length - 1], depois[j].data)) { seq.push(depois[j].data); j++; }
+        seq.forEach(d => caso.faltas.push(d));
+        if (seq[seq.length - 1] > fimCaso) fimCaso = seq[seq.length - 1];
+        if (!sequenciaCoord && seq.length >= F.prazo + 1) sequenciaCoord = seq;
+        k = j - 1;
+      }
       caso.faltas = [...new Set(caso.faltas)].sort();
-      caso.situacao = hoje > caso.prazoFim ? SITUACOES.PRAZO_VENCIDO : SITUACOES.NO_PRAZO;
+      if (sequenciaCoord) {
+        const seguidas2 = sequenciaCoord.length - 1;
+        const un2 = f1.familia === "12X36" ? (seguidas2 === 1 ? "plantão" : "plantões") : (seguidas2 === 1 ? "dia de trabalho" : "dias de trabalho");
+        caso.situacao = SITUACOES.COORDENACAO;
+        caso.motivo = `Continua faltando: voltou em ${ddmmSemana(retorno)}, mas faltou de novo em ${ddmmSemana(sequenciaCoord[0])} e em mais ${seguidas2} ${un2} seguidos sem voltar (${emLista(sequenciaCoord.slice(1).map(ddmmSemana))}).`;
+        caso.prazo = []; caso.prazoFim = null; // sem prazo: quem decide é a coordenação
+      } else caso.situacao = hoje > caso.prazoFim ? SITUACOES.PRAZO_VENCIDO : SITUACOES.NO_PRAZO;
       aplicarMedida(caso, medidas, usadas);
       casos.push(caso);
-      i = injust.findIndex(f => f.data > caso.prazoFim);
+      i = injust.findIndex(f => f.data > fimCaso);
       if (i < 0) break;
     }
   }
@@ -397,15 +418,20 @@ function periodosDeAbono(abonadas, fichaDias, lancadas, atestados) {
 // ATESTADO_REGISTRADO vale, ATESTADO_REMOVIDO apaga. Recebe os eventos do mais
 // antigo para o mais novo.
 function dobrarAtestados(eventos) {
-  const ultimo = new Map();
-  (eventos || []).forEach(e => ultimo.set(e.chave, e));
+  const ultimo = new Map(), pos = new Map(), lanc = new Map();
+  (eventos || []).forEach((e, idx) => {
+    // "já lancei no SAR2G": só vale se for mais novo que o último registro daquele atestado
+    if (e.acao === "ATESTADO_LANCADO_SAR2G") { if (e.depois) lanc.set(e.depois.chave, { idx, lancado: e.depois.lancado === true, por: e.ator || null, em: e.criado_em || null }); return; }
+    ultimo.set(e.chave, e); pos.set(e.chave, idx);
+  });
   const ativos = [], sem = {};
   ultimo.forEach((e, chave) => {
     if (e.acao !== "ATESTADO_REGISTRADO" || !e.depois) return;
     const d = e.depois, em = e.criado_em || null, por = e.ator || null;
     if (d.tem === false) { sem[d.re + "|" + d.caso] = { chave, por, em, caso: d.caso }; return; }
     const inicio = iso(d.inicio), dias = Number(d.dias) || 1;
-    ativos.push({ chave, re: String(d.re), inicio, dias, fim: somaDias(inicio, dias - 1), envio: d.envio ? iso(d.envio) : null, codigo: d.codigo || "A", por, em });
+    const l = lanc.get(chave), lancou = !!(l && l.lancado && l.idx > pos.get(chave));
+    ativos.push({ chave, re: String(d.re), inicio, dias, fim: somaDias(inicio, dias - 1), envio: d.envio ? iso(d.envio) : null, codigo: d.codigo || "A", por, em, lancadoSar2g: lancou, lancadoPor: lancou ? l.por : null, lancadoEm: lancou ? l.em : null });
   });
   return { ativos, sem };
 }
@@ -418,11 +444,32 @@ function turnoDoSupervisor(nome) {
   return SUPERVISORES_NOTURNOS.includes(primeiro) ? "NOTURNO" : "DIURNO";
 }
 
+// Calendário compacto para a resposta da tela: cada dia vira UM número
+// (tipo * 128 + bandeiras). A data e o dia da semana a tela calcula. Sem isso,
+// cada caso levava ~16 KB de calendário e 250 casos estouravam o limite de 4,5 MB
+// de resposta da Vercel.
+const TIPOS_CAL = ["", "TRABALHOU", "FOLGA", "FERIADO", "FALTA", "ABONADA", "RETORNO", "RETORNO_PREVISTO", "PRAZO", "MEDIDA"];
+function compactarCalendario(cal) {
+  if (!cal || !cal.length) return { i: "", d: [] };
+  return { i: cal[0].data, d: cal.map(x => TIPOS_CAL.indexOf(x.tipo || "") * 128 + (x.medida ? 1 : 0) + (x.hoje ? 2 : 0) + (x.futuro ? 4 : 0) + (x.feriado ? 8 : 0) + (x.fimDoPrazo ? 16 : 0) + (x.naFolha ? 32 : 0) + (x.atestado ? 64 : 0)) };
+}
+function expandirCalendario(k) {
+  const out = [];
+  if (!k || !k.i) return out;
+  let d = k.i;
+  k.d.forEach(v => {
+    const f = v & 127, x = paraData(d);
+    out.push({ data: d, dia: x.getUTCDate(), semana: x.getUTCDay(), tipo: TIPOS_CAL[v >> 7], medida: !!(f & 1), hoje: !!(f & 2), futuro: !!(f & 4), feriado: !!(f & 8), fimDoPrazo: !!(f & 16), naFolha: !!(f & 32), atestado: !!(f & 64) });
+    d = somaDias(d, 1);
+  });
+  return out;
+}
+
 function pessoa(f, extra) {
   return { re: reDe(f.RE), nome: f.NOME || "", cargo: f.CARGO || "", posto: f.LOCAL || "", supervisor: f.AREA || "", escala: f.ESCALA || "", ...extra };
 }
 
 module.exports = {
-  FAMILIAS, SITUACOES, ABONADAS, familiaEscala, ehOperacional, trabalhouNoDia, montarCasos, reDe, competenciaDe, calendario, periodosDeAbono, dobrarAtestados, turnoDoSupervisor, SUPERVISORES_NOTURNOS,
+  FAMILIAS, SITUACOES, ABONADAS, familiaEscala, ehOperacional, trabalhouNoDia, montarCasos, reDe, competenciaDe, calendario, compactarCalendario, expandirCalendario, periodosDeAbono, dobrarAtestados, turnoDoSupervisor, SUPERVISORES_NOTURNOS,
   textoMedidaComAusencia, descreverMedida, somaDias, ddmm
 };

@@ -2040,6 +2040,8 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       #pg-faltasmed .fm-at-i{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;font-size:.78rem;color:var(--fm-text);padding:8px 0;border-bottom:1px solid var(--fm-line2)}
       #pg-faltasmed .fm-at-i span{font-size:.7rem;color:var(--fm-muted)}
       #pg-faltasmed .fm-at-i .fm-btn{margin-left:auto}
+      #pg-faltasmed .fm-at-bt{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+      #pg-faltasmed .fm-at-bt .fm-btn{margin-left:0}
       #pg-faltasmed .fm-tg.am{color:#b54708;background:#fffaeb;border-color:#fedf89}
       html[data-theme="dark"] #pg-faltasmed .fm-tg.am{color:#fec84b;background:rgba(245,176,0,.12);border-color:rgba(245,176,0,.38)}
       #pg-faltasmed .fm-det.um{grid-template-columns:1fr}
@@ -9858,7 +9860,7 @@ function fmItemAbono(a){
   const cob=fmCobertura(a);const ini=cob.ini,fim=cob.fim,dias=cob.dias;
   const faixa=ini===fim?fmDd(ini):`${fmDd(ini)} a ${fmDd(fim)}`;
   const manual=a.manuais&&a.manuais.length;
-  const tag=a.aguardaSar2g?"lançar no SAR2G":(manual?"confirmado no SAR2G":(a.lancadoDepois?"lançado depois":""));
+  const tag=a.aguardaSar2g?"lançar no SAR2G":(manual?"lançado no SAR2G":(a.lancadoDepois?"lançado depois":""));
   let s=`Falta${a.faltas.length>1?"s":""} de ${fmLista(a.faltas.map(fmDdS))}`;
   if(at&&at.envio)s+=` · enviado em ${fmDd(at.envio)}`;
   else if(a.lancadoDepois&&a.lancadoEm)s+=` · ${rot.toLowerCase()} lançado em ${fmDd(a.lancadoEm)}, depois da falta`;
@@ -9999,6 +10001,9 @@ function fmAtSalvar(k,btn){
     return fmLoad(true);
   }).catch(e=>{alert(e.message);btn.disabled=false;});
 }
+function fmAtLancado(re,chave,lancado){
+  fmPedir("POST","atestado",{re,chave,lancado}).then(()=>{ptToast(lancado?"Marcado: já lançado no SAR2G":"Marca desfeita: falta lançar no SAR2G");return fmLoad(true);}).catch(e=>alert(e.message));
+}
 function fmAtRemover(re,chave){
   if(!confirm("Remover este registro? As faltas voltam a ser cobradas, a menos que o SAR2G já as mostre como abonadas."))return;
   fmPedir("POST","atestado",{re,remover:true,chave}).then(()=>{ptToast("Registro removido");return fmLoad(true);}).catch(e=>alert(e.message));
@@ -10024,8 +10029,9 @@ function fmDetalheAbono(a){
   const big=`<dl class="fm-big"><div><dt>Falta</dt><dd>${fmDd(a.faltas[0])}${a.faltas.length>1?`<small>+${a.faltas.length-1}</small>`:""}</dd></div><div><dt>${rot} cobriu</dt><dd>${fmDd(ini)} a ${fmDd(fim)}</dd></div><div><dt>Dias</dt><dd>${dias}</dd></div></dl>`;
   const kv=[["Faltas cobertas",fmLista(a.faltas.map(fmDdS))]];
   if(at)kv.push(["Enviado em",at.envio?fmDdS(at.envio):"Não informado"],["Registrado por",`${at.por||"—"} em ${fmAtReg(at)}`]);
+  if(at&&at.lancadoSar2g)kv.push(["Lançado no SAR2G",`marcado por ${at.lancadoPor||"—"} em ${fmAtReg({em:at.lancadoEm})}`]);
   kv.push(["Escala",a.escala||"—"],["Cargo",a.cargo||"—"]);
-  const rem=j.pode_editar?manuais.map(m=>`<div class="fm-at-i"><b>${fmDd(m.inicio)} a ${fmDd(m.fim)}</b> · ${m.dias} dia${m.dias===1?"":"s"}<button class="fm-btn fm-del sm k-da" data-r="${_esc(a.re)}" data-c="${_esc(m.chave)}" onclick="fmAtRemover(this.dataset.r,this.dataset.c)">Remover registro</button></div>`).join(""):"";
+  const rem=j.pode_editar?manuais.map(m=>`<div class="fm-at-i"><b>${fmDd(m.inicio)} a ${fmDd(m.fim)}</b> · ${m.dias} dia${m.dias===1?"":"s"}<span class="fm-at-bt">${a.aguardaSar2g||m.lancadoSar2g?`<button class="fm-btn sm${m.lancadoSar2g?"":" fm-pri"}" data-r="${_esc(a.re)}" data-c="${_esc(m.chave)}" data-l="${m.lancadoSar2g?0:1}" onclick="fmAtLancado(this.dataset.r,this.dataset.c,this.dataset.l==='1')">${m.lancadoSar2g?"Desmarcar lançamento":"Já lancei no SAR2G"}</button>`:""}<button class="fm-btn fm-del sm k-da" data-r="${_esc(a.re)}" data-c="${_esc(m.chave)}" onclick="fmAtRemover(this.dataset.r,this.dataset.c)">Remover registro</button></span></div>`).join(""):"";
   const form=j.pode_editar&&at?`<span class="fm-lbl" style="margin-top:14px">Corrigir os dados</span>${fmAtForm("ab|"+a.re+"|"+at.chave,{re:a.re,chave:at.chave,inicio:at.inicio,dias:at.dias,envio:at.envio||"",faltas:a.faltas,caso:a.faltas[0],modo:"com"},"Salvar correção",false)}`:"";
   const leg=`<div class="fm-mleg"><div><i style="background:var(--m-abon);border:1.5px solid var(--m-abon-bd)"></i><b>Falta abonada</b><span>Dia da falta que o ${r} cobriu</span></div><div><i style="background:var(--fm-surface);border:1px solid var(--fm-line);box-shadow:inset 0 -3px 0 var(--m-abon-bd)"></i><b>Período do ${r}</b><span>Dias cobertos, mesmo os de folga</span></div></div>`;
   return `<div class="fm-det"><div><h4 class="fm-h3">${rot} registrado</h4>${aviso}${big}<dl class="fm-kv">${kv.map(([l,v])=>`<dt>${l}</dt><dd>${_esc(v)}</dd>`).join("")}</dl>${rem}${form}${leg}</div><div><h4 class="fm-h3">Calendário do ${r}</h4>${fmMes(a,"ab|"+a.re+"|"+a.inicio)}</div></div>`;
@@ -10075,10 +10081,23 @@ function fmDetalhe(c){
     `<dl class="fm-kv">${kv.map(([l,v])=>`<dt>${l}</dt><dd>${_esc(v)}</dd>`).join("")}</dl>${fmAtCaso(c)}${med}${leg}</div>`+
     `<div><h4 class="fm-h3">Calendário da ocorrência</h4>${fmMes(c)}</div></div>`;
 }
+/* O servidor manda o calendário compacto (um número por dia); aqui vira a lista de dias. */
+const FM_TIPOS_CAL=["","TRABALHOU","FOLGA","FERIADO","FALTA","ABONADA","RETORNO","RETORNO_PREVISTO","PRAZO","MEDIDA"];
+function fmCalDe(c){
+  if(c._cal)return c._cal;
+  const k=c.cal;if(!k||!k.i)return[];
+  const out=[];let d=k.i;
+  k.d.forEach(v=>{
+    const f=v&127,x=new Date(d+"T12:00:00Z");
+    out.push({data:d,dia:x.getUTCDate(),semana:x.getUTCDay(),tipo:FM_TIPOS_CAL[v>>7],medida:!!(f&1),hoje:!!(f&2),futuro:!!(f&4),feriado:!!(f&8),fimDoPrazo:!!(f&16),naFolha:!!(f&32),atestado:!!(f&64)});
+    x.setUTCDate(x.getUTCDate()+1);d=x.toISOString().slice(0,10);
+  });
+  return c._cal=out;
+}
 /* Calendário do mês (dia 1 ao último), com a palavra de cada dia, a folha
    (26 → 25) marcada e as setas para o mês anterior e o seguinte. */
 function fmMes(c,kk){
-  const cal=c.calendario||[];if(!cal.length)return"";
+  const cal=fmCalDe(c);if(!cal.length)return"";
   const k=kk||fmChave(c);
   const meses=[...new Set(cal.map(d=>d.data.slice(0,7)))];
   const foco=String(c.prazoFim||c.retornoPrevisto||c.retorno||c.primeiraFalta).slice(0,7);
