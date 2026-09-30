@@ -2974,7 +2974,13 @@ function updOC(){
   document.getElementById("oc9").textContent=(F.justif||[]).filter(r=>(r.MOTIVO||"").toUpperCase().includes("VAGO SEM COBERTURA")).length;
   const _ncList=DASHBOARD_DATA.novosClientes||[];
   document.getElementById("vg-novoscli").textContent=_ncList.length;
-  document.getElementById("vg-novosclis").innerHTML=_ncList.length?`<b>${_ncList[_ncList.length-1].CLIENTE}</b>`:"nenhum ainda";
+  // o mais recente pela data da implantação (a planilha não vem ordenada)
+  const _ncUlt=_ncList.slice().sort((a,b)=>String(b.DATA||"").localeCompare(String(a.DATA||"")))[0];
+  const _ncIso=_ncUlt&&_ncUlt.DATA?String(_ncUlt.DATA).slice(0,10):"";
+  const _ncDt=_ncIso?_ncIso.split("-").reverse().join("/"):"";
+  // data futura = implantação agendada (a LABMASS fechou em 29/09 com início em 03/11)
+  const _ncFut=_ncIso&&_ncIso>new Date(Date.now()-3*3600000).toISOString().slice(0,10);
+  document.getElementById("vg-novosclis").innerHTML=_ncUlt?`<b>${_ncUlt.CLIENTE}</b>${_ncDt?`<br>${_ncFut?"implantação prevista para":"implantado em"} <b>${_ncDt}</b>`:""}`:"nenhum ainda";
   vgSemaforo();
   vgComparativos();
   vgCardChecklist();
