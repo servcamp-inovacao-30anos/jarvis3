@@ -82,6 +82,9 @@ html[data-theme="dark"] .cv-view-on{color:#e6edf5!important;}
 html[data-theme="dark"] .cv-view{color:#9fb0c7;}
 html[data-theme="dark"] .cv-view-on{background:#2e8fef!important;color:#fff!important;}
 html[data-theme="dark"] .cpx-tabs{background:#101a2b;}
+html[data-theme="dark"] .cpx-meta{background:#182234;border-color:#293648;border-left-color:#0d9488;}
+html[data-theme="dark"] .cdm-ok{background:linear-gradient(135deg,#0f2a1c,#12301f)!important}
+html[data-theme="dark"] .cdm-atencao{background:linear-gradient(135deg,#2a2210,#35270c)!important}
 html[data-theme="dark"] .cpx-kpi,html[data-theme="dark"] .cpx-grupo,html[data-theme="dark"] .cpx-chip{background:#182234;border-color:#293648;}
 html[data-theme="dark"] .cpx-kpi .v,html[data-theme="dark"] .cpx-grupo .nm{color:#e6edf5;}
 html[data-theme="dark"] .cpx-grupo .k,html[data-theme="dark"] .cpx-tbl td{color:#c2ccdb;}
@@ -1766,6 +1769,7 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
     <div class="sec-hdr"><span class="sec-hdr-ic">💼</span><div><div class="sec-hdr-t">Comercial — Propostas e Serviços Extras</div><div class="sec-hdr-sub">Propostas com follow-up automático (WhatsApp + E-mail) e serviços extras dos clientes em contrato</div></div></div>
     <!-- Duas abas na mesma guia. Trocar de aba só mostra/esconde: nenhum dado
          das propostas é recarregado nem alterado por isso. -->
+    <div id="cpx-meta-ano" class="cpx-meta"></div>
     <div class="cpx-tabs" role="tablist" aria-label="Seções do Comercial" onkeydown="cpxAbaTecla(event)">
       <button type="button" role="tab" class="cv-view cv-view-on" id="cpx-tab-prop" aria-selected="true" aria-controls="cpx-aba-prop" tabindex="0" onclick="cpxAba('prop')">💼 Propostas &amp; Cadência</button>
       <button type="button" role="tab" class="cv-view" id="cpx-tab-extra" aria-selected="false" aria-controls="cpx-aba-extra" tabindex="-1" onclick="cpxAba('extra')">🧾 Serviços Extras<span id="cpx-tab-badge"></span></button>
@@ -1982,6 +1986,22 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
     .cv-skel{border-radius:14px;height:104px;background:linear-gradient(90deg,#eef2f7 25%,#f8fafc 37%,#eef2f7 63%);background-size:400px 100%;animation:cvShimmer 1.2s infinite linear}
     .cv-view{border:none;background:transparent;color:#64748b;font-size:.72rem;font-weight:800;padding:7px 16px;border-radius:8px;cursor:pointer;transition:all .15s}
     .cv-view-on{background:#0d1f35;color:#fff;box-shadow:0 2px 8px rgba(13,31,53,.25)}
+    /* Comercial: meta anual na guia e metas no Painel Comercial */
+    .cpx-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#fff;border:1px solid #e5e9f0;border-left:4px solid #0d9488;border-radius:12px;padding:10px 14px;margin:0 0 12px}
+    .cpx-meta:empty{display:none}
+    .cdm-card{position:relative;overflow:hidden}
+    .cdm-ok{background:linear-gradient(135deg,#f0fdf4,#dcfce7)!important}
+    .cdm-atencao{background:linear-gradient(135deg,#fffbeb,#fef3c7)!important}
+    .cdm-festa{animation:cdmPulso 1.6s ease-in-out 3}
+    @keyframes cdmPulso{0%,100%{box-shadow:0 0 0 0 rgba(22,163,74,.0)}50%{box-shadow:0 0 0 6px rgba(22,163,74,.25)}}
+    .cdm-confete{position:absolute;inset:0;pointer-events:none}
+    .cdm-confete i{position:absolute;top:-10px;width:6px;height:10px;border-radius:2px;opacity:.9;animation:cdmCai 2.4s ease-in infinite}
+    .cdm-confete i:nth-child(3n){background:#16a34a}.cdm-confete i:nth-child(3n+1){background:#f5a623}.cdm-confete i:nth-child(3n+2){background:#2e8fef}
+    .cdm-confete i:nth-child(1){left:6%;animation-delay:0s}.cdm-confete i:nth-child(2){left:14%;animation-delay:.6s}.cdm-confete i:nth-child(3){left:22%;animation-delay:1.2s}
+    .cdm-confete i:nth-child(4){left:30%;animation-delay:.3s}.cdm-confete i:nth-child(5){left:38%;animation-delay:.9s}.cdm-confete i:nth-child(6){left:46%;animation-delay:1.5s}
+    .cdm-confete i:nth-child(7){left:54%;animation-delay:.2s}.cdm-confete i:nth-child(8){left:62%;animation-delay:.8s}.cdm-confete i:nth-child(9){left:70%;animation-delay:1.4s}
+    .cdm-confete i:nth-child(10){left:78%;animation-delay:.5s}.cdm-confete i:nth-child(11){left:86%;animation-delay:1.1s}.cdm-confete i:nth-child(12){left:94%;animation-delay:1.7s}
+    @keyframes cdmCai{to{transform:translateY(150px) rotate(360deg);opacity:0}}
     /* Comercial: abas Propostas | Serviços Extras */
     .cpx-tabs{display:inline-flex;gap:2px;background:#eef2f7;border-radius:11px;padding:4px;margin:0 0 14px}
     .cpx-tabs .cv-view{font-size:.78rem;padding:9px 20px;display:inline-flex;align-items:center;gap:7px}
@@ -7285,7 +7305,7 @@ function rhDashVagas(){
   }
 }
 /* ═══════════════ MÓDULO COMERCIAL (CRM) ═══════════════ */
-let COM_P=[],COM_LOG=[],COM_METAS=[],COM_TBL_STATUS="TODAS",COM_VIEW="kanban";
+let COM_P=[],COM_LOG=[],COM_METAS=[],COM_METAANO=[],COM_EXTRAS=[],COM_TBL_STATUS="TODAS",COM_VIEW="kanban";
 const COM_ST_COLORS={"LEAD":"#64748b","PROSPECÇÃO":"#7c3aed","PROPOSTA":"#2e8fef","NEGOCIAÇÃO":"#f97316","CONTRATO":"#0d9488","FECHADO":"#16a34a","PERDIDO":"#dc2626","PAUSADO":"#94a3b8"};
 const COM_ST_ORDER=["LEAD","PROSPECÇÃO","PROPOSTA","NEGOCIAÇÃO","CONTRATO","FECHADO","PERDIDO","PAUSADO"];
 const COM_ST_DESC={"LEAD":"Contato novo, ainda não trabalhado — a entrada do funil.","PROSPECÇÃO":"Primeiro contato feito; entendendo a necessidade e qualificando.","PROPOSTA":"Orçamento já enviado ao cliente; aguardando retorno.","NEGOCIAÇÃO":"Cliente respondeu; ajustando preço, prazo e condições.","CONTRATO":"Fechado verbalmente; formalizando a assinatura.","FECHADO":"Venda ganha. 🎉","PERDIDO":"Não avançou — recusa, sumiço ou concorrente.","PAUSADO":"Congelado por ora; retomar mais tarde (não é perdido)."};
@@ -7428,7 +7448,10 @@ function comFetchAll(){
   return Promise.all([
     fetch("/api/comercial?t=propostas").then(r=>r.json()).then(j=>{COM_P=(j&&j.rows)||[];}),
     fetch("/api/comercial?t=cadencia").then(r=>r.json()).then(j=>{COM_LOG=(j&&j.rows)||[];}),
-    fetch("/api/comercial?t=metas").then(r=>r.json()).then(j=>{COM_METAS=(j&&j.rows)||[];})
+    fetch("/api/comercial?t=metas").then(r=>r.json()).then(j=>{COM_METAS=(j&&j.rows)||[];}),
+    // meta anual e serviços extras: tabelas novas; se faltarem, o resto carrega igual
+    fetch("/api/comercial?t=metaano").then(r=>r.json()).then(j=>{COM_METAANO=(j&&j.rows)||[];}).catch(()=>{COM_METAANO=[];}),
+    fetch("/api/comercial?t=extras").then(r=>r.json()).then(j=>{COM_EXTRAS=(j&&j.rows)||[];}).catch(()=>{COM_EXTRAS=[];})
   ]);
 }
 /* Aviso de WhatsApp fora do ar.
@@ -7551,7 +7574,43 @@ function comRadar(){
       '<span><i style="background:#16304f"></i>n&atilde;o enviada</span>'+
     '</div></div>';
 }
-function comRenderAll(){comRadar();comRenderView();}
+function comRenderAll(){comRadar();comRenderView();cpxMetaRender();}
+
+/* ══ Meta anual de contratos (combinada Comercial × diretoria) ══
+   Definida aqui, na guia Propostas e Serviços Extras; o Painel Comercial lê a
+   mesma linha (com_meta_anual, uma por ano). Fechados = propostas FECHADO com
+   fechado_em no ano. */
+function comMetaAno(ano){const r=(COM_METAANO||[]).find(x=>Number(x.ano)===Number(ano));return r?Number(r.meta_contratos):null;}
+function comFechadosAno(ano){return(COM_P||[]).filter(p=>p.status==="FECHADO"&&String(p.fechado_em||"").slice(0,4)===String(ano));}
+function cpxMetaRender(){
+  const el=document.getElementById("cpx-meta-ano");if(!el)return;
+  const ano=new Date(Date.now()-3*3600000).getUTCFullYear(),meta=comMetaAno(ano),fec=comFechadosAno(ano).length;
+  const pct=meta?Math.min(100,Math.round(fec/meta*100)):0;
+  el.innerHTML='<span style="font-size:1.1rem">🎯</span><div style="flex:1;min-width:200px"><div style="font-size:.62rem;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:#64748b">Meta anual de contratos fechados · '+ano+'</div>'+
+    '<div style="font-size:.78rem;color:#0d1f35;font-weight:700">'+(meta?fec+' de '+meta+' fechados ('+pct+'%)'+(fec>=meta?' · meta batida 🎉':' · faltam '+(meta-fec)):'Meta ainda não definida. Ela aparece para a diretoria no Painel Comercial.')+'</div>'+
+    (meta?'<div style="height:6px;background:#eef2f7;border-radius:4px;margin-top:5px;max-width:360px"><div style="height:6px;border-radius:4px;width:'+pct+'%;background:'+(fec>=meta?'#16a34a':'#2e8fef')+'"></div></div>':'')+'</div>'+
+    '<label for="cpx-meta-inp" style="font-size:.66rem;font-weight:700;color:#64748b">Meta '+ano+'</label>'+
+    '<input id="cpx-meta-inp" class="rhf-i" type="number" min="0" step="1" style="width:90px" value="'+(meta==null?'':meta)+'" placeholder="Ex: 12">'+
+    '<button type="button" class="rh-btn" style="padding:8px 14px" onclick="cpxMetaSalvar('+ano+')">Salvar meta</button><span id="cpx-meta-msg" role="status" style="font-size:.7rem;font-weight:700"></span>';
+}
+function cpxMetaSalvar(ano){
+  const v=Number(document.getElementById("cpx-meta-inp").value),m=document.getElementById("cpx-meta-msg");
+  if(!Number.isInteger(v)||v<0){m.style.color="#dc2626";m.textContent="Informe um número inteiro.";return;}
+  fetch("/api/comercial?t=metaano",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ano,meta_contratos:v,atualizado_por:sessionStorage.getItem("userNome")||null})})
+    .then(r=>r.json().catch(()=>({})).then(j=>{if(!r.ok)throw new Error(j.error||"Falha ao salvar.");}))
+    .then(()=>fetch("/api/comercial?t=metaano").then(r=>r.json()).then(j=>{COM_METAANO=(j&&j.rows)||[];}))
+    .then(()=>{cpxMetaRender();const n=document.getElementById("cpx-meta-msg");n.style.color="#16a34a";n.textContent="✅ Meta salva";})
+    .catch(e=>{m.style.color="#dc2626";m.textContent="Não foi possível salvar: "+((e&&e.message)||e);});
+}
+// Visitas do mês: cada "Visitar" registra um evento VISITA no log. A data vem do
+// texto ("Visita realizada em DD/MM/AAAA") ou, nos registros antigos, do envio.
+function comVisitasMes(M){
+  return(COM_LOG||[]).filter(l=>l.canal==="VISITA").map(l=>{
+    const m=String(l.detalhe||"").match(/em (\d{2})\/(\d{2})\/(\d{4})/);
+    return{l,dia:m?m[3]+"-"+m[2]+"-"+m[1]:String(l.enviado_em||"").slice(0,10)};
+  }).filter(x=>comNoMes(x.dia,M));
+}
+const COM_META_VISITAS=4;
 
 /* ══════════ SERVIÇOS EXTRAS (segunda aba da guia Comercial) ══════════
    Serviço extra = trabalho a mais num cliente que JÁ está em contrato (evento,
@@ -10926,6 +10985,29 @@ function comDashRender(){
     ?kpi("ticket","📈","Ticket médio",ticket===null?"—":fmtBRL0(ticket),`${fechTodas.length} contratos`,"#0d9488",comSpark(sFecR,"#16a34a"))
     :kpi("fechadaMes","🏆","Fechadas no mês",fecMes.length,`total histórico: ${fechTodas.length}`,"#0d9488",comSpark(sFecN,"#16a34a"));
   h+=`</div>`;
+  /* ── METAS DO COMERCIAL + SERVIÇOS EXTRAS ──
+     Meta anual (definida na guia Propostas e Serviços Extras), visitas do mês
+     contra a meta fixa de 4 e os serviços extras cadastrados. */
+  {
+    const ano=_M.ini.getFullYear(),metaA=comMetaAno(ano),fecA=comFechadosAno(ano).length;
+    const pctA=metaA?Math.min(100,Math.round(fecA/metaA*100)):0,batA=metaA&&fecA>=metaA;
+    const vis=comVisitasMes(_M).length,saldo=vis-COM_META_VISITAS,batV=vis>=COM_META_VISITAS;
+    const hojeE=new Date(Date.now()-3*3600000).toISOString().slice(0,10),mesE=ymd(_M.ini).slice(0,7);
+    const exAnd=(COM_EXTRAS||[]).filter(e=>String(e.data_inicio).slice(0,10)<=hojeE&&(!e.data_fim||String(e.data_fim).slice(0,10)>=hojeE));
+    const exEnc=(COM_EXTRAS||[]).filter(e=>e.data_fim&&String(e.data_fim).slice(0,10)<hojeE&&String(e.data_fim).slice(0,7)===mesE);
+    const colAnd=exAnd.reduce((t,e)=>t+(Number(e.qtd_colaboradores)||0),0);
+    const card=(cls,cor,ic,lbl,val,sub,extra,onc)=>`<div class="cvk cdm-card ${cls}" style="border-top:3px solid ${cor};${onc?"cursor:pointer":""}"${onc?` onclick="${onc}" title="Clique para ver os registros"`:""}><div style="font-size:1.05rem">${ic}</div><div class="cvk-lb" style="margin-top:5px">${lbl}</div><div class="cvk-v" style="font-size:1.3rem">${val}</div><div style="font-size:.64rem;color:#64748b">${sub}</div>${extra||""}</div>`;
+    const barra=(p,c)=>`<div style="height:6px;background:#eef2f7;border-radius:4px;margin-top:7px"><div style="height:6px;border-radius:4px;width:${p}%;background:${c}"></div></div>`;
+    const abreExtra=k=>`navTo('compro',null);cpxAba('extra');setTimeout(()=>cpxKpiAbrir('${k}'),600)`;
+    h+=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px">`;
+    h+=card(batA?"cdm-ok":"","#0d9488","🎯",`Meta anual de contratos · ${ano}`,metaA?`${fecA} <span style="font-size:.8rem;color:#94a3b8">/ ${metaA}</span>`:"—",
+      metaA?(batA?"meta batida 🎉":`faltam ${metaA-fecA} · ${pctA}%`):"meta não definida (Propostas e Serviços Extras)",metaA?barra(pctA,batA?"#16a34a":"#0d9488"):"");
+    h+=card(batV?"cdm-ok cdm-festa":"cdm-atencao",batV?"#16a34a":"#f59e0b",batV?"🎉":"⚠️",`Visitas no mês · meta ${COM_META_VISITAS}`,`${vis} <span style="font-size:.8rem;color:#94a3b8">/ ${COM_META_VISITAS}</span>`,
+      batV?`meta batida · ${saldo>0?"+"+saldo+" acima":"no alvo"}`:`ponto de atenção · faltam ${-saldo}`,barra(Math.min(100,Math.round(vis/COM_META_VISITAS*100)),batV?"#16a34a":"#f59e0b")+(batV?`<div class="cdm-confete" aria-hidden="true">${"<i></i>".repeat(12)}</div>`:""),"comDet('visitasMes')");
+    h+=card("","#16a34a","🧾","Serviços extras em andamento",exAnd.length,`${colAnd} colaborador${colAnd===1?"":"es"} hoje`,"",abreExtra("EM ANDAMENTO"));
+    h+=card("","#64748b","✅","Serviços extras encerrados no mês",exEnc.length,_M.ini.toLocaleDateString("pt-BR",{month:"long",year:"numeric"}),"",abreExtra("ENCERRADO"));
+    h+=`</div>`;
+  }
   /* ── POSSIVEIS NOVOS CLIENTES ── */
   // Pipeline ATUAL, de proposito fora do filtro de mes: uma proposta de julho
   // ainda em negociacao continua sendo um cliente possivel hoje. Filtrar por mes

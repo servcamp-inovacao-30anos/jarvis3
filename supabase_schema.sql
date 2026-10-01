@@ -244,3 +244,21 @@ create index if not exists com_servicos_extras_cliente_idx on public.com_servico
 alter table public.com_servicos_extras enable row level security;
 revoke all on public.com_servicos_extras from anon, authenticated;
 grant select, insert, update, delete on public.com_servicos_extras to service_role;
+
+-- ============================================================================
+-- Comercial: meta anual de contratos fechados (uma linha por ano)
+-- Definida na guia Propostas e Serviços Extras e exibida no Painel Comercial
+-- (api/comercial.js, ?t=metaano, upsert por ano). Só cria; pode rodar de novo.
+-- ============================================================================
+create table if not exists public.com_meta_anual (
+  id             bigint generated always as identity primary key,
+  ano            integer not null unique,
+  meta_contratos integer not null,
+  atualizado_por text,
+  criado_em      timestamptz not null default now(),
+  atualizado_em  timestamptz not null default now(),
+  constraint com_meta_anual_meta check (meta_contratos between 0 and 100000)
+);
+alter table public.com_meta_anual enable row level security;
+revoke all on public.com_meta_anual from anon, authenticated;
+grant select, insert, update, delete on public.com_meta_anual to service_role;

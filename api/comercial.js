@@ -28,6 +28,13 @@ const TABLES = {
     table: "com_servicos_extras",
     required: ["cliente","data_inicio","data_fim","qtd_colaboradores","tipo_servico"],
     fields: ["cliente","data_inicio","data_fim","qtd_colaboradores","tipo_servico","observacao","responsavel","criado_por"]
+  },
+  // Meta anual de contratos fechados, combinada entre o Comercial e a diretoria.
+  // Definida na guia Propostas e Serviços Extras, exibida no Painel Comercial.
+  metaano: {
+    table: "com_meta_anual",
+    required: ["ano","meta_contratos"],
+    fields: ["ano","meta_contratos","atualizado_por"]
   }
 };
 
@@ -199,8 +206,10 @@ module.exports = async function handler(req, res) {
         if (row[k] === undefined || row[k] === null) return res.status(400).json({ error: `Campo obrigatório ausente: ${k}` });
       }
       // metas: upsert por mês (registrar/atualizar meta do mês num clique)
-      const url = tKey === "metas" ? `${base}?on_conflict=mes` : base;
-      const hdrs = tKey === "metas" ? { ...headers, Prefer: "return=representation,resolution=merge-duplicates" } : headers;
+      // metas: upsert por mês; metaano: upsert por ano (uma meta por ano)
+      const conflito = tKey === "metas" ? "mes" : tKey === "metaano" ? "ano" : null;
+      const url = conflito ? `${base}?on_conflict=${conflito}` : base;
+      const hdrs = conflito ? { ...headers, Prefer: "return=representation,resolution=merge-duplicates" } : headers;
       resp = await fetch(url, { method: "POST", headers: hdrs, body: JSON.stringify(row) });
     } else if (req.method === "PATCH") {
       const id = body && body.id;
