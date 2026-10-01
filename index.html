@@ -10360,17 +10360,20 @@ function fmPlClick(el,ev){
   const o=JSON.parse(el.dataset.pl||"{}"),p=fmPl();
   const manter={busca:p.busca,de:p.de,ate:p.ate,porPosto:p.porPosto};
   let rolar=true;
+  // clique dentro da tabela dos supervisores: a tabela fica parada onde está, sem pulo de tela
+  const tb=el.closest?el.closest("#fm-sups"):null,antes=tb?tb.getBoundingClientRect().top:null;
   if(o.sup!==undefined){
     // escolher um supervisor (cartão, coluna ou linha da tabela): a tela toda passa a mostrar só os
     // dados dele; clicar de novo no mesmo cartão volta para todos
-    const soSup=Object.keys(o).length===1;
-    FM.sup=(soSup&&o.sup===FM.sup)?"":o.sup;delete o.sup;
+    const soSup=Object.keys(o).length===1,linha=Object.keys(o).every(k=>k==="sup"||k==="tab");
+    FM.sup=((soSup||(tb&&linha))&&o.sup===FM.sup)?"":o.sup;delete o.sup;
     FM.pl=Object.assign(fmPlPadrao(),manter,{tab:"tratar"},o);
-    rolar=!soSup;
+    rolar=!soSup&&!tb;
   }else if(fmPlIgual(o)){FM.pl=Object.assign(fmPlPadrao(),manter,{tab:p.tab});}
   else FM.pl=Object.assign(fmPlPadrao(),manter,o);
   FM.aberto={};FM.lim=FM_PAGINA;FM.animar=true;
   fmRenderCorpo();
+  if(antes!=null){const n=document.getElementById("fm-sups");if(n)window.scrollBy({top:n.getBoundingClientRect().top-antes,behavior:"instant"});}
   if(rolar){const sc=document.getElementById("fm-ocor");if(sc)sc.scrollIntoView({behavior:"smooth",block:"start"});}
 }
 function fmPlSet(campo,v){fmPl()[campo]=v;FM.lim=FM_PAGINA;fmRenderOcor();}
@@ -10470,16 +10473,16 @@ function fmPainel(){
 
   h+=fmCartoesSup(RG)+(FM.sup?fmGrafSituacoes(R,rotPer,P):fmGrafColunas(R,rotPer));
 
-  // tabela dos supervisores: só na visão geral (escolhido um supervisor, a tela é só dele)
-  if(!FM.sup&&R.sups.length){
+  // tabela dos supervisores: sempre visível, com o escolhido marcado (assim ninguém se perde)
+  if(RG.sups.length){
     const tip=t=>`<span class="fm-inf" tabindex="0" data-tip="${_esc(t)}" aria-label="${_esc(t)}">${FM_IC.info}</span>`;
     const nb=(v,o,cls)=>v?`<button type="button" class="fm-nb ${cls||""}" ${fmPlAttr(o)}>${v}</button>`:'<span class="fm-z">0</span>';
-    h+=`<div class="fm-sups"><div class="fm-sups-h">Supervisores<span>Clique numa linha para ver as ocorrências do supervisor</span></div>`+
+    h+=`<div class="fm-sups" id="fm-sups"><div class="fm-sups-h">Supervisores<span>${FM.sup?"Clique de novo na linha marcada para voltar a ver todos":"Clique numa linha para ver só as ocorrências do supervisor"}</span></div>`+
       `<div class="fm-sups-c"><span>Supervisor</span><span class="num">Em aberto ${tip("Casos que começaram neste período e ainda estão sem medida e sem abono: atrasados, no prazo, esperando a pessoa voltar e na coordenação.")}</span>`+
       `<span class="num">Atrasadas ${tip("O prazo para aplicar a medida já terminou e a medida não foi aplicada.")}</span><span class="num">Vencem hoje ${tip("O último dia do prazo para aplicar a medida é hoje.")}</span>`+
       `<span class="num sep">${mes?"Do mês anterior":"Da folha anterior"} ${tip("Casos de períodos que já fecharam e continuam em aberto. Ficam à parte: NÃO entram nos números ao lado.")}</span>`+
       `<span class="num">Tratado ${tip("Faltas injustificadas dos casos que começaram neste período, com medida aplicada ÷ todas as faltas desses casos. As abonadas e os casos de períodos anteriores não entram na conta.")}</span><span></span></div>`;
-    R.sups.forEach((x,i)=>{
+    RG.sups.forEach((x,i)=>{
       const o={tab:"tratar",sup:x.nome};
       h+=`<div class="fm-sup${FM.sup===x.nome?" on":""}" role="button" tabindex="0" ${fmPlAttr(o)} onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();fmPlClick(this,event)}">`+
         `<div class="fm-sup-n">${_esc(x.nome)}${i===0&&x.abertos>0?'<span class="fm-top">Mais casos para resolver</span>':""}</div>`+
