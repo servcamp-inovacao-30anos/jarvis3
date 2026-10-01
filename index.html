@@ -2238,10 +2238,6 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       #pg-faltasmed .fm-gc.pn{container-type:inline-size;container-name:fmpn}
       #pg-faltasmed .fm-pn-b{display:grid;grid-template-columns:minmax(0,1fr);gap:22px}
       #pg-faltasmed .fm-pn-t{min-width:0;overflow-x:auto;overflow-y:hidden}
-      #pg-faltasmed .fm-pn-g{min-width:0}
-      #pg-faltasmed .fm-pn-gh{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
-      #pg-faltasmed .fm-pn-gh h5{font-size:.86rem;font-weight:700;color:var(--fm-text);margin:0}
-      #pg-faltasmed .fm-pn-gh p{font-size:.7rem;color:var(--fm-muted);margin:3px 0 0}
       #pg-faltasmed .fm-pn .fm-sups-c,#pg-faltasmed .fm-pn .fm-sup{grid-template-columns:minmax(120px,1.7fr) repeat(6,minmax(54px,.7fr)) minmax(70px,.85fr) minmax(98px,1fr) 16px;gap:6px;padding:11px 10px;min-width:720px}
       #pg-faltasmed .fm-pn .fm-sups-c{text-transform:none;letter-spacing:0;font-size:.7rem;font-weight:600;line-height:1.25;padding-top:9px;padding-bottom:9px}
       #pg-faltasmed .fm-pn .fm-sups-c i.d{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--cc);margin-right:5px}
@@ -2256,10 +2252,8 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       html[data-theme="dark"] #pg-faltasmed .fm-nb.gr{color:#98a2b3}
       html[data-theme="dark"] #pg-faltasmed .fm-nb.vi{color:#b692f6}
       #pg-faltasmed span.fm-nb{cursor:default}
-      @container fmpn (min-width:1100px){
-        #pg-faltasmed .fm-pn-b{grid-template-columns:minmax(0,1.85fr) minmax(330px,1fr);gap:0}
-        #pg-faltasmed .fm-pn-t{padding-right:22px}
-        #pg-faltasmed .fm-pn-g{border-left:1px solid var(--fm-line2);padding-left:22px}
+      @container fmpn (min-width:1200px){
+        #pg-faltasmed .fm-pn-b{grid-template-columns:minmax(720px,62fr) minmax(380px,38fr);gap:24px}
       }
       @container fmpn (max-width:760px){
         #pg-faltasmed .fm-pn .fm-sups-c{display:none}
@@ -2270,29 +2264,95 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
         #pg-faltasmed .fm-pn .fm-sup .fm-pct{width:auto;justify-content:flex-start}
         #pg-faltasmed .fm-pn .fm-sup .sep{border-left:0;padding-left:0}
       }
-      /* gráfico de situações e cores de concluídas/abonadas */
+      /* cores de concluídas/abonadas */
       #pg-faltasmed .cat-ok{--cc:#079455;--ct:#fff}
       #pg-faltasmed .cat-ab{--cc:#0e9aa7;--ct:#fff}
       html[data-theme="dark"] #pg-faltasmed .cat-ok{--cc:#17b26a;--ct:#0b1220}
       html[data-theme="dark"] #pg-faltasmed .cat-ab{--cc:#22c3d2;--ct:#0b1220}
-      #pg-faltasmed .fm-cols-sit{justify-content:space-between;gap:6px;min-width:0}
-      #pg-faltasmed .fm-pn-g .fm-plot{overflow-x:clip}
-      #pg-faltasmed .fm-col.sit{flex:1 1 0;min-width:0}
-      #pg-faltasmed .fm-col.sit .fm-bar{width:64%;max-width:56px;gap:0}
-      #pg-faltasmed .fm-col.sit .fm-sg{min-height:6px;border-radius:8px 8px 0 0;font-size:0;border-top:0}
-      #pg-faltasmed .fm-col-l.sit{white-space:normal;line-height:1.25;height:40px;font-size:.7rem;max-width:none}
-      #pg-faltasmed .fm-col-l.sit .lc{display:none}
-      #pg-faltasmed .fm-sepv{flex:0 0 1px;background:var(--fm-line);align-self:stretch;margin:0 2px 40px}
-      #pg-faltasmed .fm-col-t.z{color:var(--g400);cursor:default}
-      #pg-faltasmed .fm-col-t.z:hover{background:none;color:var(--g400)}
-      @container fmpn (max-width:560px) or ((min-width:1100px) and (max-width:1499px)){
-        #pg-faltasmed .fm-col-l.sit .lf{display:none}
-        #pg-faltasmed .fm-col-l.sit .lc{display:inline}
-        #pg-faltasmed .fm-col-l.sit{font-size:.58rem;letter-spacing:-.01em}
+      /* painel do gráfico (direita) */
+      #pg-faltasmed .fm-pn-g{min-width:0;display:flex;flex-direction:column;gap:16px;padding:20px 22px;border:1px solid var(--fm-line2);border-radius:12px;background:var(--fm-subtle);container-type:inline-size;container-name:fmpg}
+      #pg-faltasmed .fm-pg-h{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+      #pg-faltasmed .fm-pg-h .tt{min-width:0}
+      #pg-faltasmed .fm-pg-h .ey{display:block;font-size:.64rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--fm-muted)}
+      #pg-faltasmed .fm-pg-h h5{font-size:1.15rem;font-weight:700;letter-spacing:-.01em;color:var(--fm-text);margin:3px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      #pg-faltasmed .fm-pg-h p{font-size:.76rem;color:var(--fm-muted);margin:3px 0 0}
+      #pg-faltasmed .fm-pg-h p b{color:var(--fm-text2)}
+      #pg-faltasmed .fm-pg-back{appearance:none;flex:0 0 auto;display:inline-flex;align-items:center;gap:4px;height:32px;padding:0 12px 0 8px;border:1px solid var(--fm-line);border-radius:999px;background:var(--fm-surface);font:inherit;font-size:.74rem;font-weight:600;color:var(--fm-text2);cursor:pointer;white-space:nowrap;transition:background .12s,border-color .12s,color .12s}
+      #pg-faltasmed .fm-pg-back svg{width:15px;height:15px}
+      #pg-faltasmed .fm-pg-back:hover{background:var(--fm-brand-soft);border-color:var(--fm-brand);color:var(--fm-brand-tx)}
+      #pg-faltasmed .fm-pg-back:focus-visible,#pg-faltasmed .fm-pg-col:focus-visible,#pg-faltasmed .fm-pg-ant:focus-visible{outline:none;box-shadow:0 0 0 3px var(--fm-ring)}
+      #pg-faltasmed .fm-pg-area{--foot:78px;position:relative;flex:1;min-height:300px;margin-left:28px}
+      #pg-faltasmed .fm-pg-grid{position:absolute;left:0;right:0;top:30px;bottom:var(--foot);pointer-events:none}
+      #pg-faltasmed .fm-pg-gl{position:absolute;left:0;right:0;border-top:1px dashed var(--fm-line)}
+      #pg-faltasmed .fm-pg-gl:first-child{border-top:1px solid var(--g300)}
+      #pg-faltasmed .fm-pg-gl span{position:absolute;left:-28px;top:-8px;width:20px;text-align:right;font-size:.64rem;color:var(--fm-muted)}
+      #pg-faltasmed .fm-pg-groups{position:absolute;inset:30px 0 0 0;display:flex;gap:18px}
+      #pg-faltasmed .fm-pg-grp{display:flex;flex-direction:column;min-width:0}
+      #pg-faltasmed .fm-pg-row{flex:1;display:flex;gap:6px;min-height:0}
+      #pg-faltasmed .fm-pg-col{appearance:none;border:0;background:none;padding:0;font:inherit;color:inherit;flex:1 1 0;min-width:0;display:flex;flex-direction:column;position:relative;cursor:pointer;transition:opacity .15s}
+      #pg-faltasmed .fm-pg-col.vz{cursor:default}
+      #pg-faltasmed .fm-pg-well{flex:1;position:relative;display:flex;align-items:flex-end;justify-content:center}
+      #pg-faltasmed .fm-pg-bar{position:relative;width:min(62%,56px);border-radius:9px 9px 3px 3px;background:var(--cc);transform-origin:bottom;transition:filter .15s,transform .15s,box-shadow .15s}
+      #pg-faltasmed .fm-pg-groups.anim .fm-pg-bar{animation:fmSobe .55s cubic-bezier(.2,.8,.2,1) both}
+      @media (prefers-reduced-motion:reduce){#pg-faltasmed .fm-pg-groups.anim .fm-pg-bar{animation:none}}
+      #pg-faltasmed .fm-pg-bar .v{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:5px;font-size:1rem;font-weight:800;line-height:1.2;color:var(--fm-text)}
+      #pg-faltasmed .fm-pg-col.vz .fm-pg-bar{height:0!important;min-height:0}
+      #pg-faltasmed .fm-pg-col.vz .fm-pg-bar .v{color:var(--g400);font-weight:600}
+      #pg-faltasmed .fm-pg-col:not(.vz):hover .fm-pg-bar{filter:brightness(1.07);transform:translateY(-2px)}
+      #pg-faltasmed .fm-pg-col.sel .fm-pg-bar{box-shadow:0 0 0 3px var(--fm-subtle),0 0 0 5px var(--cc)}
+      #pg-faltasmed .fm-pg-groups.hs .fm-pg-col:not(.sel){opacity:.42}
+      #pg-faltasmed .fm-pg-groups:not(.hs):hover .fm-pg-col:not(:hover){opacity:.62}
+      #pg-faltasmed .fm-pg-lab{height:46px;padding-top:10px;display:flex;flex-direction:column;align-items:center;gap:5px;font-size:.72rem;font-weight:600;line-height:1.2;color:var(--fm-text2);text-align:center}
+      #pg-faltasmed .fm-pg-lab i{width:7px;height:7px;border-radius:50%;background:var(--cc);flex:0 0 auto}
+      #pg-faltasmed .fm-pg-lab .lc{display:none}
+      #pg-faltasmed .fm-pg-col:hover .fm-pg-lab{color:var(--fm-text)}
+      #pg-faltasmed .fm-pg-col.sel .fm-pg-lab{color:var(--fm-text);font-weight:700}
+      #pg-faltasmed .fm-pg-cap{height:32px;border-top:1px solid var(--fm-line);display:flex;align-items:center;justify-content:center;gap:6px;font-size:.66rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--fm-muted)}
+      #pg-faltasmed .fm-pg-cap span{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:18px;padding:0 6px;border-radius:9px;background:var(--fm-surface);border:1px solid var(--fm-line);letter-spacing:0;color:var(--fm-text)}
+      /* dica ao passar o mouse */
+      #pg-faltasmed .fm-pg-tip{display:none;position:absolute;left:50%;top:0;transform:translateX(-50%);z-index:8;width:190px;box-sizing:border-box;padding:10px 12px;border-radius:10px;background:var(--fm-navy);color:#fff;text-align:left;pointer-events:none;box-shadow:0 10px 24px rgba(15,23,42,.28)}
+      #pg-faltasmed .fm-pg-col.tl .fm-pg-tip{left:0;transform:none}
+      #pg-faltasmed .fm-pg-col.tr .fm-pg-tip{left:auto;right:0;transform:none}
+      #pg-faltasmed .fm-pg-col:hover .fm-pg-tip,#pg-faltasmed .fm-pg-col:focus-visible .fm-pg-tip{display:block}
+      #pg-faltasmed .fm-pg-tip b{display:block;font-size:.78rem}
+      #pg-faltasmed .fm-pg-tip em{display:block;font-style:normal;font-size:.7rem;opacity:.85;margin:1px 0 6px}
+      #pg-faltasmed .fm-pg-tip span{display:block;font-size:.68rem;line-height:1.35;opacity:.9}
+      #pg-faltasmed .fm-pg-tip u{display:block;text-decoration:none;font-size:.64rem;font-weight:600;margin-top:7px;opacity:.7}
+      html[data-theme="dark"] #pg-faltasmed .fm-pg-tip{color:#0b1220}
+      /* complemento: folha anterior */
+      #pg-faltasmed .fm-pg-ant{appearance:none;width:100%;display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px dashed var(--fm-line);border-radius:10px;background:var(--fm-surface);font:inherit;text-align:left;cursor:pointer;transition:border-color .12s,background .12s}
+      #pg-faltasmed .fm-pg-ant:hover{border-color:var(--fm-brand);background:var(--fm-brand-soft)}
+      #pg-faltasmed .fm-pg-ant i{width:10px;height:10px;border-radius:3px;flex:0 0 10px;background:#98a2b3 repeating-linear-gradient(135deg,rgba(255,255,255,.6) 0 2px,transparent 2px 4px)}
+      #pg-faltasmed .fm-pg-ant .t{flex:1;min-width:0;display:flex;flex-direction:column}
+      #pg-faltasmed .fm-pg-ant .t b{font-size:.78rem;color:var(--fm-text)}
+      #pg-faltasmed .fm-pg-ant .t em{font-style:normal;font-size:.68rem;color:var(--fm-muted);margin-top:1px}
+      #pg-faltasmed .fm-pg-ant .n{font-size:1.05rem;font-weight:800;color:var(--fm-text)}
+      #pg-faltasmed .fm-pg-ant .go{display:flex;color:var(--g400)}
+      #pg-faltasmed .fm-pg-ant .go svg{width:16px;height:16px}
+      #pg-faltasmed .fm-pg-ant:hover .go{color:var(--fm-brand)}
+      @container fmpg (max-width:559px){
+        #pg-faltasmed .fm-pg-lab .lf{display:none}
+        #pg-faltasmed .fm-pg-lab .lc{display:inline}
+        #pg-faltasmed .fm-pg-lab{font-size:.62rem;letter-spacing:-.01em}
+        #pg-faltasmed .fm-pg-groups{gap:12px}
+        #pg-faltasmed .fm-pg-row{gap:3px}
       }
-      /* ao passar o mouse numa coluna, as outras esmaecem */
-      #pg-faltasmed .fm-col{transition:opacity .15s}
-      #pg-faltasmed .fm-cols-g:hover .fm-col:not(:hover){opacity:.55}
+      #pg-faltasmed .fm-pg-leg{display:none}
+      #pg-faltasmed .fm-pg-li{appearance:none;border:0;background:none;padding:6px 8px;border-radius:8px;font:inherit;font-size:.76rem;color:var(--fm-text2);display:flex;align-items:center;gap:8px;text-align:left;cursor:pointer}
+      #pg-faltasmed .fm-pg-li i{width:8px;height:8px;border-radius:50%;background:var(--cc);flex:0 0 8px}
+      #pg-faltasmed .fm-pg-li span{flex:1;min-width:0}
+      #pg-faltasmed .fm-pg-li b{color:var(--fm-text)}
+      #pg-faltasmed .fm-pg-li:hover{background:var(--fm-surface)}
+      #pg-faltasmed .fm-pg-li.sel{background:var(--fm-brand-soft);color:var(--fm-brand-tx)}
+      #pg-faltasmed .fm-pg-li.vz{cursor:default;opacity:.6}
+      #pg-faltasmed .fm-pg-li.vz:hover{background:none}
+      @container fmpg (max-width:420px){
+        #pg-faltasmed .fm-pg-area{--foot:56px;min-height:260px}
+        #pg-faltasmed .fm-pg-lab{height:22px;padding-top:8px}
+        #pg-faltasmed .fm-pg-lab span{display:none!important}
+        #pg-faltasmed .fm-pg-leg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 10px}
+      }
+      @container fmpg (max-width:380px){#pg-faltasmed .fm-pg-bar .v{font-size:.88rem}#pg-faltasmed .fm-pg-lab{font-size:.56rem}}
 
       /* separação entre folhas */
       #pg-faltasmed .fm-fh{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 18px 10px 22px;font-size:.82rem;border-top:1px solid var(--fm-line);border-bottom:1px solid var(--fm-line)}
@@ -10737,32 +10797,47 @@ function fmPainelSup(R,RG,P,rotPer){
   return `<div class="fm-gc pn fm-pn" id="fm-sups"><div class="fm-gc-h"><div><h4>Casos por supervisor</h4><p>${RG.abertos.length} ${RG.abertos.length===1?"caso em aberto":"casos em aberto"} ${rotPer}. Só entram casos que começaram ${rotPer}; os de antes ficam em outra aba. ${dica}</p></div>${sel}</div>`+
     `<div class="fm-pn-b"><div class="fm-pn-t">${lista.length?cab+linhas+total:'<div class="fm-gc-vz">Nenhum caso neste período.</div>'}</div>${fmGrafSit(R,rotPer,P)}</div></div>`;
 }
-/* Gráfico de colunas por situação (todos os supervisores, ou só o escolhido). */
+/* Painel do gráfico (direita): situação dos casos, em colunas, com grupos "Em aberto" e "Resolvidas".
+   Mostra todos os supervisores ou só o escolhido. Clicar numa coluna filtra as ocorrências. */
 function fmGrafSit(R,rotPer,P){
   const mes=FM.per.modo==="mes";
   const cols=[
-    {k:"da",rot:"Atrasada",n:R.n.da,o:{tab:"tratar",cats:["da"]}},
-    {k:"hj",rot:"Vence hoje",n:R.n.hj,o:{tab:"tratar",cats:["hj"]}},
-    {k:"np",rot:"No prazo",n:R.n.np,o:{tab:"tratar",cats:["np"]}},
-    {k:"gr",rot:"Esperando voltar",curto:"Esperando",n:R.n.gr,o:{tab:"tratar",cats:["gr"]}},
-    {k:"vi",rot:"Coordenação",curto:"Coord.",n:R.n.vi,o:{tab:"tratar",cats:["vi"]}},
-    "sep",
-    {k:"ok",rot:"Concluídas (medida)",curto:"Concluídas",n:R.concluidas.length,o:{tab:"concluidas",sub:"medida"}},
-    {k:"ab",rot:"Abonadas",n:R.abonos.length,o:{tab:"concluidas",sub:"ab"}}
+    {k:"da",rot:"Atrasadas",n:R.n.da,o:{tab:"tratar",cats:["da"]},dica:"O prazo para aplicar a medida já terminou."},
+    {k:"hj",rot:"Vencem hoje",n:R.n.hj,o:{tab:"tratar",cats:["hj"]},dica:"Hoje é o último dia do prazo para aplicar a medida."},
+    {k:"np",rot:"No prazo",n:R.n.np,o:{tab:"tratar",cats:["np"]},dica:"A pessoa já voltou e ainda dá tempo de aplicar a medida."},
+    {k:"gr",rot:"Esperando voltar",curto:"Esperando",n:R.n.gr,o:{tab:"tratar",cats:["gr"]},dica:"Faltou e ainda não voltou: o prazo começa no retorno."},
+    {k:"vi",rot:"Coordenação",curto:"Coord.",n:R.n.vi,o:{tab:"tratar",cats:["vi"]},dica:"Mais de 3 dias seguidos sem voltar, ou abandono: a coordenação decide."},
+    {k:"ok",rot:"Concluídas",n:R.concluidas.length,o:{tab:"concluidas",sub:"medida"},dica:"Medida disciplinar já aplicada."},
+    {k:"ab",rot:"Abonadas",n:R.abonos.length,o:{tab:"concluidas",sub:"ab"},dica:"Falta abonada por atestado ou justificativa."}
   ];
-  const max=Math.max(1,...cols.filter(c=>c!=="sep").map(c=>c.n)),passo=max<=5?1:Math.ceil(max/5),topo=passo*Math.ceil(max/passo);
+  const max=Math.max(1,...cols.map(c=>c.n)),passo=max<=5?1:Math.ceil(max/5),topo=passo*Math.ceil(max/passo);
   const marcas=[];for(let v=0;v<=topo;v+=passo)marcas.push(v);
-  const grade=marcas.map(v=>`<div class="fm-gl" style="bottom:${v/topo*100}%"><span>${v}</span></div>`).join("");
-  const barras=cols.map(c=>c==="sep"?'<div class="fm-sepv"></div>':
-    `<div class="fm-col sit"><div class="fm-col-a"><div class="fm-bar" style="height:${c.n?(c.n/topo*100).toFixed(2):0}%">`+
-    (c.n?`<button type="button" class="fm-col-t" ${fmPlAttr(c.o)} aria-label="Ver as ${c.n} pessoas: ${c.rot.toLowerCase()}">${c.n}</button><button type="button" class="fm-sg cat-${c.k}${fmPlIgual(c.o)?" sel":""}" style="flex:1" ${fmPlAttr(c.o)} title="${_esc(c.rot)}: ${c.n}" aria-label="${_esc(c.rot)}: ${c.n}"></button>`:'<span class="fm-col-t z">0</span>')+
-    `</div></div><div class="fm-col-l sit" title="${_esc(c.rot)}"><span class="lf">${c.rot}</span><span class="lc">${c.curto||c.rot}</span></div></div>`).join("");
+  const grade=marcas.map(v=>`<div class="fm-pg-gl" style="bottom:${v/topo*100}%"><span>${v}</span></div>`).join("");
+  const temSel=cols.some(c=>c.n&&fmPlIgual(c.o));
+  const col=(c,i)=>{
+    const clic=c.n>0,sel=clic&&fmPlIgual(c.o),tag=clic?"button":"div";
+    const al=i<=1?" tl":i>=5?" tr":"";
+    const qt=`${c.n} ${c.n===1?"ocorrência":"ocorrências"}`;
+    return `<${tag}${clic?` type="button" ${fmPlAttr(c.o)}`:""} class="fm-pg-col cat-${c.k}${sel?" sel":""}${clic?"":" vz"}${al}" aria-label="${_esc(c.rot)}: ${qt}${clic?". Ver as pessoas":""}">`+
+      `<span class="fm-pg-well"><span class="fm-pg-bar" style="height:${c.n?(c.n/topo*100).toFixed(2):0}%${c.n?";min-height:6px":""}"><b class="v">${c.n}</b></span></span>`+
+      `<span class="fm-pg-lab"><i></i><span class="lf">${_esc(c.rot)}</span><span class="lc">${_esc(c.curto||c.rot)}</span></span>`+
+      `<span class="fm-pg-tip" role="tooltip"><b>${_esc(c.rot)}</b><em>${qt}</em><span>${_esc(c.dica)}</span>${clic?"<u>Clique para ver as pessoas</u>":""}</span></${tag}>`;
+  };
+  const nAb=R.abertos.length,nRes=R.concluidas.length+R.abonos.length;
+  // legenda (só aparece em painel estreito, onde os nomes não cabem embaixo das colunas)
+  const leg=`<div class="fm-pg-leg">${cols.map(c=>`<${c.n?"button type=\"button\" "+fmPlAttr(c.o):"div"} class="fm-pg-li cat-${c.k}${c.n&&fmPlIgual(c.o)?" sel":""}${c.n?"":" vz"}"><i></i><span>${_esc(c.rot)}</span><b>${c.n}</b></${c.n?"button":"div"}>`).join("")}</div>`;
   const anim=FM.animar?" anim":"";FM.animar=false;
-  const ant=P.atual&&R.anteriores.length?`<div class="fm-lgs"><button type="button" class="fm-lg" ${fmPlAttr({tab:"anterior"})}><i class="ant"></i>${mes?"Do mês anterior":"Da folha anterior"}, à parte<b>${R.anteriores.length}</b></button></div>`:"";
-  const titulo=FM.sup?`Situação dos casos de ${_esc(fmNomeCard(FM.sup))}`:"Situação de todos os casos";
-  return `<div class="fm-pn-g"><div class="fm-pn-gh"><div><h5>${titulo}</h5><p>${R.abertos.length} ${R.abertos.length===1?"caso em aberto":"casos em aberto"} ${rotPer}. Clique numa coluna para ver as pessoas.</p></div>`+
-    (FM.sup?`<button type="button" class="fm-btn sm" ${fmPlAttr({sup:""})}>Ver todos</button>`:"")+`</div>`+
-    `<div class="fm-plot${anim}"><div class="fm-grade">${grade}</div><div class="fm-cols-g fm-cols-sit">${barras}</div></div>${ant}</div>`;
+  const ant=P.atual&&R.anteriores.length
+    ?`<button type="button" class="fm-pg-ant" ${fmPlAttr({tab:"anterior"})}><i></i><span class="t"><b>${mes?"Do mês anterior":"Da folha anterior"}, à parte</b><em>Continuam em aberto e não entram nos números acima</em></span><span class="n">${R.anteriores.length}</span><span class="go">${FM_IC.prox}</span></button>`:"";
+  const titulo=FM.sup?_esc(fmNomeCard(FM.sup)):"Todos os supervisores";
+  return `<div class="fm-pn-g fm-pg"><div class="fm-pg-h"><div class="tt"><span class="ey">Situação dos casos</span><h5>${titulo}</h5>`+
+    `<p><b>${nAb}</b> ${nAb===1?"caso em aberto":"casos em aberto"} ${rotPer}</p></div>`+
+    (FM.sup?`<button type="button" class="fm-pg-back" ${fmPlAttr({sup:""})}>${FM_IC.ant}Ver todos</button>`:"")+`</div>`+
+    `<div class="fm-pg-area"><div class="fm-pg-grid">${grade}</div>`+
+    `<div class="fm-pg-groups${anim}${temSel?" hs":""}">`+
+      `<div class="fm-pg-grp" style="flex:5"><div class="fm-pg-row">${cols.slice(0,5).map((c,i)=>col(c,i)).join("")}</div><div class="fm-pg-cap"><b>Em aberto</b><span>${nAb}</span></div></div>`+
+      `<div class="fm-pg-grp" style="flex:2"><div class="fm-pg-row">${cols.slice(5).map((c,i)=>col(c,i+5)).join("")}</div><div class="fm-pg-cap"><b>Resolvidas</b><span>${nRes}</span></div></div>`+
+    `</div></div>${leg}${ant}</div>`;
 }
 
 function fmPainel(){
