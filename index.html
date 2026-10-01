@@ -2234,23 +2234,64 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
         #pg-faltasmed .fm-sc{flex-wrap:nowrap;overflow-x:auto;max-width:100%;width:100%;padding:2px 2px 8px;scrollbar-width:none}
         #pg-faltasmed .fm-sc::-webkit-scrollbar{display:none}
       }
-      /* gráfico por situação (um supervisor) e cores de concluídas/abonadas */
+      /* painel único: tabela por supervisor + gráfico de situações */
+      #pg-faltasmed .fm-gc.pn{container-type:inline-size;container-name:fmpn}
+      #pg-faltasmed .fm-pn-b{display:grid;grid-template-columns:minmax(0,1fr);gap:22px}
+      #pg-faltasmed .fm-pn-t{min-width:0;overflow-x:auto;overflow-y:hidden}
+      #pg-faltasmed .fm-pn-g{min-width:0}
+      #pg-faltasmed .fm-pn-gh{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
+      #pg-faltasmed .fm-pn-gh h5{font-size:.86rem;font-weight:700;color:var(--fm-text);margin:0}
+      #pg-faltasmed .fm-pn-gh p{font-size:.7rem;color:var(--fm-muted);margin:3px 0 0}
+      #pg-faltasmed .fm-pn .fm-sups-c,#pg-faltasmed .fm-pn .fm-sup{grid-template-columns:minmax(120px,1.7fr) repeat(6,minmax(54px,.7fr)) minmax(70px,.85fr) minmax(98px,1fr) 16px;gap:6px;padding:11px 10px;min-width:720px}
+      #pg-faltasmed .fm-pn .fm-sups-c{text-transform:none;letter-spacing:0;font-size:.7rem;font-weight:600;line-height:1.25;padding-top:9px;padding-bottom:9px}
+      #pg-faltasmed .fm-pn .fm-sups-c i.d{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--cc);margin-right:5px}
+      #pg-faltasmed .fm-pn .fm-sups-c .sep,#pg-faltasmed .fm-pn .fm-sup .sep{padding-left:8px}
+      #pg-faltasmed .fm-pn .fm-sup-n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
+      #pg-faltasmed .fm-pn .fm-pct .trk{max-width:44px}
+      #pg-faltasmed .fm-pn .fm-sup.tot{cursor:default;background:var(--fm-subtle);border-top:1px solid var(--fm-line);border-bottom:0}
+      #pg-faltasmed .fm-pn .fm-sup.tot .fm-nb:hover{background:none}
+      #pg-faltasmed .fm-nb.np{color:var(--fm-text2)}
+      #pg-faltasmed .fm-nb.gr{color:#667085}
+      #pg-faltasmed .fm-nb.vi{color:#6941c6}
+      html[data-theme="dark"] #pg-faltasmed .fm-nb.gr{color:#98a2b3}
+      html[data-theme="dark"] #pg-faltasmed .fm-nb.vi{color:#b692f6}
+      #pg-faltasmed span.fm-nb{cursor:default}
+      @container fmpn (min-width:1100px){
+        #pg-faltasmed .fm-pn-b{grid-template-columns:minmax(0,1.85fr) minmax(330px,1fr);gap:0}
+        #pg-faltasmed .fm-pn-t{padding-right:22px}
+        #pg-faltasmed .fm-pn-g{border-left:1px solid var(--fm-line2);padding-left:22px}
+      }
+      @container fmpn (max-width:760px){
+        #pg-faltasmed .fm-pn .fm-sups-c{display:none}
+        #pg-faltasmed .fm-pn .fm-sup{grid-template-columns:1fr 16px;gap:4px 10px;min-width:0;padding-top:12px;padding-bottom:12px}
+        #pg-faltasmed .fm-pn .fm-sup>.num{grid-column:1;text-align:left;font-size:.74rem;display:flex;align-items:center;gap:6px}
+        #pg-faltasmed .fm-pn .fm-sup>.num::before{content:attr(data-l) ":";color:var(--fm-muted);font-weight:500;min-width:120px}
+        #pg-faltasmed .fm-pn .fm-sup>.fm-ir{grid-column:2;grid-row:1}
+        #pg-faltasmed .fm-pn .fm-sup .fm-pct{width:auto;justify-content:flex-start}
+        #pg-faltasmed .fm-pn .fm-sup .sep{border-left:0;padding-left:0}
+      }
+      /* gráfico de situações e cores de concluídas/abonadas */
       #pg-faltasmed .cat-ok{--cc:#079455;--ct:#fff}
       #pg-faltasmed .cat-ab{--cc:#0e9aa7;--ct:#fff}
       html[data-theme="dark"] #pg-faltasmed .cat-ok{--cc:#17b26a;--ct:#0b1220}
       html[data-theme="dark"] #pg-faltasmed .cat-ab{--cc:#22c3d2;--ct:#0b1220}
-      #pg-faltasmed .fm-col.sit{flex:0 0 100px}
-      #pg-faltasmed .fm-col.sit .fm-bar{width:56%;max-width:64px;gap:0}
+      #pg-faltasmed .fm-cols-sit{justify-content:space-between;gap:6px;min-width:0}
+      #pg-faltasmed .fm-col.sit{flex:1 1 0;min-width:0}
+      #pg-faltasmed .fm-col.sit .fm-bar{width:64%;max-width:56px;gap:0}
       #pg-faltasmed .fm-col.sit .fm-sg{min-height:6px;border-radius:8px 8px 0 0;font-size:0;border-top:0}
-      #pg-faltasmed .fm-col-l.sit .lc{display:none}#pg-faltasmed .fm-col-l.sit{white-space:normal;line-height:1.25;height:40px;max-width:96px}
-      #pg-faltasmed .fm-sepv{flex:0 0 1px;background:var(--fm-line);align-self:stretch;margin:0 6px 40px}
+      #pg-faltasmed .fm-col-l.sit{white-space:normal;line-height:1.25;height:40px;font-size:.7rem;max-width:none}
+      #pg-faltasmed .fm-col-l.sit .lc{display:none}
+      #pg-faltasmed .fm-sepv{flex:0 0 1px;background:var(--fm-line);align-self:stretch;margin:0 2px 40px}
       #pg-faltasmed .fm-col-t.z{color:var(--g400);cursor:default}
       #pg-faltasmed .fm-col-t.z:hover{background:none;color:var(--g400)}
-      #pg-faltasmed .fm-cols-sit{justify-content:flex-start;gap:14px}
+      @container fmpn (max-width:560px) or ((min-width:1100px) and (max-width:1499px)){
+        #pg-faltasmed .fm-col-l.sit .lf{display:none}
+        #pg-faltasmed .fm-col-l.sit .lc{display:inline}
+        #pg-faltasmed .fm-col-l.sit{font-size:.58rem;letter-spacing:-.01em}
+      }
       /* ao passar o mouse numa coluna, as outras esmaecem */
       #pg-faltasmed .fm-col{transition:opacity .15s}
       #pg-faltasmed .fm-cols-g:hover .fm-col:not(:hover){opacity:.55}
-      @media (max-width:760px){#pg-faltasmed .fm-cols-sit{gap:2px;min-width:0}#pg-faltasmed .fm-col.sit{flex:1 1 0;min-width:0}#pg-faltasmed .fm-col-l.sit{font-size:.54rem;letter-spacing:-.01em;max-width:none;height:44px;}#pg-faltasmed .fm-col-l.sit .lf{display:none}#pg-faltasmed .fm-col-l.sit .lc{display:inline}#pg-faltasmed .fm-sepv{margin:0 2px 44px}}
 
       /* separação entre folhas */
       #pg-faltasmed .fm-fh{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 18px 10px 22px;font-size:.82rem;border-top:1px solid var(--fm-line);border-bottom:1px solid var(--fm-line)}
@@ -10380,30 +10421,6 @@ function fmPlSet(campo,v){fmPl()[campo]=v;FM.lim=FM_PAGINA;fmRenderOcor();}
 function fmPlToggleCat(k){const p=fmPl(),i=p.cats.indexOf(k);if(i>=0)p.cats.splice(i,1);else p.cats.push(k);FM.lim=FM_PAGINA;fmRenderOcor();}
 function fmPlTab(t){const p=fmPl();p.tab=t;p.cats=[];p.sub="";FM.aberto={};FM.lim=FM_PAGINA;fmRenderCorpo();}
 
-function fmGrafColunas(R,rotPer){
-  const cols=R.sups.filter(x=>x.abertos>0),ordem=FM.ordGraf||"casos";
-  if(ordem==="atrasadas")cols.sort((a,b)=>b.n.da-a.n.da||b.abertos-a.abertos||a.nome.localeCompare(b.nome));
-  else if(ordem==="nome")cols.sort((a,b)=>a.nome.localeCompare(b.nome));
-  const max=Math.max(1,...cols.map(x=>x.abertos)),passo=max<=5?1:Math.ceil(max/5),topo=passo*Math.ceil(max/passo);
-  const marcas=[];for(let v=0;v<=topo;v+=passo)marcas.push(v);
-  const grade=marcas.map(v=>`<div class="fm-gl" style="bottom:${v/topo*100}%"><span>${v}</span></div>`).join("");
-  const tot=FM_CATS_ABERTAS.reduce((o,k)=>(o[k]=R.n[k],o),{});
-  const barras=cols.map(x=>{
-    const segs=FM_CATS_ABERTAS.map(k=>x.n[k]?`<button type="button" class="fm-sg cat-${k}" style="flex:${x.n[k]}" aria-label="${_esc(x.nome)}: ${x.n[k]} ${FM_CAT[k].rot.toLowerCase()}" ${fmPlAttr({tab:"tratar",cats:[k],sup:x.nome})}>${x.n[k]}</button>`:"");
-    const tip=`<div class="fm-tip" role="tooltip"><b>${_esc(x.nome)}</b><em>${x.abertos} em aberto ${rotPer}</em>`+
-      FM_CATS_ABERTAS.filter(k=>x.n[k]).map(k=>`<span><i class="cat-${k}"></i>${FM_CAT[k].rot}<b>${x.n[k]}</b></span>`).join("")+`</div>`;
-    return `<div class="fm-col"><div class="fm-col-a"><div class="fm-bar" style="height:${(x.abertos/topo*100).toFixed(2)}%">`+
-      `<button type="button" class="fm-col-t" ${fmPlAttr({tab:"tratar",sup:x.nome})} aria-label="Ver os ${x.abertos} casos em aberto de ${_esc(x.nome)}">${x.abertos}</button>${segs.join("")}</div>${tip}</div>`+
-      `<div class="fm-col-l" title="${_esc(x.nome)}">${_esc(fmNomeCurto(x.nome))}</div></div>`;
-  }).join("");
-  const leg=FM_CATS_ABERTAS.map(k=>`<button type="button" class="fm-lg${fmPlIgual({tab:"tratar",cats:[k]})?" sel":""}${tot[k]?"":" vz"}" ${fmPlAttr({tab:"tratar",cats:[k]})}><i class="cat-${k}"></i>${FM_CAT[k].rot}<b>${tot[k]}</b></button>`).join("");
-  const sel=`<label class="fm-ord">Ordenar<select class="fm-in sm" onchange="FM.ordGraf=this.value;fmRenderCorpo()">${[["casos","Mais casos"],["atrasadas","Mais atrasadas"],["nome","Nome"]].map(([v,l])=>`<option value="${v}"${v===ordem?" selected":""}>${l}</option>`).join("")}</select></label>`;
-  const anim=FM.animar?" anim":"";FM.animar=false;
-  return `<div class="fm-gc"><div class="fm-gc-h"><div><h4>Casos em aberto por supervisor</h4><p>${R.abertos.length} ${R.abertos.length===1?"caso em aberto":"casos em aberto"} ${rotPer}. Só entram casos que começaram ${rotPer}; os de antes ficam em outra aba.</p></div>${cols.length>1?sel:""}</div>`+
-    (cols.length?`<div class="fm-plot${anim}"><div class="fm-grade">${grade}</div><div class="fm-cols-g">${barras}</div></div>`:'<div class="fm-gc-vz">Nenhum caso em aberto neste período.</div>')+
-    `<div class="fm-lgs">${leg}</div></div>`;
-}
-
 /* Nome bonito para o cartão: "CARLOS NOGUEIRA" → "Carlos Nogueira". */
 function fmNomeCard(n){return String(n||"").toLowerCase().replace(/(^|\s|-)(\S)/g,(m,a,b)=>a+b.toUpperCase());}
 /* Faixa de cartõezinhos, um por supervisor. Clicar num cartão faz a tela toda mostrar só os
@@ -10421,9 +10438,44 @@ function fmCartoesSup(RG){
     chip(fmPlAttr({sup:""}),!FM.sup,"Todos",RG.abertos.length,RG.n.da,RG.anteriores.length,"geral")+
     lista.map(x=>chip(fmPlAttr({sup:x.nome}),FM.sup===x.nome,fmNomeCard(x.nome),x.abertos,x.n.da,x.ant)).join("")+`</div></div>`;
 }
-/* Gráfico de UM supervisor: uma coluna para cada situação da área dele. */
-function fmGrafSituacoes(R,rotPer,P){
-  const nome=FM.sup,mes=FM.per.modo==="mes";
+/* Painel único: tabela por supervisor (esquerda) + gráfico de colunas por situação (direita).
+   A tabela é sempre a visão geral (todos os supervisores, o escolhido fica marcado); o gráfico e
+   o resto da tela mostram só o supervisor escolhido. */
+function fmPainelSup(R,RG,P,rotPer){
+  const mes=FM.per.modo==="mes",ordem=FM.ordGraf||"casos";
+  const lista=RG.sups.slice();
+  if(ordem==="atrasadas")lista.sort((a,b)=>b.n.da-a.n.da||b.abertos-a.abertos||a.nome.localeCompare(b.nome));
+  else if(ordem==="nome")lista.sort((a,b)=>a.nome.localeCompare(b.nome));
+  const tip=t=>`<span class="fm-inf" tabindex="0" data-tip="${_esc(t)}" aria-label="${_esc(t)}">${FM_IC.info}</span>`;
+  const nb=(v,o,cls)=>v?`<button type="button" class="fm-nb ${cls||""}" ${fmPlAttr(o)}>${v}</button>`:'<span class="fm-z">0</span>';
+  const antRot=mes?"Do mês anterior":"Da folha anterior";
+  const DICA={da:"O prazo para aplicar a medida já terminou e a medida não foi aplicada.",hj:"O último dia do prazo para aplicar a medida é hoje.",np:"A pessoa já voltou e ainda dá tempo de aplicar a medida.",gr:"A pessoa faltou e ainda não voltou: o prazo só começa quando ela voltar.",vi:"Mais de 3 dias seguidos sem voltar, ou abandono de posto: a coordenação decide."};
+  const cab=`<div class="fm-sups-c"><span>Supervisor</span><span class="num">Em aberto ${tip("Casos que começaram neste período e ainda estão sem medida e sem abono.")}</span>`+
+    FM_CATS_ABERTAS.map(k=>`<span class="num" title="${_esc(DICA[k])}"><i class="d cat-${k}"></i>${FM_CAT[k].rotP}</span>`).join("")+
+    `<span class="num sep">${antRot} ${tip("Casos de períodos que já fecharam e continuam em aberto. Ficam à parte: NÃO entram nos números ao lado.")}</span>`+
+    `<span class="num">Tratado ${tip("Faltas injustificadas dos casos que começaram neste período, com medida aplicada ÷ todas as faltas desses casos. As abonadas e os casos de períodos anteriores não entram na conta.")}</span><span></span></div>`;
+  const linhas=lista.map(x=>{
+    const o={tab:"tratar",sup:x.nome};
+    return `<div class="fm-sup${FM.sup===x.nome?" on":""}" role="button" tabindex="0" ${fmPlAttr(o)} onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();fmPlClick(this,event)}">`+
+      `<div class="fm-sup-n" title="${_esc(x.nome)}">${_esc(fmNomeCard(x.nome))}</div>`+
+      `<span class="num" data-l="Em aberto">${nb(x.abertos,o,"t")}</span>`+
+      FM_CATS_ABERTAS.map(k=>`<span class="num" data-l="${FM_CAT[k].rotP}">${nb(x.n[k],{tab:"tratar",sup:x.nome,cats:[k]},k)}</span>`).join("")+
+      `<span class="num sep" data-l="${antRot} (à parte)">${nb(x.ant,{tab:"anterior",sup:x.nome},"am")}</span>`+
+      `<span class="num" data-l="Tratado">${x.pct==null?'<span class="fm-z">—</span>':`<span class="fm-pct k-${x.pct>=80?"ok":x.pct>=50?"am":"da"}" title="${x.tratadas} de ${x.faltas} faltas com medida aplicada"><span class="trk"><i style="width:${x.pct}%"></i></span><b>${x.pct}%</b></span>`}</span>`+
+      `<span class="fm-ir">${FM_IC.seta}</span></div>`;
+  }).join("");
+  const total=`<div class="fm-sup tot"><div class="fm-sup-n">Total ${mes?"do mês":"da folha"}</div><span class="num" data-l="Em aberto"><span class="fm-nb t">${RG.abertos.length}</span></span>`+
+    FM_CATS_ABERTAS.map(k=>`<span class="num" data-l="${FM_CAT[k].rotP}"><span class="fm-nb ${k}">${RG.n[k]}</span></span>`).join("")+
+    `<span class="num sep" data-l="${antRot} (à parte)"><span class="fm-nb am">${RG.anteriores.length}</span></span>`+
+    `<span class="num" data-l="Tratado"><span class="fm-pct"><b>${RG.pct==null?"—":RG.pct+"%"}</b></span></span><span></span></div>`;
+  const sel=lista.length>1?`<label class="fm-ord">Ordenar<select class="fm-in sm" onchange="FM.ordGraf=this.value;fmRenderCorpo()">${[["casos","Mais casos"],["atrasadas","Mais atrasadas"],["nome","Nome"]].map(([v,l])=>`<option value="${v}"${v===ordem?" selected":""}>${l}</option>`).join("")}</select></label>`:"";
+  const dica=FM.sup?"Clique de novo na linha marcada para voltar a ver todos.":"Clique numa linha para ver só o supervisor.";
+  return `<div class="fm-gc pn fm-pn" id="fm-sups"><div class="fm-gc-h"><div><h4>Casos por supervisor</h4><p>${RG.abertos.length} ${RG.abertos.length===1?"caso em aberto":"casos em aberto"} ${rotPer}. Só entram casos que começaram ${rotPer}; os de antes ficam em outra aba. ${dica}</p></div>${sel}</div>`+
+    `<div class="fm-pn-b"><div class="fm-pn-t">${lista.length?cab+linhas+total:'<div class="fm-gc-vz">Nenhum caso neste período.</div>'}</div>${fmGrafSit(R,rotPer,P)}</div></div>`;
+}
+/* Gráfico de colunas por situação (todos os supervisores, ou só o escolhido). */
+function fmGrafSit(R,rotPer,P){
+  const mes=FM.per.modo==="mes";
   const cols=[
     {k:"da",rot:"Atrasada",n:R.n.da,o:{tab:"tratar",cats:["da"]}},
     {k:"hj",rot:"Vence hoje",n:R.n.hj,o:{tab:"tratar",cats:["hj"]}},
@@ -10443,8 +10495,9 @@ function fmGrafSituacoes(R,rotPer,P){
     `</div></div><div class="fm-col-l sit" title="${_esc(c.rot)}"><span class="lf">${c.rot}</span><span class="lc">${c.curto||c.rot}</span></div></div>`).join("");
   const anim=FM.animar?" anim":"";FM.animar=false;
   const ant=P.atual&&R.anteriores.length?`<div class="fm-lgs"><button type="button" class="fm-lg" ${fmPlAttr({tab:"anterior"})}><i class="ant"></i>${mes?"Do mês anterior":"Da folha anterior"}, à parte<b>${R.anteriores.length}</b></button></div>`:"";
-  return `<div class="fm-gc"><div class="fm-gc-h"><div><h4>Situação dos casos de ${_esc(fmNomeCard(nome))}</h4><p>${R.abertos.length} ${R.abertos.length===1?"caso em aberto":"casos em aberto"} ${rotPer}. Clique numa coluna para ver as pessoas.</p></div>`+
-    `<button type="button" class="fm-btn sm" ${fmPlAttr({sup:""})}>${FM_IC.ant}Ver todos os supervisores</button></div>`+
+  const titulo=FM.sup?`Situação dos casos de ${_esc(fmNomeCard(FM.sup))}`:"Situação de todos os casos";
+  return `<div class="fm-pn-g"><div class="fm-pn-gh"><div><h5>${titulo}</h5><p>${R.abertos.length} ${R.abertos.length===1?"caso em aberto":"casos em aberto"} ${rotPer}. Clique numa coluna para ver as pessoas.</p></div>`+
+    (FM.sup?`<button type="button" class="fm-btn sm" ${fmPlAttr({sup:""})}>Ver todos</button>`:"")+`</div>`+
     `<div class="fm-plot${anim}"><div class="fm-grade">${grade}</div><div class="fm-cols-g fm-cols-sit">${barras}</div></div>${ant}</div>`;
 }
 
@@ -10471,30 +10524,8 @@ function fmPainel(){
     kp(!P.atual?"":R.anteriores.length?(R.nAnt.da?"v-da":"v-am"):"",mes?"Do mês anterior":"Da folha anterior",P.atual?R.anteriores.length:"—",!P.atual?"só aparece no<br>período atual":R.anteriores.length?`em aberto, à parte<br>${R.nAnt.da?R.nAnt.da+(R.nAnt.da===1?" atrasada":" atrasadas"):"nenhuma atrasada"}`:"nada pendente<br>de antes",{tab:"anterior"})+
     kp("v-ab","Abonadas",R.abonos.length,pendSar?`fora da conta<br>${pendSar} para lançar no SAR2G`:"fora da conta<br>(atestado ou justificativa)",{tab:"concluidas",sub:"ab"})+`</div>`;
 
-  h+=fmCartoesSup(RG)+(FM.sup?fmGrafSituacoes(R,rotPer,P):fmGrafColunas(R,rotPer));
+  h+=fmCartoesSup(RG)+fmPainelSup(R,RG,P,rotPer);
 
-  // tabela dos supervisores: sempre visível, com o escolhido marcado (assim ninguém se perde)
-  if(RG.sups.length){
-    const tip=t=>`<span class="fm-inf" tabindex="0" data-tip="${_esc(t)}" aria-label="${_esc(t)}">${FM_IC.info}</span>`;
-    const nb=(v,o,cls)=>v?`<button type="button" class="fm-nb ${cls||""}" ${fmPlAttr(o)}>${v}</button>`:'<span class="fm-z">0</span>';
-    h+=`<div class="fm-sups" id="fm-sups"><div class="fm-sups-h">Supervisores<span>${FM.sup?"Clique de novo na linha marcada para voltar a ver todos":"Clique numa linha para ver só as ocorrências do supervisor"}</span></div>`+
-      `<div class="fm-sups-c"><span>Supervisor</span><span class="num">Em aberto ${tip("Casos que começaram neste período e ainda estão sem medida e sem abono: atrasados, no prazo, esperando a pessoa voltar e na coordenação.")}</span>`+
-      `<span class="num">Atrasadas ${tip("O prazo para aplicar a medida já terminou e a medida não foi aplicada.")}</span><span class="num">Vencem hoje ${tip("O último dia do prazo para aplicar a medida é hoje.")}</span>`+
-      `<span class="num sep">${mes?"Do mês anterior":"Da folha anterior"} ${tip("Casos de períodos que já fecharam e continuam em aberto. Ficam à parte: NÃO entram nos números ao lado.")}</span>`+
-      `<span class="num">Tratado ${tip("Faltas injustificadas dos casos que começaram neste período, com medida aplicada ÷ todas as faltas desses casos. As abonadas e os casos de períodos anteriores não entram na conta.")}</span><span></span></div>`;
-    RG.sups.forEach((x,i)=>{
-      const o={tab:"tratar",sup:x.nome};
-      h+=`<div class="fm-sup${FM.sup===x.nome?" on":""}" role="button" tabindex="0" ${fmPlAttr(o)} onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();fmPlClick(this,event)}">`+
-        `<div class="fm-sup-n">${_esc(x.nome)}${i===0&&x.abertos>0?'<span class="fm-top">Mais casos para resolver</span>':""}</div>`+
-        `<span class="num" data-l="Em aberto">${nb(x.abertos,o,"t")}</span>`+
-        `<span class="num" data-l="Atrasadas">${nb(x.n.da,{tab:"tratar",sup:x.nome,cats:["da"]},"da")}</span>`+
-        `<span class="num" data-l="Vencem hoje">${nb(x.n.hj,{tab:"tratar",sup:x.nome,cats:["hj"]},"hj")}</span>`+
-        `<span class="num sep" data-l="${mes?"Do mês anterior":"Da folha anterior"} (à parte)">${nb(x.ant,{tab:"anterior",sup:x.nome},"am")}</span>`+
-        `<span class="num" data-l="Tratado">${x.pct==null?'<span class="fm-z">—</span>':`<span class="fm-pct k-${x.pct>=80?"ok":x.pct>=50?"am":"da"}"><span class="trk"><i style="width:${x.pct}%"></i></span><b>${x.pct}%</b><em>${x.tratadas} de ${x.faltas}</em></span>`}</span>`+
-        `<span class="fm-ir">${FM_IC.seta}</span></div>`;
-    });
-    h+="</div>";
-  }
   return h+`<section class="fm-oc" id="fm-ocor">${fmOcorHtml(R,P)}</section>`;
 }
 /* Ocorrências do painel: A tratar | (Folha anterior em aberto) | Concluídas. */
