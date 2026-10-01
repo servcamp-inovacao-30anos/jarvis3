@@ -10552,7 +10552,11 @@ function comDashRender(){
   /* ── FUNIL com R$ e conversão por etapa ── */
   // COM_ST_ORDER traz os 8 status. A lista fixa de 6 deixava PERDIDO e PAUSADO
   // de fora: em julho eram 11 de 29 propostas sumindo do funil sem aviso.
-  const funilAtivo=COM_ST_ORDER.map(s=>{const arr=MB.filter(p=>p.status===s);_cdGuarda("funil",s,arr);return[s,arr.length,arr.reduce((t,p)=>t+(Number(p.valor)||0),0)];});
+  // FECHADO entra no mês do FECHAMENTO, não no do envio: a LABMASS (enviada em
+  // julho, fechada em 29/09) aparecia como fechada no funil de julho. As demais
+  // etapas seguem a base do mês (MB, pelo envio). Mesma regra de "Fechadas no mês".
+  const MBF=MB.filter(p=>p.status!=="FECHADO").concat(comVisBase().filter(p=>p.status==="FECHADO"&&noMes(p.fechado_em)));
+  const funilAtivo=COM_ST_ORDER.map(s=>{const arr=MBF.filter(p=>p.status===s);_cdGuarda("funil",s,arr);return[s,arr.length,arr.reduce((t,p)=>t+(Number(p.valor)||0),0)];});
   h+=`<div style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:14px;margin-bottom:14px">`;
   h+=`<div style="background:#fff;border:1px solid #e5e9f0;border-radius:14px;padding:18px 22px"><div style="font-size:.8rem;font-weight:800;color:#0d1f35;margin-bottom:12px">🔻 Funil Comercial <span style="font-size:.6rem;color:#94a3b8;font-weight:700">quantidade${COM_VALORES?" · valor":""} · conversão etapa a etapa</span></div>
     <div style="font-size:.76rem">${funilAtivo.map(([s,v,r],i)=>{
