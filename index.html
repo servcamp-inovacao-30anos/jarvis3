@@ -2300,8 +2300,9 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       #pg-faltasmed .fm-pg-col.vz .fm-pg-bar .v{color:var(--g400);font-weight:600}
       #pg-faltasmed .fm-pg-col:not(.vz):hover .fm-pg-bar{filter:brightness(1.07);transform:translateY(-2px)}
       #pg-faltasmed .fm-pg-col.sel .fm-pg-bar{box-shadow:0 0 0 3px var(--fm-subtle),0 0 0 5px var(--cc)}
-      #pg-faltasmed .fm-pg-groups.hs .fm-pg-col:not(.sel){opacity:.42}
-      #pg-faltasmed .fm-pg-groups:not(.hs):hover .fm-pg-col:not(:hover){opacity:.62}
+      #pg-faltasmed .fm-pg-groups.hs .fm-pg-col:not(.sel){opacity:.5}
+      #pg-faltasmed .fm-pg-groups.hs .fm-pg-col:not(.sel):hover{opacity:.85}
+      #pg-faltasmed .fm-pg-groups:not(.hs):hover .fm-pg-col:not(:hover){opacity:.7}
       #pg-faltasmed .fm-pg-lab{height:46px;padding-top:10px;display:flex;flex-direction:column;align-items:center;gap:5px;font-size:.72rem;font-weight:600;line-height:1.2;color:var(--fm-text2);text-align:center}
       #pg-faltasmed .fm-pg-lab i{width:7px;height:7px;border-radius:50%;background:var(--cc);flex:0 0 auto}
       #pg-faltasmed .fm-pg-lab .lc{display:none}
@@ -2310,10 +2311,18 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       #pg-faltasmed .fm-pg-cap{height:32px;border-top:1px solid var(--fm-line);display:flex;align-items:center;justify-content:center;gap:6px;font-size:.66rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--fm-muted)}
       #pg-faltasmed .fm-pg-cap span{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:18px;padding:0 6px;border-radius:9px;background:var(--fm-surface);border:1px solid var(--fm-line);letter-spacing:0;color:var(--fm-text)}
       /* dica ao passar o mouse */
-      #pg-faltasmed .fm-pg-tip{display:none;position:absolute;left:50%;top:0;transform:translateX(-50%);z-index:8;width:190px;box-sizing:border-box;padding:10px 12px;border-radius:10px;background:var(--fm-navy);color:#fff;text-align:left;pointer-events:none;box-shadow:0 10px 24px rgba(15,23,42,.28)}
-      #pg-faltasmed .fm-pg-col.tl .fm-pg-tip{left:0;transform:none}
-      #pg-faltasmed .fm-pg-col.tr .fm-pg-tip{left:auto;right:0;transform:none}
-      #pg-faltasmed .fm-pg-col:hover .fm-pg-tip,#pg-faltasmed .fm-pg-col:focus-visible .fm-pg-tip{display:block}
+      #pg-faltasmed .fm-pg-tip{position:absolute;left:50%;bottom:calc(var(--h) + 34px);transform:translate(-50%,5px);opacity:0;visibility:hidden;transition:opacity .14s,transform .14s,visibility .14s;z-index:8;width:190px;box-sizing:border-box;padding:10px 12px;border-radius:10px;background:var(--fm-navy);color:#fff;text-align:left;pointer-events:none;box-shadow:0 10px 24px rgba(15,23,42,.28)}
+      #pg-faltasmed .fm-pg-col.tl .fm-pg-tip{left:0;transform:translate(0,5px)}
+      #pg-faltasmed .fm-pg-col.tr .fm-pg-tip{left:auto;right:0;transform:translate(0,5px)}
+      #pg-faltasmed .fm-pg-col:hover .fm-pg-tip,#pg-faltasmed .fm-pg-col:focus-visible .fm-pg-tip{opacity:1;visibility:visible;transform:translate(-50%,0)}
+      #pg-faltasmed .fm-pg-col.tl:hover .fm-pg-tip,#pg-faltasmed .fm-pg-col.tl:focus-visible .fm-pg-tip,#pg-faltasmed .fm-pg-col.tr:hover .fm-pg-tip,#pg-faltasmed .fm-pg-col.tr:focus-visible .fm-pg-tip{transform:translate(0,0)}
+      #pg-faltasmed .fm-pg-filtro{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:.74rem;color:var(--fm-muted)}
+      #pg-faltasmed .fm-pg-filtro .chip{appearance:none;display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 8px 0 10px;border:1px solid var(--fm-brand);border-radius:999px;background:var(--fm-brand-soft);font:inherit;font-size:.74rem;font-weight:600;color:var(--fm-brand-tx);cursor:pointer}
+      #pg-faltasmed .fm-pg-filtro .chip i{width:8px;height:8px;border-radius:50%;background:var(--cc)}
+      #pg-faltasmed .fm-pg-filtro .chip b{font-weight:800}
+      #pg-faltasmed .fm-pg-filtro .chip svg{width:13px;height:13px;opacity:.7}
+      #pg-faltasmed .fm-pg-filtro .chip:hover svg{opacity:1}
+      #pg-faltasmed .fm-pg-filtro .lista{appearance:none;border:0;background:none;font:inherit;font-size:.74rem;font-weight:600;color:var(--fm-brand-tx);text-decoration:underline;cursor:pointer;margin-left:auto}
       #pg-faltasmed .fm-pg-tip b{display:block;font-size:.78rem}
       #pg-faltasmed .fm-pg-tip em{display:block;font-style:normal;font-size:.7rem;opacity:.85;margin:1px 0 6px}
       #pg-faltasmed .fm-pg-tip span{display:block;font-size:.68rem;line-height:1.35;opacity:.9}
@@ -2414,6 +2423,8 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       #pg-faltasmed .fm-oc-leg{display:inline-flex;gap:16px;flex-wrap:wrap}
       #pg-faltasmed .fm-oc-leg span{display:inline-flex;align-items:center;gap:6px;color:var(--fm-text)}
       #pg-faltasmed .fm-oc-leg i{width:8px;height:8px;border-radius:50%;background:var(--cc)}
+      #pg-faltasmed .fm-c.pre{border-style:dashed}
+      #pg-faltasmed .fm-c.pre .n small{font-size:.58rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-left:4px;opacity:.7}
       /* histórico de medidas */
       #pg-faltasmed .fm-hh{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;margin:0 0 14px}
       #pg-faltasmed .fm-hh h4{font-size:1.3rem;font-weight:700;letter-spacing:-.01em;color:var(--fm-text);margin:0}
@@ -10403,8 +10414,17 @@ function fmMes(c,kk){
   const [a,m]=mes.split("-").map(Number);
   const f=c.folha||{};
   let g=["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"].map(w=>`<div class="fm-wd">${w}</div>`).join("");
-  for(let p=0;p<dias[0].semana;p++)g+='<div class="fm-c pad"></div>';
-  dias.forEach(d=>{
+  // Dias de referência: se o caso começou no mês anterior, a grade de abertura mostra esses dias
+  // (desde a semana da primeira falta) em vez de quadradinhos vazios, para dar base ao prazo.
+  const soma=(d,n)=>{const x=new Date(d+"T12:00:00Z");x.setUTCDate(x.getUTCDate()+n);return x.toISOString().slice(0,10);};
+  const mesAnt=m===1?`${a-1}-12`:`${a}-${_fmP2(m-1)}`;
+  const lead=[];
+  if(String(c.primeiraFalta).slice(0,7)===mesAnt){
+    const porData={};cal.forEach(d=>{porData[d.data]=d;});
+    const ini=String(c.primeiraFalta)<dias[0].data?String(c.primeiraFalta).slice(0,10):dias[0].data;
+    for(let d=soma(ini,-fmSem(ini));d<dias[0].data;d=soma(d,1))lead.push(porData[d]||null);
+  }
+  const cel=(d,pre)=>{
     const tipo=d.tipo||"",evento=["FALTA","ABONADA","RETORNO","RETORNO_PREVISTO","PRAZO","MEDIDA"].indexOf(tipo)>=0;
     const fp=tipo==="PRAZO"&&d.fimDoPrazo;
     let w=fp?"último dia":(FM_PALAVRA[tipo]||"");
@@ -10412,16 +10432,19 @@ function fmMes(c,kk){
     if(d.feriado&&tipo!=="FERIADO")w+=(w?" · ":"")+"feriado";
     if(d.atestado&&tipo!=="ABONADA")w+=(w?" · ":"")+"atestado";
     const marca=d.data===f.fim?"fecha a folha":d.data===f.inicio?"abre a folha":"";
-    const cls=["fm-c","t-"+(tipo||"X"),fp?"fp":"",d.hoje?"hj":"",d.atestado?"at":"",!d.naFolha&&!evento?"fora":""].filter(Boolean).join(" ");
-    g+=`<div class="${cls}" title="${_esc(FM_DIA_L[d.semana]+", "+fmDd(d.data)+(w?" · "+w:""))}"><span class="n">${d.dia}</span>${d.hoje?'<span class="h">Hoje</span>':""}${w?`<span class="w">${w}</span>`:""}${marca?`<span class="f">${marca}</span>`:""}</div>`;
-  });
+    const cls=["fm-c","t-"+(tipo||"X"),fp?"fp":"",d.hoje?"hj":"",d.atestado?"at":"",pre?"pre":"",!d.naFolha&&!evento&&!pre?"fora":""].filter(Boolean).join(" ");
+    return `<div class="${cls}" title="${_esc(FM_DIA_L[d.semana]+", "+fmDd(d.data)+(w?" · "+w:""))}"><span class="n">${d.dia}${pre?`<small>${FM_MES[Number(d.data.slice(5,7))-1]}</small>`:""}</span>${d.hoje?'<span class="h">Hoje</span>':""}${w?`<span class="w">${w}</span>`:""}${marca?`<span class="f">${marca}</span>`:""}</div>`;
+  };
+  if(lead.length)lead.forEach(d=>{g+=d?cel(d,true):'<div class="fm-c pad"></div>';});
+  else for(let p=0;p<dias[0].semana;p++)g+='<div class="fm-c pad"></div>';
+  dias.forEach(d=>{g+=cel(d,false);});
   const resto=(7-(dias[0].semana+dias.length)%7)%7;
   for(let p=0;p<resto;p++)g+='<div class="fm-c pad"></div>';
   return `<div class="fm-mes-h">`+
     `<button class="fm-btn ic" aria-label="Mês anterior" ${i<=0?"disabled":""} data-k="${_esc(k)}" onclick="fmMesIr(this.dataset.k,'${meses[i-1]||""}')">${FM_IC.ant}</button>`+
     `<div><b>${FM_MES_L[m-1]} de ${a}</b><span>Folha: ${fmDd(f.inicio)} a ${fmDd(f.fim)}</span></div>`+
     `<button class="fm-btn ic" aria-label="Próximo mês" ${i>=meses.length-1?"disabled":""} data-k="${_esc(k)}" onclick="fmMesIr(this.dataset.k,'${meses[i+1]||""}')">${FM_IC.prox}</button></div>`+
-    `<div class="fm-mg">${g}</div><p class="fm-mes-p">Os dias fora da folha deste caso ficam apagados.</p>`;
+    `<div class="fm-mg">${g}</div><p class="fm-mes-p">Os dias fora da folha deste caso ficam apagados.${lead.some(Boolean)?` Os dias com contorno tracejado são do mês anterior: aparecem só como referência, desde a primeira falta.`:""}</p>`;
 }
 function fmMesIr(k,mes){if(!mes)return;FM.mes[k]=mes;if(FM.aba==="PAINEL")fmRenderOcor();else fmRenderCorpo();}
 
@@ -10714,19 +10737,20 @@ function fmPlClick(el,ev){
   if(ev)ev.stopPropagation();
   const o=JSON.parse(el.dataset.pl||"{}"),p=fmPl();
   const manter={busca:p.busca,de:p.de,ate:p.ate,porPosto:p.porPosto,mais:p.mais};
-  let rolar=true;
+  let rolar=true,animar=false;
   // clique dentro da tabela dos supervisores: a tabela fica parada onde está, sem pulo de tela
   const tb=el.closest?el.closest("#fm-sups"):null,antes=tb?tb.getBoundingClientRect().top:null;
   if(o.sup!==undefined){
     // escolher um supervisor (cartão, coluna ou linha da tabela): a tela toda passa a mostrar só os
     // dados dele; clicar de novo no mesmo cartão volta para todos
     const soSup=Object.keys(o).length===1,linha=Object.keys(o).every(k=>k==="sup"||k==="tab");
-    FM.sup=((soSup||(tb&&linha))&&o.sup===FM.sup)?"":o.sup;delete o.sup;
+    FM.sup=((soSup||(tb&&linha))&&o.sup===FM.sup)?"":o.sup;delete o.sup;animar=true;   // trocou de supervisor: as barras sobem de novo
     FM.pl=Object.assign(fmPlPadrao(),manter,{tab:"tratar"},o);
     rolar=!soSup&&!tb;
   }else if(fmPlIgual(o)){FM.pl=Object.assign(fmPlPadrao(),manter,{tab:p.tab});}
   else FM.pl=Object.assign(fmPlPadrao(),manter,o);
-  FM.aberto={};FM.lim=FM_PAGINA;FM.animar=true;
+  if(tb)rolar=false;   // clicou no gráfico/tabela: a tela fica onde está (a lista é acessível pelo "Ver a lista abaixo")
+  FM.aberto={};FM.lim=FM_PAGINA;FM.animar=animar;
   fmRenderCorpo();
   if(antes!=null){const n=document.getElementById("fm-sups");if(n)window.scrollBy({top:n.getBoundingClientRect().top-antes,behavior:"instant"});}
   if(rolar){const sc=document.getElementById("fm-ocor");if(sc)sc.scrollIntoView({behavior:"smooth",block:"start"});}
@@ -10818,14 +10842,17 @@ function fmGrafSit(R,rotPer,P){
     const clic=c.n>0,sel=clic&&fmPlIgual(c.o),tag=clic?"button":"div";
     const al=i<=1?" tl":i>=5?" tr":"";
     const qt=`${c.n} ${c.n===1?"ocorrência":"ocorrências"}`;
-    return `<${tag}${clic?` type="button" ${fmPlAttr(c.o)}`:""} class="fm-pg-col cat-${c.k}${sel?" sel":""}${clic?"":" vz"}${al}" aria-label="${_esc(c.rot)}: ${qt}${clic?". Ver as pessoas":""}">`+
-      `<span class="fm-pg-well"><span class="fm-pg-bar" style="height:${c.n?(c.n/topo*100).toFixed(2):0}%${c.n?";min-height:6px":""}"><b class="v">${c.n}</b></span></span>`+
-      `<span class="fm-pg-lab"><i></i><span class="lf">${_esc(c.rot)}</span><span class="lc">${_esc(c.curto||c.rot)}</span></span>`+
-      `<span class="fm-pg-tip" role="tooltip"><b>${_esc(c.rot)}</b><em>${qt}</em><span>${_esc(c.dica)}</span>${clic?"<u>Clique para ver as pessoas</u>":""}</span></${tag}>`;
+    const pct=c.n?(c.n/topo*100).toFixed(2):0;
+    return `<${tag}${clic?` type="button" ${fmPlAttr(c.o)}`:""} class="fm-pg-col cat-${c.k}${sel?" sel":""}${clic?"":" vz"}${al}" aria-label="${_esc(c.rot)}: ${qt}${clic?". Filtrar as ocorrências":""}">`+
+      `<span class="fm-pg-well" style="--h:${pct}%"><span class="fm-pg-bar" style="height:${pct}%${c.n?";min-height:6px":""}"><b class="v">${c.n}</b></span>`+
+      `<span class="fm-pg-tip" role="tooltip"><b>${_esc(c.rot)}</b><em>${qt}</em><span>${_esc(c.dica)}</span>${clic?"<u>Clique para filtrar as ocorrências</u>":""}</span></span>`+
+      `<span class="fm-pg-lab"><i></i><span class="lf">${_esc(c.rot)}</span><span class="lc">${_esc(c.curto||c.rot)}</span></span></${tag}>`;
   };
   const nAb=R.abertos.length,nRes=R.concluidas.length+R.abonos.length;
   // legenda (só aparece em painel estreito, onde os nomes não cabem embaixo das colunas)
   const leg=`<div class="fm-pg-leg">${cols.map(c=>`<${c.n?"button type=\"button\" "+fmPlAttr(c.o):"div"} class="fm-pg-li cat-${c.k}${c.n&&fmPlIgual(c.o)?" sel":""}${c.n?"":" vz"}"><i></i><span>${_esc(c.rot)}</span><b>${c.n}</b></${c.n?"button":"div"}>`).join("")}</div>`;
+  const selc=cols.find(c=>c.n&&fmPlIgual(c.o));
+  const filtro=selc?`<div class="fm-pg-filtro"><span>Filtrando as ocorrências:</span><button type="button" class="chip cat-${selc.k}" ${fmPlAttr(selc.o)} title="Tirar o filtro"><i></i>${_esc(selc.rot)}<b>${selc.n}</b>${FM_IC.x}</button><button type="button" class="lista" onclick="document.getElementById('fm-ocor').scrollIntoView({behavior:'smooth',block:'start'})">Ver a lista abaixo ↓</button></div>`:"";
   const anim=FM.animar?" anim":"";FM.animar=false;
   const ant=P.atual&&R.anteriores.length
     ?`<button type="button" class="fm-pg-ant" ${fmPlAttr({tab:"anterior"})}><i></i><span class="t"><b>${mes?"Do mês anterior":"Da folha anterior"}, à parte</b><em>Continuam em aberto e não entram nos números acima</em></span><span class="n">${R.anteriores.length}</span><span class="go">${FM_IC.prox}</span></button>`:"";
@@ -10837,7 +10864,7 @@ function fmGrafSit(R,rotPer,P){
     `<div class="fm-pg-groups${anim}${temSel?" hs":""}">`+
       `<div class="fm-pg-grp" style="flex:5"><div class="fm-pg-row">${cols.slice(0,5).map((c,i)=>col(c,i)).join("")}</div><div class="fm-pg-cap"><b>Em aberto</b><span>${nAb}</span></div></div>`+
       `<div class="fm-pg-grp" style="flex:2"><div class="fm-pg-row">${cols.slice(5).map((c,i)=>col(c,i+5)).join("")}</div><div class="fm-pg-cap"><b>Resolvidas</b><span>${nRes}</span></div></div>`+
-    `</div></div>${leg}${ant}</div>`;
+    `</div></div>${filtro}${leg}${ant}</div>`;
 }
 
 function fmPainel(){
