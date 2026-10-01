@@ -23,8 +23,7 @@ const SITUACOES = {
   TRATADA: "TRATADA",
   TRATADA_FORA_DO_PRAZO: "TRATADA_FORA_DO_PRAZO",
   PRAZO_VENCIDO: "PRAZO_VENCIDO",
-  COORDENACAO: "COORDENACAO",
-  VERIFICAR: "VERIFICAR"
+  COORDENACAO: "COORDENACAO"
 };
 
 // ── datas (texto AAAA-MM-DD, contas em UTC para não depender do fuso) ────────
@@ -111,23 +110,6 @@ function descreverMedida(m) {
   return "advertência" + (grau === "VERBAL" ? " verbal" : grau === "ESCRITA" ? " escrita" : "");
 }
 const cancelada = m => String(m && m.FASE || "").toUpperCase().includes("CANCEL");
-
-// Texto do alerta de medida lançada com a pessoa ausente: o motivo por extenso,
-// com os dados do caso, para a coordenação entender sem abrir mais nada.
-function textoMedidaComAusencia(caso, medida, outra) {
-  const faltou = emLista(caso.faltas.map(ddmm));
-  const volta = caso.retorno ? "só voltou em " + ddmm(caso.retorno) : "ainda não voltou";
-  let t = "⚠ Medida registrada enquanto o colaborador estava ausente. " +
-    `${caso.nome} (RE ${caso.re}) faltou em ${faltou}, e ${volta}. ` +
-    `No SAR2G consta ${descreverMedida(medida)} com data de ${ddmm(medida.DATA)}` +
-    (caso.supervisor ? ` (supervisor da equipe: ${caso.supervisor})` : "") +
-    ", quando a pessoa ainda não tinha voltado. A medida precisa ser assinada presencialmente, então essa data não bate com a presença. ";
-  t += outra
-    ? `Depois, em ${ddmm(outra.DATA)}, foi lançada outra medida (${descreverMedida(outra)}): a mesma falta pode ter sido punida duas vezes. `
-    : "Risco: se aplicarem outra medida agora pela mesma falta, a pessoa terá sido punida duas vezes. ";
-  t += "O que conferir: se a data foi lançada errada no SAR2G, ou se a medida foi mesmo aplicada sem a pessoa presente.";
-  return t;
-}
 
 // ── os casos ─────────────────────────────────────────────────────────────────
 // entrada:
@@ -285,7 +267,7 @@ function presencaEntre(dia, de, ate) {
 // A primeira medida válida a partir da 1ª falta decide o caso. Uma medida cobre
 // todas as faltas anteriores a ela (pode resolver mais de um caso). Mas a medida
 // que já resolveu um caso anterior e foi lançada antes de ESTE caso voltar é
-// daquele caso: não vale aqui (nem vira o alerta de "medida com a pessoa ausente").
+// daquele caso: não vale aqui.
 const chaveMedida = m => m.HIST || m.chave || [m.RE, m.DATA, m.TIPO, m.GRAU].join("|");
 function aplicarMedida(caso, medidas, usadas) {
   const u = usadas || new Set();
@@ -295,19 +277,14 @@ function aplicarMedida(caso, medidas, usadas) {
 }
 function aplicarMedidaValida(caso, validas) {
   if (!validas.length) {
-    if (caso.situacao === SITUACOES.PRAZO_VENCIDO) caso.motivo = `Voltou em ${ddmm(caso.retorno)} e o prazo acabou em ${ddmm(caso.prazoFim)} sem medida. Aplicar no mínimo uma advertência.`;
+    if (caso.situacao === SITUACOES.PRAZO_VENCIDO) caso.motivo = `Voltou em ${ddmm(caso.retorno)} e o prazo acabou em ${ddmm(caso.prazoFim)} sem medida.`;
     return;
   }
   const m = validas[0];
-  const antesDoRetorno = caso.retorno ? m.DATA < caso.retorno : true;
-  if (antesDoRetorno && caso.situacao !== SITUACOES.COORDENACAO) {
-    caso.medida = m;
-    caso.situacao = SITUACOES.VERIFICAR;
-    caso.motivo = textoMedidaComAusencia(caso, m, validas[1]);
-    return;
-  }
   caso.medida = m;
   if (caso.situacao === SITUACOES.COORDENACAO) { caso.motivo += ` Há ${descreverMedida(m)} em ${ddmm(m.DATA)}.`; return; }
+  // medida lançada enquanto a pessoa ainda faltava: conta como medida aplicada
+  if (!caso.retorno || m.DATA < caso.retorno) { caso.situacao = SITUACOES.TRATADA; caso.motivo = `${descreverMedida(m)} em ${ddmm(m.DATA)}, antes do retorno.`; return; }
   if (caso.prazoFim && m.DATA <= caso.prazoFim) { caso.situacao = SITUACOES.TRATADA; caso.motivo = `${descreverMedida(m)} em ${ddmm(m.DATA)}, dentro do prazo.`; }
   else { caso.situacao = SITUACOES.TRATADA_FORA_DO_PRAZO; caso.motivo = `${descreverMedida(m)} em ${ddmm(m.DATA)}, depois do prazo (acabava em ${ddmm(caso.prazoFim)}).`; }
 }
@@ -345,8 +322,7 @@ function calendario(caso, opcoes) {
   const out = [];
   for (let d = inicio; d <= fim; d = somaDias(d, 1)) {
     let tipo;
-    // medida lançada num dia de falta: o dia continua falta (é o que explica o
-    // alerta "medida com a pessoa ausente"), com a marca da medida por cima
+    // medida lançada num dia de falta: o dia continua falta, com a marca da medida por cima
     if (faltas.has(d)) tipo = "FALTA";
     else if (d === medida) tipo = "MEDIDA";
     else if (abon.has(d)) tipo = "ABONADA";
@@ -511,5 +487,5 @@ function dedupMedidas(lista) {
 
 module.exports = {
   FAMILIAS, SITUACOES, ABONADAS, familiaEscala, ehOperacional, trabalhouNoDia, montarCasos, reDe, competenciaDe, calendario, compactarCalendario, expandirCalendario, periodosDeAbono, dobrarAtestados, turnoDoSupervisor, SUPERVISORES_NOTURNOS,
-  textoMedidaComAusencia, descreverMedida, somaDias, ddmm, medidaDoHistorico, dedupMedidas
+  descreverMedida, somaDias, ddmm, medidaDoHistorico, dedupMedidas
 };

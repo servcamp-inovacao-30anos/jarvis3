@@ -83,7 +83,7 @@ test("exemplo 8 — 12x36, faltou nos plantões 10, 12 e 14: coordenação decid
   assert.match(c.motivo, /faltou em sáb 10\/10 e em mais 2 plantões seguidos sem voltar \(seg 12\/10 e qua 14\/10\)/);
 });
 
-test("exemplo 9 — voltou e o prazo acabou sem medida: aplicar no mínimo advertência", async t => {
+test("exemplo 9 — voltou e o prazo acabou sem medida: prazo vencido", async t => {
   const base = { faltas: [falta("2026-10-07")], fichaDias: { 521: presente("2026-10-08", "2026-10-09", "2026-10-12", "2026-10-13") }, dataBase: "2026-10-13" };
   await t.test("no último dia do prazo ainda está no prazo", () => {
     assert.equal(unico({ ...base, hoje: "2026-10-12" }).situacao, S.NO_PRAZO);
@@ -91,7 +91,8 @@ test("exemplo 9 — voltou e o prazo acabou sem medida: aplicar no mínimo adver
   await t.test("no dia seguinte vence", () => {
     const c = unico({ ...base, hoje: "2026-10-13" });
     assert.equal(c.situacao, S.PRAZO_VENCIDO);
-    assert.match(c.motivo, /Aplicar no mínimo uma advertência/);
+    assert.match(c.motivo, /o prazo acabou em 12\/10 sem medida\.$/);
+    assert.doesNotMatch(c.motivo, /advertência/, "não sugere um tipo de medida");
   });
   await t.test("medida depois do prazo resolve, marcada como fora do prazo", () => {
     const c = unico({ ...base, medidas: [medida("2026-10-13")], hoje: "2026-10-13" });
@@ -111,19 +112,14 @@ test("exemplo 11 — medida de antes da falta não cobre (reset)", () => {
   assert.equal(c.medida, null);
 });
 
-test("exemplo 12 — medida com a pessoa ausente: verificar, com o motivo por extenso", async t => {
+test("exemplo 12 — medida lançada enquanto a pessoa ainda faltava conta como medida aplicada", async t => {
   const c = unico({ faltas: [falta("2026-10-07"), falta("2026-10-08")], fichaDias: { 521: presente("2026-10-09") }, medidas: [medida("2026-10-08")], hoje: "2026-10-09", dataBase: "2026-10-09" });
-  await t.test("situação", () => assert.equal(c.situacao, S.VERIFICAR));
-  await t.test("o texto conta o que aconteceu", () => {
-    assert.match(c.motivo, /MARIA DA SILVA \(RE 521\) faltou em 07\/10 e 08\/10, e só voltou em 09\/10/);
-    assert.match(c.motivo, /advertência escrita com data de 08\/10/);
-    assert.match(c.motivo, /supervisor da equipe: FRANK/);
-    assert.match(c.motivo, /punida duas vezes/);
-    assert.match(c.motivo, /O que conferir/);
-  });
-  await t.test("se já houver uma segunda medida, o texto avisa a possível dupla punição", () => {
-    const d = unico({ faltas: [falta("2026-10-07"), falta("2026-10-08")], fichaDias: { 521: presente("2026-10-09") }, medidas: [medida("2026-10-08"), medida("2026-10-09", { TIPO: "SUSPENSÃO", DIAS: 1 })], hoje: "2026-10-09", dataBase: "2026-10-09" });
-    assert.match(d.motivo, /Depois, em 09\/10, foi lançada outra medida \(suspensão de 1 dia\(s\)\)/);
+  await t.test("situação", () => assert.equal(c.situacao, S.TRATADA));
+  await t.test("a medida é a do dia 08/10", () => assert.equal(c.medida.DATA, "2026-10-08"));
+  await t.test("o texto diz que foi antes do retorno", () => assert.match(c.motivo, /advertência escrita em 08\/10, antes do retorno/i));
+  await t.test("ainda sem voltar: também conta", () => {
+    const d = unico({ faltas: [falta("2026-10-07")], fichaDias: {}, medidas: [medida("2026-10-08")], hoje: "2026-10-08", dataBase: "2026-10-08" });
+    assert.equal(d.situacao, S.TRATADA);
   });
 });
 
@@ -288,9 +284,9 @@ test("revisão: medida atrasada de um caso, lançada no dia da falta do caso seg
   assert.equal(cs[1].medida, null);
 });
 
-test("revisão: medida lançada com a pessoa ausente, sem caso anterior, continua indo para a coordenação conferir", () => {
+test("revisão: medida lançada com a pessoa ausente, sem caso anterior, conta como medida aplicada", () => {
   const c = unico({ faltas: [falta("2026-10-07"), falta("2026-10-08")], fichaDias: { 521: presente("2026-10-09") }, medidas: [medida("2026-10-08")], hoje: "2026-10-09", dataBase: "2026-10-09" });
-  assert.equal(c.situacao, S.VERIFICAR);
+  assert.equal(c.situacao, S.TRATADA);
 });
 
 test("supervisor: o caso mostra quem cuida da área hoje (o antigo saiu, o novo assumiu)", () => {
