@@ -2276,6 +2276,7 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       html[data-theme="dark"] #pg-faltasmed .cat-ok{--cc:#17b26a;--ct:#0b1220}
       html[data-theme="dark"] #pg-faltasmed .cat-ab{--cc:#22c3d2;--ct:#0b1220}
       #pg-faltasmed .fm-cols-sit{justify-content:space-between;gap:6px;min-width:0}
+      #pg-faltasmed .fm-pn-g .fm-plot{overflow-x:clip}
       #pg-faltasmed .fm-col.sit{flex:1 1 0;min-width:0}
       #pg-faltasmed .fm-col.sit .fm-bar{width:64%;max-width:56px;gap:0}
       #pg-faltasmed .fm-col.sit .fm-sg{min-height:6px;border-radius:8px 8px 0 0;font-size:0;border-top:0}
@@ -2320,7 +2321,38 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       #pg-faltasmed .fm-at-f{appearance:none;display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 8px 0 10px;border:1px solid var(--fm-brand);border-radius:6px;background:var(--fm-brand-soft);font:inherit;font-size:.72rem;color:var(--fm-brand-tx);cursor:pointer}
       #pg-faltasmed .fm-at-f svg{width:13px;height:13px}
       #pg-faltasmed .fm-lnk{appearance:none;border:0;background:none;font:inherit;font-size:.72rem;font-weight:600;color:var(--fm-brand-tx);text-decoration:underline;cursor:pointer}
-      #pg-faltasmed .fm-oc-n{font-size:.74rem;color:var(--fm-text2);margin:6px 0 8px}
+      #pg-faltasmed .fm-oc-h2{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+      #pg-faltasmed .fm-oc-h2 h4{font-size:1.3rem;font-weight:700;letter-spacing:-.01em;color:var(--fm-text);margin:0}
+      #pg-faltasmed .fm-oc-h2 p{font-size:.8rem;color:var(--fm-muted);margin:4px 0 0}
+      #pg-faltasmed .fm-selb{position:relative;display:inline-flex;align-items:center;height:42px;max-width:100%;border:1px solid var(--fm-line);border-radius:10px;background:var(--fm-surface);box-shadow:var(--fm-sh);font-size:.82rem;color:var(--fm-text2)}
+      #pg-faltasmed .fm-selb.on{border-color:var(--fm-brand);background:var(--fm-brand-soft);color:var(--fm-brand-tx)}
+      #pg-faltasmed .fm-selb:focus-within{border-color:var(--fm-brand);box-shadow:0 0 0 4px var(--fm-ring)}
+      #pg-faltasmed .fm-selb .ic{display:flex;padding-left:13px}
+      #pg-faltasmed .fm-selb .ic svg{width:18px;height:18px}
+      #pg-faltasmed .fm-selb label{position:relative;display:inline-flex;align-items:center;gap:6px;height:100%;padding:0 32px 0 12px;cursor:pointer}
+      #pg-faltasmed .fm-selb .ic+label{padding-left:8px}
+      #pg-faltasmed .fm-selb select{appearance:none;-webkit-appearance:none;border:0;background:transparent;font:inherit;font-weight:700;color:inherit;cursor:pointer;outline:none;padding:0;max-width:210px;field-sizing:content}
+      #pg-faltasmed .fm-selb select option{color:var(--fm-text);background:var(--fm-surface);font-weight:500}
+      #pg-faltasmed .fm-selb .chv{position:absolute;right:11px;top:50%;transform:translateY(-50%);display:flex;pointer-events:none}
+      #pg-faltasmed .fm-selb .chv svg{width:15px;height:15px}
+      #pg-faltasmed .fm-selb .x{appearance:none;border:0;border-left:1px solid var(--fm-line);background:none;height:100%;padding:0 12px;cursor:pointer;color:inherit;border-radius:0 10px 10px 0;display:flex;align-items:center}
+      #pg-faltasmed .fm-selb .x:hover{background:var(--fm-brand-soft)}
+      #pg-faltasmed .fm-selb .x svg{width:15px;height:15px}
+      #pg-faltasmed .fm-oc-per{font-size:.84rem;color:var(--fm-text2);margin:0 0 14px}
+      #pg-faltasmed .fm-oc-per b{color:var(--fm-text)}
+      #pg-faltasmed .fm-oc-per .pt{margin:0 8px;color:var(--g400)}
+      #pg-faltasmed .fm-oc-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 4px}
+      #pg-faltasmed .fm-oc-bar .fm-search{flex:0 1 340px;min-width:190px}
+      #pg-faltasmed .fm-oc-bar .fm-search .fm-in{width:100%;max-width:none;height:42px;border-radius:10px;font-size:.85rem;padding-left:40px}
+      #pg-faltasmed .fm-oc-bar .fm-search svg{left:14px;width:17px;height:17px}
+      #pg-faltasmed .fm-oc-bar .fm-btn{height:42px;border-radius:10px}
+      #pg-faltasmed .fm-oc-bar .push{margin-left:auto}
+      #pg-faltasmed .fm-oc-mais{display:flex;gap:12px;flex-wrap:wrap;margin:10px 0 0;padding:12px;border:1px solid var(--fm-line2);border-radius:10px;background:var(--fm-subtle)}
+      #pg-faltasmed .fm-oc-n{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font-size:.8rem;color:var(--fm-text2);margin:14px 0 10px}
+      #pg-faltasmed .fm-oc-leg{display:inline-flex;gap:16px;flex-wrap:wrap}
+      #pg-faltasmed .fm-oc-leg span{display:inline-flex;align-items:center;gap:6px;color:var(--fm-text)}
+      #pg-faltasmed .fm-oc-leg i{width:8px;height:8px;border-radius:50%;background:var(--cc)}
+      @media (max-width:760px){#pg-faltasmed .fm-oc-bar .push{margin-left:0}#pg-faltasmed .fm-oc-bar .fm-search{flex:1 1 100%}#pg-faltasmed .fm-oc-h2 .fm-selb{width:100%}#pg-faltasmed .fm-oc-h2 .fm-selb label{flex:1}}
       #pg-faltasmed .fm-tg.ant{color:#b54708;background:#fffaeb;border-color:#fedf89;font-weight:700}
       html[data-theme="dark"] #pg-faltasmed .fm-tg.ant{color:#fec84b;background:rgba(245,176,0,.12);border-color:rgba(245,176,0,.38)}
 
@@ -9873,7 +9905,8 @@ const FM_IC={
   prox:_fmSvg('<path d="m9 18 6-6-6-6"/>'),
   cal:_fmSvg('<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>'),
   grupo:_fmSvg('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>'),
-  x:_fmSvg('<path d="M18 6 6 18M6 6l12 12"/>')
+  x:_fmSvg('<path d="M18 6 6 18M6 6l12 12"/>'),
+  user:_fmSvg('<circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/>')
 };
 const _fmP2=n=>String(n).padStart(2,"0");
 function fmDd(d){if(!d)return"—";const p=String(d).slice(0,10).split("-");return p[2]+"/"+p[1];}
@@ -10399,7 +10432,7 @@ function fmPlIgual(o){const p=fmPl();return p.tab===(o.tab||"tratar")&&(p.cats||
 function fmPlClick(el,ev){
   if(ev)ev.stopPropagation();
   const o=JSON.parse(el.dataset.pl||"{}"),p=fmPl();
-  const manter={busca:p.busca,de:p.de,ate:p.ate,porPosto:p.porPosto};
+  const manter={busca:p.busca,de:p.de,ate:p.ate,porPosto:p.porPosto,mais:p.mais};
   let rolar=true;
   // clique dentro da tabela dos supervisores: a tabela fica parada onde está, sem pulo de tela
   const tb=el.closest?el.closest("#fm-sups"):null,antes=tb?tb.getBoundingClientRect().top:null;
@@ -10419,6 +10452,16 @@ function fmPlClick(el,ev){
 }
 function fmPlSet(campo,v){fmPl()[campo]=v;FM.lim=FM_PAGINA;fmRenderOcor();}
 function fmPlToggleCat(k){const p=fmPl(),i=p.cats.indexOf(k);if(i>=0)p.cats.splice(i,1);else p.cats.push(k);FM.lim=FM_PAGINA;fmRenderOcor();}
+/* Supervisor escolhido no seletor das ocorrências: vale para a tela toda (igual aos cartões). */
+function fmSupEscolher(v){
+  const p=fmPl();
+  FM.sup=v;FM.pl=Object.assign(fmPlPadrao(),{busca:p.busca,de:p.de,ate:p.ate,porPosto:p.porPosto,mais:p.mais,tab:p.tab});
+  FM.aberto={};FM.lim=FM_PAGINA;FM.animar=true;fmRenderCorpo();
+}
+/* Filtro "Situação": nas concluídas escolhe medida/abonadas; nas outras abas escolhe a situação do prazo. */
+function fmPlSit(v){const p=fmPl();if(p.tab==="concluidas")p.sub=v;else p.cats=v?v.split(","):[];FM.lim=FM_PAGINA;fmRenderOcor();}
+function fmPlMaisF(){const p=fmPl();p.mais=!p.mais;fmRenderOcor();}
+function fmPlLimpar(){const p=fmPl();FM.pl=Object.assign(fmPlPadrao(),{tab:p.tab,porPosto:p.porPosto});FM.aberto={};FM.lim=FM_PAGINA;fmRenderOcor();}
 function fmPlTab(t){const p=fmPl();p.tab=t;p.cats=[];p.sub="";FM.aberto={};FM.lim=FM_PAGINA;fmRenderCorpo();}
 
 /* Nome bonito para o cartão: "CARLOS NOGUEIRA" → "Carlos Nogueira". */
@@ -10545,7 +10588,7 @@ function fmOcorItens(R,P){
   const cand=(p.tab==="anterior"?R.anteriores:R.abertos).filter(passa);
   const cont={};ORD.forEach(k=>{cont[k]=cand.filter(c=>R.cat(c)===k).length;});
   const it=cand.filter(c=>!p.cats.length||p.cats.indexOf(R.cat(c))>=0)
-    .map(c=>Object.assign(fmItemCaso(c,"o|",P.ini,mes),{ord:ORD.indexOf(R.cat(c))+(c.prazoFim||c.retornoPrevisto||c.primeiraFalta),nFaltas:(c.faltas||[]).length}));
+    .map(c=>Object.assign(fmItemCaso(c,"o|",P.ini,mes),{ord:ORD.indexOf(R.cat(c))+(c.prazoFim||c.retornoPrevisto||c.primeiraFalta),nFaltas:(c.faltas||[]).length,cat:R.cat(c)}));
   it.sort((a,b)=>a.ord.localeCompare(b.ord));
   return{it,cont};
 }
@@ -10558,28 +10601,34 @@ function fmOcorHtml(R,P){
   const nTratar=R.abertos.length,nAnt=R.anteriores.length,nConc=R.concluidas.length+R.abonos.length;
   const aba=(id,rot,n,extra)=>`<button type="button" role="tab" aria-selected="${p.tab===id}" class="fm-tab${p.tab===id?" on":""}${extra||""}" onclick="fmPlTab('${id}')">${rot}<span class="n${id==="anterior"&&n?" alerta":""}">${n}</span></button>`;
   const tabs=`<div class="fm-tabs fm-tabs-oc" role="tablist">${aba("tratar","A tratar "+rotPer,nTratar)}${P.atual?aba("anterior",rotAnt,nAnt):""}${aba("concluidas","Concluídas",nConc)}</div>`;
-  const ch=(on,txt,n,acao)=>`<button type="button" class="fm-chip${on?" on":""}" onclick="${acao}">${txt}${n==null?"":`<b>${n}</b>`}</button>`;
-  let chips;
-  if(p.tab==="concluidas")chips=`<div class="fm-chips"><span class="fm-chips-t">Mostrar</span>${ch(!p.sub,"Todas",cont.medida+cont.ab,"fmPlSet('sub','')")}${ch(p.sub==="medida","Medida aplicada",cont.medida,"fmPlSet('sub','medida')")}${ch(p.sub==="ab","Abonadas",cont.ab,"fmPlSet('sub','ab')")}</div>`;
-  else chips=`<div class="fm-chips"><span class="fm-chips-t">Situação</span>${ch(!p.cats.length,"Todas",null,"fmPlSet('cats',[])")}${FM_CATS_ABERTAS.map(k=>ch(p.cats.indexOf(k)>=0,`<i class="cat-${k}"></i>${FM_CAT[k].rotP}`,cont[k],`fmPlToggleCat('${k}')`)).join("")}</div>`;
   const aviso=p.tab==="anterior"
     ?`<div class="fm-aviso k-am">${FM_IC.cal}<span>Estes casos começaram <b>antes de ${fmDd(P.ini)}</b> e continuam sem medida. Eles <b>não entram</b> nos números, no gráfico nem na lista ${mes?"deste mês":"desta folha"}: ficam só aqui, pra não confundir.</span></div>`
-    :p.tab==="tratar"?`<p class="fm-oc-lim">Só os casos que começaram ${mes?"em":"na folha"} <b>${_esc(P.rot.replace(/^Folha /,""))}</b>.${P.atual&&nAnt?` Os ${nAnt} abertos de antes estão na aba <a href="#" onclick="fmPlTab('anterior');return false">${rotAnt}</a>.`:""}</p>`:"";
-  const ativos=[];
-  if(FM.sup)ativos.push(`<button type="button" class="fm-at-f" onclick="FM.sup='';FM.pl=fmPlPadrao();fmRenderCorpo()">Supervisor: <b>${_esc(fmNomeCard(FM.sup))}</b>${FM_IC.x}</button>`);
-  if(p.de||p.ate)ativos.push(`<button type="button" class="fm-at-f" onclick="fmPl().de='';fmPl().ate='';fmRenderOcor()">Data da falta: <b>${p.de?fmDd(p.de):"…"} a ${p.ate?fmDd(p.ate):"…"}</b>${FM_IC.x}</button>`);
-  if(p.busca)ativos.push(`<button type="button" class="fm-at-f" onclick="fmPlSet('busca','')">Busca: <b>${_esc(p.busca)}</b>${FM_IC.x}</button>`);
-  const tool=`<div class="fm-tool fm-oc-tool"><label class="fm-search">${FM_IC.busca}<input class="fm-in" id="fm-pl-busca" placeholder="Nome ou RE do colaborador" value="${_esc(p.busca)}" oninput="const v=this.value;fmDeb(()=>{fmPl().busca=v;FM.lim=FM_PAGINA;fmRenderOcorLista();})"></label>`+
-    `<label class="fm-fl">Falta de<input type="date" class="fm-in" value="${_esc(p.de)}" onchange="fmPlSet('de',this.value)"></label><label class="fm-fl">até<input type="date" class="fm-in" value="${_esc(p.ate)}" onchange="fmPlSet('ate',this.value)"></label>`+
-    `<button class="fm-btn${p.porPosto?" on":""}" aria-pressed="${!!p.porPosto}" onclick="fmPlSet('porPosto',${!p.porPosto})">${FM_IC.grupo}Agrupar por posto</button></div>`;
-  return `<div class="fm-oc-h"><div><h4>Ocorrências</h4><p>${FM.sup?`Só as pessoas da área de ${_esc(fmNomeCard(FM.sup))}.`:"Todas as pessoas, sem separar por supervisor."} Selecione uma pessoa para ver o calendário.</p></div></div>${tabs}${aviso}${tool}${chips}`+
-    (ativos.length?`<div class="fm-ativos">${ativos.join("")}<button type="button" class="fm-lnk" onclick="FM.pl=fmPlPadrao();FM.pl.tab='${p.tab}';fmRenderOcor()">Limpar filtros</button></div>`:"")+
+    :`<p class="fm-oc-per">${mes?"Mês":"Folha"} <b>${_esc(P.rot.replace(/^Folha /,""))}</b><span class="pt">·</span>Somente casos iniciados neste período</p>`;
+  // seletor de supervisor (canto direito do título)
+  const sups=fmSupsLista();if(FM.sup&&sups.indexOf(FM.sup)<0)sups.push(FM.sup);
+  const selSup=`<div class="fm-selb${FM.sup?" on":""}"><span class="ic">${FM_IC.user}</span><label><span class="t">Supervisor:</span><select aria-label="Supervisor" onchange="fmSupEscolher(this.value)"><option value="">Todos</option>${sups.map(x=>`<option value="${_esc(x)}"${x===FM.sup?" selected":""}>${_esc(fmNomeCard(x))}</option>`).join("")}</select><span class="chv">${FM_IC.chev}</span></label>${FM.sup?`<button type="button" class="x" aria-label="Voltar a ver todos os supervisores" onclick="fmSupEscolher('')">${FM_IC.x}</button>`:""}</div>`;
+  // filtro de situação (menu)
+  const conc=p.tab==="concluidas";
+  const opS=conc?[["","Todas"],["medida","Medida aplicada ("+cont.medida+")"],["ab","Abonadas ("+cont.ab+")"]]
+    :[["","Todas"]].concat(FM_CATS_ABERTAS.map(k=>[k,FM_CAT[k].rotP+" ("+(cont[k]||0)+")"]));
+  const valS=conc?p.sub:p.cats.join(",");
+  if(!conc&&p.cats.length>1)opS.push([valS,p.cats.map(k=>FM_CAT[k].rotP).join(" + ")]);
+  const selSit=`<div class="fm-selb${valS?" on":""}"><label><span class="t">Situação:</span><select aria-label="Situação" onchange="fmPlSit(this.value)">${opS.map(([v,l])=>`<option value="${_esc(v)}"${v===valS?" selected":""}>${_esc(l)}</option>`).join("")}</select><span class="chv">${FM_IC.chev}</span></label></div>`;
+  const nMais=(p.de||p.ate)?1:0,temFiltro=!!(p.busca||valS||p.de||p.ate);
+  const tool=`<div class="fm-oc-bar"><label class="fm-search">${FM_IC.busca}<input class="fm-in" id="fm-pl-busca" placeholder="Buscar por nome ou RE" value="${_esc(p.busca)}" oninput="const v=this.value;fmDeb(()=>{fmPl().busca=v;FM.lim=FM_PAGINA;fmRenderOcorLista();})"></label>${selSit}`+
+    `<button type="button" class="fm-btn${p.mais||nMais?" on":""}" aria-expanded="${!!p.mais}" onclick="fmPlMaisF()">${FM_IC.filtro}Mais filtros${nMais?" (1)":""}</button>`+
+    (temFiltro?`<button type="button" class="fm-lnk" onclick="fmPlLimpar()">Limpar</button>`:"")+
+    `<button class="fm-btn push${p.porPosto?" on":""}" aria-pressed="${!!p.porPosto}" onclick="fmPlSet('porPosto',${!p.porPosto})">${FM_IC.grupo}Agrupar por posto</button></div>`+
+    (p.mais?`<div class="fm-oc-mais"><label class="fm-fl">Falta de<input type="date" class="fm-in" value="${_esc(p.de)}" onchange="fmPlSet('de',this.value)"></label><label class="fm-fl">até<input type="date" class="fm-in" value="${_esc(p.ate)}" onchange="fmPlSet('ate',this.value)"></label></div>`:"");
+  return `<div class="fm-oc-h2"><div><h4>Ocorrências</h4><p>Selecione um colaborador para ver o calendário.</p></div>${selSup}</div>${tabs}${aviso}${tool}`+
     `<div id="fm-oc-lista">${fmOcorLista(it)}</div>`;
 }
 function fmOcorLista(it){
   const p=fmPl();
   const n=it.length,nf=it.reduce((s,x)=>s+(x.nFaltas||0),0);
-  const cont=`<p class="fm-oc-n"><b>${n}</b> ${n===1?"ocorrência":"ocorrências"} · <b>${nf}</b> ${nf===1?"falta":"faltas"}</p>`;
+  const da=it.filter(x=>x.cat==="da").length,hj=it.filter(x=>x.cat==="hj").length;
+  const leg=p.tab==="concluidas"||(!da&&!hj)?"":`<span class="fm-oc-leg">${da?`<span><i class="cat-da"></i>${da} ${da===1?"atrasada":"atrasadas"}</span>`:""}${hj?`<span><i class="cat-hj"></i>${hj} ${hj===1?"vence":"vencem"} hoje</span>`:""}</span>`;
+  const cont=`<div class="fm-oc-n"><span><b>${n}</b> ${n===1?"ocorrência":"ocorrências"} · <b>${nf}</b> ${nf===1?"falta":"faltas"}</span>${leg}</div>`;
   if(p.de&&p.ate&&p.de>p.ate)return fmVazio("A data inicial está depois da data final",`Você pediu faltas de ${fmDd(p.de)} até ${fmDd(p.ate)}. Troque as datas para ver as ocorrências.`);
   if(!n)return cont+fmVazio({tratar:"Nenhuma ocorrência a tratar com esses filtros",anterior:"Nenhum caso em aberto de antes deste período",concluidas:"Nenhuma ocorrência concluída com esses filtros"}[p.tab],"Mude os filtros ou limpe-os para ver mais.");
   const mais=fmMaisLinhas(n,"fmRenderOcorLista()");
