@@ -2331,7 +2331,9 @@ function vgContrato(){
    roda para quem pediu menos movimento no sistema. */
 let _ctConfeteLigado=false;
 function _ctConfete(){
-  if(_ctConfeteLigado||matchMedia("(prefers-reduced-motion: reduce)").matches)return;
+  // Aparece mesmo com "reduzir animações" do sistema ligado: pedido da
+  // diretoria (o Windows desligava o confete sem ninguém perceber).
+  if(_ctConfeteLigado)return;
   _ctConfeteLigado=true;
   const cv=document.createElement("canvas");
   cv.id="contratoConfete";
