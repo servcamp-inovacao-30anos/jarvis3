@@ -115,3 +115,14 @@ test("medida antiga do histórico não fecha caso de agora (a medida tem que ser
   assert.equal(r.body.casos.length, 1);
   assert.equal(r.body.casos[0].medida, null);
 });
+
+test("o histórico traz o supervisor da área: pelo RE de quem faltou há pouco, ou pelo posto da medida", async () => {
+  const t = tabelas();
+  t.fm_faltas.push({ re: 40, data: dia(-3), codigo: "I", nome: "BIA", cargo: "PORTEIRO (A)", posto: "POSTO X", supervisor: "FRANK", escala: "5X2 SDF", tipo: "CONTRATO" });
+  const m = (re, posto) => ({ chave: `HIST|${re}|${ano}-03-03|ADVERTÊNCIA|ESCRITA|0`, re, data: `${ano}-03-03`, tipo: "ADVERTÊNCIA", grau: "ESCRITA", dias: 0, fase: "CONCLUÍDO", nome: "X", local: posto });
+  t.fm_medidas.push(m(40, "POSTO QUALQUER"), m(41, "POSTO X"), m(42, "POSTO SEM DONO"));
+  supabaseFalso(t);
+  const h = await pedir("GET", "historico", { usuario: "supervisor.fulano" });
+  const sup = Object.fromEntries(h.body.medidas.map(x => [x.re, x.supervisor]));
+  assert.deepEqual(sup, { 40: "FRANK", 41: "FRANK", 42: "" });
+});

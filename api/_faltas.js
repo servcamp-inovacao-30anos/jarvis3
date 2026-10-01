@@ -208,13 +208,17 @@ async function verCasos({ res, db, ator }) {
 // Histórico: todas as advertências e suspensões desde 1º de janeiro (importadas + planilha diária).
 async function verHistorico({ res, db }) {
   const hoje = hojeSP(), desde = hoje.slice(0, 4) + "-01-01";
-  const [lidas, ult] = await Promise.all([
+  const [lidas, ult, recentes] = await Promise.all([
     db.listar(`fm_medidas?select=chave,re,data,tipo,grau,dias,fase,motivo_sar2g,nome,local&data=gte.${desde}&order=re.asc,data.asc,chave.asc`),
-    db.obter(`fm_auditoria?select=ator,depois,criado_em&acao=eq.${ACAO_HISTORICO}&order=criado_em.desc,id.desc&limit=1`)
+    db.obter(`fm_auditoria?select=ator,depois,criado_em&acao=eq.${ACAO_HISTORICO}&order=criado_em.desc,id.desc&limit=1`),
+    db.listar(`fm_faltas?select=re,posto,supervisor&data=gte.${R.somaDias(hoje, -JANELA_DIAS)}&order=data.asc,re.asc`)
   ]);
+  // Quem cuida da área hoje: pelo RE (quem faltou há pouco) ou, na falta disso, pelo posto da medida.
+  const supDoRE = {}, supDoPosto = {};
+  recentes.forEach(f => { if (f.supervisor) { supDoRE[f.re] = f.supervisor; if (f.posto) supDoPosto[f.posto] = f.supervisor; } });
   const medidas = R.dedupMedidas(lidas).map(m => ({
     re: m.re, data: iso10(m.data), tipo: m.tipo, grau: m.grau, dias: Number(m.dias) || 0, fase: m.fase || "",
-    motivo: m.motivo_sar2g || "", nome: m.nome || "", local: m.local || "", origem: String(m.chave).startsWith("HIST|") ? "historico" : "planilha"
+    motivo: m.motivo_sar2g || "", nome: m.nome || "", local: m.local || "", supervisor: supDoRE[m.re] || supDoPosto[m.local] || "", origem: String(m.chave).startsWith("HIST|") ? "historico" : "planilha"
   }));
   const u = (ult || [])[0];
   return res.status(200).json({ ok: true, hoje, desde, medidas, importacao: u ? { por: u.ator, em: u.criado_em, linhas: (u.depois || {}).gravadas || 0 } : null });
