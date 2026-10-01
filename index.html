@@ -7861,12 +7861,48 @@ function _comPatch(id,patch,depois){
     .then(({ok})=>{if(!ok)throw new Error();comFetchAll().then(()=>{comRenderAll();if(depois)depois();});})
     .catch(()=>alert("Erro ao atualizar a proposta."));
 }
+/* Registrar visita: a data vem preenchida com hoje e pode ser trocada por um dia
+   anterior (visita feita ontem e lançada hoje). Data futura não vale.
+   ultima_visita guarda a MAIS RECENTE: lançar uma visita antiga não faz a
+   última voltar no tempo. */
 function comVisita(id){
   const x=COM_P.find(p=>p.id===id);if(!x)return;
-  if(!confirm("Registrar 1 visita realizada em "+(x.nome||"")+" hoje?"))return;
-  const quem=sessionStorage.getItem("userNome")||"";
-  comLogEvento(id,"Visita realizada ("+((x.visitas||0)+1)+"ª)"+(quem?" — por "+quem:""),"VISITA");
-  _comPatch(id,{visitas:(x.visitas||0)+1,ultima_visita:ymd(new Date()),visita_por:quem||null});
+  const old=document.getElementById("comVisitaOverlay");if(old)old.remove();
+  const hoje=ymd(new Date());
+  const esc=t=>String(t==null?"":t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");
+  const div=document.createElement("div");
+  div.id="comVisitaOverlay";
+  div.style.cssText="position:fixed;inset:0;background:rgba(13,31,53,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px";
+  div.innerHTML='<div role="dialog" aria-labelledby="comVisitaT" style="background:#fff;border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.3);max-width:380px;width:100%;padding:22px 24px">'+
+    '<div id="comVisitaT" style="font-size:.95rem;font-weight:800;color:#0d1f35;margin-bottom:4px">🏠 Registrar visita</div>'+
+    '<div style="font-size:.78rem;color:#475569;margin-bottom:14px">'+esc(x.nome)+' · '+((x.visitas||0)+1)+'ª visita</div>'+
+    '<label for="comVisitaData" style="display:block;font-size:.66rem;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:#64748b;margin-bottom:5px">Data da visita</label>'+
+    '<input type="date" id="comVisitaData" value="'+hoje+'" max="'+hoje+'" style="width:100%;box-sizing:border-box;padding:9px 10px;border:1px solid #cbd5e1;border-radius:8px;font:inherit;font-size:.85rem">'+
+    '<div id="comVisitaErro" style="color:#dc2626;font-size:.72rem;min-height:16px;margin-top:6px"></div>'+
+    '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">'+
+      '<button type="button" id="comVisitaCancelar" style="padding:9px 16px;border-radius:8px;border:1px solid #cbd5e1;background:#fff;color:#334155;font-weight:700;font-size:.8rem;cursor:pointer">Cancelar</button>'+
+      '<button type="button" id="comVisitaOk" style="padding:9px 16px;border-radius:8px;border:none;background:linear-gradient(135deg,#2e8fef,#1e4d8c);color:#fff;font-weight:800;font-size:.8rem;cursor:pointer">Registrar</button>'+
+    '</div></div>';
+  document.body.appendChild(div);
+  const fechar=()=>div.remove();
+  div.onclick=e=>{if(e.target===div)fechar();};
+  div.onkeydown=e=>{if(e.key==="Escape")fechar();if(e.key==="Enter")salvar();};
+  document.getElementById("comVisitaCancelar").onclick=fechar;
+  document.getElementById("comVisitaOk").onclick=()=>salvar();
+  const inp=document.getElementById("comVisitaData");inp.focus();
+  function salvar(){
+    const d=inp.value,erro=document.getElementById("comVisitaErro");
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(d)){erro.textContent="Escolha a data da visita.";return;}
+    if(d>hoje){erro.textContent="A data da visita não pode ser no futuro.";return;}
+    fechar();
+    const quem=sessionStorage.getItem("userNome")||"";
+    const n=(x.visitas||0)+1,dBR=d.split("-").reverse().join("/");
+    const ult=x.ultima_visita&&String(x.ultima_visita).slice(0,10)>d?String(x.ultima_visita).slice(0,10):d;
+    comLogEvento(id,"Visita realizada em "+dBR+" ("+n+"ª)"+(quem?" — por "+quem:""),"VISITA");
+    const patch={visitas:n,ultima_visita:ult};
+    if(ult===d)patch.visita_por=quem||null; // "quem visitou" acompanha a última visita
+    _comPatch(id,patch);
+  }
 }
 function comRespondeu(id){
   const x=COM_P.find(p=>p.id===id);if(!x)return;
