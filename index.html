@@ -10749,7 +10749,6 @@ function fmPlClick(el,ev){
     rolar=!soSup&&!tb;
   }else if(fmPlIgual(o)){FM.pl=Object.assign(fmPlPadrao(),manter,{tab:p.tab});}
   else FM.pl=Object.assign(fmPlPadrao(),manter,o);
-  if(tb)rolar=false;   // clicou no gráfico/tabela: a tela fica onde está (a lista é acessível pelo "Ver a lista abaixo")
   FM.aberto={};FM.lim=FM_PAGINA;FM.animar=animar;
   fmRenderCorpo();
   if(antes!=null){const n=document.getElementById("fm-sups");if(n)window.scrollBy({top:n.getBoundingClientRect().top-antes,behavior:"instant"});}
