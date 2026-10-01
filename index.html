@@ -2087,8 +2087,9 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       #pg-faltasmed .fm-mes-p{font-size:.68rem;color:var(--fm-muted);margin-top:10px}
 
       /* painel da supervisão */
-      #pg-faltasmed .fm-fbar{position:sticky;top:0;z-index:4;display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;padding:12px 14px;border:1px solid var(--fm-line);border-radius:12px;background:var(--fm-surface);box-shadow:var(--fm-sh);margin-bottom:14px}
+      #pg-faltasmed .fm-fbar{position:sticky;top:-16px;z-index:4;transition:border-radius .12s,box-shadow .12s;display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;padding:12px 14px;border:1px solid var(--fm-line);border-radius:12px;background:var(--fm-surface);box-shadow:var(--fm-sh);margin-bottom:14px}
       #pg-faltasmed .fm-fbar .grow{margin-left:auto}
+      #pg-faltasmed .fm-fbar.fix{border-top-color:transparent;border-radius:0 0 12px 12px;box-shadow:0 8px 18px -8px rgba(15,23,42,.22)}
       #pg-faltasmed .fm-fl{display:flex;flex-direction:column;gap:4px;font-size:.66rem;font-weight:600;color:var(--fm-muted)}
       #pg-faltasmed .fm-fl .fm-in{min-width:130px;max-width:210px;color:var(--fm-text);font-weight:500}
       #pg-faltasmed .fm-in.sm{height:30px;font-size:.72rem;padding:0 8px}
@@ -10202,10 +10203,21 @@ function fmRender(){
     `<button class="fm-btn${FM.agrupar?" on":""}" aria-pressed="${FM.agrupar}" onclick="FM.agrupar=!FM.agrupar;fmRender()">${FM_IC.grupo}Agrupar por supervisor</button><span class="fm-count" id="fm-count"></span></div>${fmFMaisLinha()}<div id="fm-corpo"></div>`+modal;
   fmRenderCorpo();
 }
+/* Barra de filtros presa no topo: troca o visual (cantos de cima retos e sombra) só enquanto gruda. */
+function fmFixa(){
+  const b=document.querySelector("#pg-faltasmed .fm-fbar"),c=document.querySelector(".cnt");
+  if(!b||!c)return;
+  b.classList.toggle("fix",b.getBoundingClientRect().top<=c.getBoundingClientRect().top+0.5&&c.scrollTop>0);
+}
+function fmFixaIni(){
+  const c=document.querySelector(".cnt");
+  if(c&&!c._fmFixa){c._fmFixa=1;let q=0;c.addEventListener("scroll",()=>{if(q)return;q=requestAnimationFrame(()=>{q=0;fmFixa();});},{passive:true});}
+}
 function fmRenderCorpo(){
   const el=document.getElementById("fm-corpo"),j=FM.dados;if(!el||!j)return;
+  fmFixaIni();
   if(FM.aba==="HIST"){el.innerHTML=fmHistTela();return;}
-  if(FM.aba==="PAINEL"){el.innerHTML=fmPainel();return;}
+  if(FM.aba==="PAINEL"){el.innerHTML=fmPainel();fmFixa();return;}
   const aba=FM_ABAS.find(a=>a.id===FM.aba)||FM_ABAS[0];
   const it=fmItens(aba);
   document.querySelectorAll("#pg-faltasmed .fm-tab").forEach(t=>{const n=t.querySelector(".n"),def=FM_ABAS.find(x=>x.id===t.dataset.a);if(n&&def)n.textContent=fmItens(def).length;});
