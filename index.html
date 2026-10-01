@@ -2352,6 +2352,30 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       #pg-faltasmed .fm-oc-leg{display:inline-flex;gap:16px;flex-wrap:wrap}
       #pg-faltasmed .fm-oc-leg span{display:inline-flex;align-items:center;gap:6px;color:var(--fm-text)}
       #pg-faltasmed .fm-oc-leg i{width:8px;height:8px;border-radius:50%;background:var(--cc)}
+      /* histórico de medidas */
+      #pg-faltasmed .fm-hh{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;margin:0 0 14px}
+      #pg-faltasmed .fm-hh h4{font-size:1.3rem;font-weight:700;letter-spacing:-.01em;color:var(--fm-text);margin:0}
+      #pg-faltasmed .fm-hh p{font-size:.8rem;color:var(--fm-muted);margin:4px 0 0;max-width:640px}
+      #pg-faltasmed .fm-hh-a{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+      #pg-faltasmed .fm-hh-a span{font-size:.7rem;color:var(--fm-muted)}
+      #pg-faltasmed .fm-kpis.k4{grid-template-columns:repeat(4,minmax(0,1fr))}
+      #pg-faltasmed .fm-pr-h .rk.rein{background:#fef3f2;color:#b42318}
+      #pg-faltasmed .fm-pr-h .sit .fm-tg{white-space:nowrap;align-self:center}
+      #pg-faltasmed .fm-tg.rein{color:#b42318;background:#fef3f2;border-color:#fecdca;font-weight:700}
+      #pg-faltasmed .fm-tg.med{color:var(--fm-text2)}
+      #pg-faltasmed .fm-tg.ok{color:#067647;background:#ecfdf3;border-color:#abefc6}
+      html[data-theme="dark"] #pg-faltasmed .fm-pr-h .rk.rein,html[data-theme="dark"] #pg-faltasmed .fm-tg.rein{color:#fda29b;background:rgba(240,68,56,.16);border-color:rgba(240,68,56,.4)}
+      html[data-theme="dark"] #pg-faltasmed .fm-tg.ok{color:#75e0a7;background:rgba(23,178,106,.14);border-color:rgba(23,178,106,.4)}
+      #pg-faltasmed .fm-ht{overflow-x:auto}
+      #pg-faltasmed .fm-ht-c,#pg-faltasmed .fm-ht-r{display:grid;grid-template-columns:86px minmax(150px,1fr) minmax(160px,1.3fr) minmax(140px,1fr) 150px;gap:12px;align-items:center;padding:10px 18px;min-width:720px}
+      #pg-faltasmed .fm-ht-c{font-size:.62rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--fm-muted);background:var(--fm-subtle);border-bottom:1px solid var(--fm-line)}
+      #pg-faltasmed .fm-ht-r{font-size:.78rem;color:var(--fm-text2);border-bottom:1px solid var(--fm-line2)}
+      #pg-faltasmed .fm-ht-r:last-child{border-bottom:0}
+      #pg-faltasmed .fm-ht-r .d,#pg-faltasmed .fm-ht-r .m{font-weight:700;color:var(--fm-text)}
+      #pg-faltasmed .fm-ht-r.canc .d,#pg-faltasmed .fm-ht-r.canc .m{text-decoration:line-through;color:var(--fm-muted);font-weight:500}
+      #pg-faltasmed .fm-ht-r.agora{background:#fffaeb}
+      html[data-theme="dark"] #pg-faltasmed .fm-ht-r.agora{background:rgba(245,176,0,.08)}
+      @media (max-width:900px){#pg-faltasmed .fm-kpis.k4{grid-template-columns:repeat(2,minmax(0,1fr))}#pg-faltasmed .fm-hh-a{align-items:flex-start}}
       /* ranking dos postos */
       #pg-faltasmed .fm-pr-t{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 0 10px;font-size:.86rem;font-weight:700;color:var(--fm-text)}
       #pg-faltasmed .fm-pr-t em{font-style:normal;font-weight:500;font-size:.72rem;color:var(--fm-muted);margin-left:6px}
@@ -2460,7 +2484,7 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       }
     </style>
     <div class="sec-hdr"><span class="fm-ic-tile" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5v16.5M8 20h8"/><path d="M5 7h14"/><circle cx="12" cy="4.2" r=".9"/><path d="M5 7l-2.8 6.2a3 3 0 0 0 5.6 0z"/><path d="M19 7l-2.8 6.2a3 3 0 0 0 5.6 0z"/></svg></span><div><div class="sec-hdr-t">Faltas x Medidas</div><div class="sec-hdr-sub">Faltas injustificadas e prazo para aplicar a medida disciplinar</div></div>
-      <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap"><div class="fm-seg fm-vista" role="group" aria-label="Tela"><button type="button" id="fm-v-lista" class="on" onclick="FM.aba='AGIR';fmRender()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Lista de casos</button><button type="button" id="fm-v-painel" onclick="FM.animar=true;FM.aba='PAINEL';fmRender()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Painel dos supervisores</button></div><button class="fm-btn" id="fm-bt-envio" style="display:none" onclick="fmEnviarPlanilha()" title="Envia o arquivo .xlsx do SAR2G, como o botão Novo arquivo Excel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>Enviar planilha</button><button class="fm-btn" onclick="fmLoad(true)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>Atualizar</button></div></div>
+      <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap"><div class="fm-seg fm-vista" role="group" aria-label="Tela"><button type="button" id="fm-v-lista" class="on" onclick="FM.aba='AGIR';fmRender()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Lista de casos</button><button type="button" id="fm-v-painel" onclick="FM.animar=true;FM.aba='PAINEL';fmRender()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Painel dos supervisores</button><button type="button" id="fm-v-hist" onclick="FM.aba='HIST';fmRender()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>Histórico</button></div><button class="fm-btn" id="fm-bt-envio" style="display:none" onclick="fmEnviarPlanilha()" title="Envia o arquivo .xlsx do SAR2G, como o botão Novo arquivo Excel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>Enviar planilha</button><button class="fm-btn" onclick="fmLoad(true)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>Atualizar</button></div></div>
     <div id="fm-sec"><div class="fm-empty"><b>Carregando…</b></div></div>
   </div>
 
@@ -9966,7 +9990,7 @@ function fmLoad(forcar){
   const box=document.getElementById("fm-sec");
   if(!forcar&&FM.dados&&Date.now()-FM.carregadoEm<60000){fmRender();return;}
   if(box&&!FM.dados)box.innerHTML=fmVazio("Carregando…");
-  return fmPedir("GET","casos").then(j=>{FM.animar=true;FM.dados=j;FM.carregadoEm=Date.now();FM.vg=j.resumo;FM.vgEm=Date.now();fmRender();fmVgPinta();})
+  return fmPedir("GET","casos").then(j=>{FM.animar=true;FM.dados=j;FM.carregadoEm=Date.now();FM.vg=j.resumo;FM.vgEm=Date.now();fmRender();fmVgPinta();fmHistCarregar(true);})
     .catch(e=>{if(box)box.innerHTML=fmVazio("Não foi possível carregar",_esc(e.message));});
 }
 function fmFiltraG(c){
@@ -10089,10 +10113,11 @@ function fmRender(){
   const be=document.getElementById("fm-bt-envio");if(be)be.style.display=j.pode_editar?"":"none";
   if(j.vazio){box.innerHTML=fmEstadoInicial();return;}
   const vl=document.getElementById("fm-v-lista"),vp=document.getElementById("fm-v-painel");
-  if(vl)vl.classList.toggle("on",FM.aba!=="PAINEL");if(vp)vp.classList.toggle("on",FM.aba==="PAINEL");
+  const vh=document.getElementById("fm-v-hist");
+  if(vl)vl.classList.toggle("on",FM.aba!=="PAINEL"&&FM.aba!=="HIST");if(vp)vp.classList.toggle("on",FM.aba==="PAINEL");if(vh)vh.classList.toggle("on",FM.aba==="HIST");
   const base=`<div class="fm-base">Dados da planilha: <b>${fmDdA(j.dataBase)}</b><i>|</i>Hoje: <b>${FM_DIA_C[fmSem(j.hoje)]}, ${fmDdA(j.hoje)}</b></div>`;
   const modal=FM.fer?fmFeriadosModal():"";
-  if(FM.aba==="PAINEL"){
+  if(FM.aba==="PAINEL"||FM.aba==="HIST"){
     box.innerHTML=base+`<div id="fm-corpo"></div>`+modal;
     fmRenderCorpo();return;
   }
@@ -10107,6 +10132,7 @@ function fmRender(){
 }
 function fmRenderCorpo(){
   const el=document.getElementById("fm-corpo"),j=FM.dados;if(!el||!j)return;
+  if(FM.aba==="HIST"){el.innerHTML=fmHistTela();return;}
   if(FM.aba==="PAINEL"){el.innerHTML=fmPainel();return;}
   const aba=FM_ABAS.find(a=>a.id===FM.aba)||FM_ABAS[0];
   const it=fmItens(aba);
@@ -10149,7 +10175,7 @@ function fmLinhaItem(x,semSup){
   const a=x.acao,clic=x.caso||x.abono,aberto=clic&&FM.aberto[x.k],v=fmVinculoRot(x.tipo);
   const clique=clic?` role="button" tabindex="0" aria-expanded="${!!aberto}" data-k="${_esc(x.k)}" onclick="fmAbrir(this.dataset.k)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();fmAbrir(this.dataset.k)}"`:"";
   return `<div class="fm-row k-${a.tom}${semSup?" p":""}${aberto?" on":""}${clic?"":" fixa"}"${clique}>`+
-    `<div style="min-width:0"><div class="fm-nm" title="${_esc(x.nome)}">${_esc(x.nome)}</div><div class="fm-sb"><span class="fm-re">RE ${_esc(x.re)}</span>${_esc(x.cargo||"")}${x.ant?`<span class="fm-tg ant">${x.ant}</span>`:""}${x.turno==="NOTURNO"?'<span class="fm-tg">noturno</span>':""}${x.tag?`<span class="fm-tg${x.tagAm?" am":""}">${x.tag}</span>`:""}</div></div>`+
+    `<div style="min-width:0"><div class="fm-nm" title="${_esc(x.nome)}">${_esc(x.nome)}</div><div class="fm-sb"><span class="fm-re">RE ${_esc(x.re)}</span>${_esc(x.cargo||"")}${x.ant?`<span class="fm-tg ant">${x.ant}</span>`:""}${fmReincTag(x.re)}${x.turno==="NOTURNO"?'<span class="fm-tg">noturno</span>':""}${x.tag?`<span class="fm-tg${x.tagAm?" am":""}">${x.tag}</span>`:""}</div></div>`+
     `<div class="fm-cv fl" data-l="Faltas" title="${_esc(fmLista([...new Set(x.faltas||[])].sort().map(fmDdS)))}">${_esc(fmFaltasTxt(x.faltas))}</div>`+
     `<div class="fm-cv" data-l="Vínculo"><span class="fm-vin ${v.c}" title="${_esc(v.d)}">${_esc(v.t)}</span></div>`+
     `<div class="fm-cv" data-l="Posto" title="${_esc(x.posto||"")}">${_esc(x.posto||"—")}</div>`+
@@ -10270,11 +10296,13 @@ function fmDetalhe(c){
   const big=`<dl class="fm-big"><div><dt>Falta</dt><dd>${fmDd(c.primeiraFalta)}${fl.length>1?`<small>+${fl.length-1}</small>`:""}</dd></div>`+
     `<div><dt>${c.retorno||!c.retornoPrevisto?"Retorno":"Retorno previsto"}</dt><dd>${c.retorno?fmDd(c.retorno):c.retornoPrevisto?fmDd(c.retornoPrevisto):"—"}</dd></div>`+
     `<div><dt>Prazo até</dt><dd>${c.prazoFim?fmDd(c.prazoFim):"—"}</dd></div></dl>`;
-  const outras=((j.historico||{})[c.re]||[]).filter(h=>!c.medida||h.chave!==c.medida.chave);
+  const outras=FM.hist&&!FM.hist.erro
+    ?fmHistDe(c.re).filter(h=>!c.medida||!(h.data===String(c.medida.DATA).slice(0,10)&&h.tipo===c.medida.TIPO))
+    :((j.historico||{})[c.re]||[]).filter(h=>!c.medida||h.chave!==c.medida.chave);
   const kv=[["Medida",c.medida?fmMedidaTxt(c.medida)+" em "+fmDd(c.medida.DATA):"Não aplicada"],["Escala",c.escala||"—"],["Cargo",c.cargo||"—"],
     ["Dias do prazo",(c.prazo||[]).length?fmLista(c.prazo.map(fmDd)):(c.situacao==="AGUARDANDO_RETORNO"?"Começa no retorno":"—")]];
   if(fl.length>1)kv.push(["Faltas no caso",fmLista(fl.map(fmDd))]);
-  if(outras.length)kv.push(["Medidas anteriores",outras.map(h=>fmMedidaTxt({TIPO:h.tipo,GRAU:h.grau,DIAS:h.dias})+" em "+fmDd(h.data)).join(" · ")]);
+  if(outras.length)kv.push([outras.length>=2?"Medidas no ano · reincidente":"Medidas no ano",outras.map(h=>fmMedidaTxt({TIPO:h.tipo,GRAU:h.grau,DIAS:h.dias})+" em "+fmDd(h.data)).join(" · ")]);
   let med="";
   if(c.medida){
     const m=c.medida,ch=_esc(m.chave);
@@ -10336,6 +10364,159 @@ function fmMes(c,kk){
     `<div class="fm-mg">${g}</div><p class="fm-mes-p">Os dias fora da folha deste caso ficam apagados.</p>`;
 }
 function fmMesIr(k,mes){if(!mes)return;FM.mes[k]=mes;if(FM.aba==="PAINEL")fmRenderOcor();else fmRenderCorpo();}
+
+/* ═════════ HISTÓRICO DE MEDIDAS (desde 1º de janeiro) ═════════
+   Advertências e suspensões de cada colaborador, para controlar reincidência.
+   Vem do relatório de ocorrências do SAR2G (enviado uma vez pelo botão
+   "Enviar histórico") e, daí em diante, da aba DISCIPLINA da planilha diária. */
+/* Lê o relatório do SAR2G (linhas da planilha, a 1ª com os títulos) e devolve só as medidas.
+   Mesma regra da aba DISCIPLINA: olha DESCRICAO e PUNICAO juntas, porque nenhuma das duas
+   está sempre completa. Linhas escondidas por filtro do Excel também entram (o filtro não muda nada). */
+function fmHistData(v){
+  if(v==null||v==="")return"";
+  if(v instanceof Date){if(isNaN(v))return"";return `${v.getFullYear()}-${String(v.getMonth()+1).padStart(2,"0")}-${String(v.getDate()).padStart(2,"0")}`;}
+  if(typeof v==="number"&&v>20000&&v<80000){const d=new Date(Math.round((v-25569)*86400000));return d.toISOString().slice(0,10);}
+  const s=String(v).trim();
+  if(/^\d{4}-\d{2}-\d{2}/.test(s))return s.slice(0,10);
+  const p=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  return p?`${p[3]}-${p[2].padStart(2,"0")}-${p[1].padStart(2,"0")}`:"";
+}
+function fmHistLer(rows){
+  const norm=x=>String(x==null?"":x).trim().toUpperCase();
+  const iCab=(rows||[]).findIndex(r=>(r||[]).map(norm).indexOf("RE")>=0&&(r||[]).map(norm).indexOf("DTINICIOOCORRENCIA")>=0);
+  if(iCab<0)return{erro:"Não achei as colunas RE e DTINICIOOCORRENCIA. Use o relatório de ocorrências do SAR2G."};
+  const cab=rows[iCab].map(norm),col=n=>cab.indexOf(n);
+  const c={re:col("RE"),nome:col("NOME"),desc:col("DESCRICAO"),dt:col("DTINICIOOCORRENCIA"),fase:col("FASEATUAL"),cli:col("CLIENTE"),pun:col("PUNICAO"),hist:col("HISTDISCIPLINAR")};
+  if(c.desc<0&&c.pun<0)return{erro:"Não achei as colunas DESCRICAO e PUNICAO."};
+  const v=(r,i)=>i<0?"":r[i];
+  const medidas=[],jaVi={};let semData=0;
+  rows.slice(iCab+1).forEach(r=>{
+    if(!r||!r.length)return;
+    const pun=norm(v(r,c.pun)),t=norm(v(r,c.desc))+" "+pun;
+    const ehSusp=t.indexOf("SUSPEN")>=0,ehAdv=t.indexOf("ADVER")>=0;
+    if(!ehSusp&&!ehAdv)return;
+    const hist=String(v(r,c.hist)||"").trim();
+    if(hist){if(jaVi[hist])return;jaVi[hist]=1;}
+    const data=fmHistData(v(r,c.dt));if(!data){semData++;return;}
+    const m=pun.match(/SUSPENS[ÃA]O\s+(\d+)/);
+    medidas.push({re:String(v(r,c.re)||"").trim(),nome:String(v(r,c.nome)||"").trim(),data,
+      tipo:ehSusp?"SUSPENSÃO":"ADVERTÊNCIA",grau:ehSusp?"SUSPENSÃO":(pun.indexOf("VERBAL")>=0?"VERBAL":"ESCRITA"),
+      dias:m?parseInt(m[1],10):0,fase:String(v(r,c.fase)||"").trim(),motivo:String(v(r,c.desc)||"").trim(),local:String(v(r,c.cli)||"").trim(),hist});
+  });
+  return{medidas,semData};
+}
+/*fim fmHistLer*/
+const fmMedCancelada=m=>/CANCEL/i.test(m.fase||"");
+function fmHistCarregar(forcar){
+  if(FM.histCarregando||(!forcar&&FM.hist&&Date.now()-FM.hist.em<60000))return;
+  FM.histCarregando=true;
+  return fmPedir("GET","historico").then(j=>{
+    const porRE={};
+    (j.medidas||[]).forEach(m=>{(porRE[m.re]=porRE[m.re]||[]).push(m);});
+    Object.values(porRE).forEach(l=>l.sort((a,b)=>b.data.localeCompare(a.data)));
+    FM.hist={em:Date.now(),desde:j.desde,medidas:j.medidas||[],porRE,importacao:j.importacao,erro:null};
+  }).catch(e=>{FM.hist={em:Date.now(),porRE:{},medidas:[],erro:e.message};})
+    .finally(()=>{FM.histCarregando=false;if(document.querySelector("#pg-faltasmed.active"))fmRenderCorpo();});
+}
+/* Medidas válidas (não canceladas) de uma pessoa desde janeiro. */
+function fmHistDe(re){return((FM.hist&&FM.hist.porRE[re])||[]).filter(m=>!fmMedCancelada(m));}
+/* Etiqueta na linha do caso: quantas medidas a pessoa já teve no ano. */
+function fmReincTag(re){
+  const n=fmHistDe(re).length;if(!n)return"";
+  return `<span class="fm-tg ${n>=2?"rein":"med"}" title="Medidas disciplinares desde 01/01 (Histórico)">${n>=2?"Reincidente · ":""}${n} ${n===1?"medida":"medidas"} no ano</span>`;
+}
+function fmMedTxtH(m){return fmMedidaTxt({TIPO:m.tipo,GRAU:m.grau,DIAS:m.dias});}
+/* Botão "Enviar histórico": lê o .xlsx aqui no navegador e manda só as medidas. */
+function fmHistEnviar(){
+  const inp=document.createElement("input");inp.type="file";inp.accept=".xlsx,.xls";
+  inp.onchange=()=>{
+    const f=inp.files&&inp.files[0];if(!f)return;
+    const rd=new FileReader();
+    rd.onload=()=>{
+      let r;
+      try{const wb=XLSX.read(new Uint8Array(rd.result),{type:"array"}); /* datas como número do Excel: sem efeito de fuso horário */r=fmHistLer(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:null}));}
+      catch(e){alert("Não consegui ler o arquivo.\n"+e.message);return;}
+      if(r.erro){alert(r.erro);return;}
+      const ms=r.medidas;if(!ms.length){alert("O arquivo não tem nenhuma advertência ou suspensão.");return;}
+      const n=k=>ms.filter(k).length,datas=ms.map(m=>m.data).sort();
+      const txt=`Encontrei ${ms.length} medidas de ${new Set(ms.map(m=>m.re)).size} pessoas, de ${fmDd(datas[0])} a ${fmDdA(datas[datas.length-1])}:\n`+
+        `• ${n(m=>m.grau==="ESCRITA")} advertências escritas\n• ${n(m=>m.grau==="VERBAL")} advertências verbais\n• ${n(m=>m.tipo==="SUSPENSÃO")} suspensões\n`+
+        (n(fmMedCancelada)?`(${n(fmMedCancelada)} com cancelamento: ficam no histórico, mas não contam como reincidência)\n`:"")+
+        (r.semData?`${r.semData} linha(s) sem data ficaram de fora.\n`:"")+"\nEnviar para o JARVIS?";
+      if(!confirm(txt))return;
+      fmPedir("POST","historico",{medidas:ms}).then(j=>{
+        const rec=Object.entries(j.recusadas||{}).map(([k,v])=>v+" "+k).join(", ");
+        ptToast(`Histórico recebido: ${j.gravadas} medidas gravadas.`+(rec?` Recusadas: ${rec}.`:""));
+        fmHistCarregar(true);
+      }).catch(e=>alert("Não foi possível enviar o histórico.\n"+e.message));
+    };
+    rd.readAsArrayBuffer(f);
+  };
+  inp.click();
+}
+function fmHistTela(){
+  const j=FM.dados,H=FM.hist;
+  if(!H){fmHistCarregar();return fmVazio("Carregando o histórico…");}
+  if(H.erro)return fmVazio("Não foi possível carregar o histórico",_esc(H.erro));
+  const st=FM.hs||(FM.hs={busca:"",mostrar:"",ordem:"mais",ab:{},lim:60});
+  const abertosRE={};
+  j.casos.filter(c=>FM_ABERTAS.indexOf(c.situacao)>=0).forEach(c=>{(abertosRE[c.re]=abertosRE[c.re]||[]).push(c);});
+  const quem={};j.casos.concat(fmAbonos()).forEach(c=>{if(!quem[c.re])quem[c.re]={nome:c.nome,posto:c.posto};});
+  const pessoas=Object.entries(H.porRE).map(([re,l])=>{
+    const val=l.filter(m=>!fmMedCancelada(m));
+    return{re,l,val,nome:(l.find(m=>m.nome&&m.nome!=="—")||{}).nome||(quem[re]||{}).nome||"RE "+re,local:(l.find(m=>m.local&&m.local!=="—")||{}).local||(quem[re]||{}).posto||"",
+      esc:val.filter(m=>m.grau==="ESCRITA").length,ver:val.filter(m=>m.grau==="VERBAL").length,
+      sus:val.filter(m=>m.tipo==="SUSPENSÃO"),ult:(val[0]||l[0]).data,abertos:abertosRE[re]||[]};
+  });
+  const todas=H.medidas.filter(m=>!fmMedCancelada(m));
+  const rein=pessoas.filter(p=>p.val.length>=2),reinAb=rein.filter(p=>p.abertos.length);
+  const comAb=pessoas.filter(p=>p.val.length&&p.abertos.length);
+  const kp=(rot,val,sub,mostrar,cls)=>`<button type="button" class="fm-kpi ${cls||""}${mostrar&&st.mostrar===mostrar?" sel":""}" onclick="FM.hs.mostrar=${mostrar?`FM.hs.mostrar==='${mostrar}'?'':'${mostrar}'`:"''"};FM.hs.lim=60;fmRenderCorpo()"><div class="fm-kpi-l">${rot}</div><div class="fm-kpi-v"><b>${val}</b><span>${sub}</span></div></button>`;
+  const desde=fmDdA(H.desde);
+  let h=`<div class="fm-hh"><div><h4>Histórico de medidas</h4><p>Advertências e suspensões de cada colaborador desde ${desde}. Serve para ver quem é reincidente antes de aplicar a próxima medida.</p></div>`+
+    (j.pode_editar?`<div class="fm-hh-a"><button type="button" class="fm-btn" onclick="fmHistEnviar()">${FM_IC.cal}Enviar histórico (.xlsx)</button>${H.importacao?`<span>Último envio: ${fmDdA(String(H.importacao.em).slice(0,10))} por ${_esc(H.importacao.por||"—")}</span>`:""}</div>`:"")+`</div>`;
+  if(!H.medidas.length)return h+fmVazio("Nenhuma medida desde "+desde,j.pode_editar?"Use o botão Enviar histórico com o relatório de ocorrências do SAR2G (advertências e suspensões).":"Peça a um aprovador para enviar o histórico do SAR2G.");
+  h+=`<div class="fm-kpis k4">`+
+    kp("Medidas desde "+desde.slice(0,5),todas.length,`${todas.filter(m=>m.tipo==="ADVERTÊNCIA").length} advertências<br>${todas.filter(m=>m.tipo==="SUSPENSÃO").length} suspensões`,"")+
+    kp("Pessoas com medida",pessoas.filter(p=>p.val.length).length,"pelo menos uma<br>medida no ano","")+
+    kp("Reincidentes",rein.length,"2 ou mais medidas<br>no ano","rein",rein.length?"v-da":"")+
+    kp("Reincidentes com falta agora",reinAb.length,`têm falta injustificada<br>em aberto neste momento`,"reinab",reinAb.length?"v-da":"")+`</div>`;
+  // filtros
+  const q=st.busca.trim().toLowerCase();
+  let lista=pessoas.filter(p=>(!q||[p.nome,p.re,p.local].some(v=>String(v).toLowerCase().indexOf(q)>=0))&&
+    (st.mostrar!=="rein"||p.val.length>=2)&&(st.mostrar!=="reinab"||(p.val.length>=2&&p.abertos.length))&&(st.mostrar!=="ab"||(p.val.length&&p.abertos.length)));
+  if(st.ordem==="nome")lista.sort((a,b)=>a.nome.localeCompare(b.nome));
+  else if(st.ordem==="recente")lista.sort((a,b)=>b.ult.localeCompare(a.ult)||b.val.length-a.val.length);
+  else lista.sort((a,b)=>b.val.length-a.val.length||b.sus.length-a.sus.length||b.ult.localeCompare(a.ult));
+  const sel=(rot,campo,ops)=>`<div class="fm-selb${st[campo]&&!(campo==="ordem"&&st[campo]==="mais")?" on":""}"><label><span class="t">${rot}:</span><select onchange="FM.hs.${campo}=this.value;FM.hs.lim=60;fmRenderCorpo()">${ops.map(([v,l])=>`<option value="${v}"${v===st[campo]?" selected":""}>${l}</option>`).join("")}</select><span class="chv">${FM_IC.chev}</span></label></div>`;
+  h+=`<div class="fm-oc-bar"><label class="fm-search">${FM_IC.busca}<input class="fm-in" id="fm-hs-busca" placeholder="Buscar por nome, RE ou posto" value="${_esc(st.busca)}" oninput="const v=this.value;fmDeb(()=>{FM.hs.busca=v;FM.hs.lim=60;fmRenderCorpo();const i=document.getElementById('fm-hs-busca');if(i){i.focus();i.setSelectionRange(v.length,v.length);}})"></label>`+
+    sel("Mostrar","mostrar",[["","Todos"],["rein","Só reincidentes ("+rein.length+")"],["ab","Com falta em aberto agora ("+comAb.length+")"],["reinab","Reincidentes com falta agora ("+reinAb.length+")"]])+
+    sel("Ordenar","ordem",[["mais","Mais medidas"],["recente","Mais recentes"],["nome","Nome"]])+`</div>`;
+  h+=`<div class="fm-oc-n"><span><b>${lista.length}</b> ${lista.length===1?"colaborador":"colaboradores"}</span></div>`;
+  if(!lista.length)return h+fmVazio("Ninguém com esses filtros","Mude os filtros ou a busca.");
+  const max=Math.max(1,...lista.map(p=>p.val.length));
+  h+=`<div class="fm-pr">`+lista.slice(0,st.lim).map((p,i)=>{
+    const on=!!st.ab[p.re],n=p.val.length,diasS=p.sus.reduce((s,m)=>s+(m.dias||0),0);
+    const chips=[p.ver?`<span class="fm-pr-b"><i class="cat-hj"></i>${p.ver} advert. verbal</span>`:"",p.esc?`<span class="fm-pr-b"><i class="cat-hj"></i>${p.esc} advert. escrita</span>`:"",
+      p.sus.length?`<span class="fm-pr-b"><i class="cat-da"></i>${p.sus.length} ${p.sus.length===1?"suspensão":"suspensões"}${diasS?` · ${diasS} ${diasS===1?"dia":"dias"}`:""}</span>`:""].join("");
+    const tags=(n>=2?'<span class="fm-tg rein">Reincidente</span>':"")+(p.abertos.length?`<span class="fm-tg am">Falta em aberto agora</span>`:"")+(p.l.length>n?`<span class="fm-tg">${p.l.length-n} cancelada${p.l.length-n===1?"":"s"}</span>`:"");
+    let corpo="";
+    if(on){
+      const linhasAb=p.abertos.map(c=>{const a=fmAcao(c);return `<div class="fm-ht-r agora"><span class="d">${fmDd(c.primeiraFalta)}</span><span class="m">Falta injustificada${(c.faltas||[]).length>1?` (${c.faltas.length} faltas)`:""}</span><span class="mo">${_esc(a.t)}${a.s?` · ${_esc(a.s)}`:""}</span><span class="p">${_esc(c.posto||"—")}</span><span class="f"><span class="fm-tg am">Em aberto agora</span></span></div>`;}).join("");
+      const linhas=p.l.map(m=>{const canc=fmMedCancelada(m),el=/ELABORA/i.test(m.fase||"");
+        return `<div class="fm-ht-r${canc?" canc":""}"><span class="d">${fmDd(m.data)}</span><span class="m">${_esc(fmMedTxtH(m))}</span><span class="mo">${_esc(m.motivo||"—")}</span><span class="p">${_esc(m.local||"—")}</span><span class="f">${canc?'<span class="fm-tg">Cancelada · não conta</span>':el?'<span class="fm-tg am">Em elaboração</span>':'<span class="fm-tg ok">Concluída</span>'}</span></div>`;}).join("");
+      corpo=`<div class="fm-pr-l"><div class="fm-ht"><div class="fm-ht-c"><span>Data</span><span>Ocorrência</span><span>Motivo no SAR2G</span><span>Posto</span><span>Situação</span></div>${linhasAb}${linhas}</div></div>`;
+    }
+    return `<div class="fm-pr-c${on?" on":""}"><button type="button" class="fm-pr-h" aria-expanded="${on}" data-re="${_esc(p.re)}" onclick="FM.hs.ab[this.dataset.re]=!FM.hs.ab[this.dataset.re];fmRenderCorpo()">`+
+      `<span class="rk${n>=2?" rein":""}">${n}</span>`+
+      `<span class="nm"><b title="${_esc(p.nome)}">${_esc(p.nome)}</b><em>RE ${_esc(p.re)}${p.local?" · "+_esc(p.local):""}</em></span>`+
+      `<span class="sit">${chips}${tags}</span>`+
+      `<span class="qt"><span class="v"><b>${n}</b> ${n===1?"medida":"medidas"}<em>última ${fmDd(p.ult)}</em></span><span class="br"><i style="width:${(n/max*100).toFixed(1)}%"></i></span></span>`+
+      `<span class="chv">${FM_IC.chev}</span></button>${corpo}</div>`;
+  }).join("")+`</div>`;
+  if(lista.length>st.lim)h+=`<div class="fm-mais-l">Mostrando <b>${st.lim}</b> de <b>${lista.length}</b><button class="fm-btn sm" onclick="FM.hs.lim+=60;fmRenderCorpo()">Mostrar mais</button></div>`;
+  return h;
+}
 
 /* ═════════ PAINEL DA SUPERVISÃO ═════════
    Por período (modo folha 26 → 25 ou modo mês 1 → 31): quem tem mais casos

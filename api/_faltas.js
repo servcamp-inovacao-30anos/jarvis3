@@ -7,6 +7,8 @@
 //     GET  feriados   qualquer pessoa logada
 //     PATCH motivo    só aprovadores: motivo da medida (texto livre, com histórico)
 //     POST feriados   só aprovadores: { data, descricao } ou { data, remover: true }
+//     GET  historico  qualquer pessoa logada: advertências e suspensões desde 1º de janeiro
+//     POST historico  só aprovadores: { medidas: [...] } do relatório de ocorrências do SAR2G
 // E o api/import.js chama materializar() a cada planilha recebida.
 //
 // As regras moram em _faltas_regras.js (puras, testadas). Aqui fica só o que
@@ -19,6 +21,8 @@ const ACAO_ABONO_TARDIO = "FALTA_ABONADA_DEPOIS";
 const ACAO_ATESTADO = "ATESTADO_REGISTRADO";
 const ACAO_ATESTADO_FIM = "ATESTADO_REMOVIDO";
 const ACAO_ATESTADO_LANCADO = "ATESTADO_LANCADO_SAR2G"; // o usuário marcou que já lançou no SAR2G
+const ACAO_HISTORICO = "HISTORICO_IMPORTADO";
+const MAX_HISTORICO = 5000; // linhas por envio
 const JANELA_DIAS = 150; // o que a tela carrega: casos mais antigos já se encerraram
 const DIAS_ACOMPANHADOS = 45; // quem faltou nesse período ainda tem os dias da ficha guardados
 
@@ -125,7 +129,7 @@ async function anotarAbonosTardios(db, faltas, codigoAntes) {
 
 async function verCasos({ res, db, ator }) {
   const hoje = hojeSP(), desde = R.somaDias(hoje, -JANELA_DIAS);
-  const [faltas, dias, medidas, adm, feriados, trocas, eventosAtestado] = await Promise.all([
+  const [faltas, dias, medidasLidas, adm, feriados, trocas, eventosAtestado] = await Promise.all([
     db.listar(`fm_faltas?select=re,data,codigo,nome,cargo,posto,supervisor,escala,tipo&data=gte.${desde}&order=re.asc,data.asc`),
     db.listar(`fm_dias?select=re,data,situacao&data=gte.${desde}&order=re.asc,data.asc`),
     db.listar(`fm_medidas?select=chave,re,data,tipo,grau,dias,fase,motivo_sar2g,obs,motivo,motivo_editado_por,motivo_editado_em&data=gte.${desde}&order=re.asc,data.asc,chave.asc`),
@@ -134,6 +138,8 @@ async function verCasos({ res, db, ator }) {
     db.listar(`fm_auditoria?select=id,chave,criado_em&acao=eq.${ACAO_ABONO_TARDIO}&order=criado_em.asc,id.asc`),
     db.listar(`fm_auditoria?select=id,ator,acao,chave,depois,criado_em&acao=in.(${ACAO_ATESTADO},${ACAO_ATESTADO_FIM},${ACAO_ATESTADO_LANCADO})&order=criado_em.asc,id.asc`)
   ]);
+  // a mesma medida pode estar no histórico importado e na planilha diária: conta uma vez só
+  const medidas = R.dedupMedidas(medidasLidas);
   // atestados registrados à mão: valem já, sem esperar o lançamento no SAR2G
   const { ativos: atestados, sem: semAtestado } = R.dobrarAtestados(eventosAtestado);
   const cobertura = (re, dia) => atestados.find(a => a.re === String(re) && dia >= a.inicio && dia <= a.fim) || null;
@@ -197,6 +203,41 @@ async function verCasos({ res, db, ator }) {
     abonos, atestados,
     dias: diasDosCasos, historico, feriados, pode_editar: !!(ator && ponto.APROVADORES.has(ator))
   });
+}
+
+// Histórico: todas as advertências e suspensões desde 1º de janeiro (importadas + planilha diária).
+async function verHistorico({ res, db }) {
+  const hoje = hojeSP(), desde = hoje.slice(0, 4) + "-01-01";
+  const [lidas, ult] = await Promise.all([
+    db.listar(`fm_medidas?select=chave,re,data,tipo,grau,dias,fase,motivo_sar2g,nome,local&data=gte.${desde}&order=re.asc,data.asc,chave.asc`),
+    db.obter(`fm_auditoria?select=ator,depois,criado_em&acao=eq.${ACAO_HISTORICO}&order=criado_em.desc,id.desc&limit=1`)
+  ]);
+  const medidas = R.dedupMedidas(lidas).map(m => ({
+    re: m.re, data: iso10(m.data), tipo: m.tipo, grau: m.grau, dias: Number(m.dias) || 0, fase: m.fase || "",
+    motivo: m.motivo_sar2g || "", nome: m.nome || "", local: m.local || "", origem: String(m.chave).startsWith("HIST|") ? "historico" : "planilha"
+  }));
+  const u = (ult || [])[0];
+  return res.status(200).json({ ok: true, hoje, desde, medidas, importacao: u ? { por: u.ator, em: u.criado_em, linhas: (u.depois || {}).gravadas || 0 } : null });
+}
+async function salvarHistorico({ res, db, ator, body }) {
+  const lista = Array.isArray(body.medidas) ? body.medidas : null;
+  if (!lista || !lista.length) return erro(res, 400, "Nenhuma medida recebida.", "VAZIO");
+  if (lista.length > MAX_HISTORICO) return erro(res, 400, `Arquivo grande demais: no máximo ${MAX_HISTORICO} medidas por envio.`, "GRANDE_DEMAIS");
+  const linhas = [], recusadas = {};
+  const vistas = new Set();
+  const agora = new Date().toISOString();
+  lista.forEach(l => {
+    const r = R.medidaDoHistorico(l);
+    if (r.erro) { recusadas[r.erro] = (recusadas[r.erro] || 0) + 1; return; }
+    if (vistas.has(r.linha.chave)) return; // repetida no próprio arquivo (pessoa com duas vagas)
+    vistas.add(r.linha.chave);
+    linhas.push(Object.assign(r.linha, { atualizado_em: agora }));
+  });
+  if (linhas.length) await db.upsert("fm_medidas", linhas, "chave");
+  const datas = linhas.map(l => l.data).sort();
+  const resumo = { recebidas: lista.length, gravadas: linhas.length, recusadas, de: datas[0] || null, ate: datas[datas.length - 1] || null };
+  await db.inserir("fm_auditoria", [{ ator, acao: ACAO_HISTORICO, entidade: "fm_medidas", chave: "historico", antes: {}, depois: resumo }]);
+  return res.status(200).json(Object.assign({ ok: true }, resumo));
 }
 
 async function verFeriados({ res, db }) {
@@ -303,6 +344,8 @@ const iso10 = v => (v == null ? "" : String(v).slice(0, 10));
 const ROTAS = {
   "GET casos": { fn: verCasos },
   "GET feriados": { fn: verFeriados },
+  "GET historico": { fn: verHistorico },
+  "POST historico": { aprovador: true, fn: salvarHistorico },
   "PATCH motivo": { aprovador: true, fn: editarMotivo },
   "POST feriados": { aprovador: true, fn: salvarFeriado },
   "POST atestado": { aprovador: true, fn: salvarAtestado }

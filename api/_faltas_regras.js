@@ -469,7 +469,47 @@ function pessoa(f, extra) {
   return { re: reDe(f.RE), nome: f.NOME || "", cargo: f.CARGO || "", posto: f.LOCAL || "", supervisor: f.AREA || "", escala: f.ESCALA || "", tipo: f.TIPO || "", ...extra };
 }
 
+
+// ── Histórico de medidas (advertências e suspensões desde janeiro) ──────────
+// Vem de um relatório do SAR2G enviado uma vez, sem o número do processo
+// (HISTDISCIPLINAR). A chave é montada com os dados da medida e começa com
+// "HIST|", para não colidir com as chaves da aba DISCIPLINA da planilha diária.
+const TIPOS_MEDIDA = new Set(["ADVERTÊNCIA", "SUSPENSÃO"]);
+const GRAUS_MEDIDA = new Set(["VERBAL", "ESCRITA", "SUSPENSÃO"]);
+function medidaDoHistorico(l) {
+  const re = reDe(l && l.re);
+  const data = String((l && l.data) || "").slice(0, 10);
+  const tipo = String((l && l.tipo) || "").toUpperCase(), grau = String((l && l.grau) || "").toUpperCase();
+  const dias = Number((l && l.dias) || 0);
+  if (!/^\d{1,15}$/.test(re)) return { erro: "RE inválido" };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(data) || isNaN(Date.parse(data + "T12:00:00Z"))) return { erro: "data inválida" };
+  if (!TIPOS_MEDIDA.has(tipo)) return { erro: "tipo de medida desconhecido" };
+  if (!GRAUS_MEDIDA.has(grau)) return { erro: "grau desconhecido" };
+  if (!Number.isInteger(dias) || dias < 0 || dias > 30) return { erro: "dias de suspensão inválidos" };
+  const txt = (v, n) => (v == null || v === "" ? null : String(v).trim().slice(0, n));
+  const hist = txt(l.hist, 40);
+  return {
+    linha: {
+      chave: hist || ["HIST", re, data, tipo, grau, dias].join("|"),
+      re: Number(re), data, tipo, grau, dias,
+      fase: txt(l.fase, 60), motivo_sar2g: txt(l.motivo, 120), nome: txt(l.nome, 120), local: txt(l.local, 120)
+    }
+  };
+}
+// A mesma medida pode chegar duas vezes: pelo histórico (chave "HIST|...") e
+// pela aba DISCIPLINA (chave = número do processo). Fica uma só, a da planilha.
+function dedupMedidas(lista) {
+  const porDado = new Map();
+  (lista || []).forEach(m => {
+    const k = [m.re, String(m.data).slice(0, 10), m.tipo, m.grau, Number(m.dias) || 0].join("|");
+    const ja = porDado.get(k);
+    if (!ja || (String(ja.chave).startsWith("HIST|") && !String(m.chave).startsWith("HIST|"))) porDado.set(k, m);
+  });
+  const ficam = new Set(porDado.values());
+  return (lista || []).filter(m => ficam.has(m));
+}
+
 module.exports = {
   FAMILIAS, SITUACOES, ABONADAS, familiaEscala, ehOperacional, trabalhouNoDia, montarCasos, reDe, competenciaDe, calendario, compactarCalendario, expandirCalendario, periodosDeAbono, dobrarAtestados, turnoDoSupervisor, SUPERVISORES_NOTURNOS,
-  textoMedidaComAusencia, descreverMedida, somaDias, ddmm
+  textoMedidaComAusencia, descreverMedida, somaDias, ddmm, medidaDoHistorico, dedupMedidas
 };
