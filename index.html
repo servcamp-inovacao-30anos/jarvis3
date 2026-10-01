@@ -7254,11 +7254,12 @@ function comLogEvento(pid,detalhe,canal){
    realmente envia. Ao mudar a mensagem, mude NOS DOIS lugares, senão a
    pré-visualização mente para ela.
 
-   COM_CADENCIA_LIGADA reflete o agendamento em vercel.json. Hoje está em
-   "crons": [] (desligado depois do envio acidental de 11/08). Ao religar o
-   agendamento, trocar esta constante para true — senão a tela promete um envio
-   que não vai acontecer. */
-var COM_CADENCIA_LIGADA=false;
+   COM_CADENCIA_LIGADA reflete o agendamento em vercel.json (crons do
+   comercial-cron). Ficou desligado depois do envio acidental de 11/08 e voltou
+   em setembro. Se a agenda for pausada de novo ("crons": []), trocar esta
+   constante e COM_CAD_AGENDA_ATIVA para false no mesmo commit — senão a tela
+   promete um envio que não vai acontecer. */
+var COM_CADENCIA_LIGADA=true;
 const COM_CAD_HORA="09:00";
 const COM_CAD_DIAS={2:2,3:5,4:10,5:20};
 const COM_CAD_TXT={
