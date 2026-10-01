@@ -2352,6 +2352,40 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       #pg-faltasmed .fm-oc-leg{display:inline-flex;gap:16px;flex-wrap:wrap}
       #pg-faltasmed .fm-oc-leg span{display:inline-flex;align-items:center;gap:6px;color:var(--fm-text)}
       #pg-faltasmed .fm-oc-leg i{width:8px;height:8px;border-radius:50%;background:var(--cc)}
+      /* ranking dos postos */
+      #pg-faltasmed .fm-pr-t{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 0 10px;font-size:.86rem;font-weight:700;color:var(--fm-text)}
+      #pg-faltasmed .fm-pr-t em{font-style:normal;font-weight:500;font-size:.72rem;color:var(--fm-muted);margin-left:6px}
+      #pg-faltasmed .fm-pr{display:flex;flex-direction:column;gap:10px}
+      #pg-faltasmed .fm-pr-c{background:var(--fm-surface);border:1px solid var(--fm-line);border-radius:12px;box-shadow:var(--fm-sh);overflow:hidden;transition:border-color .12s,box-shadow .12s}
+      #pg-faltasmed .fm-pr-c:hover{border-color:var(--g300)}
+      #pg-faltasmed .fm-pr-c.on{border-color:var(--fm-brand);box-shadow:0 0 0 3px var(--fm-ring)}
+      #pg-faltasmed .fm-pr-h{appearance:none;border:0;background:none;font:inherit;color:inherit;width:100%;text-align:left;cursor:pointer;display:grid;grid-template-columns:44px minmax(160px,1.4fr) minmax(0,1.6fr) minmax(150px,.9fr) 20px;gap:14px;align-items:center;padding:14px 18px}
+      #pg-faltasmed .fm-pr-h:focus-visible{outline:none;box-shadow:inset 0 0 0 3px var(--fm-ring)}
+      #pg-faltasmed .fm-pr-h .rk{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:10px;background:var(--fm-subtle);color:var(--fm-text2);font-size:.82rem;font-weight:800}
+      #pg-faltasmed .fm-pr-h .rk.top{background:var(--fm-brand-soft);color:var(--fm-brand-tx)}
+      #pg-faltasmed .fm-pr-h .nm{display:flex;flex-direction:column;min-width:0}
+      #pg-faltasmed .fm-pr-h .nm b{font-size:.88rem;font-weight:700;color:var(--fm-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      #pg-faltasmed .fm-pr-h .nm em{font-style:normal;font-size:.72rem;color:var(--fm-muted);margin-top:2px}
+      #pg-faltasmed .fm-pr-h .sit{display:flex;gap:6px 12px;flex-wrap:wrap}
+      #pg-faltasmed .fm-pr-b{display:inline-flex;align-items:center;gap:6px;font-size:.74rem;color:var(--fm-text2);white-space:nowrap}
+      #pg-faltasmed .fm-pr-b i{width:8px;height:8px;border-radius:50%;background:var(--cc)}
+      #pg-faltasmed .fm-pr-h .qt{display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+      #pg-faltasmed .fm-pr-h .qt .v{font-size:.76rem;color:var(--fm-text2);white-space:nowrap}
+      #pg-faltasmed .fm-pr-h .qt .v b{font-size:1.05rem;color:var(--fm-text);margin-right:2px}
+      #pg-faltasmed .fm-pr-h .qt .v em{font-style:normal;color:var(--fm-muted);margin-left:8px}
+      #pg-faltasmed .fm-pr-h .br{width:100%;max-width:150px;height:6px;border-radius:3px;background:var(--g100);overflow:hidden}
+      #pg-faltasmed .fm-pr-h .br i{display:block;height:100%;border-radius:3px;background:var(--fm-brand)}
+      #pg-faltasmed .fm-pr-h .chv{display:flex;color:var(--g400);transition:transform .15s}
+      #pg-faltasmed .fm-pr-h .chv svg{width:18px;height:18px}
+      #pg-faltasmed .fm-pr-c.on .fm-pr-h .chv{transform:rotate(180deg);color:var(--fm-brand)}
+      #pg-faltasmed .fm-pr-l{border-top:1px solid var(--fm-line);padding:0}
+      #pg-faltasmed .fm-pr-l .fm-lista{border:0;border-radius:0;box-shadow:none;margin:0}
+      @media (max-width:900px){
+        #pg-faltasmed .fm-pr-h{grid-template-columns:40px minmax(0,1fr) 20px;gap:6px 12px}
+        #pg-faltasmed .fm-pr-h .sit,#pg-faltasmed .fm-pr-h .qt{grid-column:2}
+        #pg-faltasmed .fm-pr-h .qt{align-items:flex-start}
+        #pg-faltasmed .fm-pr-h .chv{grid-column:3;grid-row:1}
+      }
       @media (max-width:760px){#pg-faltasmed .fm-oc-bar .push{margin-left:0}#pg-faltasmed .fm-oc-bar .fm-search{flex:1 1 100%}#pg-faltasmed .fm-oc-h2 .fm-selb{width:100%}#pg-faltasmed .fm-oc-h2 .fm-selb label{flex:1}}
       #pg-faltasmed .fm-tg.ant{color:#b54708;background:#fffaeb;border-color:#fedf89;font-weight:700}
       html[data-theme="dark"] #pg-faltasmed .fm-tg.ant{color:#fec84b;background:rgba(245,176,0,.12);border-color:rgba(245,176,0,.38)}
@@ -10633,10 +10667,36 @@ function fmOcorLista(it){
   if(!n)return cont+fmVazio({tratar:"Nenhuma ocorrência a tratar com esses filtros",anterior:"Nenhum caso em aberto de antes deste período",concluidas:"Nenhuma ocorrência concluída com esses filtros"}[p.tab],"Mude os filtros ou limpe-os para ver mais.");
   const mais=fmMaisLinhas(n,"fmRenderOcorLista()");
   if(!p.porPosto)return cont+`<div class="fm-lista">${fmCols()}${it.slice(0,fmLim()).map(x=>fmLinhaItem(x)).join("")}</div>`+mais;
+  return cont+fmPostosRanking(it);
+}
+/* Ranking dos postos: um cartão por posto, do que tem mais ocorrências para o que tem menos.
+   Clicar no cartão abre as pessoas daquele posto (pode abrir vários ao mesmo tempo). */
+function fmPostosRanking(it){
+  const p=fmPl(),conc=p.tab==="concluidas";
   const g={};it.forEach(x=>{(g[x.posto||"Sem posto"]=g[x.posto||"Sem posto"]||[]).push(x);});
   const grupos=Object.entries(g).map(([posto,l])=>({posto,l,f:l.reduce((s,x)=>s+(x.nFaltas||0),0)})).sort((a,b)=>b.l.length-a.l.length||b.f-a.f||a.posto.localeCompare(b.posto));
-  let resta=fmLim();
-  return cont+`<div class="fm-lista">${fmCols()}${grupos.map(gr=>{const vis=gr.l.slice(0,Math.max(0,resta));resta-=vis.length;return `<div class="fm-grp">${_esc(gr.posto)}<span>${gr.l.length} ${gr.l.length===1?"ocorrência":"ocorrências"} · ${gr.f} ${gr.f===1?"falta":"faltas"}${vis.length<gr.l.length?" · "+(gr.l.length-vis.length)+" ocultas":""}</span></div>`+vis.map(x=>fmLinhaItem(x)).join("");}).join("")}</div>`+mais;
+  const max=Math.max(1,...grupos.map(x=>x.l.length)),ab=FM.postoAb||(FM.postoAb={});
+  const cards=grupos.map((gr,i)=>{
+    const on=!!ab[gr.posto],n=gr.l.length;
+    const sups=[...new Set(gr.l.map(x=>x.supervisor).filter(Boolean))].map(fmNomeCard);
+    const nc={};gr.l.forEach(x=>{if(x.cat)nc[x.cat]=(nc[x.cat]||0)+1;});
+    const sit=conc?"":FM_CATS_ABERTAS.filter(k=>nc[k]).map(k=>`<span class="fm-pr-b"><i class="cat-${k}"></i>${nc[k]} ${FM_CAT[k].rotP.toLowerCase()}</span>`).join("");
+    return `<div class="fm-pr-c${on?" on":""}"><button type="button" class="fm-pr-h" aria-expanded="${on}" data-posto="${_esc(gr.posto)}" onclick="fmPostoAbrir(this.dataset.posto)">`+
+      `<span class="rk${i<3?" top":""}">${i+1}º</span>`+
+      `<span class="nm"><b title="${_esc(gr.posto)}">${_esc(gr.posto)}</b><em>${sups.length?_esc(sups[0])+(sups.length>1?" +"+(sups.length-1):""):"Sem supervisor"}</em></span>`+
+      `<span class="sit">${sit}</span>`+
+      `<span class="qt"><span class="v"><b>${n}</b> ${n===1?"ocorrência":"ocorrências"}<em>${gr.f} ${gr.f===1?"falta":"faltas"}</em></span><span class="br"><i style="width:${(n/max*100).toFixed(1)}%"></i></span></span>`+
+      `<span class="chv">${FM_IC.chev}</span></button>`+
+      (on?`<div class="fm-pr-l"><div class="fm-lista">${fmCols()}${gr.l.map(x=>fmLinhaItem(x)).join("")}</div></div>`:"")+`</div>`;
+  }).join("");
+  const todos=grupos.length>1?`<button type="button" class="fm-lnk" onclick="fmPostoTodos(${grupos.every(x=>ab[x.posto])?"false":"true"})">${grupos.every(x=>ab[x.posto])?"Fechar todos":"Abrir todos"}</button>`:"";
+  return `<div class="fm-pr-t"><span>Ranking dos postos <em>do que tem mais ocorrências para o que tem menos · clique no posto para ver as pessoas</em></span>${todos}</div><div class="fm-pr">${cards}</div>`;
+}
+function fmPostoAbrir(posto){const ab=FM.postoAb||(FM.postoAb={});ab[posto]=!ab[posto];fmRenderOcorLista();}
+function fmPostoTodos(abrir){
+  const ab=FM.postoAb={};
+  if(abrir)fmOcorItens(FM._R,FM._P).it.forEach(x=>{ab[x.posto||"Sem posto"]=true;});
+  fmRenderOcorLista();
 }
 /* Redesenha só a seção de ocorrências (não mexe no gráfico nem rola a página). */
 function fmRenderOcor(){const s=document.getElementById("fm-ocor");if(s)s.innerHTML=fmOcorHtml();else fmRenderCorpo();}
