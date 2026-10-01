@@ -1990,6 +1990,9 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
     .cpx-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px}
     .cpx-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
     .cpx-kpi{background:#fff;border:1px solid #e5e9f0;border-radius:14px;padding:14px 16px;border-top:3px solid var(--cpx-c,#2e8fef)}
+    .cpx-kpi-btn{display:block;width:100%;text-align:left;font:inherit;cursor:pointer;transition:transform .12s,box-shadow .12s}
+    .cpx-kpi-btn:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(13,31,53,.1)}
+    .cpx-kpi-btn:focus-visible{outline:2px solid #2e8fef;outline-offset:2px}
     .cpx-kpi .l{font-size:.6rem;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:#64748b}
     .cpx-kpi .v{font-size:1.45rem;font-weight:900;color:#0d1f35;font-variant-numeric:tabular-nums;line-height:1.2;margin-top:4px}
     .cpx-kpi .s{font-size:.64rem;color:#94a3b8}
@@ -7682,7 +7685,9 @@ function cpxRender(){
   const and=sit.filter(x=>x.s==="EM ANDAMENTO"),ag=sit.filter(x=>x.s==="AGENDADO").sort((a,b)=>cpxDia(a.e.data_inicio)<cpxDia(b.e.data_inicio)?-1:1);
   const mes=hoje.slice(0,7),encMes=sit.filter(x=>x.s==="ENCERRADO"&&cpxDia(x.e.data_fim).slice(0,7)===mes);
   const colHoje=and.reduce((t,x)=>t+(Number(x.e.qtd_colaboradores)||0),0);
-  const kpi=(c,l,v,s)=>'<div class="cpx-kpi" style="--cpx-c:'+c+'"><div class="l">'+l+'</div><div class="v">'+v+'</div><div class="s">'+s+'</div></div>';
+  // cada card abre a lista correspondente logo abaixo (ver cpxKpiAbrir)
+  const ACAO={"Em andamento":"EM ANDAMENTO","Agendados":"AGENDADO","Encerrados no mês":"ENCERRADO","Dias com reforço sem serviço extra":"REF"};
+  const kpi=(c,l,v,s)=>'<button type="button" class="cpx-kpi cpx-kpi-btn" style="--cpx-c:'+c+'" onclick="cpxKpiAbrir(\''+ACAO[l]+'\')" title="Clique para ver os registros"><div class="l">'+l+'</div><div class="v">'+v+'</div><div class="s">'+s+'</div></button>';
   document.getElementById("cpx-kpis").innerHTML=
     kpi("#16a34a","Em andamento",and.length,colHoje+" colaborador"+(colHoje===1?"":"es")+" hoje")+
     kpi("#2e8fef","Agendados",ag.length,ag.length?"próximo: "+cpxEsc(ag[0].e.cliente)+" em "+cpxBR(ag[0].e.data_inicio):"nenhum agendado")+
@@ -7690,6 +7695,14 @@ function cpxRender(){
     kpi("#dc2626","Dias com reforço sem serviço extra",cpxDadosOk()?pend30:"—",!cpxDadosOk()?"aguardando a lista de serviços extras":pend30?cliPend30+" cliente"+(cliPend30===1?"":"s")+" · últimos 30 dias":"tudo cadastrado nos últimos 30 dias");
   cpxRenderLista();
   cpxRenderRef();
+}
+// Clique num card: filtra a lista certa e rola até ela.
+function cpxKpiAbrir(k){
+  let alvo;
+  if(k==="REF"){CPX_RP="30";CPX_SO_PEND=true;cpxRenderRef();alvo=document.getElementById("cpx-ref");
+    const g=alvo&&alvo.querySelector("details");if(g)g.open=true;}
+  else{CPX_FL=k;const b=document.getElementById("s-cpx");if(b)b.value="";cpxRenderLista();alvo=document.getElementById("cpx-lista");}
+  if(alvo){const ts=alvo.closest(".ts")||alvo;ts.scrollIntoView({behavior:"smooth",block:"start"});ts.style.transition="box-shadow .3s";ts.style.boxShadow="0 0 0 3px #2e8fef";setTimeout(()=>{ts.style.boxShadow="";},1200);}
 }
 function cpxRenderLista(){
   const el=document.getElementById("cpx-lista");if(!el)return;
