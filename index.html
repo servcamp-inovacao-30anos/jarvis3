@@ -8015,6 +8015,25 @@ function comDet(kind){
     title="⏱️ Tempo de Fechamento (proposta → contrato)";
     headers=["Cliente","Cidade","Valor","Envio","Fechamento","Dias p/ fechar"];
     rows=arr.map(p=>({p,d:comDias(p)})).sort((a,b)=>b.d-a.d).map(o=>[o.p.nome,o.p.cidade||"—",fmtBRL(o.p.valor),rhFmt(o.p.data_envio_proposta),rhFmt(o.p.fechado_em),o.d]);
+  }else if(kind==="visitasMeta"){
+    // cada visita registrada no mês (é o que conta para a meta de 4)
+    const vs=comVisitasMes(_M).sort((a,b)=>a.dia<b.dia?1:-1);
+    title=`🏠 Visitas no Mês${_mes} — ${vs.length} de ${COM_META_VISITAS}`;
+    headers=["Data","Cliente","Registro","Quem registrou"];
+    rows=vs.map(x=>{const p=(COM_P||[]).find(q=>q.id===x.l.proposta_id)||{};return[rhFmt(x.dia),p.nome||"—",x.l.detalhe||"—",x.l.destinatario||"—"];});
+  }else if(kind==="metaAno"){
+    const ano=_M.ini.getFullYear(),meta=comMetaAno(ano),arr=comFechadosAno(ano);
+    title=`🎯 Contratos fechados em ${ano} — ${arr.length}${meta?" de "+meta+" da meta":" (meta não definida)"}`;
+    headers=["Cliente","Tipo","Cidade","Serviço","Fechamento","Resp."];
+    rows=arr.sort((a,b)=>String(b.fechado_em)<String(a.fechado_em)?-1:1).map(p=>[p.nome,p.tipo_cliente==="CONDOMINIO"?"COND":"EMP",p.cidade||"—",p.servico||"—",rhFmt(p.fechado_em),(p.responsavel||"—").split(" ")[0]]);
+  }else if(kind==="extrasAnd"||kind==="extrasEnc"){
+    const hj=new Date(Date.now()-3*3600000).toISOString().slice(0,10),mes=ymd(_M.ini).slice(0,7);
+    const arr=(COM_EXTRAS||[]).filter(e=>kind==="extrasAnd"
+      ?String(e.data_inicio).slice(0,10)<=hj&&(!e.data_fim||String(e.data_fim).slice(0,10)>=hj)
+      :e.data_fim&&String(e.data_fim).slice(0,10)<hj&&String(e.data_fim).slice(0,7)===mes);
+    title=kind==="extrasAnd"?"🧾 Serviços Extras em Andamento — "+arr.length:"✅ Serviços Extras Encerrados no Mês"+_mes+" — "+arr.length;
+    headers=["Cliente","Serviço","Início","Encerramento","Colab.","Observação","Responsável"];
+    rows=arr.map(e=>[e.cliente,e.tipo_servico,rhFmt(e.data_inicio),e.data_fim?rhFmt(e.data_fim):"—",e.qtd_colaboradores,e.observacao||"—",(e.responsavel||"—").split(" ")[0]]);
   }else if(kind==="prevista"){
     const arr=P.filter(p=>COM_ST_ATIVOS.includes(p.status)&&(Number(p.valor)||0)>0);
     title="🔮 Receita Prevista — pipeline ponderado pela chance";
@@ -10998,14 +11017,13 @@ function comDashRender(){
     const colAnd=exAnd.reduce((t,e)=>t+(Number(e.qtd_colaboradores)||0),0);
     const card=(cls,cor,ic,lbl,val,sub,extra,onc)=>`<div class="cvk cdm-card ${cls}" style="border-top:3px solid ${cor};${onc?"cursor:pointer":""}"${onc?` onclick="${onc}" title="Clique para ver os registros"`:""}><div style="font-size:1.05rem">${ic}</div><div class="cvk-lb" style="margin-top:5px">${lbl}</div><div class="cvk-v" style="font-size:1.3rem">${val}</div><div style="font-size:.64rem;color:#64748b">${sub}</div>${extra||""}</div>`;
     const barra=(p,c)=>`<div style="height:6px;background:#eef2f7;border-radius:4px;margin-top:7px"><div style="height:6px;border-radius:4px;width:${p}%;background:${c}"></div></div>`;
-    const abreExtra=k=>`navTo('compro',null);cpxAba('extra');setTimeout(()=>cpxKpiAbrir('${k}'),600)`;
     h+=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px">`;
     h+=card(batA?"cdm-ok":"","#0d9488","🎯",`Meta anual de contratos · ${ano}`,metaA?`${fecA} <span style="font-size:.8rem;color:#94a3b8">/ ${metaA}</span>`:"—",
-      metaA?(batA?"meta batida 🎉":`faltam ${metaA-fecA} · ${pctA}%`):"meta não definida (Propostas e Serviços Extras)",metaA?barra(pctA,batA?"#16a34a":"#0d9488"):"");
+      metaA?(batA?"meta batida 🎉":`faltam ${metaA-fecA} · ${pctA}%`):"meta não definida (Propostas e Serviços Extras)",metaA?barra(pctA,batA?"#16a34a":"#0d9488"):"","comDet('metaAno')");
     h+=card(batV?"cdm-ok cdm-festa":"cdm-atencao",batV?"#16a34a":"#f59e0b",batV?"🎉":"⚠️",`Visitas no mês · meta ${COM_META_VISITAS}`,`${vis} <span style="font-size:.8rem;color:#94a3b8">/ ${COM_META_VISITAS}</span>`,
-      batV?`meta batida · ${saldo>0?"+"+saldo+" acima":"no alvo"}`:`ponto de atenção · faltam ${-saldo}`,barra(Math.min(100,Math.round(vis/COM_META_VISITAS*100)),batV?"#16a34a":"#f59e0b")+(batV?`<div class="cdm-confete" aria-hidden="true">${"<i></i>".repeat(12)}</div>`:""),"comDet('visitasMes')");
-    h+=card("","#16a34a","🧾","Serviços extras em andamento",exAnd.length,`${colAnd} colaborador${colAnd===1?"":"es"} hoje`,"",abreExtra("EM ANDAMENTO"));
-    h+=card("","#64748b","✅","Serviços extras encerrados no mês",exEnc.length,_M.ini.toLocaleDateString("pt-BR",{month:"long",year:"numeric"}),"",abreExtra("ENCERRADO"));
+      batV?`meta batida · ${saldo>0?"+"+saldo+" acima":"no alvo"}`:`ponto de atenção · faltam ${-saldo}`,barra(Math.min(100,Math.round(vis/COM_META_VISITAS*100)),batV?"#16a34a":"#f59e0b")+(batV?`<div class="cdm-confete" aria-hidden="true">${"<i></i>".repeat(12)}</div>`:""),"comDet('visitasMeta')");
+    h+=card("","#16a34a","🧾","Serviços extras em andamento",exAnd.length,`${colAnd} colaborador${colAnd===1?"":"es"} hoje`,"","comDet('extrasAnd')");
+    h+=card("","#64748b","✅","Serviços extras encerrados no mês",exEnc.length,_M.ini.toLocaleDateString("pt-BR",{month:"long",year:"numeric"}),"","comDet('extrasEnc')");
     h+=`</div>`;
   }
   /* ── POSSIVEIS NOVOS CLIENTES ── */
