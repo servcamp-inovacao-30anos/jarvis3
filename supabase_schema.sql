@@ -216,3 +216,31 @@ insert into public.pt_config (chave, valor) values
   ('modelo_saida_apos_horario', E'SERVCAMP | ORIENTACAO DE PONTO\nOla, {{nome}}. Em {{data}} sua saida foi as {{horario_marcado}}, {{minutos}} apos o previsto ({{horario_previsto}}). Oriente-se a marcar no horario. RE {{re}}.'),
   ('modelo_ambas_no_mesmo_dia', E'SERVCAMP | ORIENTACAO DE PONTO\nOla, {{nome}}. Em {{data}} sua entrada foi as {{entrada_marcada}} e a saida as {{saida_marcada}}, fora do previsto ({{entrada_prevista}} as {{saida_prevista}}). Oriente-se a marcar no horario. RE {{re}}.')
 on conflict (chave) do nothing;
+
+-- ============================================================================
+-- Comercial: serviços extras em clientes já em contrato
+-- Aba "Serviços Extras" da guia Comercial (api/comercial.js, ?t=extras).
+-- O cliente é o NOME da lista de clientes da planilha, a mesma chave que a
+-- Cobertura usa no LOCAL: é por ela que os lançamentos REFORÇO FATURADO são
+-- cruzados com o que foi cadastrado aqui. Só cria; pode rodar mais de uma vez.
+-- ============================================================================
+create table if not exists public.com_servicos_extras (
+  id                bigint generated always as identity primary key,
+  cliente           text not null,
+  data_inicio       date not null,
+  data_fim          date not null,
+  qtd_colaboradores integer not null,
+  tipo_servico      text not null,      -- LIMPEZA | PORTARIA | texto livre
+  observacao        text,
+  responsavel       text,
+  criado_por        text,
+  criado_em         timestamptz not null default now(),
+  atualizado_em     timestamptz not null default now(),
+  constraint com_servicos_extras_qtd   check (qtd_colaboradores between 1 and 999),
+  constraint com_servicos_extras_datas check (data_fim >= data_inicio)
+);
+create index if not exists com_servicos_extras_cliente_idx on public.com_servicos_extras (cliente, data_inicio);
+
+alter table public.com_servicos_extras enable row level security;
+revoke all on public.com_servicos_extras from anon, authenticated;
+grant select, insert, update, delete on public.com_servicos_extras to service_role;

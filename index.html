@@ -81,6 +81,17 @@ html[data-theme="dark"] .kb-nome,
 html[data-theme="dark"] .cv-view-on{color:#e6edf5!important;}
 html[data-theme="dark"] .cv-view{color:#9fb0c7;}
 html[data-theme="dark"] .cv-view-on{background:#2e8fef!important;color:#fff!important;}
+html[data-theme="dark"] .cpx-tabs{background:#101a2b;}
+html[data-theme="dark"] .cpx-kpi,html[data-theme="dark"] .cpx-grupo,html[data-theme="dark"] .cpx-chip{background:#182234;border-color:#293648;}
+html[data-theme="dark"] .cpx-kpi .v,html[data-theme="dark"] .cpx-grupo .nm{color:#e6edf5;}
+html[data-theme="dark"] .cpx-grupo .k,html[data-theme="dark"] .cpx-tbl td{color:#c2ccdb;}
+html[data-theme="dark"] .cpx-tbl th,html[data-theme="dark"] .cpx-tbl td{border-color:#293648;}
+html[data-theme="dark"] .cpx-chip{color:#c2ccdb;}
+html[data-theme="dark"] .cpx-chip-on{background:#2e8fef;border-color:#2e8fef;color:#fff;}
+html[data-theme="dark"] .cpx-chip-alerta{color:#fca5a5;border-color:#f87171;}
+html[data-theme="dark"] .cpx-kpi{border-top-color:var(--cpx-c,#2e8fef);}
+html[data-theme="dark"] .cpx-grupo.pend{border-color:#5b2730;border-left-color:#dc2626;}
+html[data-theme="dark"] .cpx-grupo.ok{border-left-color:#16a34a;}
 html[data-theme="dark"] .rh-badge{filter:brightness(1.15);}
 /* número "Faltas Contrato" usava --b9 (azul quase preto) */
 html[data-theme="dark"] .c7 .oc-v{color:#8fb8ff;}
@@ -863,7 +874,7 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
   <div class="nav-cat" data-cat="com">
     <div class="nav-cat-h" onclick="navCatToggle('com')"><span class="nav-cat-t">💼 Comercial</span><span class="nav-cat-ar">▾</span></div>
     <div class="nav-cat-b">
-      <div class="ni" data-pg="compro" data-perm="com" onclick="navTo('compro',this)"><span class="ni-ic">💼</span><span>Propostas &amp; Cadência</span><span class="nib nib-novo">NOVO</span></div>
+      <div class="ni" data-pg="compro" data-perm="com" onclick="navTo('compro',this)"><span class="ni-ic">💼</span><span>Propostas e Serviços Extras</span><span hidden>cadência cadencia reforço</span><span class="nib nib-novo">NOVO</span></div>
     </div>
   </div>
   <div class="nav-cat" data-cat="dir">
@@ -1752,7 +1763,14 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
     </div>
   </div>
   <div class="page" id="pg-compro">
-    <div class="sec-hdr"><span class="sec-hdr-ic">💼</span><div><div class="sec-hdr-t">Comercial — Propostas &amp; Cadência</div><div class="sec-hdr-sub">CRM do Grupo ServCamp: cadastro de propostas e follow-up automático (WhatsApp + E-mail)</div></div></div>
+    <div class="sec-hdr"><span class="sec-hdr-ic">💼</span><div><div class="sec-hdr-t">Comercial — Propostas e Serviços Extras</div><div class="sec-hdr-sub">Propostas com follow-up automático (WhatsApp + E-mail) e serviços extras dos clientes em contrato</div></div></div>
+    <!-- Duas abas na mesma guia. Trocar de aba só mostra/esconde: nenhum dado
+         das propostas é recarregado nem alterado por isso. -->
+    <div class="cpx-tabs" role="tablist" aria-label="Seções do Comercial" onkeydown="cpxAbaTecla(event)">
+      <button type="button" role="tab" class="cv-view cv-view-on" id="cpx-tab-prop" aria-selected="true" aria-controls="cpx-aba-prop" tabindex="0" onclick="cpxAba('prop')">💼 Propostas &amp; Cadência</button>
+      <button type="button" role="tab" class="cv-view" id="cpx-tab-extra" aria-selected="false" aria-controls="cpx-aba-extra" tabindex="-1" onclick="cpxAba('extra')">🧾 Serviços Extras<span id="cpx-tab-badge"></span></button>
+    </div>
+    <div id="cpx-aba-prop" role="tabpanel" aria-labelledby="cpx-tab-prop">
     <div id="cp-wa-aviso"></div>
     <div style="background:#fff;border:1px solid #e5e9f0;border-radius:14px;padding:20px 24px;margin-bottom:14px">
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px"><div id="cp-form-title" style="font-size:.85rem;font-weight:800;color:#0d1f35">➕ Nova Proposta</div><div id="cp-radar" style="margin-left:auto"></div></div>
@@ -1806,6 +1824,41 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       <div id="cp-kanban"></div>
       <div id="cp-tbl" style="overflow-x:auto;display:none"></div>
       <div id="cp-agenda" style="display:none"></div></div>
+    </div>
+    <div id="cpx-aba-extra" role="tabpanel" aria-labelledby="cpx-tab-extra" hidden>
+      <div id="cpx-aviso"></div>
+      <div class="cpx-kpis" id="cpx-kpis"></div>
+      <div style="background:#fff;border:1px solid #e5e9f0;border-radius:14px;padding:20px 24px;margin-bottom:14px">
+        <div id="cpx-form-title" style="font-size:.85rem;font-weight:800;color:#0d1f35;margin-bottom:14px">➕ Novo Serviço Extra</div>
+        <form onsubmit="return cpxSalvar(event)" id="cpxForm" novalidate>
+          <input type="hidden" id="cpxf-id">
+          <div class="cpx-grid">
+            <div style="grid-column:span 2"><label class="rhf-l" for="cpxf-cliente">Cliente *</label><input class="rhf-i" id="cpxf-cliente" type="text" list="dl-cpx-cli" placeholder="Digite para buscar entre os clientes em contrato" autocomplete="off"><datalist id="dl-cpx-cli"></datalist></div>
+            <div><label class="rhf-l" for="cpxf-ini">Data de início *</label><input class="rhf-i" id="cpxf-ini" type="date" onchange="cpxFimMin()"></div>
+            <div><label class="rhf-l" for="cpxf-fim">Data de encerramento *</label><input class="rhf-i" id="cpxf-fim" type="date"></div>
+          </div>
+          <div class="cpx-grid">
+            <div><label class="rhf-l" for="cpxf-qtd">Qtd. de colaboradores *</label><input class="rhf-i" id="cpxf-qtd" type="number" min="1" step="1" inputmode="numeric" placeholder="Ex: 2"></div>
+            <div><label class="rhf-l" for="cpxf-tipo">Tipo de serviço *</label><select class="rhf-i" id="cpxf-tipo" onchange="cpxTipoOutro()"><option value="">Selecione…</option><option>LIMPEZA</option><option>PORTARIA</option><option value="__OUTRO">Outro (escrever)</option></select></div>
+            <div id="cpxf-outro-box" hidden><label class="rhf-l" for="cpxf-outro">Qual serviço? *</label><input class="rhf-i" id="cpxf-outro" type="text" placeholder="Ex: Jardinagem, Zeladoria, Recepção"></div>
+            <div id="cpxf-obs-box"><label class="rhf-l" for="cpxf-obs">Observações</label><input class="rhf-i" id="cpxf-obs" type="text" placeholder="Ex: evento no salão, cobrir férias, mutirão"></div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <button type="submit" class="rh-btn" id="cpxBtnSalvar">💾 Salvar Serviço Extra</button>
+            <button type="button" class="rh-btn rh-btn-sec" onclick="cpxLimpar()">✖ Limpar</button>
+            <span id="cpxf-msg" role="status" aria-live="polite" style="font-size:.74rem;font-weight:700"></span>
+          </div>
+        </form>
+      </div>
+      <div class="ts" style="margin-bottom:14px"><div class="th2"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div class="chb"></div><span class="ct">Serviços extras cadastrados <span id="cpx-lista-cnt" style="font-weight:600;color:#94a3b8;font-size:.72rem"></span></span>
+          <span id="cpx-lista-filtros" style="display:inline-flex;gap:4px;flex-wrap:wrap"></span></div>
+        <div class="tc2"><input class="sb2" type="text" placeholder="Buscar cliente ou serviço..." id="s-cpx" oninput="cpxRenderLista()"></div></div>
+        <div id="cpx-lista" style="overflow-x:auto"></div></div>
+      <div class="ts"><div class="th2"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div class="chb" style="background:#dc2626"></div><span class="ct">Reforços faturados na Cobertura <span id="cpx-ref-cnt" style="font-weight:600;color:#94a3b8;font-size:.72rem"></span></span>
+          <span id="cpx-ref-filtros" style="display:inline-flex;gap:4px;flex-wrap:wrap"></span></div></div>
+        <div style="font-size:.7rem;color:#64748b;padding:0 2px 10px;max-width:90ch">Lançamentos da Cobertura com motivo <b>REFORÇO FATURADO</b>. Em vermelho: o cliente não tem serviço extra cadastrado para aquele dia. Se não foi passado para faturar, avise o faturamento e cadastre o serviço extra aqui. Clique num cliente para ver cada lançamento. O período desta lista é escolhido nos botões acima; o período do topo da tela não se aplica a ela.</div>
+        <div id="cpx-ref"></div></div>
+    </div>
   </div>
   <div class="page" id="pg-metas">
     <div class="sec-hdr"><span class="sec-hdr-ic">🎯</span><div><div class="sec-hdr-t">Metas da Diretoria</div><div class="sec-hdr-sub">Metas definidas aqui, no sistema — não vêm da planilha</div></div></div>
@@ -1929,6 +1982,43 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
     .cv-skel{border-radius:14px;height:104px;background:linear-gradient(90deg,#eef2f7 25%,#f8fafc 37%,#eef2f7 63%);background-size:400px 100%;animation:cvShimmer 1.2s infinite linear}
     .cv-view{border:none;background:transparent;color:#64748b;font-size:.72rem;font-weight:800;padding:7px 16px;border-radius:8px;cursor:pointer;transition:all .15s}
     .cv-view-on{background:#0d1f35;color:#fff;box-shadow:0 2px 8px rgba(13,31,53,.25)}
+    /* Comercial: abas Propostas | Serviços Extras */
+    .cpx-tabs{display:inline-flex;gap:2px;background:#eef2f7;border-radius:11px;padding:4px;margin:0 0 14px}
+    .cpx-tabs .cv-view{font-size:.78rem;padding:9px 20px;display:inline-flex;align-items:center;gap:7px}
+    .cpx-tabs .cv-view:focus-visible{outline:2px solid #2e8fef;outline-offset:2px}
+    .cpx-badge{background:#dc2626;color:#fff;border-radius:9px;font-size:.6rem;font-weight:800;padding:1px 7px;line-height:1.5}
+    .cpx-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px}
+    .cpx-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+    .cpx-kpi{background:#fff;border:1px solid #e5e9f0;border-radius:14px;padding:14px 16px;border-top:3px solid var(--cpx-c,#2e8fef)}
+    .cpx-kpi .l{font-size:.6rem;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:#64748b}
+    .cpx-kpi .v{font-size:1.45rem;font-weight:900;color:#0d1f35;font-variant-numeric:tabular-nums;line-height:1.2;margin-top:4px}
+    .cpx-kpi .s{font-size:.64rem;color:#94a3b8}
+    .cpx-pill{display:inline-block;font-size:.6rem;font-weight:800;padding:2px 9px;border-radius:999px;white-space:nowrap}
+    .cpx-p-and{background:#dcfce7;color:#15803d}.cpx-p-ag{background:#e0ecff;color:#1e4d8c}.cpx-p-enc{background:#eef2f7;color:#64748b}
+    .cpx-p-ok{background:#dcfce7;color:#15803d}.cpx-p-pend{background:#fee2e2;color:#b91c1c}
+    .cpx-chip{border:1px solid #dbe2ec;background:#fff;color:#475569;border-radius:999px;font-size:.64rem;font-weight:800;padding:4px 11px;cursor:pointer}
+    .cpx-chip-on{background:#0d1f35;border-color:#0d1f35;color:#fff}
+    .cpx-tbl{width:100%;border-collapse:collapse;font-size:.74rem;min-width:760px}
+    .cpx-tbl th{text-align:left;font-size:.6rem;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:#94a3b8;padding:8px 10px;border-bottom:2px solid #e5e9f0;white-space:nowrap}
+    .cpx-tbl td{padding:8px 10px;border-bottom:1px solid #eef2f7;color:#334155;vertical-align:middle}
+    .cpx-tbl td.n{font-variant-numeric:tabular-nums;text-align:center}
+    .cpx-grupo{border:1px solid #e5e9f0;border-radius:12px;margin-bottom:8px;overflow:hidden}
+    .cpx-grupo.pend{border-color:#fecaca;border-left:4px solid #dc2626}
+    .cpx-grupo.ok{border-left:4px solid #16a34a}
+    .cpx-grupo summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:minmax(180px,1.6fr) repeat(3,minmax(70px,.55fr)) minmax(150px,1fr) auto 14px;gap:10px;align-items:center;padding:10px 14px;font-size:.74rem}
+    .cpx-grupo summary::-webkit-details-marker{display:none}
+    .cpx-grupo summary::after{content:"▸";color:#94a3b8;font-size:.8rem;transition:transform .15s;justify-self:end}
+    .cpx-grupo[open] summary::after{transform:rotate(90deg)}
+    .cpx-chip-alerta{border-color:#dc2626;color:#b91c1c}
+    button.rh-act{border:0;background:transparent;font:inherit}
+    .cpx-grupo summary:focus-visible{outline:2px solid #2e8fef;outline-offset:-2px}
+    .cpx-grupo .nm{font-weight:800;color:#0d1f35}
+    .cpx-grupo .nm small{display:block;font-weight:600;color:#94a3b8;font-size:.62rem}
+    .cpx-grupo .k{font-variant-numeric:tabular-nums;color:#334155}
+    .cpx-grupo .k small{display:block;font-size:.58rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.3px}
+    .cpx-grupo .det{padding:0 14px 12px;overflow-x:auto}
+    @media(max-width:1000px){.cpx-grid,.cpx-kpis{grid-template-columns:repeat(2,1fr)}.cpx-grupo summary{grid-template-columns:1fr 1fr 1fr}.cpx-grupo summary>span:first-child,.cpx-grupo summary>span:last-of-type{grid-column:1/-1}.cpx-grupo summary>span:last-of-type{justify-content:flex-start!important}.cpx-grupo summary::after{display:none}}
+    @media(max-width:560px){.cpx-grid,.cpx-kpis{grid-template-columns:1fr}.cpx-grid>div{grid-column:auto!important}.cpx-tabs{display:flex}.cpx-tabs .cv-view{flex:1;justify-content:center;padding:9px 8px}.cpx-grupo summary{grid-template-columns:1fr 1fr}}
     .kb-legend{margin:0 2px 12px;background:#f4f7fb;border:1px solid #e5e9f0;border-radius:12px;padding:2px 12px}
     .kb-legend>summary{cursor:pointer;font-size:.72rem;font-weight:600;color:#475569;padding:8px 2px;list-style:none;user-select:none}
     .kb-legend>summary::-webkit-details-marker{display:none}
@@ -2775,7 +2865,7 @@ function setTurno(t,btn){document.querySelectorAll("#trnoPg .pi").forEach(b=>b.c
 function setArea(){ST.area=document.getElementById("areaS").value;rpg();refresh();}
 function rpg(){Object.keys(ST.tpg).forEach(k=>ST.tpg[k]=1);}
 
-const PTITLES={metas:"Metas da Diretoria",visao:"Visão Geral",ativos:"Funcionários Ativos",clientes:"Clientes",faltas:"Faltas & Top 10",coberturas:"Coberturas",postos:"Justificativa de Postos Descobertos",os:"OS Avulsos",fts:"FTS",dispo:"Sem Alocação",restec:"Reservas Técnicas",hrextra:"Horas Extras",checklist:"Check List",rhvagas:"RH — Controle de Vagas",rhentrev:"RH — Entrevistas & Funil",rhdesl:"RH — Desligamentos",rhres:"RH — Reservas → Efetivação",rhtrein:"RH — Treinamentos",rhdash:"Painel RH — Diretoria",compro:"Comercial — Propostas & Cadência",comdash:"Painel Comercial",config:"Configurações — Acessos & Usuários",sede:"Base Virtual — Equipe",prj:"Projetos — Evolução & Inovação",audqual:"Auditoria de Qualidade",ligacoes:"Feedback de Faltas"};
+const PTITLES={metas:"Metas da Diretoria",visao:"Visão Geral",ativos:"Funcionários Ativos",clientes:"Clientes",faltas:"Faltas & Top 10",coberturas:"Coberturas",postos:"Justificativa de Postos Descobertos",os:"OS Avulsos",fts:"FTS",dispo:"Sem Alocação",restec:"Reservas Técnicas",hrextra:"Horas Extras",checklist:"Check List",rhvagas:"RH — Controle de Vagas",rhentrev:"RH — Entrevistas & Funil",rhdesl:"RH — Desligamentos",rhres:"RH — Reservas → Efetivação",rhtrein:"RH — Treinamentos",rhdash:"Painel RH — Diretoria",compro:"Comercial — Propostas e Serviços Extras",comdash:"Painel Comercial",config:"Configurações — Acessos & Usuários",sede:"Base Virtual — Equipe",prj:"Projetos — Evolução & Inovação",audqual:"Auditoria de Qualidade",ligacoes:"Feedback de Faltas"};
 
 /* ── Sidebar 2.0: accordion com estado salvo + busca de módulos ── */
 function navCatToggle(k){
@@ -2905,7 +2995,7 @@ function navTo(p,btn){
   else if(p==="rhres"){rhResLoad();}
   else if(p==="rhtrein"){rhTreLoad();}
   else if(p==="rhdash"){rhDashLoad();}
-  else if(p==="compro"){comLoad();}
+  else if(p==="compro"){comLoad();cpxLoad();}
   else if(p==="metas"){mtLoad();}
   else if(p==="comdash"){comDashLoad();}
   else if(p==="config"){cfgLoad();}
@@ -2932,7 +3022,7 @@ function refresh(){
     rhres:()=>{rhResRender();rhResRenderTbl();},
     rhtrein:()=>{rhTreRender();rhTreRenderTbl();},
     rhdash:()=>{if(RDASH.loaded)rhDashRender();},
-    compro:()=>comRenderAll(), comdash:()=>comDashRender()
+    compro:()=>{comRenderAll();cpxRender();}, comdash:()=>comDashRender()
   };
   if(_rer[ST.pg]){try{_rer[ST.pg]();}catch(e){console.error("refiltrar "+ST.pg+":",e);}return;}
   if(ST.pg==="visao")updVGCharts();
@@ -3013,6 +3103,8 @@ function vgPode(perm){
 }
 /* clique dos cards restritos: navega para quem pode, informa quem não pode */
 function vgAbrir(pg,perm){
+  // cards de propostas/visitas abrem sempre na aba Propostas da guia Comercial
+  if(pg==="compro"&&vgPode(perm)&&typeof cpxAba==="function")cpxAba("prop");
   if(vgPode(perm))return navTo(pg,null);
   if(typeof hqToast==="function")hqToast("Você não tem acesso a essa guia — o número fica visível aqui.");
 }
@@ -7455,6 +7547,310 @@ function comRadar(){
     '</div></div>';
 }
 function comRenderAll(){comRadar();comRenderView();}
+
+/* ══════════ SERVIÇOS EXTRAS (segunda aba da guia Comercial) ══════════
+   Serviço extra = trabalho a mais num cliente que JÁ está em contrato (evento,
+   mutirão, reforço pedido). Fica em com_servicos_extras (api/comercial.js,
+   ?t=extras). A aba também lista os lançamentos da Cobertura com motivo
+   REFORÇO FATURADO e marca os que não têm serviço extra cadastrado para o
+   cliente naquele dia: é assim que o Comercial descobre um extra que
+   aconteceu e não foi passado para faturar.
+   Trocar de aba só mostra/esconde as seções: nada das propostas é recarregado
+   nem gravado por isso. */
+// CPX_OK: já houve ao menos uma leitura certa. Numa falha passageira depois
+// disso, a última lista boa continua valendo (não vira "tudo sem serviço extra").
+// CPX_SIG: assinatura do último desenho; o batimento de 15 s (RT_GUIA) só
+// redesenha quando algo mudou, para não fechar o grupo que a pessoa abriu.
+let CPX_E=[],CPX_ERRO=null,CPX_CARREGADO=false,CPX_OK=false,CPX_SIG="";
+let CPX_FL="TODOS",CPX_RP="30",CPX_SO_PEND=true;
+const CPX_REF_MOTIVO="REFORÇO FATURADO";
+const CPX_SIT_PILL={"EM ANDAMENTO":["Em andamento","cpx-p-and"],"AGENDADO":["Agendado","cpx-p-ag"],"ENCERRADO":["Encerrado","cpx-p-enc"]};
+function cpxHoje(){return new Date(Date.now()-3*3600000).toISOString().slice(0,10);} // dia de Brasília
+function cpxBR(iso){const s=String(iso||"").slice(0,10);return /^\d{4}-\d{2}-\d{2}$/.test(s)?s.split("-").reverse().join("/"):"—";}
+function cpxSemTabela(msg){return /PGRST205|42P01|does not exist|schema cache|Tabela desconhecida/i.test(String(msg||""));}
+// os serviços extras na memória são confiáveis para cruzar com a Cobertura?
+function cpxDadosOk(){return !CPX_ERRO||(CPX_OK&&!cpxSemTabela(CPX_ERRO));}
+function cpxEsc(t){return String(t==null?"":t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function cpxDia(v){return String(v||"").slice(0,10);}
+function cpxSituacao(e,hoje){
+  hoje=hoje||cpxHoje();
+  if(cpxDia(e.data_inicio)>hoje)return"AGENDADO";
+  if(e.data_fim&&cpxDia(e.data_fim)<hoje)return"ENCERRADO";
+  return"EM ANDAMENTO";
+}
+// Clientes em contrato: mesma lista e mesma chave (normTxt do NOME) do KPI
+// "Clientes Ativos" da Visão Geral. É também o nome que a Cobertura usa no LOCAL.
+function cpxClientes(){
+  const D=(typeof DASHBOARD_DATA!=="undefined"&&DASHBOARD_DATA)||{};
+  const m={};
+  (D.clientes||[]).forEach(r=>{const n=String(r.NOME||"").trim();if(n&&!m[normTxt(n)])m[normTxt(n)]=n;});
+  return Object.values(m).sort((a,b)=>a.localeCompare(b,"pt-BR"));
+}
+function cpxCobre(cliente,dia){
+  const k=normTxt(cliente);
+  return CPX_E.some(e=>normTxt(e.cliente)===k&&cpxDia(e.data_inicio)<=dia&&(!e.data_fim||dia<=cpxDia(e.data_fim)));
+}
+// Lançamentos REFORÇO FATURADO da planilha, respeitando TURNO e ÁREA do topo.
+function cpxReforcos(){
+  const D=(typeof DASHBOARD_DATA!=="undefined"&&DASHBOARD_DATA)||{};
+  const alvo=normTxt(CPX_REF_MOTIVO);
+  return(D.cobertura||[]).filter(r=>normTxt(r.MOTIVO)===alvo&&r.DATA&&String(r.LOCAL||"").trim()&&mT(r)&&mA(r));
+}
+function cpxDesde(rp){
+  const h=cpxHoje();
+  if(rp==="tudo")return"";
+  if(rp==="mes")return h.slice(0,8)+"01";
+  return new Date(Date.parse(h+"T12:00:00Z")-(Number(rp)-1)*86400000).toISOString().slice(0,10);
+}
+// Agrupa os reforços por cliente. dias/diasPend são conjuntos de "AAAA-MM-DD".
+function cpxGrupos(desde){
+  const g={};
+  cpxReforcos().forEach(r=>{
+    const dia=cpxDia(r.DATA);if(desde&&dia<desde)return;
+    const nome=String(r.LOCAL).trim(),k=normTxt(nome);
+    const x=g[k]||(g[k]={cliente:nome,rows:[],dias:new Set(),diasPend:new Set(),colabs:new Set(),sup:new Set(),porDia:{}});
+    const cob=cpxCobre(nome,dia);
+    x.rows.push({...r,_dia:dia,_cob:cob});
+    x.dias.add(dia);if(!cob)x.diasPend.add(dia);
+    if(r.NOME)x.colabs.add(normTxt(r.NOME));
+    if(r.AREA)x.sup.add(String(r.AREA).trim());
+    (x.porDia[dia]=x.porDia[dia]||new Set()).add(normTxt(r.NOME||String(x.rows.length)));
+  });
+  return Object.values(g).map(x=>{
+    const ds=[...x.dias].sort();
+    x.ini=ds[0];x.fim=ds[ds.length-1];x.ult=x.fim;
+    x.rows.sort((a,b)=>a._dia<b._dia?1:a._dia>b._dia?-1:0);
+    return x;
+  });
+}
+
+function cpxAba(a){
+  const ex=a==="extra";
+  document.getElementById("cpx-aba-prop").hidden=ex;
+  document.getElementById("cpx-aba-extra").hidden=!ex;
+  [["cpx-tab-prop",!ex],["cpx-tab-extra",ex]].forEach(([id,on])=>{const b=document.getElementById(id);b.classList.toggle("cv-view-on",on);b.setAttribute("aria-selected",on?"true":"false");b.tabIndex=on?0:-1;});
+  if(ex){if(!CPX_CARREGADO)cpxLoad();else cpxRender();}
+}
+// setas ← → trocam de aba (padrão de abas acessíveis)
+function cpxAbaTecla(ev){
+  if(ev.key!=="ArrowLeft"&&ev.key!=="ArrowRight")return;
+  ev.preventDefault();
+  const ex=document.getElementById("cpx-aba-extra").hidden;
+  cpxAba(ex?"extra":"prop");
+  document.getElementById(ex?"cpx-tab-extra":"cpx-tab-prop").focus();
+}
+function cpxLoad(){
+  return fetch("/api/comercial?t=extras").then(r=>r.json().catch(()=>({})).then(j=>{
+    if(!r.ok)throw new Error((j&&(j.details||j.error))||("HTTP "+r.status));
+    CPX_E=(j&&j.rows)||[];CPX_ERRO=null;CPX_OK=true;
+  })).catch(e=>{CPX_ERRO=String((e&&e.message)||e);if(!CPX_OK||cpxSemTabela(CPX_ERRO))CPX_E=[];})
+    .then(()=>{
+      const sig=JSON.stringify(CPX_E)+"|"+(CPX_ERRO||"");
+      const mudou=!CPX_CARREGADO||sig!==CPX_SIG;
+      CPX_SIG=sig;CPX_CARREGADO=true;
+      if(mudou)cpxRender();
+    });
+}
+function cpxRender(){
+  const hoje=cpxHoje();
+  const temPlan=typeof DASHBOARD_DATA!=="undefined"&&DASHBOARD_DATA&&(DASHBOARD_DATA.clientes||[]).length;
+  // aviso: tabela ausente, erro de leitura ou planilha não carregada
+  const av=document.getElementById("cpx-aviso");
+  if(av){
+    let t="";
+    if(CPX_ERRO){
+      t=cpxSemTabela(CPX_ERRO)
+        ?'<b>A tabela dos serviços extras ainda não existe no banco.</b> Os reforços da Cobertura aparecem abaixo, mas nenhum serviço extra pode ser salvo até ela ser criada.'
+        :'<b>Não foi possível atualizar os serviços extras agora.</b> '+(CPX_OK?'A lista abaixo é a última carregada; o sistema tenta de novo sozinho.':cpxEsc(CPX_ERRO.slice(0,160)));
+    }else if(!temPlan)t='<b>Planilha ainda não carregada.</b> A lista de clientes e os reforços da Cobertura vêm dela.';
+    av.innerHTML=t?'<div style="background:#fff7ed;border:1px solid #fed7aa;border-left:4px solid #f97316;border-radius:12px;padding:11px 16px;margin-bottom:14px;font-size:.73rem;color:#92400e">⚠️ '+t+'</div>':"";
+  }
+  // badge da aba: dias-cliente de reforço sem serviço extra nos últimos 30 dias
+  const g30=cpxGrupos(cpxDesde("30"));
+  const pend30=g30.reduce((t,x)=>t+x.diasPend.size,0),cliPend30=g30.filter(x=>x.diasPend.size).length;
+  const bd=document.getElementById("cpx-tab-badge");
+  if(bd)bd.innerHTML=cpxDadosOk()&&pend30?' <span class="cpx-badge" title="Dias com reforço faturado sem serviço extra cadastrado (últimos 30 dias)">'+pend30+'</span>':"";
+  const aba=document.getElementById("cpx-aba-extra");
+  if(!aba||aba.hidden)return;
+  // datalist de clientes
+  const dl=document.getElementById("dl-cpx-cli");
+  if(dl)dl.innerHTML=cpxClientes().map(n=>'<option value="'+cpxEsc(n)+'"></option>').join("");
+  // KPIs
+  const sit=CPX_E.map(e=>({e,s:cpxSituacao(e,hoje)}));
+  const and=sit.filter(x=>x.s==="EM ANDAMENTO"),ag=sit.filter(x=>x.s==="AGENDADO").sort((a,b)=>cpxDia(a.e.data_inicio)<cpxDia(b.e.data_inicio)?-1:1);
+  const mes=hoje.slice(0,7),encMes=sit.filter(x=>x.s==="ENCERRADO"&&cpxDia(x.e.data_fim).slice(0,7)===mes);
+  const colHoje=and.reduce((t,x)=>t+(Number(x.e.qtd_colaboradores)||0),0);
+  const kpi=(c,l,v,s)=>'<div class="cpx-kpi" style="--cpx-c:'+c+'"><div class="l">'+l+'</div><div class="v">'+v+'</div><div class="s">'+s+'</div></div>';
+  document.getElementById("cpx-kpis").innerHTML=
+    kpi("#16a34a","Em andamento",and.length,colHoje+" colaborador"+(colHoje===1?"":"es")+" hoje")+
+    kpi("#2e8fef","Agendados",ag.length,ag.length?"próximo: "+cpxEsc(ag[0].e.cliente)+" em "+cpxBR(ag[0].e.data_inicio):"nenhum agendado")+
+    kpi("#64748b","Encerrados no mês",encMes.length,"terminaram em "+cpxBR(hoje).slice(3))+
+    kpi("#dc2626","Dias com reforço sem serviço extra",cpxDadosOk()?pend30:"—",!cpxDadosOk()?"aguardando a lista de serviços extras":pend30?cliPend30+" cliente"+(cliPend30===1?"":"s")+" · últimos 30 dias":"tudo cadastrado nos últimos 30 dias");
+  cpxRenderLista();
+  cpxRenderRef();
+}
+function cpxRenderLista(){
+  const el=document.getElementById("cpx-lista");if(!el)return;
+  const hoje=cpxHoje(),q=normTxt(document.getElementById("s-cpx")?.value||"");
+  const todos=CPX_E.map(e=>({e,s:cpxSituacao(e,hoje)}));
+  const cnt=s=>todos.filter(x=>s==="TODOS"||x.s===s).length;
+  document.getElementById("cpx-lista-filtros").innerHTML=[["TODOS","Todos"],["EM ANDAMENTO","Em andamento"],["AGENDADO","Agendados"],["ENCERRADO","Encerrados"]]
+    .map(([k,t])=>'<button type="button" class="cpx-chip'+(CPX_FL===k?" cpx-chip-on":"")+'" aria-pressed="'+(CPX_FL===k)+'" onclick="CPX_FL=\''+k+'\';cpxRenderLista()">'+t+' '+cnt(k)+'</button>').join("");
+  const ordem={"EM ANDAMENTO":0,"AGENDADO":1,"ENCERRADO":2};
+  const lista=todos.filter(x=>(CPX_FL==="TODOS"||x.s===CPX_FL)&&(!q||normTxt(x.e.cliente+" "+x.e.tipo_servico+" "+(x.e.observacao||"")).includes(q)))
+    .sort((a,b)=>ordem[a.s]-ordem[b.s]||(a.s==="ENCERRADO"?(cpxDia(b.e.data_fim)<cpxDia(a.e.data_fim)?-1:1):(cpxDia(a.e.data_inicio)<cpxDia(b.e.data_inicio)?-1:1)));
+  document.getElementById("cpx-lista-cnt").textContent=CPX_E.length?"· "+lista.length+" de "+CPX_E.length:"";
+  if(!CPX_E.length){el.innerHTML='<div style="padding:26px;text-align:center;color:#94a3b8;font-size:.76rem">Nenhum serviço extra cadastrado ainda.</div>';return;}
+  if(!lista.length){el.innerHTML='<div style="padding:26px;text-align:center;color:#94a3b8;font-size:.76rem">Nenhum serviço extra neste filtro.</div>';return;}
+  const refs=cpxReforcos();
+  el.innerHTML='<table class="cpx-tbl"><thead><tr><th>Cliente</th><th>Serviço</th><th>Início</th><th>Encerramento</th><th style="text-align:center">Colab.</th><th>Situação</th><th style="text-align:center" title="Lançamentos REFORÇO FATURADO na Cobertura dentro do período">Reforços na Cobertura</th><th>Responsável</th><th></th></tr></thead><tbody>'+
+    lista.map(({e,s})=>{
+      const k=normTxt(e.cliente),ini=cpxDia(e.data_inicio),fim=e.data_fim?cpxDia(e.data_fim):"9999-12-31";
+      const nRef=refs.filter(r=>normTxt(r.LOCAL)===k&&cpxDia(r.DATA)>=ini&&cpxDia(r.DATA)<=fim).length;
+      const p=CPX_SIT_PILL[s];
+      return '<tr><td style="font-weight:800;color:#0d1f35">'+cpxEsc(e.cliente)+(e.observacao?'<div style="font-weight:500;color:#94a3b8;font-size:.64rem">'+cpxEsc(e.observacao)+'</div>':'')+'</td>'+
+        '<td>'+cpxEsc(e.tipo_servico)+'</td><td class="n" style="text-align:left">'+cpxBR(e.data_inicio)+'</td><td class="n" style="text-align:left">'+(e.data_fim?cpxBR(e.data_fim):'<span style="color:#94a3b8">sem data</span>')+'</td>'+
+        '<td class="n">'+(Number(e.qtd_colaboradores)||"—")+'</td><td><span class="cpx-pill '+p[1]+'">'+p[0]+'</span></td>'+
+        '<td class="n">'+(nRef||'<span style="color:#cbd5e1">—</span>')+'</td><td>'+cpxEsc(String(e.responsavel||"—").split(" ")[0])+'</td>'+
+        '<td style="white-space:nowrap"><button type="button" class="rh-act" title="Editar" aria-label="Editar serviço extra de '+cpxEsc(e.cliente)+'" onclick="cpxEditar('+Number(e.id)+')">✏️</button><button type="button" class="rh-act" title="Excluir" aria-label="Excluir serviço extra de '+cpxEsc(e.cliente)+'" onclick="cpxExcluir('+Number(e.id)+')">🗑️</button></td></tr>';
+    }).join("")+'</tbody></table>';
+}
+function cpxRenderRef(){
+  const el=document.getElementById("cpx-ref");if(!el)return;
+  const temCob=typeof DASHBOARD_DATA!=="undefined"&&DASHBOARD_DATA&&(DASHBOARD_DATA.cobertura||[]).length;
+  document.getElementById("cpx-ref-filtros").innerHTML=[["7","7 dias"],["30","30 dias"],["mes","Mês atual"],["tudo","Tudo"]]
+    .map(([k,t])=>'<button type="button" class="cpx-chip'+(CPX_RP===k?" cpx-chip-on":"")+'" aria-pressed="'+(CPX_RP===k)+'" onclick="CPX_RP=\''+k+'\';cpxRenderRef()">'+t+'</button>').join("")+
+    '<button type="button" class="cpx-chip'+(CPX_SO_PEND?" cpx-chip-on":"")+'" aria-pressed="'+CPX_SO_PEND+'" onclick="CPX_SO_PEND=!CPX_SO_PEND;cpxRenderRef()" title="Mostrar só o que não tem serviço extra cadastrado"><span aria-hidden="true">'+(CPX_SO_PEND?"☑":"☐")+'</span> Só sem serviço extra</button>';
+  if(!temCob){document.getElementById("cpx-ref-cnt").textContent="";el.innerHTML='<div style="padding:26px;text-align:center;color:#94a3b8;font-size:.76rem">Sem planilha de Cobertura carregada.</div>';return;}
+  const todos=cpxGrupos(cpxDesde(CPX_RP));
+  const nLanc=todos.reduce((t,x)=>t+x.rows.length,0),nPend=todos.reduce((t,x)=>t+x.diasPend.size,0);
+  document.getElementById("cpx-ref-cnt").textContent="· "+nLanc+" lançamento"+(nLanc===1?"":"s")+" em "+todos.length+" cliente"+(todos.length===1?"":"s")+" · "+nPend+" dia"+(nPend===1?"":"s")+" sem serviço extra";
+  const gs=todos.filter(x=>!CPX_SO_PEND||x.diasPend.size)
+    .sort((a,b)=>(b.diasPend.size?1:0)-(a.diasPend.size?1:0)||(a.ult<b.ult?1:a.ult>b.ult?-1:0));
+  if(!gs.length){el.innerHTML='<div style="padding:26px;text-align:center;color:#16a34a;font-size:.76rem;font-weight:700">'+(todos.length?"✅ Todo reforço deste período tem serviço extra cadastrado.":"Nenhum reforço faturado lançado neste período.")+'</div>';return;}
+  // grupos que a pessoa deixou abertos continuam abertos depois do redesenho
+  const abertos=new Set([...el.querySelectorAll("details[open]")].map(d=>d.dataset.k));
+  const podeCadastrar=!CPX_ERRO||!cpxSemTabela(CPX_ERRO);
+  el.innerHTML=gs.map(x=>{
+    const pend=x.diasPend.size,k=normTxt(x.cliente);
+    const situ=pend?'<span class="cpx-pill cpx-p-pend">'+pend+' dia'+(pend===1?'':'s')+' sem serviço extra</span>':'<span class="cpx-pill cpx-p-ok">✅ coberto por serviço extra</span>';
+    const bt=pend&&podeCadastrar?'<button type="button" class="cpx-chip cpx-chip-alerta" data-k="'+cpxEsc(k)+'" onclick="event.preventDefault();event.stopPropagation();cpxDoReforco(this.dataset.k)">➕ Cadastrar serviço extra</button>':'';
+    const linhas=x.rows.map(r=>'<tr><td class="n" style="text-align:left">'+cpxBR(r._dia)+'</td><td>'+cpxEsc(r.NOME||"—")+'</td><td>'+cpxEsc(r.CARGO||"—")+'</td><td>'+cpxEsc(r.TURNO||"—")+'</td><td>'+cpxEsc(r.AREA||"—")+'</td><td>'+(r._cob?'<span class="cpx-pill cpx-p-ok">coberto</span>':'<span class="cpx-pill cpx-p-pend">sem serviço extra</span>')+'</td></tr>').join("");
+    return '<details class="cpx-grupo '+(pend?"pend":"ok")+'" data-k="'+cpxEsc(k)+'"'+(abertos.has(k)?' open':'')+'><summary>'+
+      '<span class="nm">'+cpxEsc(x.cliente)+'<small>'+cpxEsc([...x.sup].join(", ")||"—")+'</small></span>'+
+      '<span class="k">'+x.dias.size+'<small>dia'+(x.dias.size===1?'':'s')+'</small></span>'+
+      '<span class="k">'+x.rows.length+'<small>lançamento'+(x.rows.length===1?'':'s')+'</small></span>'+
+      '<span class="k">'+x.colabs.size+'<small>colaborador'+(x.colabs.size===1?'':'es')+'</small></span>'+
+      '<span class="k">'+cpxBR(x.ini)+(x.fim!==x.ini?' a '+cpxBR(x.fim):'')+'<small>período</small></span>'+
+      '<span style="display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap">'+situ+bt+'</span>'+
+      '</summary><div class="det"><table class="cpx-tbl" style="min-width:620px"><thead><tr><th>Data</th><th>Colaborador</th><th>Cargo</th><th>Turno</th><th>Supervisor</th><th>Situação</th></tr></thead><tbody>'+linhas+'</tbody></table></div></details>';
+  }).join("");
+}
+
+/* formulário */
+function cpxTipoOutro(){
+  const o=document.getElementById("cpxf-tipo").value==="__OUTRO";
+  document.getElementById("cpxf-outro-box").hidden=!o;
+  if(o)document.getElementById("cpxf-outro").focus();
+}
+function cpxFimMin(){const i=document.getElementById("cpxf-ini").value;document.getElementById("cpxf-fim").min=i||"";}
+function cpxMsg(t,ok){const m=document.getElementById("cpxf-msg");m.textContent=t;m.style.color=ok?"#16a34a":"#dc2626";}
+function cpxSetTipo(t){
+  const v=String(t||"").trim().toUpperCase(),sel=document.getElementById("cpxf-tipo");
+  if(!v){sel.value="";document.getElementById("cpxf-outro").value="";}
+  else if(v==="LIMPEZA"||v==="PORTARIA"){sel.value=v;document.getElementById("cpxf-outro").value="";}
+  else{sel.value="__OUTRO";document.getElementById("cpxf-outro").value=v;}
+  document.getElementById("cpxf-outro-box").hidden=sel.value!=="__OUTRO";
+}
+function cpxLimpar(){
+  document.getElementById("cpxForm").reset();
+  document.getElementById("cpxf-id").value="";
+  document.getElementById("cpxf-outro-box").hidden=true;
+  document.getElementById("cpxf-fim").min="";
+  document.getElementById("cpx-form-title").textContent="➕ Novo Serviço Extra";
+  document.getElementById("cpxBtnSalvar").textContent="💾 Salvar Serviço Extra";
+  cpxMsg("",true);
+}
+function cpxForm(){document.getElementById("cpxForm").scrollIntoView({behavior:"smooth",block:"center"});}
+function cpxEditar(id){
+  const e=CPX_E.find(x=>Number(x.id)===Number(id));if(!e)return;
+  cpxLimpar();
+  document.getElementById("cpxf-id").value=e.id;
+  document.getElementById("cpxf-cliente").value=e.cliente||"";
+  document.getElementById("cpxf-ini").value=cpxDia(e.data_inicio);cpxFimMin();
+  document.getElementById("cpxf-fim").value=e.data_fim?cpxDia(e.data_fim):"";
+  document.getElementById("cpxf-qtd").value=e.qtd_colaboradores||"";
+  cpxSetTipo(e.tipo_servico);
+  document.getElementById("cpxf-obs").value=e.observacao||"";
+  document.getElementById("cpx-form-title").textContent="✏️ Editando serviço extra — "+(e.cliente||"");
+  document.getElementById("cpxBtnSalvar").textContent="💾 Salvar alterações";
+  cpxForm();
+}
+// "Cadastrar serviço extra" a partir de um grupo de reforços sem cadastro:
+// só preenche o formulário; quem confere e salva é a pessoa. Os dias pendentes
+// são quebrados em blocos de dias seguidos e só o bloco MAIS RECENTE vem
+// preenchido: juntar 03/09 e 24/09 num período só faria o cadastro "cobrir"
+// tudo no meio e esconder reforços que entrarem depois nesse intervalo.
+function cpxBlocos(dias){
+  const b=[];
+  dias.forEach(d=>{const u=b[b.length-1];if(u&&Date.parse(d+"T12:00:00Z")-Date.parse(u[u.length-1]+"T12:00:00Z")===86400000)u.push(d);else b.push([d]);});
+  return b;
+}
+function cpxDoReforco(k){
+  const x=cpxGrupos(cpxDesde(CPX_RP)).find(g=>normTxt(g.cliente)===k);if(!x)return;
+  const blocos=cpxBlocos([...x.diasPend].sort());if(!blocos.length)return;
+  const bl=blocos[blocos.length-1];
+  cpxLimpar();
+  document.getElementById("cpxf-cliente").value=x.cliente;
+  document.getElementById("cpxf-ini").value=bl[0];cpxFimMin();
+  document.getElementById("cpxf-fim").value=bl[bl.length-1];
+  document.getElementById("cpxf-qtd").value=Math.max(1,...bl.map(d=>(x.porDia[d]||new Set()).size));
+  const doBloco=x.rows.filter(r=>!r._cob&&bl.includes(r._dia));
+  const c=[...new Set(doBloco.map(r=>normTxt(r.CARGO)).filter(v=>v&&v!=="—"))];
+  cpxSetTipo(c.length&&c.every(v=>v.includes("SERVICOS GERAIS")||v.includes("LIMPEZA"))?"LIMPEZA":c.length&&c.every(v=>v.includes("PORTEIRO")||v.includes("PORTARIA"))?"PORTARIA":"");
+  document.getElementById("cpxf-obs").value="Reforço faturado lançado na Cobertura ("+doBloco.length+" lançamento"+(doBloco.length===1?"":"s")+")";
+  document.getElementById("cpx-form-title").textContent="➕ Novo Serviço Extra — a partir dos reforços de "+x.cliente;
+  const outros=blocos.length-1;
+  cpxMsg("Confira os dados e clique em Salvar."+(outros?" Há mais "+outros+" período"+(outros===1?"":"s")+" com reforço sem serviço extra neste cliente: cadastre um de cada vez.":""),true);
+  cpxForm();
+}
+function cpxSalvar(ev){
+  ev.preventDefault();
+  if(CPX_ERRO&&cpxSemTabela(CPX_ERRO)){cpxMsg("Não dá para salvar ainda: a tabela dos serviços extras não existe no banco.",false);return false;}
+  const id=document.getElementById("cpxf-id").value;
+  const orig=id?CPX_E.find(x=>String(x.id)===String(id)):null;
+  const digitado=document.getElementById("cpxf-cliente").value.trim();
+  // cliente precisa ser um dos clientes em contrato (é a chave que cruza com a Cobertura)
+  const cli=cpxClientes().find(n=>normTxt(n)===normTxt(digitado))||(orig&&normTxt(orig.cliente)===normTxt(digitado)?orig.cliente:null);
+  const ini=document.getElementById("cpxf-ini").value,fim=document.getElementById("cpxf-fim").value;
+  const qtd=Number(document.getElementById("cpxf-qtd").value);
+  const tsel=document.getElementById("cpxf-tipo").value;
+  const tipo=(tsel==="__OUTRO"?document.getElementById("cpxf-outro").value:tsel).trim().toUpperCase();
+  if(!cli){cpxMsg("Escolha um cliente da lista de clientes em contrato.",false);document.getElementById("cpxf-cliente").focus();return false;}
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(ini)){cpxMsg("Informe a data de início.",false);document.getElementById("cpxf-ini").focus();return false;}
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(fim)){cpxMsg("Informe a data de encerramento.",false);document.getElementById("cpxf-fim").focus();return false;}
+  if(fim<ini){cpxMsg("A data de encerramento não pode ser antes do início.",false);document.getElementById("cpxf-fim").focus();return false;}
+  if(!Number.isInteger(qtd)||qtd<1||qtd>999){cpxMsg("Informe a quantidade de colaboradores (número inteiro, a partir de 1).",false);document.getElementById("cpxf-qtd").focus();return false;}
+  if(!tipo){cpxMsg(tsel==="__OUTRO"?"Escreva qual é o serviço.":"Escolha o tipo de serviço.",false);document.getElementById(tsel==="__OUTRO"?"cpxf-outro":"cpxf-tipo").focus();return false;}
+  const row={cliente:cli,data_inicio:ini,data_fim:fim,qtd_colaboradores:qtd,tipo_servico:tipo,observacao:document.getElementById("cpxf-obs").value.trim()||null};
+  // responsável = quem cadastrou; editar depois não troca o nome
+  if(id)row.id=Number(id);
+  else{const quem=sessionStorage.getItem("userNome")||null;row.responsavel=quem;row.criado_por=quem;}
+  const bt=document.getElementById("cpxBtnSalvar");bt.disabled=true;
+  fetch("/api/comercial?t=extras",{method:id?"PATCH":"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(row)})
+    .then(r=>r.json().catch(()=>({})).then(j=>{if(!r.ok)throw new Error(j.error||"Falha ao salvar.");}))
+    .then(()=>{cpxLimpar();cpxMsg(id?"✅ Alterações salvas.":"✅ Serviço extra cadastrado.",true);return cpxLoad();})
+    .catch(e=>cpxMsg("Não foi possível salvar: "+((e&&e.message)||e),false))
+    .finally(()=>{bt.disabled=false;});
+  return false;
+}
+function cpxExcluir(id){
+  const e=CPX_E.find(x=>Number(x.id)===Number(id));if(!e)return;
+  if(!confirm("Excluir o serviço extra de "+e.cliente+" ("+cpxBR(e.data_inicio)+(e.data_fim?" a "+cpxBR(e.data_fim):"")+")? Não dá para desfazer."))return;
+  fetch("/api/comercial?t=extras&id="+encodeURIComponent(e.id),{method:"DELETE"})
+    .then(r=>{if(!r.ok)throw new Error();if(String(document.getElementById("cpxf-id").value)===String(e.id))cpxLimpar();return cpxLoad();})
+    .catch(()=>alert("Não foi possível excluir o serviço extra."));
+}
 function comSetStatusFiltro(s){COM_TBL_STATUS=s;comRenderView();}
 function comSetView(v){
   COM_VIEW=v;
@@ -8159,7 +8555,7 @@ function cfgRender(){
 const HQ_SALAS=[
   {k:"oper",lbl:"Operações",ic:"🖥️",cor:"#2e8fef",cx:160,cy:230,desc:"Visão Geral, faltas, coberturas, OS…"},
   {k:"rh",lbl:"RH",ic:"🗂️",cor:"#7c3aed",cx:228,cy:105,desc:"Vagas, entrevistas, desligamentos"},
-  {k:"com",lbl:"Comercial",ic:"💼",cor:"#f97316",cx:748,cy:100,desc:"Propostas & Cadência"},
+  {k:"com",lbl:"Comercial",ic:"💼",cor:"#f97316",cx:748,cy:100,desc:"Propostas e Serviços Extras"},
   {k:"dir",lbl:"Diretoria",ic:"📊",cor:"#0d9488",cx:882,cy:270,desc:"Painéis executivos"},
   {k:"lounge",lbl:"Lounge & Café",ic:"☕",cor:"#a16207",cx:330,cy:415,desc:"Café, papo e descanso"},
   {k:"reuniao",lbl:"Reunião",ic:"🤝",cor:"#64748b",cx:876,cy:466,desc:"Sala de reunião com mesa oval"},
@@ -10881,7 +11277,7 @@ var RT_GUIA={
   rhvagas:function(){rhLoad();},rhentrev:function(){rhEntLoad();},rhdesl:function(){rhDesLoad();},
   rhres:function(){rhResLoad();},rhtrein:function(){rhTreLoad();},
   rhdash:function(){rhDashLoad(true);},
-  compro:function(){comLoad();},comdash:function(){comDashLoad();},
+  compro:function(){comLoad();cpxLoad();},comdash:function(){comDashLoad();},
   audqual:function(){audLoad();},ligacoes:function(){ligLoad();},prj:function(){prjLoad();}
 };
 function rtBanner(){

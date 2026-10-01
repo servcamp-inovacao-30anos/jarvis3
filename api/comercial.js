@@ -21,6 +21,13 @@ const TABLES = {
     table: "com_metas",
     required: ["mes"],
     fields: ["mes","meta_propostas","meta_fechamentos","meta_valor"]
+  },
+  // Serviços extras em clientes já em contrato (aba "Serviços Extras" da guia
+  // Comercial). Datas e quantidade também têm check no banco (supabase_schema.sql).
+  extras: {
+    table: "com_servicos_extras",
+    required: ["cliente","data_inicio","data_fim","qtd_colaboradores","tipo_servico"],
+    fields: ["cliente","data_inicio","data_fim","qtd_colaboradores","tipo_servico","observacao","responsavel","criado_por"]
   }
 };
 
