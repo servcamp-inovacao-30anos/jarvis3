@@ -34,6 +34,20 @@ function isoDate(v){
   const p2=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
   return s;
 }
+/* Horário da vaga (entrada–saída), como vem da planilha do SAR2G: data com hora, número do Excel ou texto.
+   Lê pelos componentes locais (é como o Excel mostra) e arredonda os segundos que a biblioteca deixa. */
+function fmHoraDe(v){
+  if(v==null||v==="")return"";
+  let min=null;
+  if(v instanceof Date){if(isNaN(v))return"";min=Math.round((v.getHours()*3600+v.getMinutes()*60+v.getSeconds())/60);}
+  else if(typeof v==="number"){min=Math.round((v-Math.floor(v))*1440);}
+  else{const m=String(v).trim().match(/^(\d{1,2})[:h](\d{2})/);if(m)min=parseInt(m[1],10)*60+parseInt(m[2],10);}
+  if(min==null||min<0)return"";
+  min=min%1440;
+  return String(Math.floor(min/60)).padStart(2,"0")+":"+String(min%60).padStart(2,"0");
+}
+function fmHorarioDe(ent,sai){const a=fmHoraDe(ent),b=fmHoraDe(sai);return a&&b?a+"–"+b:"";}
+/*fim fmHorarioDe*/
 function turnoFromEscala(esc,hrEntrada){
   const e=String(esc||"").toUpperCase();
   if(!e.includes("12X36"))return"DIURNO";
@@ -147,7 +161,7 @@ function buildDataFromWorkbook(wb){
         else if(d[base.DATA].split("|").indexOf(s)<0)d[base.DATA]+="|"+s;
       }
       if(sit.includes("FALT")||sit.includes("AUSENCIA")||sit.includes("AUSÊNCIA"))
-        faltas.push({...base,ABONO:r["DESCTPABONO"]||"—"});
+        faltas.push({...base,ABONO:r["DESCTPABONO"]||"—",HORARIO:fmHorarioDe(r["HRENTRADA"],r["HRSAIDA"])});
       const cargoVaga=r["CARGO_VAGA"]||r["DESC_CARGO"]||"—"; // cargo do POSTO coberto (não o do colaborador)
       if(tipo==="FT")
         ftsArr.push({...base,CARGO:cargoVaga,MOTIVO:r["DESCIMPLA"]||"—"});
@@ -173,7 +187,7 @@ function buildDataFromWorkbook(wb){
       LOCAL:r[I["NOMELOCAL"]],CARGO:r[I["DESC_CARGO"]],
       AREA:r[I["AREASUPERVISAO"]],ABONO:r[I["DESCTPABONO"]],
       TIPO:r[I["TPCLIENTE"]],TURNO:turnoFromEscala(r[I["DESCESCALA"]],r[I["HRENTRADA"]]),
-      ESCALA:r[I["DESCESCALA"]]||""
+      ESCALA:r[I["DESCESCALA"]]||"",HORARIO:fmHorarioDe(r[I["HRENTRADA"]],r[I["HRSAIDA"]])
     }),"faltas");
     // Sem a Ficha de Presenca nao ha como saber os dias trabalhados.
     data.fichaDias={};
@@ -492,4 +506,4 @@ function buildDataFromWorkbook(wb){
   return data;
 }
 
-module.exports = { buildDataFromWorkbook, isoDate, turnoFromEscala, normTxt, normNome, horaDaCelula, findSheet, sheetRows };
+module.exports = { fmHoraDe, fmHorarioDe, buildDataFromWorkbook, isoDate, turnoFromEscala, normTxt, normNome, horaDaCelula, findSheet, sheetRows };

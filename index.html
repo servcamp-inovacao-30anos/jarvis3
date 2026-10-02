@@ -2585,8 +2585,14 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       #pg-faltassup .fs-pill.on i{background:#fff}
       #pg-faltassup .fs-lista{background:var(--fm-surface);border:1px solid var(--fm-line);border-radius:12px;box-shadow:var(--fm-sh);overflow:hidden}
       #pg-faltassup .fs-lista .fm-fh{border-radius:0}
-      #pg-faltassup .fs-cab,#pg-faltassup .fs-row{display:grid;grid-template-columns:150px minmax(200px,1.5fr) minmax(130px,1fr) minmax(190px,1.1fr) minmax(170px,1fr) 22px;gap:14px;align-items:center;padding:0 18px 0 22px}
-      #pg-faltassup .fs-lista.sup .fs-cab,#pg-faltassup .fs-lista.sup .fs-row{grid-template-columns:150px minmax(190px,1.4fr) minmax(130px,1fr) minmax(130px,.8fr) minmax(190px,1.1fr) minmax(170px,1fr) 22px}
+      #pg-faltassup .fs-lista{container-type:inline-size;container-name:fslis}
+      #pg-faltassup .fs-cab,#pg-faltassup .fs-row{display:grid;grid-template-columns:116px minmax(170px,1.3fr) 112px minmax(140px,1fr) 108px minmax(160px,1fr) minmax(150px,.9fr) 20px;gap:12px;align-items:center;padding:0 16px 0 22px}
+      #pg-faltassup .fs-lista.sup .fs-cab,#pg-faltassup .fs-lista.sup .fs-row{grid-template-columns:116px minmax(160px,1.2fr) 112px minmax(130px,.9fr) 108px minmax(110px,.7fr) minmax(150px,.9fr) minmax(140px,.8fr) 20px}
+      #pg-faltassup .fs-c.p{display:flex;flex-direction:column;gap:2px}
+      #pg-faltassup .fs-c.p b,#pg-faltassup .fs-c.h b{color:var(--fm-text);font-weight:700}
+      #pg-faltassup .fs-c.p small{font-size:.64rem;color:var(--fm-muted);white-space:normal;line-height:1.25}
+      #pg-faltassup .fs-c .mut{color:var(--fm-muted)}
+      #pg-faltassup .fs-aviso{font-size:.74rem;color:var(--fm-muted);margin:0 0 10px}
       #pg-faltassup .fs-cab{padding-top:9px;padding-bottom:9px;font-size:.62rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--fm-muted);background:var(--fm-subtle);border-bottom:1px solid var(--fm-line)}
       #pg-faltassup .fs-row{position:relative;padding-top:13px;padding-bottom:13px;border-bottom:1px solid var(--fm-line2);cursor:pointer;transition:background .12s;font-size:.8rem;color:var(--fm-text2)}
       #pg-faltassup .fs-row::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--k)}
@@ -2618,16 +2624,18 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       #pg-faltassup .fs-resumo b{font-size:1.1rem;color:var(--fm-text);margin-right:4px}
       #pg-faltassup .fs-resumo .alerta,#pg-faltassup .fs-resumo .alerta b{color:#b42318}
       html[data-theme="dark"] #pg-faltassup .fs-resumo .alerta,html[data-theme="dark"] #pg-faltassup .fs-resumo .alerta b{color:#fda29b}
-      @media (max-width:900px){
+      @container fslis (max-width:1180px){
         #pg-faltassup .fs-cab{display:none}
         #pg-faltassup .fs-row,#pg-faltassup .fs-lista.sup .fs-row{grid-template-columns:minmax(0,1fr) 22px;gap:5px 10px;padding-top:14px;padding-bottom:14px}
         #pg-faltassup .fs-row>.fs-c{grid-column:1;display:flex;align-items:baseline;gap:6px;overflow:visible;font-size:.78rem}
-        #pg-faltassup .fs-row>.fs-c::before{content:attr(data-l) ":";flex:0 0 108px;color:var(--fm-muted);font-weight:500;font-size:.72rem}
+        #pg-faltassup .fs-row>.fs-c::before{content:attr(data-l) ":";flex:0 0 118px;color:var(--fm-muted);font-weight:500;font-size:.72rem}
         #pg-faltassup .fs-row>.fs-c.n{order:-1;display:block}
         #pg-faltassup .fs-row>.fs-c.n::before{content:none}
         #pg-faltassup .fs-row>.fs-c.n b{font-size:.92rem;display:block}
-        #pg-faltassup .fs-row>.fs-c.lim{flex-direction:row;gap:6px;flex-wrap:wrap}
+        #pg-faltassup .fs-row>.fs-c.lim,#pg-faltassup .fs-row>.fs-c.p{flex-direction:row;gap:6px;flex-wrap:wrap}
         #pg-faltassup .fs-row>.fm-chev{grid-column:2;grid-row:1}
+      }
+      @media (max-width:900px){
         #pg-faltassup .fs-det{grid-template-columns:1fr;gap:14px;padding:14px 16px}
         #pg-faltassup .fs-hi{grid-template-columns:50px 1fr}
         #pg-faltassup .fs-hi em{grid-column:2;white-space:normal}
@@ -6084,6 +6092,20 @@ function isoDate(v){
   const p2=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
   return s;
 }
+/* Horário da vaga (entrada–saída), como vem da planilha do SAR2G: data com hora, número do Excel ou texto.
+   Lê pelos componentes locais (é como o Excel mostra) e arredonda os segundos que a biblioteca deixa. */
+function fmHoraDe(v){
+  if(v==null||v==="")return"";
+  let min=null;
+  if(v instanceof Date){if(isNaN(v))return"";min=Math.round((v.getHours()*3600+v.getMinutes()*60+v.getSeconds())/60);}
+  else if(typeof v==="number"){min=Math.round((v-Math.floor(v))*1440);}
+  else{const m=String(v).trim().match(/^(\d{1,2})[:h](\d{2})/);if(m)min=parseInt(m[1],10)*60+parseInt(m[2],10);}
+  if(min==null||min<0)return"";
+  min=min%1440;
+  return String(Math.floor(min/60)).padStart(2,"0")+":"+String(min%60).padStart(2,"0");
+}
+function fmHorarioDe(ent,sai){const a=fmHoraDe(ent),b=fmHoraDe(sai);return a&&b?a+"–"+b:"";}
+/*fim fmHorarioDe*/
 function turnoFromEscala(esc,hrEntrada){
   const e=String(esc||"").toUpperCase();
   if(!e.includes("12X36"))return"DIURNO";
@@ -6191,7 +6213,7 @@ function buildDataFromWorkbook(wb){
         else if(d[base.DATA].split("|").indexOf(s)<0)d[base.DATA]+="|"+s;
       }
       if(sit.includes("FALT")||sit.includes("AUSENCIA")||sit.includes("AUSÊNCIA"))
-        faltas.push({...base,ABONO:r["DESCTPABONO"]||"—"});
+        faltas.push({...base,ABONO:r["DESCTPABONO"]||"—",HORARIO:fmHorarioDe(r["HRENTRADA"],r["HRSAIDA"])});
       const cargoVaga=r["CARGO_VAGA"]||r["DESC_CARGO"]||"—"; // cargo do POSTO coberto (não o do colaborador)
       if(tipo==="FT")
         ftsArr.push({...base,CARGO:cargoVaga,MOTIVO:r["DESCIMPLA"]||"—"});
@@ -6217,7 +6239,7 @@ function buildDataFromWorkbook(wb){
       LOCAL:r[I["NOMELOCAL"]],CARGO:r[I["DESC_CARGO"]],
       AREA:r[I["AREASUPERVISAO"]],ABONO:r[I["DESCTPABONO"]],
       TIPO:r[I["TPCLIENTE"]],TURNO:turnoFromEscala(r[I["DESCESCALA"]],r[I["HRENTRADA"]]),
-      ESCALA:r[I["DESCESCALA"]]||""
+      ESCALA:r[I["DESCESCALA"]]||"",HORARIO:fmHorarioDe(r[I["HRENTRADA"]],r[I["HRSAIDA"]])
     }),"faltas");
     // Sem a Ficha de Presenca nao ha como saber os dias trabalhados.
     data.fichaDias={};
@@ -10834,16 +10856,24 @@ function fsAbertasTela(e,abertas,tratadas,hoje){
     }
     corpo+=fsLinha(c,mostraSup);
   });
-  return h+`<div class="fs-lista${mostraSup?" sup":""}"><div class="fs-cab"><span>Data da falta</span><span>Colaborador</span><span>Posto</span>${mostraSup?"<span>Supervisor</span>":""}<span>${FS.tratadas?"Medida":"Limite para a medida"}</span><span>Histórico no ano</span><span></span></div>${corpo}</div>`;
+  const semHorario=!lista.some(c=>c.horario);
+  if(semHorario)h+=`<p class="fs-aviso">O horário da vaga aparece assim que a planilha do SAR2G for enviada novamente.</p>`;
+  return h+`<div class="fs-lista${mostraSup?" sup":""}"><div class="fs-cab"><span>Data da falta</span><span>RE e nome</span><span>Vínculo</span><span>Posto</span><span>Horário da vaga</span>${mostraSup?"<span>Supervisor</span>":""}<span>${FS.tratadas?"Medida":"Limite para a medida"}</span><span>Histórico no ano</span><span></span></div>${corpo}</div>`;
 }
 function fsLinha(c,mostraSup){
   const L=fsLimite(c),k=c.re+"|"+c.primeiraFalta,on=!!FS.ab[k];
+  const v=fmVinculoRot(c.tipo),rt=c.tipo==="RESERVA";
   const n=(FM.hist&&!FM.hist.erro)?fmHistDe(c.re).length:null;
   const hist=n==null?'<span class="fm-tg">…</span>':n===0?'<span class="fs-h0">Sem medida no ano</span>':`<span class="fm-tg ${n>=2?"rein":"med"}">${n>=2?"Reincidente · ":""}${n} ${n===1?"medida":"medidas"} no ano</span>`;
+  // posto: o do efetivo; a reserva técnica não tem posto fixo, então mostra onde estava escalada
+  const posto=rt?`<span class="mut">${_esc(c.posto||"—")}</span><small>Reserva técnica: posto onde estava escalado(a)</small>`:`<b>${_esc(c.posto||"—")}</b>`;
+  const hor=c.horario?`<b>${_esc(c.horario)}</b>`:'<span class="mut">—</span>';
   return `<div class="fs-row k-${L.tom}${on?" on":""}" role="button" tabindex="0" aria-expanded="${on}" data-k="${_esc(k)}" onclick="fsAbrir(this.dataset.k)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();fsAbrir(this.dataset.k)}">`+
     `<div class="fs-c d" data-l="Data da falta" title="${_esc(fmLista([...new Set(c.faltas||[])].sort().map(fmDdS)))}">${_esc(fmFaltasTxt(c.faltas))}</div>`+
     `<div class="fs-c n" data-l="Colaborador"><b title="${_esc(c.nome)}">${_esc(c.nome)}</b><span class="fm-re">RE ${_esc(c.re)}</span></div>`+
-    `<div class="fs-c" data-l="Posto" title="${_esc(c.posto||"")}">${_esc(c.posto||"—")}</div>`+
+    `<div class="fs-c" data-l="Vínculo"><span class="fm-vin ${v.c}" title="${_esc(v.d)}">${_esc(v.t)}</span></div>`+
+    `<div class="fs-c p" data-l="Posto" title="${_esc(c.posto||"")}">${posto}</div>`+
+    `<div class="fs-c h" data-l="Horário da vaga">${hor}</div>`+
     (mostraSup?`<div class="fs-c" data-l="Supervisor">${_esc(c.supervisor?fmNomeCard(c.supervisor):"—")}</div>`:"")+
     `<div class="fs-c lim" data-l="${FS.tratadas?"Medida":"Limite para a medida"}"><b>${_esc(L.t)}</b><span>${_esc(L.s)}</span></div>`+
     `<div class="fs-c" data-l="Histórico no ano">${hist}</div><span class="fm-chev">${FM_IC.chev}</span></div>`+

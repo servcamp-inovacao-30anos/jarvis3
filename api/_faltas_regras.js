@@ -442,7 +442,7 @@ function expandirCalendario(k) {
 }
 
 function pessoa(f, extra) {
-  return { re: reDe(f.RE), nome: f.NOME || "", cargo: f.CARGO || "", posto: f.LOCAL || "", supervisor: f.AREA || "", escala: f.ESCALA || "", tipo: f.TIPO || "", ...extra };
+  return { re: reDe(f.RE), nome: f.NOME || "", cargo: f.CARGO || "", posto: f.LOCAL || "", supervisor: f.AREA || "", escala: f.ESCALA || "", tipo: f.TIPO || "", horario: f.HORARIO || "", ...extra };
 }
 
 
