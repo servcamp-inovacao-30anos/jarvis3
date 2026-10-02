@@ -85,7 +85,7 @@ function rpc(tabelas, nome, a) {
 function supabaseFalso(tabelas, opcoes) {
   const o = opcoes || {};
   const log = [];
-  const COM_ID = new Set(["pt_ocorrencias", "pt_mensagens", "pt_competencias", "pt_auditoria", "pt_sms_uso", "dashboard_snapshots"]);
+  const COM_ID = new Set(["pt_ocorrencias", "pt_mensagens", "pt_competencias", "pt_auditoria", "pt_sms_uso", "dashboard_snapshots", "fm_auditoria"]);
   global.fetch = async (url, init = {}) => {
     const u = new URL(url);
     const caminho = u.pathname.replace("/rest/v1/", "");
@@ -116,6 +116,7 @@ function supabaseFalso(tabelas, opcoes) {
         }
         const nova = JSON.parse(JSON.stringify(l));
         if (COM_ID.has(caminho) && nova.id == null) nova.id = t.reduce((m, x) => Math.max(m, Number(x.id) || 0), 0) + 1;
+        if (caminho === "fm_auditoria" && !nova.criado_em) nova.criado_em = new Date(Date.now() + t.length).toISOString();
         if (caminho === "dashboard_snapshots" && !nova.created_at) nova.created_at = new Date(Date.now() + t.length).toISOString();
         t.push(nova);
         volta.push(JSON.parse(JSON.stringify(nova)));
@@ -126,6 +127,13 @@ function supabaseFalso(tabelas, opcoes) {
       const alvo = filtrar(t, u.searchParams);
       alvo.forEach(x => Object.assign(x, JSON.parse(JSON.stringify(corpo))));
       return resposta(200, prefer.includes("return=representation") ? alvo.map(x => JSON.parse(JSON.stringify(x))) : null);
+    }
+    if (metodo === "DELETE") {
+      // como o PostgREST: DELETE sem filtro é recusado
+      if (![...u.searchParams.keys()].some(k => !PARAMS_DE_CONTROLE.has(k))) return resposta(400, { message: "DELETE requires a WHERE clause" });
+      const alvo = new Set(filtrar(t, u.searchParams));
+      tabelas[caminho] = t.filter(x => !alvo.has(x));
+      return resposta(204, null);
     }
     return resposta(405, { message: "método não suportado no falso" });
   };

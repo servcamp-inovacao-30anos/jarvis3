@@ -46,6 +46,8 @@ module.exports = async function handler(req, res) {
   // Monitoramento de ponto: o código vive em api/_ponto.js e só passa por aqui
   // pelo mesmo motivo das metas — o plano Hobby já está nas 12 funções.
   if (req.query && req.query.modulo === "ponto") return require("./_ponto")(req, res);
+  // Faltas x Medidas: mesmo motivo (api/_faltas.js).
+  if (req.query && req.query.modulo === "faltas") return require("./_faltas")(req, res);
   const SUPABASE_URL = process.env.SUPABASE_URL;
   const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 

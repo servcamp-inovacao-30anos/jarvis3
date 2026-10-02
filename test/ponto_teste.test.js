@@ -47,7 +47,7 @@ test("textoDeTeste: orientação do dia mais recente, ou aviso neutro", () => {
   assert.equal(t.origem, "ocorrencia");
   assert.equal(t.data_jornada, "2026-09-22");
   assert.equal(t.template_id, "entrada_antecipada");
-  assert.match(t.texto, /Ola, Maria\. Em 22\/09 sua entrada foi as 06:30, 30 min antes/);
+  assert.match(t.texto, /^SERVCAMP: Maria, voce bateu o ponto fora do horario previsto \(07:00\)/);
   const p = R.textoDeTeste(12345, "JOSÉ ALESSANDRO", [], {});
   assert.equal(p.origem, "padrao");
   assert.equal(R.analisarSMS(p.texto).codificacao, "GSM-7");

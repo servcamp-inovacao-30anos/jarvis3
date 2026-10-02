@@ -55,6 +55,12 @@ const SB = () => ({
   key: process.env.SUPABASE_SERVICE_ROLE_KEY
 });
 
+function semFichaDias(data) {
+  const copia = { ...data };
+  delete copia.fichaDias;
+  return copia;
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -167,7 +173,10 @@ module.exports = async function handler(req, res) {
         row_count: rowCount,
         fingerprint: fingerprint,
         origem: origem,
-        data: data
+        // fichaDias (dias da Ficha de Presença, por RE) serve só para o módulo
+        // Faltas x Medidas, que o guarda em tabela própria logo abaixo. Fica fora
+        // do snapshot: toda tela baixa o snapshot, e ninguém lá usa esse dado.
+        data: semFichaDias(data)
       })
     });
   } catch (networkErr) {
@@ -235,7 +244,19 @@ module.exports = async function handler(req, res) {
     await ponto.materializar(data, { ator: origem === "robo" ? "robo" : ponto.usuarioDoToken(req) });
   } catch (e) { /* idem */ }
 
+  // ── Faltas x Medidas ──────────────────────────────────────────────────────
+  // Guarda faltas, dias trabalhados e medidas em tabela própria (api/_faltas.js).
+  // Falha aqui também não derruba o envio, mas fica no log da Vercel: calada,
+  // ninguém descobriria que o módulo parou de receber dados.
+  let faltasMedidas = null; // vai na resposta: a tela mostra o que o módulo recebeu, ou o erro
+  try {
+    faltasMedidas = await require("./_faltas").materializar(data);
+  } catch (e) {
+    console.error("[faltas] materializar falhou: " + (e && e.message ? e.message : e));
+    faltasMedidas = { ok: false, erro: String(e && e.message ? e.message : e).slice(0, 200) };
+  }
+
   const row = inserted[0] || null;
   if (row) delete row.data; // não devolve o snapshot inteiro de volta
-  return res.status(200).json({ ok: true, origem, row_count: rowCount, row });
+  return res.status(200).json({ ok: true, origem, row_count: rowCount, row, faltas_medidas: faltasMedidas });
 };
