@@ -2668,7 +2668,7 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       #vgFmDir .dr-top .x svg{width:16px;height:16px}
       #vgFmDir .dr-k .fm-kpi{cursor:default}
       #vgFmDir .dr-k .fm-kpi:hover{background:none}
-      #vgFmDir .dr-r{color:#d92d20}
+      #vgFmDir .dr-r{color:#d92d20;font-style:normal;font-weight:700}
       html[data-theme="dark"] #vgFmDir .dr-r{color:#fda29b}
       #vgFmDir .dr-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:6px 0 12px}
       #vgFmDir .dr-lista{border:1px solid var(--fm-line);border-radius:12px;overflow:hidden}
@@ -11052,7 +11052,7 @@ function vgFmHtml(){
   let h=`<div class="fm-kpis k4 dr-k">`+
     kpi(R.pct==null?"":R.pct>=80?"v-ok":R.pct>=50?"v-am":"v-da","Taxa de conclusão",R.pct==null?"—":R.pct+"%",R.faltas?`${R.tratadas} de ${R.faltas} faltas<br>já com medida aplicada`:"sem faltas na folha",barra)+
     kpi("","Faltas injustificadas",R.faltas,`na folha ${fmDd(P.ini)} a ${fmDd(P.fim)}<br>em ${R.ocorrencias} ${R.ocorrencias===1?"ocorrência":"ocorrências"}`)+
-    kpi(pend?"v-am":"v-ok","Pendentes de medida",pend,pend?`${atras?`<b class="dr-r">${atras} atrasadas</b>`:"nenhuma atrasada"}${R.n.hj?`<br>${R.n.hj} ${R.n.hj===1?"vence":"vencem"} hoje`:""}`:"tudo tratado")+
+    kpi(pend?"v-am":"v-ok","Pendentes de medida",pend,pend?`${atras?`<i class="dr-r">${atras} ${atras===1?"atrasada":"atrasadas"}</i>`:"nenhuma atrasada"}<br>aguardando a medida${R.n.hj?` · ${R.n.hj} ${R.n.hj===1?"vence":"vencem"} hoje`:""}`:"tudo tratado")+
     kpi(R.anteriores.length?"v-am":"","Da folha anterior",R.anteriores.length,R.anteriores.length?"em aberto, à parte<br>não entram na taxa":"nada pendente<br>de antes")+`</div>`;
   const lista=vgFmAgrupar(R,modo==="sup"?(c=>c.supervisor||"Sem supervisor"):(c=>c.posto||"Sem posto"));
   const comPend=lista.filter(x=>x.pend.length||x.ant.length);
