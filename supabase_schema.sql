@@ -212,9 +212,9 @@ on conflict (chave) do nothing;
 -- Modelos de mensagem: sem acento, sem falar de custo, hora extra, pagamento ou
 -- desconto. Editáveis pela tela (Configurar); o texto aqui é só o ponto de partida.
 insert into public.pt_config (chave, valor) values
-  ('modelo_entrada_antecipada', E'SERVCAMP | ORIENTACAO DE PONTO\nOla, {{nome}}. Em {{data}} sua entrada foi as {{horario_marcado}}, {{minutos}} antes do previsto ({{horario_previsto}}). Oriente-se a marcar no horario. RE {{re}}.'),
-  ('modelo_saida_apos_horario', E'SERVCAMP | ORIENTACAO DE PONTO\nOla, {{nome}}. Em {{data}} sua saida foi as {{horario_marcado}}, {{minutos}} apos o previsto ({{horario_previsto}}). Oriente-se a marcar no horario. RE {{re}}.'),
-  ('modelo_ambas_no_mesmo_dia', E'SERVCAMP | ORIENTACAO DE PONTO\nOla, {{nome}}. Em {{data}} entrada as {{entrada_marcada}} e saida as {{saida_marcada}} (previsto {{entrada_prevista}} as {{saida_prevista}}). Marque no horario. RE {{re}}.')
+  ('modelo_entrada_antecipada', E'{{nome}}, voce bateu o ponto fora do horario previsto ({{horario_previsto}}). Registre no horario correto, pois pode gerar inconsistencias no sistema. Contamos com voce.'),
+  ('modelo_saida_apos_horario', E'{{nome}}, voce bateu o ponto fora do horario previsto ({{horario_previsto}}). Registre no horario correto, pois pode gerar inconsistencias no sistema. Contamos com voce.'),
+  ('modelo_ambas_no_mesmo_dia', E'{{nome}}, voce bateu o ponto fora do previsto ({{entrada_prevista}} as {{saida_prevista}}). Registre no horario correto, pois pode gerar inconsistencias no sistema. Contamos com voce.')
 on conflict (chave) do nothing;
 
 -- ============================================================================

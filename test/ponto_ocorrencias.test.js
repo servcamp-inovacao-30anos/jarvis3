@@ -132,7 +132,7 @@ test("planejarMensagens", async t => {
     assert.deepEqual(m.ocorrencia_ids, [1]);
     assert.equal(m.telefone_e164, "+5519998765432");
     assert.equal(m.motivo_bloqueio, null);
-    assert.equal(m.texto_gerado, "SERVCAMP | ORIENTACAO DE PONTO\nOla, Maria. Em 24/09 sua entrada foi as 17:54, 6 min antes do previsto (18:00). Oriente-se a marcar no horario. RE 521.");
+    assert.equal(m.texto_gerado, "Maria, voce bateu o ponto fora do horario previsto (18:00). Registre no horario correto, pois pode gerar inconsistencias no sistema. Contamos com voce.");
     assert.equal(m.segmentos, 1);
   });
   await t.test("entrada e saída no mesmo dia viram uma mensagem só", () => {
@@ -140,7 +140,7 @@ test("planejarMensagens", async t => {
     assert.equal(inserir.length, 1);
     assert.equal(inserir[0].template_id, "ambas_no_mesmo_dia");
     assert.deepEqual(inserir[0].ocorrencia_ids, [1, 2]);
-    assert.match(inserir[0].texto_gerado, /entrada as 17:54 e saida as 06:40 \(previsto 18:00 as 06:00\)/);
+    assert.match(inserir[0].texto_gerado, /voce bateu o ponto fora do previsto \(18:00 as 06:00\)/);
   });
   await t.test("dias diferentes são mensagens diferentes", () => {
     const { inserir } = R.planejarMensagens([oc(1), oc(2, { data_jornada: "2026-09-25" })], { contatosPorRE: contatos });
@@ -148,7 +148,7 @@ test("planejarMensagens", async t => {
   });
   await t.test("nome com acento sai sem acento e a mensagem continua em GSM-7", () => {
     const { inserir } = R.planejarMensagens([oc(1, { nome: "JOSÉ CONCEIÇÃO" })], { contatosPorRE: contatos });
-    assert.match(inserir[0].texto_gerado, /Ola, Jose\./);
+    assert.match(inserir[0].texto_gerado, /^Jose, voce bateu/);
     assert.equal(R.analisarSMS(inserir[0].texto_gerado).codificacao, "GSM-7");
   });
   await t.test("pendente de reconciliação não gera mensagem", () => {

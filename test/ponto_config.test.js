@@ -156,7 +156,7 @@ test("PATCH config", async t => {
   await t.test("modelo antigo no banco ('{{minutos}} min') não duplica o 'min'", () => {
     const antigo = "SERVCAMP | ORIENTACAO DE PONTO\nOla, {{nome}}. Em {{data}} sua entrada foi as {{horario_marcado}}, {{minutos}} min antes do previsto ({{horario_previsto}}). Oriente-se a marcar no horario. RE {{re}}.";
     const cfg = R.lerConfig([{ chave: "modelo_entrada_antecipada", valor: antigo }]);
-    assert.equal(cfg.modelos.entrada_antecipada, R.MODELOS_PADRAO.entrada_antecipada);
+    assert.equal(cfg.modelos.entrada_antecipada, antigo.replace("{{minutos}} min antes", "{{minutos}} antes"));
     const oc = (id, min, marcado, previsto) => ({ id, re: 18, nome: "SIDNEI DOS SANTOS", data_jornada: "2026-09-28", tipo: "EARLY_ENTRY", horario_previsto: previsto, horario_marcado: marcado, diferenca_minutos: min, reconciliacao: null, is_test: false });
     const longo = R.planejarMensagens([oc(1, 160, "07:20", "10:00")], { contatosPorRE: new Map(), modelos: cfg.modelos }).inserir[0].texto_gerado;
     assert.match(longo, /07:20, 2h40min antes do previsto/);
