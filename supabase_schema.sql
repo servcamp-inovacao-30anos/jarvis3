@@ -358,3 +358,39 @@ create table if not exists public.com_meta_anual (
 alter table public.com_meta_anual enable row level security;
 revoke all on public.com_meta_anual from anon, authenticated;
 grant select, insert, update, delete on public.com_meta_anual to service_role;
+
+-- ============================================================================
+-- Coberturas do supervisor (BDV)
+-- Relatório da diretoria (api/_bdv.js): a que horas o supervisor chegou ao
+-- posto, comparado com o início da vaga de quem faltou (ou do turno do posto).
+-- Preenchida a cada envio de planilha; a planilha traz só os últimos meses, e
+-- é aqui que o histórico fica. Uma linha por falta coberta (duas pessoas
+-- faltaram no posto = duas linhas) ou por ida sem falta. Mesmo regime das
+-- demais: RLS ligado e sem policies; só as funções da Vercel leem e escrevem.
+-- Pode ser executado mais de uma vez.
+create table if not exists public.bdv_coberturas (
+  id             bigserial primary key,
+  chave          text not null unique,      -- data|supervisor|destino|chegada|RE de quem faltou (ou -)
+  data           date not null,
+  supervisor     text not null,
+  destino        text,
+  posto          text,
+  chegada        text,                      -- HH:MM
+  inicio         text,                      -- HH:MM: início da vaga (ou do turno do posto)
+  fonte_inicio   text,                      -- FALTA | JORNADA | POSTO
+  diferenca_min  integer,                   -- chegada − início (negativo = chegou antes)
+  situacao       text not null,             -- ANTES | NO_PRAZO | ATRASO | GRAVE | SEM_HORARIO | NAO_E_POSTO
+  motivo         text,                      -- FALTA, FÉRIAS, AGENDA, POSTO VAGO…
+  falta_re       bigint,
+  falta_nome     text,
+  falta_abono    text,
+  km             numeric,                   -- do dia inteiro do supervisor (repete nas idas do dia)
+  tempo_min      integer,                   -- idem
+  assinatura     text,                      -- resumo da linha: só regrava o que mudou
+  atualizado_em  timestamptz not null default now()
+);
+create index if not exists bdv_coberturas_data_idx on public.bdv_coberturas (data);
+alter table public.bdv_coberturas enable row level security;
+revoke all on public.bdv_coberturas from anon, authenticated;
+grant select, insert, update, delete on public.bdv_coberturas to service_role;
+grant usage, select on sequence public.bdv_coberturas_id_seq to service_role;

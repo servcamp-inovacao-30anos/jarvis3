@@ -256,7 +256,18 @@ module.exports = async function handler(req, res) {
     faltasMedidas = { ok: false, erro: String(e && e.message ? e.message : e).slice(0, 200) };
   }
 
+  // ── Coberturas do supervisor (BDV) ────────────────────────────────────────
+  // Guarda as idas do supervisor aos postos em tabela própria (api/_bdv.js),
+  // para o relatório poder pegar qualquer período. Falha aqui não derruba o envio.
+  let coberturasBdv = null;
+  try {
+    coberturasBdv = await require("./_bdv").materializar(data);
+  } catch (e) {
+    console.error("[bdv] materializar falhou: " + (e && e.message ? e.message : e));
+    coberturasBdv = { ok: false, erro: String(e && e.message ? e.message : e).slice(0, 200) };
+  }
+
   const row = inserted[0] || null;
   if (row) delete row.data; // não devolve o snapshot inteiro de volta
-  return res.status(200).json({ ok: true, origem, row_count: rowCount, row, faltas_medidas: faltasMedidas });
+  return res.status(200).json({ ok: true, origem, row_count: rowCount, row, faltas_medidas: faltasMedidas, coberturas_bdv: coberturasBdv });
 };
