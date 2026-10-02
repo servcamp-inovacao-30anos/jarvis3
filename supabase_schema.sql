@@ -237,14 +237,10 @@ create table if not exists public.fm_faltas (
   supervisor    text,
   escala        text,
   tipo          text,        -- CONTRATO | RESERVA (departamento fica fora do módulo)
-  horario       text,        -- horário da vaga, ex.: 08:00–17:00 (HRENTRADA–HRSAIDA da planilha)
   criado_em     timestamptz not null default now(),
   atualizado_em timestamptz not null default now(),
   primary key (re, data)
 );
-
--- Banco que já tinha a tabela: rode UMA vez (é seguro repetir).
-alter table public.fm_faltas add column if not exists horario text;
 
 -- fm_dias: situação de cada dia na Ficha de Presença, só de quem teve falta.
 -- É o que mostra em que dia a pessoa voltou a trabalhar.

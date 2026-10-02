@@ -1,5 +1,5 @@
-// Horário da vaga (ex.: "08:00–17:00") nas faltas: gravado em fm_faltas.horario e mostrado na tela da supervisão.
-// Se a coluna ainda não existe no Supabase, o módulo segue funcionando sem o horário.
+// Horário da vaga (ex.: "08:00–17:00") nas faltas, mostrado na tela da supervisão.
+// Vem do registro da última planilha enviada (dashboard_snapshots): não usa coluna nova no banco.
 process.env.SUPABASE_URL = "http://supabase.falso";
 process.env.SUPABASE_SERVICE_ROLE_KEY = "chave-falsa";
 process.env.AUTH_SECRET = "segredo-de-teste";
@@ -18,55 +18,53 @@ ponto.APROVADORES.add("aprovador");
 const hoje = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
 const dia = n => { const x = new Date(hoje + "T12:00:00Z"); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
 const tabelas = () => ({ fm_faltas: [], fm_dias: [], fm_medidas: [], fm_admissoes: [], fm_feriados: [], fm_auditoria: [] });
-const falta = (re, data, extra) => ({ RE: re, DATA: data, NOME: "ANA", CARGO: "PORTEIRO (A)", LOCAL: "POSTO A", AREA: "FRANK", ESCALA: "5X2 SDF", TIPO: "CONTRATO", ABONO: "I", ...extra });
-const planilha = f => ({ faltas: f, fichaDias: {}, disciplina: [], ativos: [] });
+const fm = (re, d, tipo) => ({ re, data: d, codigo: "I", nome: "ANA", cargo: "PORTEIRO (A)", posto: "POSTO A", supervisor: "FRANK", escala: "5X2 SDF", tipo: tipo || "CONTRATO" });
+const registro = (criado, faltasDoRegistro) => ({ created_at: criado, data: { faltas: faltasDoRegistro } });
+const casos = async () => (await chamar(rh, { method: "GET", query: { modulo: "faltas", t: "casos" }, usuario: "supervisor.fulano" }));
 
-const erroColuna = () => new Error("Supabase 400: {\"code\":\"PGRST204\",\"message\":\"Could not find the 'horario' column of 'fm_faltas' in the schema cache\"}");
-
-test("grava o horário da vaga; texto fora do formato vira nulo", async () => {
-  const t = tabelas(); supabaseFalso(t);
-  await faltas.materializar(planilha([falta(1, dia(-2), { HORARIO: "08:00–17:00" }), falta(2, dia(-2), { HORARIO: "13:00–01:00" }), falta(3, dia(-2), { HORARIO: "lixo" }), falta(4, dia(-2))]));
-  assert.deepEqual(t.fm_faltas.map(f => [f.re, f.horario]), [[1, "08:00–17:00"], [2, "13:00–01:00"], [3, null], [4, null]]);
-});
-
-test("a tela recebe o horário no caso", async () => {
-  const t = tabelas(); supabaseFalso(t);
-  await faltas.materializar(planilha([falta(1, dia(-2), { HORARIO: "08:00–17:00" })]));
-  const r = await chamar(rh, { method: "GET", query: { modulo: "faltas", t: "casos" }, usuario: "supervisor.fulano" });
+test("o horário da vaga vem do registro da última planilha (sem coluna nova no banco)", async () => {
+  const t = tabelas();
+  t.fm_faltas.push(fm(1, dia(-2)));
+  t.dashboard_snapshots = [registro("2026-10-01T10:00:00Z", [{ RE: 1, DATA: dia(-2), HORARIO: "08:00–17:00" }])];
+  supabaseFalso(t);
+  const r = await casos();
   assert.equal(r.statusCode, 200);
-  assert.equal(r.body.casos.length, 1);
   assert.equal(r.body.casos[0].horario, "08:00–17:00");
 });
 
-test("coluna horario ainda não criada no banco: o envio da planilha NÃO quebra", async () => {
-  const t = tabelas(); supabaseFalso(t);
-  const real = ponto.conectar();
-  const db = Object.assign({}, real, {
-    upsert: async (tabela, linhas, conf, o) => {
-      if (tabela === "fm_faltas" && linhas.some(l => "horario" in l)) throw erroColuna();
-      return real.upsert(tabela, linhas, conf, o);
-    }
-  });
-  const r = await faltas.materializar(planilha([falta(1, dia(-2), { HORARIO: "08:00–17:00" })]), { db });
-  assert.equal(r.ok, true);
-  assert.equal(t.fm_faltas.length, 1, "a falta foi gravada mesmo sem a coluna");
-  assert.ok(!("horario" in t.fm_faltas[0]));
+test("vale só o registro MAIS RECENTE e horário fora do formato é ignorado", async () => {
+  const t = tabelas();
+  t.fm_faltas.push(fm(1, dia(-2)), fm(2, dia(-2)));
+  t.dashboard_snapshots = [
+    registro("2026-09-01T10:00:00Z", [{ RE: 1, DATA: dia(-2), HORARIO: "06:00–15:00" }]),
+    registro("2026-10-01T10:00:00Z", [{ RE: 1, DATA: dia(-2), HORARIO: "08:00–17:00" }, { RE: 2, DATA: dia(-2), HORARIO: "lixo" }])
+  ];
+  supabaseFalso(t);
+  const c = Object.fromEntries((await casos()).body.casos.map(x => [x.re, x.horario]));
+  assert.deepEqual(c, { 1: "08:00–17:00", 2: "" });
 });
 
-test("coluna horario ainda não criada: a leitura dos casos também funciona (sem horário)", async () => {
-  const t = tabelas(); supabaseFalso(t);
-  t.fm_faltas.push({ re: 1, data: dia(-2), codigo: "I", nome: "ANA", cargo: "PORTEIRO (A)", posto: "POSTO A", supervisor: "FRANK", escala: "5X2 SDF", tipo: "CONTRATO" });
-  const orig = ponto.conectar;
-  ponto.conectar = () => {
-    const real = orig();
-    return Object.assign({}, real, { listar: async c => { if (/^fm_faltas\?select=[^&]*horario/.test(c)) throw erroColuna(); return real.listar(c); } });
-  };
-  try {
-    const r = await chamar(rh, { method: "GET", query: { modulo: "faltas", t: "casos" }, usuario: "supervisor.fulano" });
-    assert.equal(r.statusCode, 200);
-    assert.equal(r.body.casos.length, 1);
-    assert.equal(r.body.casos[0].horario, "");
-  } finally { ponto.conectar = orig; }
+test("dia que não está no registro: o efetivo mantém o horário da vaga; a reserva técnica não (ela muda de vaga)", async () => {
+  const t = tabelas();
+  t.fm_faltas.push(fm(1, dia(-5), "CONTRATO"), fm(2, dia(-5), "RESERVA"));
+  t.dashboard_snapshots = [registro("2026-10-01T10:00:00Z", [{ RE: 1, DATA: dia(-1), HORARIO: "08:00–17:00" }, { RE: 2, DATA: dia(-1), HORARIO: "13:00–01:00" }])];
+  supabaseFalso(t);
+  const c = Object.fromEntries((await casos()).body.casos.map(x => [x.re, x.horario]));
+  assert.deepEqual(c, { 1: "08:00–17:00", 2: "" });
+});
+
+test("sem registro de planilha (ou sem o campo): os casos aparecem normalmente, sem horário", async () => {
+  const t = tabelas();
+  t.fm_faltas.push(fm(1, dia(-2)));
+  t.dashboard_snapshots = [registro("2026-10-01T10:00:00Z", [{ RE: 1, DATA: dia(-2) }])];
+  supabaseFalso(t);
+  const a = await casos();
+  assert.equal(a.statusCode, 200);
+  assert.equal(a.body.casos[0].horario, "");
+  t.dashboard_snapshots = [];
+  const b = await casos();
+  assert.equal(b.statusCode, 200);
+  assert.equal(b.body.casos[0].horario, "");
 });
 
 // leitura do horário na planilha (função da tela, lida direto do index.html)

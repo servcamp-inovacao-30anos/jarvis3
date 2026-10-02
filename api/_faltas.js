@@ -31,16 +31,25 @@ function hojeSP() { return new Date(Date.now() - 3 * 3600000).toISOString().slic
 const ehData = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v || ""));
 const reNum = v => { const r = R.reDe(v); return /^\d{1,15}$/.test(r) ? Number(r) : null; };
 
-// Horário da vaga no formato "08:00–17:00" (qualquer outra coisa vira nulo: não deixa lixo entrar no banco).
+// Horário da vaga ("08:00–17:00"): vem do registro da última planilha enviada (dashboard_snapshots),
+// onde cada falta já guarda HORARIO (HRENTRADA–HRSAIDA). Não precisa de coluna nova no banco.
 const HORARIO_OK = /^([01]\d|2[0-3]):[0-5]\d–([01]\d|2[0-3]):[0-5]\d$/;
-const horarioValido = v => (HORARIO_OK.test(String(v || "")) ? String(v) : null);
-const colunaHorarioAusente = e => /horario/i.test(String(e && e.message)) && /(PGRST204|42703|column)/i.test(String(e && e.message));
-// Lê as faltas; se a coluna horario ainda não existe, lê sem ela.
-async function lerFaltas(db, desde) {
-  const base = "re,data,codigo,nome,cargo,posto,supervisor,escala,tipo", fim = `&data=gte.${desde}&order=re.asc,data.asc`;
-  try { return await db.listar(`fm_faltas?select=${base},horario${fim}`); }
-  catch (e) { if (!colunaHorarioAusente(e)) throw e; return db.listar(`fm_faltas?select=${base}${fim}`); }
+async function horariosDaUltimaPlanilha(db) {
+  const porDia = {}, porRE = {};
+  try {
+    const r = await db.obter("dashboard_snapshots?select=faltas:data->faltas&order=created_at.desc&limit=1");
+    const lista = (Array.isArray(r) && r[0] && Array.isArray(r[0].faltas)) ? r[0].faltas : [];
+    lista.forEach(f => {
+      const re = reNum(f.RE), dia = String(f.DATA || "").slice(0, 10), h = String(f.HORARIO || "");
+      if (re == null || !ehData(dia) || !HORARIO_OK.test(h)) return;
+      porDia[re + "|" + dia] = h;
+      porRE[re] = h;
+    });
+  } catch (e) { /* sem registro ou sem o campo: a tela mostra "—" */ }
+  return { porDia, porRE };
 }
+// O do dia da falta; se esse dia não está no registro, o efetivo mantém o horário da vaga dele (a reserva técnica muda de vaga).
+const horarioDa = (h, f) => h.porDia[f.re + "|" + String(f.data).slice(0, 10)] || (String(f.tipo || "").toUpperCase() === "CONTRATO" ? h.porRE[f.re] : "") || "";
 
 // ── materialização ──────────────────────────────────────────────────────────
 // A planilha traz só o mês até hoje e cada envio substitui o anterior: sem
@@ -60,7 +69,7 @@ async function materializar(data, opcoes) {
     faltas.push({
       re, data: dia, codigo: String(f.ABONO || "").toUpperCase().trim() || null,
       nome: f.NOME || null, cargo: f.CARGO || null, posto: f.LOCAL || null,
-      supervisor: f.AREA || null, escala: f.ESCALA || null, tipo: f.TIPO || null, horario: horarioValido(f.HORARIO), atualizado_em: agora
+      supervisor: f.AREA || null, escala: f.ESCALA || null, tipo: f.TIPO || null, atualizado_em: agora
     });
   });
   // Dias da ficha interessam de quem faltou nesta planilha e de quem faltou
@@ -95,14 +104,7 @@ async function materializar(data, opcoes) {
     });
     for (const [re, lista] of sumiram) { await db.remover(`fm_faltas?re=eq.${re}&data=in.(${lista.join(",")})`); removidas += lista.length; }
   }
-  if (faltas.length) {
-    try { await db.upsert("fm_faltas", faltas, "re,data"); }
-    catch (e) {
-      // coluna "horario" ainda não criada no Supabase: grava sem ela (o horário só some da tela)
-      if (!colunaHorarioAusente(e)) throw e;
-      await db.upsert("fm_faltas", faltas.map(({ horario, ...resto }) => resto), "re,data");
-    }
-  }
+  if (faltas.length) await db.upsert("fm_faltas", faltas, "re,data");
   await anotarAbonosTardios(db, faltas, codigoAntes);
   if (dias.length) await db.upsert("fm_dias", dias, "re,data");
 
@@ -147,14 +149,15 @@ async function anotarAbonosTardios(db, faltas, codigoAntes) {
 
 async function verCasos({ res, db, ator }) {
   const hoje = hojeSP(), desde = R.somaDias(hoje, -JANELA_DIAS);
-  const [faltas, dias, medidasLidas, adm, feriados, trocas, eventosAtestado] = await Promise.all([
-    lerFaltas(db, desde),
+  const [faltas, dias, medidasLidas, adm, feriados, trocas, eventosAtestado, horarios] = await Promise.all([
+    db.listar(`fm_faltas?select=re,data,codigo,nome,cargo,posto,supervisor,escala,tipo&data=gte.${desde}&order=re.asc,data.asc`),
     db.listar(`fm_dias?select=re,data,situacao&data=gte.${desde}&order=re.asc,data.asc`),
     db.listar(`fm_medidas?select=chave,re,data,tipo,grau,dias,fase,motivo_sar2g,obs,motivo,motivo_editado_por,motivo_editado_em&data=gte.${desde}&order=re.asc,data.asc,chave.asc`),
     db.listar("fm_admissoes?select=re,admissao&order=re.asc"),
     db.listar("fm_feriados?select=data,descricao&order=data.asc"),
     db.listar(`fm_auditoria?select=id,chave,criado_em&acao=eq.${ACAO_ABONO_TARDIO}&order=criado_em.asc,id.asc`),
-    db.listar(`fm_auditoria?select=id,ator,acao,chave,depois,criado_em&acao=in.(${ACAO_ATESTADO},${ACAO_ATESTADO_FIM},${ACAO_ATESTADO_LANCADO})&order=criado_em.asc,id.asc`)
+    db.listar(`fm_auditoria?select=id,ator,acao,chave,depois,criado_em&acao=in.(${ACAO_ATESTADO},${ACAO_ATESTADO_FIM},${ACAO_ATESTADO_LANCADO})&order=criado_em.asc,id.asc`),
+    horariosDaUltimaPlanilha(db)
   ]);
   // a mesma medida pode estar no histórico importado e na planilha diária: conta uma vez só
   const medidas = R.dedupMedidas(medidasLidas);
@@ -175,7 +178,7 @@ async function verCasos({ res, db, ator }) {
     hoje,
     feriados: feriados.map(f => String(f.data).slice(0, 10)),
     admissoes, fichaDias,
-    faltas: faltas.map(f => ({ RE: f.re, DATA: f.data, ABONO: (!R.ABONADAS.has(f.codigo) && cobertura(f.re, String(f.data).slice(0, 10))) ? "A" : f.codigo, NOME: f.nome, CARGO: f.cargo, LOCAL: f.posto, AREA: f.supervisor, ESCALA: f.escala, TIPO: f.tipo, HORARIO: f.horario || "" })),
+    faltas: faltas.map(f => ({ RE: f.re, DATA: f.data, ABONO: (!R.ABONADAS.has(f.codigo) && cobertura(f.re, String(f.data).slice(0, 10))) ? "A" : f.codigo, NOME: f.nome, CARGO: f.cargo, LOCAL: f.posto, AREA: f.supervisor, ESCALA: f.escala, TIPO: f.tipo, HORARIO: horarioDa(horarios, f) })),
     medidas: medidas.map(m => ({ RE: m.re, DATA: m.data, TIPO: m.tipo, GRAU: m.grau, DIAS: m.dias, FASE: m.fase, HIST: m.chave, MOTIVO: m.motivo_sar2g, chave: m.chave, motivo: m.motivo, motivo_editado_por: m.motivo_editado_por, motivo_editado_em: m.motivo_editado_em }))
   });
 
