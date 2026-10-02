@@ -2762,16 +2762,16 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
    USUARIOS de api/users.js — senão a pessoa não consegue entrar. */
 const USERS={
   "joaoygor":{nome:"João Ygor",cargo:"Analista Operacional",admin:true},
-  "paulocampana":{nome:"Paulo Campana",cargo:"Diretor",admin:false,rhDash:true,comDash:true,metas:true},
-  "ingridycampana":{nome:"Ingridy Campana",cargo:"Diretora",admin:false,rhDash:true,com:true,comDash:true,prj:true,qual:true,lig:true,metas:true},
-  "amauriantonio":{nome:"Amauri Antônio",cargo:"Gerente",admin:false},
+  "paulocampana":{nome:"Paulo Campana",cargo:"Diretor",admin:false,fm:true,rhDash:true,comDash:true,metas:true},
+  "ingridycampana":{nome:"Ingridy Campana",cargo:"Diretora",admin:false,fm:true,rhDash:true,com:true,comDash:true,prj:true,qual:true,lig:true,metas:true},
+  "amauriantonio":{nome:"Amauri Antônio",cargo:"Gerente",admin:false,fm:true},
   "eduardocipriano":{nome:"Eduardo Cipriano",cargo:"Diretora RH",admin:false},
   "sirleimodesto":{nome:"Sirlei Modesto",cargo:"Diretor RH",admin:false},
-  "jussilenealmeida":{nome:"Jussilene Almeida",cargo:"Coordenação",admin:false,lig:true},
+  "jussilenealmeida":{nome:"Jussilene Almeida",cargo:"Coordenação",admin:false,fm:true,lig:true},
   "gabrielaalvarenga":{nome:"Gabriela Alvarenga",cargo:"Comercial",admin:false,com:true,comDash:true},
   "rosisantos":{nome:"Rosi Santos",cargo:"Diretora Financeiro",admin:false},
   "fabianalassala":{nome:"Fabiana Lassala",cargo:"Financeiro",admin:false},
-  "raphaelvictor":{nome:"Raphael Victor",cargo:"Auxiliar ADM",admin:false,qual:true,lig:true},
+  "raphaelvictor":{nome:"Raphael Victor",cargo:"Auxiliar ADM",admin:false,fm:true,qual:true,lig:true},
   "sandraalves":{nome:"Sandra Alves",cargo:"Responsável RH",admin:false,rh:true},
   "testejoao":{nome:"Teste João",cargo:"Usuário de Teste",admin:false},
   "rafaelandrade":{nome:"Rafael Andrade",cargo:"Supervisor",admin:false,sup:true},
@@ -2846,6 +2846,7 @@ function _abrirSessao(u){
   sessionStorage.setItem("userQual",usr.qual?"1":"0");
   sessionStorage.setItem("userLig",usr.lig?"1":"0");
   sessionStorage.setItem("userSup",usr.sup?"1":"0");
+  sessionStorage.setItem("userFm",usr.fm?"1":"0");
   sessionStorage.setItem("userMetas",usr.metas?"1":"0");
   applyUserUI();
   if(typeof hqBeat==="function")hqBeat(); // já aparece na Sede Virtual
@@ -2918,7 +2919,8 @@ function applyUserUI(){
     const isLig=sessionStorage.getItem("userLig")==="1";
     const isMetas=sessionStorage.getItem("userMetas")==="1";
     const isSup=sessionStorage.getItem("userSup")==="1";
-    const navOk={rh:isAdmin||isRh,rhdash:isAdmin||isRh||isRhDash,com:isAdmin||isCom,comdash:isAdmin||isComDash,prj:isAdmin||isPrj,admin:isAdmin,qual:isAdmin||isQual,lig:isAdmin||isLig,metas:isAdmin||isMetas,fm:isAdmin||!isSup,sup:isAdmin||isSup||isLig};
+    const isFm=sessionStorage.getItem("userFm")==="1";
+    const navOk={rh:isAdmin||isRh,rhdash:isAdmin||isRh||isRhDash,com:isAdmin||isCom,comdash:isAdmin||isComDash,prj:isAdmin||isPrj,admin:isAdmin,qual:isAdmin||isQual,lig:isAdmin||isLig,metas:isAdmin||isMetas,fm:isAdmin||isFm,sup:isAdmin||isSup||isLig};
   document.querySelectorAll('#navRoot [data-perm]').forEach(function(el){el.style.display=navOk[el.dataset.perm]?"":"none";});
   if(typeof navCatsAtualiza==="function")navCatsAtualiza(); // categoria sem itens visíveis some
   if(typeof sbPerfilRender==="function")sbPerfilRender();
@@ -3528,7 +3530,12 @@ document.addEventListener("keydown",function(e){
 });
 /* roda após o script inteiro carregar (sbPerfilRender usa consts declaradas mais abaixo) */
 setTimeout(function(){navStarsInit();navCatsRestaura();navFavRender();navCatsAtualiza();navMiniRestaura();sbPerfilRender();},0);
+/* Painel operacional Faltas x Medidas: só admin e quem tem a permissão fm. */
+function fmPermitido(){return sessionStorage.getItem("userAdmin")==="1"||sessionStorage.getItem("userFm")==="1";}
+function fsPermitido(){return sessionStorage.getItem("userAdmin")==="1"||sessionStorage.getItem("userSup")==="1"||sessionStorage.getItem("userLig")==="1";}
 function navTo(p,btn){
+  if(p==="faltasmed"&&!fmPermitido()){p=fsPermitido()?"faltassup":"visao";btn=null;}
+  if(p==="faltassup"&&!fsPermitido()){p="visao";btn=null;}
   ST.pg=p;
   document.querySelectorAll(".ni").forEach(n=>n.classList.remove("active"));
   document.querySelectorAll('.ni[data-pg="'+p+'"]').forEach(function(n){
@@ -11330,11 +11337,14 @@ function fmFeriadoRemover(d){
 }
 /* Card "Disciplina" da Visão Geral: uma linha com os casos do módulo. */
 function fmVgPinta(){
-  const el=document.getElementById("ocDiscFm");if(!el||!FM.vg)return;
+  const el=document.getElementById("ocDiscFm");if(!el)return;
+  if(!fmPermitido()){el.innerHTML="";return;}
+  if(!FM.vg)return;
   const r=FM.vg,n=k=>r[k]||0;
   el.innerHTML=`<span style="cursor:pointer;text-decoration:underline dotted" onclick="event.stopPropagation();navTo('faltasmed',null)">⚖️ <b>${n("NO_PRAZO")}</b> no prazo · <b>${n("PRAZO_VENCIDO")}</b> vencidos · <b>${n("COORDENACAO")}</b> coordenação</span>`;
 }
 function fmVgResumo(){
+  if(!fmPermitido())return;
   if(FM.vg&&Date.now()-FM.vgEm<300000){fmVgPinta();return;}
   fmPedir("GET","casos").then(j=>{FM.dados=FM.dados||j;FM.vg=j.resumo;FM.vgEm=Date.now();fmVgPinta();}).catch(()=>{});
 }

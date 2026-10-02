@@ -31,15 +31,15 @@ test("todo usuário com cargo Supervisor tem a tela da supervisão; ninguém mai
 test("menu: supervisor não vê o painel operacional; coordenação (lig) e admin veem a tela da supervisão", () => {
   const m = html.match(/const navOk=\{[^}]*\};/);
   assert.ok(m, "navOk não encontrado");
-  const navOk = ({ isAdmin, isSup, isLig }) => new Function("isAdmin", "isSup", "isLig", "isRh", "isRhDash", "isCom", "isComDash", "isPrj", "isQual", "isMetas", m[0] + "\nreturn navOk;")(isAdmin, isSup, isLig, false, false, false, false, false, false, false);
+  const navOk = ({ isAdmin, isSup, isLig, isFm }) => new Function("isAdmin", "isSup", "isLig", "isFm", "isRh", "isRhDash", "isCom", "isComDash", "isPrj", "isQual", "isMetas", m[0] + "\nreturn navOk;")(isAdmin, isSup, isLig, !!isFm, false, false, false, false, false, false, false);
   const sup = navOk({ isAdmin: false, isSup: true, isLig: false });
   assert.equal(sup.sup, true); assert.equal(sup.fm, false, "o supervisor não vê o painel operacional");
-  const coord = navOk({ isAdmin: false, isSup: false, isLig: true });
+  const coord = navOk({ isAdmin: false, isSup: false, isLig: true, isFm: true });
   assert.equal(coord.sup, true); assert.equal(coord.fm, true);
   const admin = navOk({ isAdmin: true, isSup: false, isLig: false });
   assert.equal(admin.sup, true); assert.equal(admin.fm, true);
   const outro = navOk({ isAdmin: false, isSup: false, isLig: false });
-  assert.equal(outro.fm, true, "quem já via o painel continua vendo");
+  assert.equal(outro.fm, false, "quem não está na lista não vê o painel operacional");
   assert.equal(outro.sup, false);
   assert.match(html, /data-pg="faltasmed" data-perm="fm"/);
   assert.match(html, /data-pg="faltassup" data-perm="sup"/);
@@ -71,4 +71,19 @@ test("limite para a medida: o texto certo para cada situação", () => {
   assert.equal(f({ situacao: "COORDENACAO", posto: "ABANDONO" }, "2026-10-01").s, "Abandono de posto");
   assert.equal(f({ situacao: "COORDENACAO", posto: "POSTO A", motivo: "" }, "2026-10-01").s, "Mais de 3 dias sem voltar");
   assert.equal(f({ situacao: "TRATADA", medida: { DATA: "2026-09-30" } }, "2026-10-01").t, "Medida aplicada");
+});
+
+test("painel operacional Faltas x Medidas: só João (admin), Raphael, Ingridy, Campana, Jussilene e Amauri", () => {
+  const U = usuarios();
+  const com = Object.entries(U).filter(([, u]) => u.fm).map(([k]) => k).sort();
+  assert.deepEqual(com, ["amauriantonio", "ingridycampana", "jussilenealmeida", "paulocampana", "raphaelvictor"]);
+  assert.equal(U.joaoygor.admin, true, "o João entra por ser administrador");
+  Object.entries(U).filter(([, u]) => u.cargo === "Supervisor").forEach(([k, u]) => assert.ok(!u.fm, k + " (supervisor) não vê o painel operacional"));
+});
+
+test("porta de entrada: sem permissão, navTo('faltasmed') não abre o painel operacional", () => {
+  const dentro = t => assert.ok(html.includes(t), "faltou no index.html: " + t);
+  dentro('function fmPermitido(){return sessionStorage.getItem("userAdmin")==="1"||sessionStorage.getItem("userFm")==="1";}');
+  dentro('if(p==="faltasmed"&&!fmPermitido()){p=fsPermitido()?"faltassup":"visao";btn=null;}');
+  dentro("function fmVgResumo(){\n  if(!fmPermitido())return;");
 });
