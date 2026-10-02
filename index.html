@@ -12537,7 +12537,7 @@ function brExcel(){
 const BRP={zoom:null,paisagem:false,letra:11,sups:[],postos:[],mot:"",ctx:null,atalho:"",partes:{kpi:true,res:true,sup:true,posto:false,idas:false}};
 const BR_LOGO=`<svg width="190" height="56" viewBox="0 0 240 70" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Grupo ServCamp"><path d="M30 5 A28 28 0 1 0 30 61" stroke="#9a9a9a" stroke-width="11" stroke-linecap="round" fill="none" opacity=".6"/><path d="M26 61 A22 22 0 1 0 26 13" stroke="#2d2d6b" stroke-width="11" stroke-linecap="round" fill="none"/><text x="68" y="22" font-family="Segoe UI,sans-serif" font-size="13" fill="#64748b" font-style="italic">Grupo</text><text x="68" y="44" font-family="Segoe UI,sans-serif" font-size="22" fill="#9a9a9a" font-weight="700" letter-spacing="1">SERV</text><text x="138" y="44" font-family="Segoe UI,sans-serif" font-size="22" fill="#2d2d6b" font-weight="900" letter-spacing="1">CAMP</text><text x="138" y="60" font-family="Segoe UI,sans-serif" font-size="11" fill="#64748b" font-style="italic">terceirizações</text></svg>`;
 const BR_PAPEL_CSS=`*{box-sizing:border-box}body{margin:0;background:#fff;color:#0f172a;font-family:"Segoe UI",Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.pp{padding:14mm 12mm;font-size:var(--l,11px);line-height:1.45}
+.pp{padding:12mm;font-size:var(--l,11px);line-height:1.45}
 .pp-h{display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:3px solid #2d2d6b;padding-bottom:8px;margin-bottom:12px}
 .pp-h .t{text-align:right}.pp-h h1{font-size:1.55em;margin:0;color:#2d2d6b}.pp-h p{margin:3px 0 0;color:#475569;font-size:.9em}
 .pp-k{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:0 0 12px}
@@ -12547,11 +12547,22 @@ const BR_PAPEL_CSS=`*{box-sizing:border-box}body{margin:0;background:#fff;color:
 h2{font-size:1.12em;color:#2d2d6b;margin:14px 0 6px}
 table{width:100%;border-collapse:collapse;font-size:.92em}th{background:#2d2d6b;color:#fff;text-align:left;padding:5px 6px;font-weight:600}
 td{padding:4px 6px;border-bottom:1px solid #e2e8f0;vertical-align:top}tr:nth-child(even) td{background:#f8fafc}td.n,th.n{text-align:right}
-thead{display:table-header-group}tr{page-break-inside:avoid}
+thead{display:table-header-group}tfoot{display:table-footer-group}
+table{page-break-inside:auto;break-inside:auto}
+tr,.pp-k div,.pp-r,.pp-h,.pp-n,.pp-f{page-break-inside:avoid;break-inside:avoid}
+h2{page-break-after:avoid;break-after:avoid}
+h2+table thead,.pp-r b{break-after:avoid}
+td{overflow-wrap:anywhere}th{overflow-wrap:normal;word-break:normal;hyphens:none}
+.pp-r li{page-break-inside:avoid;break-inside:avoid}
 .s-an{color:#0e7c70;font-weight:700}.s-ok{color:#067647;font-weight:700}.s-am{color:#b45309;font-weight:700}.s-da{color:#b91c1c;font-weight:700}.s-gr{color:#64748b}
 small{color:#64748b}.pp-n{margin-top:12px;color:#64748b;font-size:.85em;border-top:1px solid #e2e8f0;padding-top:6px}
 .pp-f{display:flex;justify-content:space-between;margin-top:6px;color:#94a3b8;font-size:.8em}
 @media print{.pp{padding:0}}`;
+/* Altura útil de uma folha A4 (menos as margens de 12mm): onde a prévia desenha o fim de cada folha. */
+function brFolhaCss(){
+  const h=BRP.paisagem?186:273;
+  return`@media screen{body{background-image:linear-gradient(to bottom,transparent calc(100% - 1.5px),#94a3b8 calc(100% - 1.5px));background-size:100% ${h}mm;background-position:0 12mm;background-repeat:repeat-y}}`;
+}
 /* Roda fn com o período e os dados da impressão no lugar dos da tela (e devolve os da tela). */
 function brComCtx(ctx,fn){const g={de:BR.de,ate:BR.ate,dados:BR.dados};if(ctx){BR.de=ctx.de;BR.ate=ctx.ate;BR.dados=ctx.dados;}try{return fn();}finally{BR.de=g.de;BR.ate=g.ate;BR.dados=g.dados;}}
 function brPapelHtml(){return brComCtx(BRP.ctx,brPapelHtmlCtx);}
@@ -12608,6 +12619,7 @@ function brPreviaLado(){
   el.innerHTML=`<h5>Período</h5><div class="bp-at">${at("folha")}${at("folhaAnt")}${at("mes")}${at("30")}</div>`+
     `<div class="bp-dt"><input type="date" id="bpDe" aria-label="De" value="${c.de}" onchange="brPreviaDatas()"><span>a</span><input type="date" id="bpAte" aria-label="Até" value="${c.ate}" onchange="brPreviaDatas()"></div>`+
     `<p class="bp-nota" id="bpPerMsg"></p>`+
+    `<p class="bp-nota bp-fo">Se passar de uma folha, continua nas seguintes: nenhuma linha é cortada e o cabeçalho das tabelas se repete. As linhas cinzas tracejadas mostram onde cada folha termina.</p>`+
     `<h5>O que imprimir</h5>${parte("kpi","Indicadores")}${parte("res","Resumo")}${parte("sup","Tabela por supervisor")}${parte("posto","Tabela por posto")}${parte("idas","Cada cobertura, uma a uma")}`+
     `<h5>Filtros da impressão</h5><div class="bp-f">${brComCtx(c,()=>brMulti("psup","Supervisores",brOpcoes("sup",""),()=>BRP.sups,brPreviaDesenha)+brMulti("pposto","Postos",brOpcoes("posto",""),()=>BRP.postos,brPreviaDesenha))}`+
     `<label class="br-sel"><span>Motivo</span><select aria-label="Motivo da impressão" onchange="BRP.mot=this.value;brPreviaDesenha()">${Object.keys(BR_MOT).map(k=>`<option value="${k}"${BRP.mot===k?" selected":""}>${BR_MOT[k]}</option>`).join("")}</select>${FM_IC.chev}</label></div>`;
@@ -12632,7 +12644,7 @@ function brPreviaPeriodo(de,ate,atalho){
 function brPapelLargura(){return BRP.paisagem?1123:794;} // A4 a 96 dpi
 /* A folha é um documento à parte: o estilo dela não vaza para o sistema, e é ela mesma que vai para a impressora. */
 function brPapelDoc(){
-  return`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Coberturas do supervisor ${brComCtx(BRP.ctx,()=>brDd(BR.de)+" a "+brDd(brAteEfetivo()))}</title><style>@page{size:A4 ${BRP.paisagem?"landscape":"portrait"};margin:12mm}${BR_PAPEL_CSS}.pp{--l:${BRP.letra}px}</style></head><body>${brPapelHtml()}</body></html>`;
+  return`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Coberturas do supervisor ${brComCtx(BRP.ctx,()=>brDd(BR.de)+" a "+brDd(brAteEfetivo()))}</title><style>@page{size:A4 ${BRP.paisagem?"landscape":"portrait"};margin:12mm;@bottom-right{content:"Página " counter(page) " de " counter(pages);font:9px "Segoe UI",Arial,sans-serif;color:#94a3b8}}${BR_PAPEL_CSS}${brFolhaCss()}.pp{--l:${BRP.letra}px}</style></head><body>${brPapelHtml()}</body></html>`;
 }
 function brPreviaDesenha(){
   const p=document.getElementById("bpPapel");if(!p)return;
