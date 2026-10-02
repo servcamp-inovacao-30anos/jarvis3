@@ -2757,16 +2757,19 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       #pg-bdvrel .br-mb{width:72px;height:6px;border-radius:3px;background:var(--fm-line2);overflow:hidden;display:inline-block}
       #pg-bdvrel .br-mb i{display:block;height:100%;background:var(--k);border-radius:3px;transition:width .3s}
       #pg-bdvrel .br-x>td{padding:0;border-bottom:1px solid var(--fm-line2);background:var(--fm-subtle)}
-      #pg-bdvrel .br-x-in{padding:4px 18px 14px 18px;animation:brAbre .2s ease-out;transform-origin:top}
+      #pg-bdvrel .br-x-in{padding:6px 20px 16px 20px;animation:brAbre .2s ease-out;transform-origin:top}
       #pg-bdvrel .br-x.fecha .br-x-in{animation:brFecha .16s ease-in forwards}
       @keyframes brAbre{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
       @keyframes brFecha{to{opacity:0;transform:translateY(-6px)}}
-      #pg-bdvrel .br-d{width:100%;border-collapse:collapse;font-size:.78rem}
-      #pg-bdvrel .br-d th{font-size:.64rem;font-weight:600;letter-spacing:.03em;color:var(--fm-muted);text-align:left;padding:10px 10px 6px;border-bottom:1px solid var(--fm-line)}
-      #pg-bdvrel .br-d td{padding:8px 10px;border-bottom:1px solid var(--fm-line2);color:var(--fm-text2)}
+      #pg-bdvrel .br-d{width:100%;border-collapse:collapse;font-size:.92rem}
+      #pg-bdvrel .br-d th{font-size:.74rem;font-weight:600;letter-spacing:.02em;color:var(--fm-muted);text-align:left;padding:12px 12px 8px;border-bottom:1px solid var(--fm-line);white-space:nowrap}
+      #pg-bdvrel .br-d th.n{text-align:right}
+      #pg-bdvrel .br-d td{padding:11px 12px;border-bottom:1px solid var(--fm-line2);color:var(--fm-text)}
+      #pg-bdvrel .br-d td.n{text-align:right;white-space:nowrap}
+      #pg-bdvrel .br-d small{font-size:.8rem}
       #pg-bdvrel .br-d tr:last-child td{border-bottom:0}
       #pg-bdvrel .br-d small{color:var(--fm-muted)}
-      #pg-bdvrel .br-pill{display:inline-flex;align-items:center;gap:6px;font-size:.72rem;font-weight:600;color:var(--fm-text2);white-space:nowrap}
+      #pg-bdvrel .br-pill{display:inline-flex;align-items:center;gap:6px;font-size:.84rem;font-weight:600;color:var(--fm-text2);white-space:nowrap}
       #pg-bdvrel .br-pill::before{content:"";width:8px;height:8px;border-radius:50%;background:#d0d5dd}
       #pg-bdvrel .br-pill.s-an,#pg-bdvrel .br-pill.s-ok,#pg-bdvrel .br-pill.s-am,#pg-bdvrel .br-pill.s-da,#pg-bdvrel .br-pill.s-gr{background:none}
       #pg-bdvrel .br-pill.s-an::before{background:#0e9384}#pg-bdvrel .br-pill.s-ok::before{background:#17b26a}#pg-bdvrel .br-pill.s-am::before{background:#f5b000}#pg-bdvrel .br-pill.s-da::before{background:#f04438}
@@ -2815,7 +2818,15 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       #brPrev .bp-f{display:flex;flex-direction:column;gap:8px}
       #brPrev .bp-f .bm-b,#brPrev .bp-f .br-sel{width:100%;max-width:none;box-sizing:border-box}
       #brPrev .bp-f .bm-p{width:100%}
-      #brPrev .bp-nota{font-size:.74rem;color:#667085;margin:16px 0 0;line-height:1.5}
+      #brPrev .bp-nota{font-size:.74rem;color:#667085;margin:8px 0 0;line-height:1.5}
+      #brPrev .bp-nota:empty{display:none}
+      #brPrev .bp-at{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+      #brPrev .bp-at button{appearance:none;height:32px;border:1px solid #e4e7ec;border-radius:8px;background:#fff;font:inherit;font-size:.76rem;font-weight:600;color:#475467;cursor:pointer}
+      #brPrev .bp-at button:hover{border-color:#1d6fc4;color:#1e4d8c}
+      #brPrev .bp-at button.on{background:#f0f6ff;border-color:#1d6fc4;color:#1e4d8c}
+      #brPrev .bp-dt{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:.76rem;color:#667085}
+      #brPrev .bp-dt input{flex:1;min-width:0;height:34px;padding:0 8px;border:1px solid #e4e7ec;border-radius:8px;font:inherit;font-size:.78rem;color:#1d2939}
+      #brPrev .bp-dt input:focus{outline:none;border-color:#1d6fc4;box-shadow:0 0 0 3px rgba(29,111,196,.22)}
       #brPrev .bp-area{flex:1;overflow:auto;padding:24px}
       #brPrev .bp-cx{margin:0 auto;position:relative}
       #brPrev .bp-papel{position:absolute;left:0;top:0;transform-origin:0 0;border:0;background:#fff;box-shadow:0 10px 40px rgba(0,0,0,.45)}
@@ -12042,7 +12053,7 @@ function vgFmDir(){
    A tela só redesenha o pedaço que mudou: filtros abertos continuam abertos e a
    rolagem não pula. */
 const BR={dados:null,de:null,ate:null,atalho:"folha",vis:"sup",sups:[],postos:[],mot:"",aberto:{},mais:{},ord:{c:"n",d:-1},carregando:false,erro:null,pedido:0};
-const BR_SIT={ANTES:["Antes do início","an"],NO_PRAZO:["Até 1 hora","ok"],ATRASO:["De 1 a 3 horas","am"],GRAVE:["Mais de 3 horas","da"],SEM_HORARIO:["Sem horário","gr"]};
+const BR_SIT={ANTES:["Antes do início da vaga","an"],NO_PRAZO:["Até 1h de atraso","ok"],ATRASO:["1 a 3h de atraso","am"],GRAVE:["Mais de 3h de atraso","da"],SEM_HORARIO:["Sem horário","gr"]};
 const BR_FONTE={FALTA:"horário da vaga de quem faltou",JORNADA:"jornada de quem faltou",POSTO:"turno do posto"};
 const BR_MAX_COMPARA=200; // períodos maiores vêm sem a comparação (o servidor entrega até 400 dias)
 const BR_MOT={"":"Todos os motivos",FALTA:"Só faltas",OUTROS:"Outros motivos"};
@@ -12142,9 +12153,9 @@ function brMotivoTxt(m){if(!m)return"—";if(m==="FALTA")return"Falta";const s=m
 function brMotivoMais(r){const t=Object.entries(r.motivos).sort((a,b)=>b[1]-a[1])[0];return t?brMotivoTxt(t[0]):"—";}
 function brDifTxt(x){
   if(x.diferenca_min==null)return"—";
-  if(x.diferenca_min<0)return brHM(-x.diferenca_min)+" antes";
-  if(x.diferenca_min===0)return"na hora";
-  return brHM(x.diferenca_min)+" depois";
+  if(x.diferenca_min<0)return brHM(-x.diferenca_min)+" antes do início";
+  if(x.diferenca_min===0)return"no horário";
+  return brHM(x.diferenca_min)+" de atraso";
 }
 function brLista(l){return l.length<2?l.join(""):l.slice(0,-1).join(", ")+" e "+l[l.length-1];}
 function brNomeDe(dim,n){return dim==="sup"?brNomeCurto(n):n;}
@@ -12158,23 +12169,20 @@ function brFiltroTxt(f){
 }
 /* Resumo: só fatos, com os números que somam. Nada de "melhor/pior". */
 function brResumo(f){
-  const D=BR.dados,L=brLinhas(f),R=brConta(L),ateE=brAteEfetivo(),out=[];
-  if(!R.n&&!R.fora)return["Nenhuma ida do supervisor a posto no período, com esses filtros."];
-  out.push(`De <b>${brDd(BR.de)}</b> a <b>${brDd(ateE)}</b>: <b>${R.n}</b> ${R.n===1?"cobertura":"coberturas"} do supervisor, feitas por <b>${R.sups.size}</b> ${R.sups.size===1?"supervisor":"supervisores"} em <b>${R.postos.size}</b> ${R.postos.size===1?"posto":"postos"}.`);
+  const L=brLinhas(f),R=brConta(L),pl=(n,a,b)=>n===1?a:b,out=[];
+  if(!R.n)return["Nenhuma cobertura do supervisor no período."];
+  out.push(`<b>${R.n}</b> ${pl(R.n,"cobertura feita","coberturas feitas")} pelo supervisor, em <b>${R.postos.size}</b> ${pl(R.postos.size,"posto","postos")}.`);
   if(R.medidas){
-    const s=R.sit;
-    out.push(`Chegada comparada com o início da vaga, nas <b>${R.medidas}</b> em que havia horário: <b>${s.ANTES}</b> antes do início, <b>${s.NO_PRAZO}</b> até 1 hora depois, <b>${s.ATRASO}</b> entre 1 e 3 horas depois e <b>${s.GRAVE}</b> mais de 3 horas depois.`);
-    out.push(`Chegaram até 1 hora depois do início (contando as que chegaram antes): <b>${R.pct}%</b> (${R.ate1h} de ${R.medidas}).`+
-      (brCompOk()?(()=>{const A=brConta(brLinhas(f,true));return A.medidas?` No período anterior, de ${brDd(brSoma(BR.de,-brNComp()))} a ${brDd(brSoma(BR.de,-1))}: <b>${A.pct}%</b> (${A.ate1h} de ${A.medidas}).`:"";})():""));
+    let x=`<b>${R.pct}%</b> com o supervisor chegando em até 1h do início da vaga`;
+    if(brCompOk()){const A=brConta(brLinhas(f,true));if(A.medidas)x+=` (período anterior: ${A.pct}%)`;}
+    out.push(x+".");
   }
   if(R.sit.GRAVE){
     const g=brAgrupa(L.filter(x=>x.situacao==="GRAVE"),x=>x.supervisor).sort((a,b)=>b.n-a.n||a.nome.localeCompare(b.nome));
-    out.push(`Mais de 3 horas depois do início, por supervisor: ${brLista(g.map(x=>`<b>${_esc(brNomeCurto(x.nome))}</b> ${x.n}`))}.`);
-  }
-  const rein=brAgrupa(L,x=>x.posto).filter(x=>x.n>=3).sort((a,b)=>b.n-a.n||a.nome.localeCompare(b.nome));
-  if(rein.length)out.push(`${rein.length===1?"Posto":"Postos"} com 3 ou mais coberturas no período: ${(()=>{const l=rein.slice(0,5).map(x=>`<b>${_esc(x.nome)}</b> (${x.n})`);return rein.length>5?l.join(", ")+` e mais ${rein.length-5}`:brLista(l);})()}.`);
-  const fora=[R.sit.SEM_HORARIO?`${R.sit.SEM_HORARIO} sem horário da vaga nem do posto para comparar`:"",R.fora?`${R.fora} ${R.fora===1?"ida":"idas"} à sede ou com destino em texto livre (não é posto)`:""].filter(Boolean);
-  if(fora.length)out.push(`Fora da comparação: ${brLista(fora)}.`);
+    out.push(`<b>${R.sit.GRAVE}</b> ${pl(R.sit.GRAVE,"cobertura","coberturas")} com mais de 3h de atraso: ${brLista(g.map(x=>`${_esc(brNomeCurto(x.nome))} (${x.n})`))}.`);
+  }else if(R.medidas)out.push("Nenhuma cobertura com mais de 3h de atraso.");
+  const top=brAgrupa(L,x=>x.posto).sort((a,b)=>b.n-a.n||a.nome.localeCompare(b.nome))[0];
+  if(top&&top.n>=2)out.push(`Posto que mais precisou de cobertura: <b>${_esc(top.nome)}</b> (${top.n}).`);
   return out;
 }
 
@@ -12266,19 +12274,20 @@ function brMudouFiltro(){BR.aberto={};BR.mais={};brPintaChips();brPintaConteudo(
 
 function brKpis(R,A){
   const k=(cls,rot,val,sub,ant)=>`<div class="br-kpi ${cls}"><span class="l">${rot}</span><b class="v">${val}</b><span class="s">${sub}</span>${ant?`<span class="a">${ant}</span>`:""}</div>`;
-  const p=x=>R.medidas?brPct(x,R.medidas)+"% das comparadas":"—";
+  const den=R.sit.SEM_HORARIO?"das coberturas com horário":"das coberturas";
+  const p=x=>R.medidas?brPct(x,R.medidas)+"% "+den:"—";
   return`<div class="br-kpis">`+
-    k("","Coberturas",R.n,`${R.sups.size} ${R.sups.size===1?"supervisor":"supervisores"} · ${R.postos.size} ${R.postos.size===1?"posto":"postos"}`,A?`Período anterior: ${A.n}`:"")+
-    k("c-ok","Até 1 hora",R.pct==null?"—":R.pct+"%",`${R.ate1h} de ${R.medidas} · ${R.sit.ANTES} antes do início`,A&&A.pct!=null?`Período anterior: ${A.pct}%`:"")+
-    k("c-am","De 1 a 3 horas",R.sit.ATRASO,p(R.sit.ATRASO),A?`Período anterior: ${A.sit.ATRASO}`:"")+
-    k("c-da","Mais de 3 horas",R.sit.GRAVE,p(R.sit.GRAVE),A?`Período anterior: ${A.sit.GRAVE}`:"")+
+    k("","Coberturas do supervisor",R.n,`${R.sups.size} ${R.sups.size===1?"supervisor":"supervisores"} · ${R.postos.size} ${R.postos.size===1?"posto":"postos"}`,A?`Período anterior: ${A.n}`:"")+
+    k("c-ok","Chegou em até 1h",R.pct==null?"—":R.pct+"%",`do início da vaga · ${R.ate1h} de ${R.medidas}, ${R.sit.ANTES} antes do início`,A&&A.pct!=null?`Período anterior: ${A.pct}%`:"")+
+    k("c-am","1 a 3h de atraso",R.sit.ATRASO,p(R.sit.ATRASO),A?`Período anterior: ${A.sit.ATRASO}`:"")+
+    k("c-da","Mais de 3h de atraso",R.sit.GRAVE,p(R.sit.GRAVE),A?`Período anterior: ${A.sit.GRAVE}`:"")+
     k("","Horas em campo",brHM(R.min),`${Math.round(R.km).toLocaleString("pt-BR")} km nos dias com cobertura`,"")+`</div>`+
-    (R.medidas?`<div class="br-dist" role="img" aria-label="Distribuição da chegada">${["ANTES","NO_PRAZO","ATRASO","GRAVE"].map(s=>R.sit[s]?`<i class="s-${BR_SIT[s][1]}" style="flex:${R.sit[s]}" title="${BR_SIT[s][0]}: ${R.sit[s]}"></i>`:"").join("")}</div>`:"");
+    (R.medidas?`<div class="br-dist" role="img" aria-label="Chegada do supervisor">${["ANTES","NO_PRAZO","ATRASO","GRAVE"].map(s=>R.sit[s]?`<i class="s-${BR_SIT[s][1]}" style="flex:${R.sit[s]}" title="${BR_SIT[s][0]}: ${R.sit[s]}"></i>`:"").join("")}</div>`:"");
 }
 function brPill(s){const t=BR_SIT[s]||["—","gr"];return`<span class="br-pill s-${t[1]}">${t[0]}</span>`;}
 const BR_COLS={
-  sup:[["nome","Supervisor"],["n","Coberturas"],["pct","Até 1 hora"],["ANTES","Antes do início"],["ATRASO","1 a 3 h"],["GRAVE","Mais de 3 h"],["postos","Postos"],["min","Horas em campo"]],
-  posto:[["nome","Posto"],["n","Coberturas"],["pct","Até 1 hora"],["ANTES","Antes do início"],["ATRASO","1 a 3 h"],["GRAVE","Mais de 3 h"],["sups","Supervisores"],["mot","Motivo mais comum"]]
+  sup:[["nome","Supervisor"],["n","Coberturas"],["pct","Chegou em até 1h"],["ANTES","Antes do início"],["ATRASO","1 a 3h de atraso"],["GRAVE","Mais de 3h de atraso"],["postos","Postos"],["min","Horas em campo"]],
+  posto:[["nome","Posto"],["n","Coberturas"],["pct","Chegou em até 1h"],["ANTES","Antes do início"],["ATRASO","1 a 3h de atraso"],["GRAVE","Mais de 3h de atraso"],["sups","Supervisores"],["mot","Motivo mais comum"]]
 };
 function brValorCol(x,c){if(c==="nome")return x.nome;if(c==="n")return x.n;if(c==="pct")return x.pct==null?-1:x.pct;if(c==="postos")return x.postos.size;if(c==="sups")return x.sups.size;if(c==="min")return x.min;if(c==="mot")return brMotivoMais(x);return x.sit[c]||0;}
 function brOrdena(gr){
@@ -12309,7 +12318,7 @@ function brLinhaGrupo(x){
 function brDetalheGrupo(x){
   const vis=BR.vis,k=vis+"|"+x.nome,todos=x.linhas.slice().sort((a,b)=>a.data.localeCompare(b.data)||String(a.chegada).localeCompare(String(b.chegada)));
   const lim=BR.mais[k]?todos.length:12,mostra=todos.slice(0,lim);
-  return`<tr class="br-x"><td colspan="${BR_COLS[vis].length+1}"><div class="br-x-in"><table class="br-d"><thead><tr><th>Data</th><th>${vis==="sup"?"Posto":"Supervisor"}</th><th>Motivo</th><th class="n">Início da vaga</th><th class="n">Chegada</th><th class="n">Diferença</th><th>Situação</th></tr></thead><tbody>`+
+  return`<tr class="br-x"><td colspan="${BR_COLS[vis].length+1}"><div class="br-x-in"><table class="br-d"><thead><tr><th>Data</th><th>${vis==="sup"?"Posto":"Supervisor"}</th><th>Motivo</th><th class="n">Início da vaga</th><th class="n">Chegada do supervisor</th><th class="n">Atraso</th><th>Situação</th></tr></thead><tbody>`+
     mostra.map(i=>`<tr><td><b>${brDdC(i.data)}</b> <small>${brSemana(i.data)}</small></td><td>${_esc(vis==="sup"?(i.posto||i.destino):brNomeCurto(i.supervisor))}</td>`+
       `<td>${i.motivo==="FALTA"?`Falta de ${_esc(i.falta_nome||"—")}${i.falta_re?` <small>RE ${_esc(i.falta_re)}</small>`:""}`:_esc(brMotivoTxt(i.motivo))}</td>`+
       `<td class="n" title="${_esc(BR_FONTE[i.fonte_inicio]||"")}">${i.inicio||"—"}</td><td class="n"><b>${i.chegada||"—"}</b></td><td class="n">${brDifTxt(i)}</td><td>${brPill(i.situacao)}</td></tr>`).join("")+
@@ -12342,7 +12351,7 @@ function brPintaConteudo(){
   h+=brKpis(R,A);
   h+=`<section class="br-res"><h4>Resumo</h4><ul>${brResumo(f).map(x=>`<li>${x}</li>`).join("")}</ul></section>`;
   h+=`<section class="br-tb"><div class="br-tb-h"><h4>Por ${BR.vis==="sup"?"supervisor":"posto"}</h4><div class="br-seg sm" id="brVis" role="group" aria-label="Agrupar por"><button type="button" data-v="sup" class="${BR.vis==="sup"?"on":""}" onclick="brVisao('sup');this.closest('.br-tb').querySelector('h4').textContent='Por supervisor'">Supervisor</button><button type="button" data-v="posto" class="${BR.vis==="posto"?"on":""}" onclick="brVisao('posto');this.closest('.br-tb').querySelector('h4').textContent='Por posto'">Posto</button></div></div><div class="br-tw" id="brTab">${brTabelaHtml(L)}</div></section>`;
-  h+=`<details class="br-como"><summary>${BR_IC.info}Como é calculado</summary><p>A referência é o horário de início da vaga de quem faltou (da planilha de faltas ou, nas planilhas antigas, da jornada da pessoa naquele posto). Nas idas sem falta (férias, agenda, posto vago…), vale o turno do posto que já tinha começado; se o supervisor chegou antes de todos, o primeiro turno. Duas pessoas faltaram no mesmo posto: são duas coberturas. Horas e km são do dia inteiro do supervisor e contam uma vez por dia. Idas à sede e destinos em texto livre ficam fora das contas.</p></details>`;
+  h+=`<details class="br-como"><summary>${BR_IC.info}Como é calculado</summary><p>A referência é o horário de início da vaga de quem faltou (da planilha de faltas ou, nas planilhas antigas, da jornada da pessoa naquele posto). Nas idas sem falta (férias, agenda, posto vago…), vale o turno do posto que já tinha começado; se o supervisor chegou antes de todos, o primeiro turno. Duas pessoas faltaram no mesmo posto: são duas coberturas. Horas e km são do dia inteiro do supervisor e contam uma vez por dia. Idas à sede e destinos em texto livre ficam fora das contas.${R.fora||R.sit.SEM_HORARIO?` Neste período ficaram de fora: ${brLista([R.fora?R.fora+" "+(R.fora===1?"ida":"idas")+" à sede ou com destino em texto livre":"",R.sit.SEM_HORARIO?R.sit.SEM_HORARIO+" sem horário da vaga nem do posto":""].filter(Boolean))}.`:""}</p></details>`;
   el.innerHTML=h;
 }
 function brRender(){brPintaTudo();} // nome antigo, chamado por outras partes
@@ -12363,7 +12372,7 @@ function brExcel(){
 }
 
 /* ── Imprimir: prévia em folha A4 com o logo; ao lado, o que entra na impressão ── */
-const BRP={zoom:null,paisagem:false,letra:11,sups:[],postos:[],mot:"",partes:{kpi:true,res:true,sup:true,posto:false,idas:false}};
+const BRP={zoom:null,paisagem:false,letra:11,sups:[],postos:[],mot:"",ctx:null,atalho:"",partes:{kpi:true,res:true,sup:true,posto:false,idas:false}};
 const BR_LOGO=`<svg width="190" height="56" viewBox="0 0 240 70" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Grupo ServCamp"><path d="M30 5 A28 28 0 1 0 30 61" stroke="#9a9a9a" stroke-width="11" stroke-linecap="round" fill="none" opacity=".6"/><path d="M26 61 A22 22 0 1 0 26 13" stroke="#2d2d6b" stroke-width="11" stroke-linecap="round" fill="none"/><text x="68" y="22" font-family="Segoe UI,sans-serif" font-size="13" fill="#64748b" font-style="italic">Grupo</text><text x="68" y="44" font-family="Segoe UI,sans-serif" font-size="22" fill="#9a9a9a" font-weight="700" letter-spacing="1">SERV</text><text x="138" y="44" font-family="Segoe UI,sans-serif" font-size="22" fill="#2d2d6b" font-weight="900" letter-spacing="1">CAMP</text><text x="138" y="60" font-family="Segoe UI,sans-serif" font-size="11" fill="#64748b" font-style="italic">terceirizações</text></svg>`;
 const BR_PAPEL_CSS=`*{box-sizing:border-box}body{margin:0;background:#fff;color:#0f172a;font-family:"Segoe UI",Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .pp{padding:14mm 12mm;font-size:var(--l,11px);line-height:1.45}
@@ -12381,30 +12390,33 @@ thead{display:table-header-group}tr{page-break-inside:avoid}
 small{color:#64748b}.pp-n{margin-top:12px;color:#64748b;font-size:.85em;border-top:1px solid #e2e8f0;padding-top:6px}
 .pp-f{display:flex;justify-content:space-between;margin-top:6px;color:#94a3b8;font-size:.8em}
 @media print{.pp{padding:0}}`;
-function brPapelHtml(){
+/* Roda fn com o período e os dados da impressão no lugar dos da tela (e devolve os da tela). */
+function brComCtx(ctx,fn){const g={de:BR.de,ate:BR.ate,dados:BR.dados};if(ctx){BR.de=ctx.de;BR.ate=ctx.ate;BR.dados=ctx.dados;}try{return fn();}finally{BR.de=g.de;BR.ate=g.ate;BR.dados=g.dados;}}
+function brPapelHtml(){return brComCtx(BRP.ctx,brPapelHtmlCtx);}
+function brPapelHtmlCtx(){
   const f={sups:BRP.sups,postos:BRP.postos,mot:BRP.mot},P=BRP.partes,L=brLinhas(f),R=brConta(L),A=brCompOk()?brConta(brLinhas(f,true)):null,ateE=brAteEfetivo();
   let h=`<div class="pp"><div class="pp-h">${BR_LOGO}<div class="t"><h1>Coberturas do supervisor</h1><p>${brDd(BR.de)} a ${brDd(ateE)} · ${_esc(brFiltroTxt(f))}</p></div></div>`;
-  if(P.kpi)h+=`<div class="pp-k"><div><span>Coberturas</span><b>${R.n}</b><small>${R.sups.size} supervisores · ${R.postos.size} postos</small>${A?`<small>Período anterior: ${A.n}</small>`:""}</div>`+
-    `<div><span>Até 1 hora</span><b class="s-ok">${R.pct==null?"—":R.pct+"%"}</b><small>${R.ate1h} de ${R.medidas} · ${R.sit.ANTES} antes do início</small>${A&&A.pct!=null?`<small>Período anterior: ${A.pct}%</small>`:""}</div>`+
-    `<div><span>De 1 a 3 horas</span><b class="s-am">${R.sit.ATRASO}</b><small>${R.medidas?brPct(R.sit.ATRASO,R.medidas)+"% das comparadas":"—"}</small>${A?`<small>Período anterior: ${A.sit.ATRASO}</small>`:""}</div>`+
-    `<div><span>Mais de 3 horas</span><b class="s-da">${R.sit.GRAVE}</b><small>${R.medidas?brPct(R.sit.GRAVE,R.medidas)+"% das comparadas":"—"}</small>${A?`<small>Período anterior: ${A.sit.GRAVE}</small>`:""}</div>`+
+  if(P.kpi)h+=`<div class="pp-k"><div><span>Coberturas do supervisor</span><b>${R.n}</b><small>${R.sups.size} supervisores · ${R.postos.size} postos</small>${A?`<small>Período anterior: ${A.n}</small>`:""}</div>`+
+    `<div><span>Chegou em até 1h</span><b class="s-ok">${R.pct==null?"—":R.pct+"%"}</b><small>${R.ate1h} de ${R.medidas} · ${R.sit.ANTES} antes do início</small>${A&&A.pct!=null?`<small>Período anterior: ${A.pct}%</small>`:""}</div>`+
+    `<div><span>1 a 3h de atraso</span><b class="s-am">${R.sit.ATRASO}</b><small>${R.medidas?brPct(R.sit.ATRASO,R.medidas)+"% das coberturas":"—"}</small>${A?`<small>Período anterior: ${A.sit.ATRASO}</small>`:""}</div>`+
+    `<div><span>Mais de 3h de atraso</span><b class="s-da">${R.sit.GRAVE}</b><small>${R.medidas?brPct(R.sit.GRAVE,R.medidas)+"% das coberturas":"—"}</small>${A?`<small>Período anterior: ${A.sit.GRAVE}</small>`:""}</div>`+
     `<div><span>Horas em campo</span><b>${brHM(R.min)}</b><small>${Math.round(R.km).toLocaleString("pt-BR")} km</small></div></div>`;
   if(P.res)h+=`<div class="pp-r"><b>Resumo</b><ul>${brResumo(f).map(x=>`<li>${x}</li>`).join("")}</ul></div>`;
   const tabela=dim=>{
     const gr=brAgrupa(L,x=>dim==="sup"?x.supervisor:x.posto).sort((a,b)=>b.n-a.n||a.nome.localeCompare(b.nome));
     if(!gr.length)return"";
-    return`<h2>Por ${dim==="sup"?"supervisor":"posto"}</h2><table><thead><tr><th>${dim==="sup"?"Supervisor":"Posto"}</th><th class="n">Coberturas</th><th class="n">Até 1 hora</th><th class="n">Antes do início</th><th class="n">1 a 3 h</th><th class="n">Mais de 3 h</th><th class="n">${dim==="sup"?"Postos":"Supervisores"}</th><th class="n">${dim==="sup"?"Horas em campo":"Motivo mais comum"}</th></tr></thead><tbody>`+
+    return`<h2>Por ${dim==="sup"?"supervisor":"posto"}</h2><table><thead><tr><th>${dim==="sup"?"Supervisor":"Posto"}</th><th class="n">Coberturas</th><th class="n">Chegou em até 1h</th><th class="n">Antes do início</th><th class="n">1 a 3h de atraso</th><th class="n">Mais de 3h de atraso</th><th class="n">${dim==="sup"?"Postos":"Supervisores"}</th><th class="n">${dim==="sup"?"Horas em campo":"Motivo mais comum"}</th></tr></thead><tbody>`+
       gr.map(x=>`<tr><td><b>${_esc(brNomeDe(dim,x.nome))}</b>${dim==="posto"&&x.n>=3?" <small>(3+ no período)</small>":""}</td><td class="n">${x.n}</td><td class="n">${x.pct==null?"—":x.pct+"%"}</td><td class="n">${x.sit.ANTES}</td><td class="n">${x.sit.ATRASO}</td><td class="n${x.sit.GRAVE?" s-da":""}">${x.sit.GRAVE}</td><td class="n">${dim==="sup"?x.postos.size:x.sups.size}</td><td class="n">${dim==="sup"?brHM(x.min):_esc(brMotivoMais(x))}</td></tr>`).join("")+`</tbody></table>`;
   };
   if(P.sup)h+=tabela("sup");
   if(P.posto)h+=tabela("posto");
   if(P.idas){
     const idas=L.filter(x=>x.situacao!=="NAO_E_POSTO").sort((a,b)=>a.data.localeCompare(b.data)||String(a.chegada).localeCompare(String(b.chegada)));
-    h+=`<h2>Cada cobertura (${idas.length})</h2><table><thead><tr><th>Data</th><th>Supervisor</th><th>Posto</th><th>Motivo</th><th class="n">Início</th><th class="n">Chegada</th><th class="n">Diferença</th><th>Situação</th></tr></thead><tbody>`+
+    h+=`<h2>Cada cobertura (${idas.length})</h2><table><thead><tr><th>Data</th><th>Supervisor</th><th>Posto</th><th>Motivo</th><th class="n">Início da vaga</th><th class="n">Chegada</th><th class="n">Atraso</th><th>Situação</th></tr></thead><tbody>`+
       idas.map(x=>{const s=BR_SIT[x.situacao]||["—","gr"];return`<tr><td>${brDdC(x.data)} <small>${brSemana(x.data)}</small></td><td>${_esc(brNomeCurto(x.supervisor))}</td><td>${_esc(x.posto||x.destino)}</td><td>${x.motivo==="FALTA"?"Falta: "+_esc(x.falta_nome||"—")+(x.falta_re?` <small>RE ${_esc(x.falta_re)}</small>`:""):_esc(brMotivoTxt(x.motivo))}</td><td class="n">${x.inicio||"—"}</td><td class="n">${x.chegada||"—"}</td><td class="n">${brDifTxt(x)}</td><td class="s-${s[1]}">${s[0]}</td></tr>`;}).join("")+`</tbody></table>`;
   }
   if(!P.kpi&&!P.res&&!P.sup&&!P.posto&&!P.idas)h+=`<p class="pp-n">Escolha ao lado o que entra na impressão.</p>`;
-  h+=`<p class="pp-n">Referência: início da vaga de quem faltou; nas idas sem falta, o turno do posto. "Até 1 hora" inclui as chegadas antes do início. Fonte: BDV do SAR2G.</p>`+
+  h+=`<p class="pp-n">Atraso = chegada do supervisor ao posto menos o início da vaga de quem faltou (nas idas sem falta, o turno do posto). "Chegou em até 1h" inclui quem chegou antes do início. Fonte: BDV do SAR2G.</p>`+
     `<div class="pp-f"><span>JARVIS · Grupo ServCamp</span><span>Gerado em ${new Date().toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"})} por ${_esc(sessionStorage.getItem("userNome")||"—")}</span></div></div>`;
   return h;
 }
@@ -12412,27 +12424,53 @@ function brPrevia(){
   if(!BR.dados||!BR.dados.linhas){alert("Carregue o relatório primeiro.");return;}
   brPreviaFechar();
   BRP.sups=BR.sups.slice();BRP.postos=BR.postos.slice();BRP.mot=BR.mot;
+  BRP.ctx={de:BR.de,ate:BR.ate,dados:BR.dados};BRP.atalho=BR.atalho;
   BRP.partes.sup=BR.vis==="sup"||BRP.partes.sup;BRP.partes.posto=BR.vis==="posto"||BRP.partes.posto;
   const o=document.createElement("div");o.id="brPrev";o.setAttribute("role","dialog");o.setAttribute("aria-modal","true");o.setAttribute("aria-label","Imprimir relatório");
-  const parte=(k,t)=>`<label class="bp-ck"><input type="checkbox" ${BRP.partes[k]?"checked":""} onchange="BRP.partes.${k}=this.checked;brPreviaDesenha()"><span>${t}</span></label>`;
   o.innerHTML=`<div class="bp-bar"><b class="bp-t">Imprimir</b>`+
     `<div class="bp-g"><button type="button" onclick="brZoom(-.1)" aria-label="Diminuir">−</button><span id="bpZ">100%</span><button type="button" onclick="brZoom(.1)" aria-label="Aumentar">+</button><button type="button" onclick="BRP.zoom=null;brPreviaEscala()">Ajustar</button></div>`+
     `<div class="bp-g"><button type="button" id="bpRet" onclick="BRP.paisagem=false;brPreviaDesenha()">Retrato</button><button type="button" id="bpPai" onclick="BRP.paisagem=true;brPreviaDesenha()">Paisagem</button></div>`+
     `<div class="bp-g"><button type="button" onclick="BRP.letra=Math.max(8,BRP.letra-1);brPreviaDesenha()" aria-label="Letra menor">A−</button><span id="bpL">11</span><button type="button" onclick="BRP.letra=Math.min(16,BRP.letra+1);brPreviaDesenha()" aria-label="Letra maior">A+</button></div>`+
     `<span class="bp-sp"></span><button type="button" class="bp-pri" onclick="brImprimir()">${BR_IC.imp}Imprimir ou salvar PDF</button><button type="button" class="bp-x" onclick="brPreviaFechar()" aria-label="Fechar">${FM_IC.x}</button></div>`+
-    `<div class="bp-corpo"><aside class="bp-lado" id="pg-bdvrel-imp"><h5>O que imprimir</h5>${parte("kpi","Indicadores")}${parte("res","Resumo")}${parte("sup","Tabela por supervisor")}${parte("posto","Tabela por posto")}${parte("idas","Cada cobertura, uma a uma")}`+
-    `<h5>Filtros da impressão</h5><div class="bp-f">${brMulti("psup","Supervisores",brOpcoes("sup",""),()=>BRP.sups,brPreviaDesenha)}${brMulti("pposto","Postos",brOpcoes("posto",""),()=>BRP.postos,brPreviaDesenha)}`+
-    `<label class="br-sel"><span>Motivo</span><select aria-label="Motivo da impressão" onchange="BRP.mot=this.value;brPreviaDesenha()">${Object.keys(BR_MOT).map(k=>`<option value="${k}"${BRP.mot===k?" selected":""}>${BR_MOT[k]}</option>`).join("")}</select>${FM_IC.chev}</label></div>`+
-    `<p class="bp-nota">Período: ${brDd(BR.de)} a ${brDd(brAteEfetivo())}. Para mudar, escolha na tela do relatório.</p></aside>`+
+    `<div class="bp-corpo"><aside class="bp-lado" id="bpLado"></aside>`+
     `<div class="bp-area" id="bpArea"><div class="bp-cx" id="bpCx"><iframe class="bp-papel" id="bpPapel" title="Folha do relatório"></iframe></div></div></div>`;
   document.body.appendChild(o);document.addEventListener("keydown",brPreviaTecla);
   window.addEventListener("resize",brPreviaEscala);
-  brPreviaDesenha();
+  brPreviaLado();brPreviaDesenha();
+}
+/* Lado da impressão: período, o que entra e os filtros. Refeito quando o período muda (as listas mudam). */
+function brPreviaLado(){
+  const el=document.getElementById("bpLado");if(!el)return;
+  const c=BRP.ctx,parte=(k,tx)=>`<label class="bp-ck"><input type="checkbox" ${BRP.partes[k]?"checked":""} onchange="BRP.partes.${k}=this.checked;brPreviaDesenha()"><span>${tx}</span></label>`;
+  const at=k=>`<button type="button" class="${BRP.atalho===k?"on":""}" onclick="brPreviaAtalho('${k}')">${{folha:"Folha atual",folhaAnt:"Folha anterior",mes:"Mês atual","30":"Últimos 30 dias"}[k]}</button>`;
+  el.innerHTML=`<h5>Período</h5><div class="bp-at">${at("folha")}${at("folhaAnt")}${at("mes")}${at("30")}</div>`+
+    `<div class="bp-dt"><input type="date" id="bpDe" aria-label="De" value="${c.de}" onchange="brPreviaDatas()"><span>a</span><input type="date" id="bpAte" aria-label="Até" value="${c.ate}" onchange="brPreviaDatas()"></div>`+
+    `<p class="bp-nota" id="bpPerMsg"></p>`+
+    `<h5>O que imprimir</h5>${parte("kpi","Indicadores")}${parte("res","Resumo")}${parte("sup","Tabela por supervisor")}${parte("posto","Tabela por posto")}${parte("idas","Cada cobertura, uma a uma")}`+
+    `<h5>Filtros da impressão</h5><div class="bp-f">${brComCtx(c,()=>brMulti("psup","Supervisores",brOpcoes("sup",""),()=>BRP.sups,brPreviaDesenha)+brMulti("pposto","Postos",brOpcoes("posto",""),()=>BRP.postos,brPreviaDesenha))}`+
+    `<label class="br-sel"><span>Motivo</span><select aria-label="Motivo da impressão" onchange="BRP.mot=this.value;brPreviaDesenha()">${Object.keys(BR_MOT).map(k=>`<option value="${k}"${BRP.mot===k?" selected":""}>${BR_MOT[k]}</option>`).join("")}</select>${FM_IC.chev}</label></div>`;
+}
+function brPreviaAtalho(k){const [de,ate]=brPeriodo(k);brPreviaPeriodo(de,ate,k);}
+function brPreviaDatas(){
+  const de=document.getElementById("bpDe").value,ate=document.getElementById("bpAte").value;if(!de||!ate)return;
+  if(de>ate){alert("A data inicial é depois da final.");return;}
+  if(brDias(de,ate)>400){alert("Escolha um período de até 400 dias.");return;}
+  brPreviaPeriodo(de,ate,"");
+}
+/* Período da impressão: se os dados da tela já cobrem, usa eles; senão busca no servidor. */
+function brPreviaPeriodo(de,ate,atalho){
+  BRP.atalho=atalho;
+  const n=brComCtx({de,ate,dados:null},brNComp),compara=n<=BR_MAX_COMPARA,pedeDe=compara?brSoma(de,-n):de;
+  const T=BR.dados,pronto=d=>{BRP.ctx={de,ate,dados:d};brPreviaLado();brPreviaDesenha();};
+  if(T&&T.pedeDe<=pedeDe&&T.ate>=ate)return pronto(Object.assign({},T,{pedeDe,ate,compara}));
+  const msg=document.getElementById("bpPerMsg");if(msg)msg.textContent="Carregando o período…";
+  brPedir("GET","coberturas",{de:pedeDe,ate}).then(j=>pronto({pedeDe,ate,compara,linhas:j.coberturas||[],limites:j.limites||{noPrazo:60,grave:180},disponivel:j.disponivel||{}}))
+    .catch(e=>{if(msg)msg.textContent="Não foi possível carregar: "+e.message;});
 }
 function brPapelLargura(){return BRP.paisagem?1123:794;} // A4 a 96 dpi
 /* A folha é um documento à parte: o estilo dela não vaza para o sistema, e é ela mesma que vai para a impressora. */
 function brPapelDoc(){
-  return`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Coberturas do supervisor ${brDd(BR.de)} a ${brDd(brAteEfetivo())}</title><style>@page{size:A4 ${BRP.paisagem?"landscape":"portrait"};margin:12mm}${BR_PAPEL_CSS}.pp{--l:${BRP.letra}px}</style></head><body>${brPapelHtml()}</body></html>`;
+  return`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Coberturas do supervisor ${brComCtx(BRP.ctx,()=>brDd(BR.de)+" a "+brDd(brAteEfetivo()))}</title><style>@page{size:A4 ${BRP.paisagem?"landscape":"portrait"};margin:12mm}${BR_PAPEL_CSS}.pp{--l:${BRP.letra}px}</style></head><body>${brPapelHtml()}</body></html>`;
 }
 function brPreviaDesenha(){
   const p=document.getElementById("bpPapel");if(!p)return;
