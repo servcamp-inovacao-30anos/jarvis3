@@ -2792,6 +2792,11 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       #pg-bdvrel .br-g:hover{background:var(--fm-subtle)}
       #pg-bdvrel .br-g.on{background:var(--fm-sel)}
       #pg-bdvrel .br-g:focus-visible{outline:none;box-shadow:inset 3px 0 0 var(--fm-brand)}
+      #pg-bdvrel .br-gs b{font-weight:700}
+      #pg-bdvrel .br-gs.vz{opacity:.5;cursor:default}
+      #pg-bdvrel .br-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:10px;vertical-align:-1px}
+      #pg-bdvrel .br-dot.s-an{background:#0e9384}#pg-bdvrel .br-dot.s-ok{background:#17b26a}#pg-bdvrel .br-dot.s-am{background:#f5b000}#pg-bdvrel .br-dot.s-da{background:#f04438}
+      #pg-bdvrel .br-gs.gs-da .br-pc{--k:#f04438}#pg-bdvrel .br-gs.gs-am .br-pc{--k:#f5b000}#pg-bdvrel .br-gs.gs-ok .br-pc{--k:#17b26a}#pg-bdvrel .br-gs.gs-an .br-pc{--k:#0e9384}
       #pg-bdvrel .br-g .ch{width:36px;text-align:center}
       #pg-bdvrel .br-g .ch svg{width:16px;height:16px;color:var(--fm-muted);transition:transform .2s}
       #pg-bdvrel .br-g.on .ch svg{transform:rotate(180deg);color:var(--fm-brand)}
@@ -12455,43 +12460,65 @@ function brKpiHtml(k){
   return`<div class="kd-top"><div><h4>${BR_KT[k][0]}</h4><p>${BR_KT[k][1]}</p></div><button type="button" class="kd-x" onclick="brKpi('${k}')" aria-label="Fechar detalhe">${FM_IC.x}</button></div><div class="kd-g">${h}</div>`;
 }
 function brPill(s){const t=BR_SIT[s]||["—","gr"];return`<span class="br-pill s-${t[1]}">${t[0]}</span>`;}
+const BR_SITS=["ANTES","NO_PRAZO","ATRASO","GRAVE"];
 const BR_COLS={
+  sit:[["nome","Situação"],["n","Coberturas"],["pc","% das coberturas"],["sups","Supervisores"],["postos","Postos"],["med","Atraso médio"],["max","Maior atraso"]],
   sup:[["nome","Supervisor"],["n","Coberturas"],["pct","Chegou em até 1h"],["ANTES","Antes do início"],["ATRASO","1 a 3h de atraso"],["GRAVE","Mais de 3h de atraso"],["postos","Postos"],["min","Horas em campo"]],
   posto:[["nome","Posto"],["n","Coberturas"],["pct","Chegou em até 1h"],["ANTES","Antes do início"],["ATRASO","1 a 3h de atraso"],["GRAVE","Mais de 3h de atraso"],["sups","Supervisores"],["mot","Motivo mais comum"]]
 };
-function brValorCol(x,c){if(c==="nome")return x.nome;if(c==="n")return x.n;if(c==="pct")return x.pct==null?-1:x.pct;if(c==="postos")return x.postos.size;if(c==="sups")return x.sups.size;if(c==="min")return x.min;if(c==="mot")return brMotivoMais(x);return x.sit[c]||0;}
+function brValorCol(x,c){if(c==="nome")return x.ordem!=null?x.ordem:x.nome;if(c==="n")return x.n;if(c==="pct")return x.pct==null?-1:x.pct;if(c==="pc")return x.n;if(c==="postos")return x.postos.size;if(c==="sups")return x.sups.size;if(c==="min")return x.min;if(c==="mot")return brMotivoMais(x);if(c==="med")return x.med==null?-1:x.med;if(c==="max")return x.max==null?-1:x.max;return x.sit[c]||0;}
 function brOrdena(gr){
   const {c,d}=BR.ord;
   return gr.slice().sort((a,b)=>{const va=brValorCol(a,c),vb=brValorCol(b,c);const r=typeof va==="string"?va.localeCompare(vb):va-vb;return(r*d)||b.n-a.n||a.nome.localeCompare(b.nome);});
 }
-function brOrdenar(c){if(BR.ord.c===c)BR.ord.d=-BR.ord.d;else BR.ord={c,d:c==="nome"||c==="mot"?1:-1};brPintaTabela();}
+function brOrdenar(c){BR.ordManual=true;if(BR.ord.c===c)BR.ord.d=-BR.ord.d;else BR.ord={c,d:c==="nome"||c==="mot"?1:-1};brPintaTabela();}
 function brTabelaHtml(L){
-  const vis=BR.vis,cols=BR_COLS[vis],gr=brOrdena(brAgrupa(L,x=>vis==="sup"?x.supervisor:x.posto));
-  if(!gr.length)return`<div class="br-vazio"><b>Nenhuma cobertura</b><span>Não há idas do supervisor com esses filtros no período.</span></div>`;
-  const th=cols.map(([c,t],i)=>{const on=BR.ord.c===c;return`<th class="${i?"n":""}${on?" on":""}" aria-sort="${on?(BR.ord.d>0?"ascending":"descending"):"none"}"><button type="button" onclick="brOrdenar('${c}')">${t}<i>${on?(BR.ord.d>0?"↑":"↓"):""}</i></button></th>`;}).join("");
+  const vis=BR.vis,cols=BR_COLS[vis];
+  let gr;
+  if(vis==="sit"){
+    const tot=L.filter(x=>x.situacao!=="NAO_E_POSTO"&&x.situacao!=="SEM_HORARIO").length;
+    gr=BR_SITS.map((k,i)=>{const lista=L.filter(x=>x.situacao===k),g=Object.assign(brConta(lista),{nome:BR_SIT[k][0],chave:k,linhas:lista,ordem:i,tot});
+      const at=lista.map(x=>x.diferenca_min);g.med=lista.length?at.reduce((a,b)=>a+b,0)/lista.length:null;g.max=lista.length?(k==="ANTES"?Math.min.apply(null,at):Math.max.apply(null,at)):null;return g;});
+    if(BR.ord.c==="n"&&BR.ord.d===-1&&!BR.ordManual)gr.sort((a,b)=>a.ordem-b.ordem);else gr=brOrdena(gr);
+  }else gr=brOrdena(brAgrupa(L,x=>vis==="sup"?x.supervisor:x.posto));
+  if(!gr.length||(vis==="sit"&&!gr.some(x=>x.n)))return`<div class="br-vazio"><b>Nenhuma cobertura</b><span>Não há idas do supervisor com esses filtros no período.</span></div>`;
+  const th=cols.map(([c,t],i)=>{const on=BR.ord.c===c&&(vis!=="sit"||BR.ordManual);return`<th class="${i?"n":""}${on?" on":""}" aria-sort="${on?(BR.ord.d>0?"ascending":"descending"):"none"}"><button type="button" onclick="brOrdenar('${c}')">${t}<i>${on?(BR.ord.d>0?"↑":"↓"):""}</i></button></th>`;}).join("");
   return`<table class="br-t"><thead><tr>${th}<th class="ch" aria-hidden="true"></th></tr></thead><tbody>`+gr.map(x=>brLinhaGrupo(x)).join("")+`</tbody></table>`;
 }
 function brLinhaGrupo(x){
-  const vis=BR.vis,k=vis+"|"+x.nome,on=!!BR.aberto[k];
+  const vis=BR.vis,k=vis+"|"+(vis==="sit"?x.chave:x.nome),on=!!BR.aberto[k];
   const pc=x.pct==null?"—":x.pct+"%",tom=x.pct==null?"gr":x.pct>=80?"ok":x.pct>=60?"am":"da";
   const z=v=>v?v:`<span class="z">0</span>`;
-  let h=`<tr class="br-g${on?" on":""}" tabindex="0" aria-expanded="${on}" data-k="${_esc(k)}" onclick="brAbre(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();brAbre(this)}">`+
-    `<td><b>${_esc(brNomeDe(vis,x.nome))}</b>${vis==="posto"&&x.n>=3?`<span class="br-tag" title="3 ou mais coberturas no período">3+ no período</span>`:""}</td>`+
-    `<td class="n"><b>${x.n}</b></td>`+
-    `<td class="n"><span class="br-pc t-${tom}"><span class="br-mb"><i style="width:${x.pct||0}%"></i></span><b>${pc}</b></span></td>`+
-    `<td class="n">${z(x.sit.ANTES)}</td><td class="n">${z(x.sit.ATRASO)}</td><td class="n${x.sit.GRAVE?" r":""}">${z(x.sit.GRAVE)}</td>`+
-    (vis==="sup"?`<td class="n">${x.postos.size}</td><td class="n">${brHM(x.min)}</td>`:`<td class="n">${x.sups.size}</td><td class="n">${_esc(brMotivoMais(x))}</td>`)+
-    `<td class="ch">${FM_IC.chev}</td></tr>`;
-  if(on)h+=brDetalheGrupo(x);
+  let h;
+  if(vis==="sit"){
+    const cor={ANTES:"an",NO_PRAZO:"ok",ATRASO:"am",GRAVE:"da"}[x.chave],p=x.tot?Math.round(x.n/x.tot*100):0;
+    h=`<tr class="br-g br-gs gs-${cor}${on?" on":""}${x.n?"":" vz"}" tabindex="0" aria-expanded="${on}" data-k="${_esc(k)}" onclick="brAbre(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();brAbre(this)}">`+
+      `<td><span class="br-dot s-${cor}"></span><b>${_esc(x.nome)}</b></td><td class="n"><b>${x.n}</b></td>`+
+      `<td class="n"><span class="br-pc t-${cor==="da"?"da":cor==="am"?"am":"ok"}"><span class="br-mb"><i style="width:${p}%"></i></span><b>${p}%</b></span></td>`+
+      `<td class="n">${x.n?x.sups.size:"—"}</td><td class="n">${x.n?x.postos.size:"—"}</td>`+
+      `<td class="n">${x.med==null?"—":(x.chave==="ANTES"?brHM(-x.med)+" antes":brHM(x.med))}</td><td class="n">${x.max==null?"—":(x.chave==="ANTES"?brHM(-x.max)+" antes":brHM(x.max))}</td>`+
+      `<td class="ch">${FM_IC.chev}</td></tr>`;
+  }else{
+    h=`<tr class="br-g${on?" on":""}" tabindex="0" aria-expanded="${on}" data-k="${_esc(k)}" onclick="brAbre(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();brAbre(this)}">`+
+      `<td><b>${_esc(brNomeDe(vis,x.nome))}</b>${vis==="posto"&&x.n>=3?`<span class="br-tag" title="3 ou mais coberturas no período">3+ no período</span>`:""}</td>`+
+      `<td class="n"><b>${x.n}</b></td>`+
+      `<td class="n"><span class="br-pc t-${tom}"><span class="br-mb"><i style="width:${x.pct||0}%"></i></span><b>${pc}</b></span></td>`+
+      `<td class="n">${z(x.sit.ANTES)}</td><td class="n">${z(x.sit.ATRASO)}</td><td class="n${x.sit.GRAVE?" r":""}">${z(x.sit.GRAVE)}</td>`+
+      (vis==="sup"?`<td class="n">${x.postos.size}</td><td class="n">${brHM(x.min)}</td>`:`<td class="n">${x.sups.size}</td><td class="n">${_esc(brMotivoMais(x))}</td>`)+
+      `<td class="ch">${FM_IC.chev}</td></tr>`;
+  }
+  if(on&&x.n)h+=brDetalheGrupo(x);
   return h;
 }
 function brDetalheGrupo(x){
-  const vis=BR.vis,k=vis+"|"+x.nome,todos=x.linhas.slice().sort((a,b)=>a.data.localeCompare(b.data)||String(a.chegada).localeCompare(String(b.chegada)));
+  const vis=BR.vis,k=vis+"|"+(vis==="sit"?x.chave:x.nome),todos=x.linhas.slice().sort((a,b)=>vis==="sit"?((b.diferenca_min||0)-(a.diferenca_min||0)||a.data.localeCompare(b.data)):(a.data.localeCompare(b.data)||String(a.chegada).localeCompare(String(b.chegada))));
   const lim=BR.mais[k]?todos.length:12,mostra=todos.slice(0,lim);
-  return`<tr class="br-x"><td colspan="${BR_COLS[vis].length+1}"><div class="br-x-in"><table class="br-d"><thead><tr><th>Data</th><th>${vis==="sup"?"Posto":"Supervisor"}</th><th>Motivo</th><th class="n">Início da vaga</th><th class="n">Chegada do supervisor</th><th class="n">Atraso</th><th>Situação</th></tr></thead><tbody>`+
-    mostra.map(i=>`<tr><td><b>${brDdC(i.data)}</b> <small>${brSemana(i.data)}</small></td><td>${_esc(vis==="sup"?(i.posto||i.destino):brNomeCurto(i.supervisor))}</td>`+
+  const cab=vis==="sit"?["Data","Supervisor","Posto"]:["Data",vis==="sup"?"Posto":"Supervisor"];
+  return`<tr class="br-x"><td colspan="${BR_COLS[vis].length+1}"><div class="br-x-in"><table class="br-d"><thead><tr>${cab.map(c=>`<th>${c}</th>`).join("")}<th>Motivo</th><th class="n">Início da vaga</th><th class="n">Chegada do supervisor</th><th class="n">Atraso</th>${vis==="sit"?"":"<th>Situação</th>"}</tr></thead><tbody>`+
+    mostra.map(i=>`<tr><td><b>${brDdC(i.data)}</b> <small>${brSemana(i.data)}</small></td>`+
+      (vis==="sit"?`<td>${_esc(brNomeCurto(i.supervisor))}</td><td>${_esc(i.posto||i.destino)}</td>`:`<td>${_esc(vis==="sup"?(i.posto||i.destino):brNomeCurto(i.supervisor))}</td>`)+
       `<td>${i.motivo==="FALTA"?`Falta de ${_esc(i.falta_nome||"—")}${i.falta_re?` <small>RE ${_esc(i.falta_re)}</small>`:""}`:_esc(brMotivoTxt(i.motivo))}</td>`+
-      `<td class="n" title="${_esc(BR_FONTE[i.fonte_inicio]||"")}">${i.inicio||"—"}</td><td class="n"><b>${i.chegada||"—"}</b></td><td class="n">${brDifTxt(i)}</td><td>${brPill(i.situacao)}</td></tr>`).join("")+
+      `<td class="n" title="${_esc(BR_FONTE[i.fonte_inicio]||"")}">${i.inicio||"—"}</td><td class="n"><b>${i.chegada||"—"}</b></td><td class="n">${brDifTxt(i)}</td>${vis==="sit"?"":`<td>${brPill(i.situacao)}</td>`}</tr>`).join("")+
     `</tbody></table>${todos.length>lim?`<button type="button" class="br-mais" data-k="${_esc(k)}" onclick="event.stopPropagation();BR.mais[this.dataset.k]=1;brPintaTabela()">Mostrar todas as ${todos.length}</button>`:""}</div></td></tr>`;
 }
 /* Abre e fecha a linha ali mesmo: só aquela linha muda, a rolagem não sai do lugar. */
@@ -12500,15 +12527,17 @@ function brAbre(tr){
   tr.classList.toggle("on",on);tr.setAttribute("aria-expanded",on);
   const prox=tr.nextElementSibling;
   if(!on){if(prox&&prox.classList.contains("br-x")){prox.classList.add("fecha");setTimeout(()=>prox.remove(),160);}return;}
-  const vis=BR.vis,nome=k.slice(vis.length+1);
-  const x=brAgrupa(brLinhas(brFiltroTela()),r=>vis==="sup"?r.supervisor:r.posto).find(g=>g.nome===nome);
-  if(x)tr.insertAdjacentHTML("afterend",brDetalheGrupo(x));
+  const vis=BR.vis,nome=k.slice(vis.length+1),L=brLinhas(brFiltroTela());
+  let x;
+  if(vis==="sit")x=Object.assign(brConta(L.filter(r=>r.situacao===nome)),{chave:nome,linhas:L.filter(r=>r.situacao===nome)});
+  else x=brAgrupa(L,r=>vis==="sup"?r.supervisor:r.posto).find(g=>g.nome===nome);
+  if(x&&x.linhas.length)tr.insertAdjacentHTML("afterend",brDetalheGrupo(x));
 }
 function brPintaTabela(){
   const el=document.getElementById("brTab");if(!el)return;
   el.innerHTML=brTabelaHtml(brLinhas(brFiltroTela()));
 }
-function brVisao(v){if(BR.vis===v)return;BR.vis=v;BR.aberto={};BR.mais={};BR.ord={c:"n",d:-1};document.querySelectorAll("#brVis button").forEach(b=>b.classList.toggle("on",b.dataset.v===v));brPintaTabela();}
+function brVisao(v){if(BR.vis===v)return;BR.vis=v;BR.aberto={};BR.mais={};BR.ord={c:"n",d:-1};BR.ordManual=false;document.querySelectorAll("#brVis button").forEach(b=>b.classList.toggle("on",b.dataset.v===v));const h=document.querySelector(".br-tb h4");if(h)h.textContent="Por "+({sup:"supervisor",posto:"posto",sit:"situação"}[v]);brPintaTabela();}
 function brPintaConteudo(){
   const el=document.getElementById("brCont");if(!el)return;
   if(BR.erro){el.innerHTML=`<div class="br-vazio"><b>Não foi possível carregar</b><span>${_esc(BR.erro)}</span></div>`;return;}
@@ -12520,26 +12549,248 @@ function brPintaConteudo(){
   else if(D.disponivel.primeiro>BR.de)h+=`<p class="br-aviso">Não há dado antes de <b>${brDd(D.disponivel.primeiro)}</b>: as planilhas guardadas começam aí.</p>`;
   h+=brKpis(R,A);
   h+=`<section class="br-res"><h4>Resumo <span>${_esc(brEscopo(f))}</span></h4><ul>${brResumo(f).map(x=>`<li>${x}</li>`).join("")}</ul></section>`;
-  h+=`<section class="br-tb"><div class="br-tb-h"><h4>Por ${BR.vis==="sup"?"supervisor":"posto"}</h4><div class="br-seg sm" id="brVis" role="group" aria-label="Agrupar por"><button type="button" data-v="sup" class="${BR.vis==="sup"?"on":""}" onclick="brVisao('sup');this.closest('.br-tb').querySelector('h4').textContent='Por supervisor'">Supervisor</button><button type="button" data-v="posto" class="${BR.vis==="posto"?"on":""}" onclick="brVisao('posto');this.closest('.br-tb').querySelector('h4').textContent='Por posto'">Posto</button></div></div><div class="br-tw" id="brTab">${brTabelaHtml(L)}</div></section>`;
+  h+=`<section class="br-tb"><div class="br-tb-h"><h4>Por ${{sup:"supervisor",posto:"posto",sit:"situação"}[BR.vis]}</h4><div class="br-seg sm" id="brVis" role="group" aria-label="Agrupar por">${[["sup","Supervisor"],["posto","Posto"],["sit","Situação"]].map(([v,n])=>`<button type="button" data-v="${v}" class="${BR.vis===v?"on":""}" onclick="brVisao('${v}')">${n}</button>`).join("")}</div></div><div class="br-tw" id="brTab">${brTabelaHtml(L)}</div></section>`;
   h+=`<details class="br-como"><summary>${BR_IC.info}Como é calculado</summary><p>A referência é o horário de início da vaga de quem faltou (da planilha de faltas ou, nas planilhas antigas, da jornada da pessoa naquele posto). Nas idas sem falta (férias, agenda, posto vago…), vale o turno do posto que já tinha começado; se o supervisor chegou antes de todos, o primeiro turno. Duas pessoas faltaram no mesmo posto: são duas coberturas. Horas e km são do dia inteiro do supervisor e contam uma vez por dia. Idas à sede e destinos em texto livre ficam fora das contas.${R.fora||R.sit.SEM_HORARIO?` Neste período ficaram de fora: ${brLista([R.fora?R.fora+" "+(R.fora===1?"ida":"idas")+" à sede ou com destino em texto livre":"",R.sit.SEM_HORARIO?R.sit.SEM_HORARIO+" sem horário da vaga nem do posto":""].filter(Boolean))}.`:""}</p></details>`;
   el.innerHTML=h;
   brKpiPinta(false);
 }
 function brRender(){brPintaTudo();} // nome antigo, chamado por outras partes
 
-/* ── Excel: o que está na tela (resumo por grupo + cada cobertura) ── */
-function brExcel(){
-  if(!BR.dados||typeof XLSX==="undefined"){alert("Carregue o relatório primeiro.");return;}
-  const f=brFiltroTela(),L=brLinhas(f);
-  const linha=(dim,x)=>({[dim==="sup"?"Supervisor":"Posto"]:x.nome,"Coberturas":x.n,"Até 1 hora (%)":x.pct,"Antes do início":x.sit.ANTES,"Até 1 hora depois":x.sit.NO_PRAZO,"De 1 a 3 horas":x.sit.ATRASO,"Mais de 3 horas":x.sit.GRAVE,"Sem horário":x.sit.SEM_HORARIO,[dim==="sup"?"Postos":"Supervisores"]:dim==="sup"?x.postos.size:x.sups.size,"Horas em campo":+(x.min/60).toFixed(1),"KM":Math.round(x.km)});
-  const porSup=brAgrupa(L,x=>x.supervisor).sort((a,b)=>b.n-a.n).map(x=>linha("sup",x));
-  const porPosto=brAgrupa(L,x=>x.posto).sort((a,b)=>b.n-a.n).map(x=>linha("posto",x));
-  const idas=L.filter(x=>x.situacao!=="NAO_E_POSTO").map(x=>({"Data":brDd(x.data),"Supervisor":x.supervisor,"Posto":x.posto||x.destino,"Motivo":brMotivoTxt(x.motivo),"Quem faltou":x.falta_nome||"","RE":x.falta_re||"","Início da vaga":x.inicio||"","Referência do início":BR_FONTE[x.fonte_inicio]||"","Chegada":x.chegada||"","Diferença (min)":x.diferenca_min,"Situação":(BR_SIT[x.situacao]||["—"])[0]}));
-  const vazio=[{"":"Sem coberturas no período"}],wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(porSup.length?porSup:vazio),"Por supervisor");
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(porPosto.length?porPosto:vazio),"Por posto");
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(idas.length?idas:vazio),"Coberturas");
-  XLSX.writeFile(wb,`coberturas_supervisor_${BR.de}_a_${BR.ate}.xlsx`);
+/* ── Excel da diretoria: capa com os números, tabelas formatadas, filtros, logo e impressão pronta ──
+   A biblioteca de planilhas do sistema não aceita cores nem formatação; por isso o ExcelJS,
+   carregado só quando alguém clica em Excel. */
+const BR_EXCELJS="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js";
+function brCarregaExcelJS(){
+  if(window.ExcelJS)return Promise.resolve(window.ExcelJS);
+  return new Promise((ok,err)=>{
+    const s=document.createElement("script");s.src=BR_EXCELJS;s.async=true;
+    s.onload=()=>window.ExcelJS?ok(window.ExcelJS):err(new Error("biblioteca do Excel não carregou"));
+    s.onerror=()=>err(new Error("não foi possível carregar a biblioteca do Excel (sem internet?)"));
+    document.head.appendChild(s);
+  });
+}
+/* O logo da ServCamp (SVG da tela) vira uma imagem PNG para entrar na planilha. */
+function brLogoPng(){
+  return new Promise(ok=>{
+    try{
+      const svg=BR_LOGO.replace(/width="190" height="56"/,'width="570" height="168"');
+      const img=new Image();
+      img.onload=()=>{try{const c=document.createElement("canvas");c.width=570;c.height=168;c.getContext("2d").drawImage(img,0,0,570,168);ok(c.toDataURL("image/png").split(",")[1]);}catch(e){ok(null);}};
+      img.onerror=()=>ok(null);
+      img.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg);
+    }catch(e){ok(null);}
+  });
+}
+function brTxt(html){const d=document.createElement("div");d.innerHTML=html;return(d.textContent||"").replace(/\s+/g," ").trim();}
+const BRX={navy:"FF2D2D6B",texto:"FF0F172A",mudo:"FF64748B",linha:"FFE2E8F0",faixa:"FFF8FAFC",
+  ok:["FF067647","FFD1FADF"],am:["FFB54708","FFFEF0C7"],da:["FFB42318","FFFEE4E2"],an:["FF0E7C70","FFCCFBEF"],gr:["FF475467","FFF2F4F7"]};
+function brXTom(p){return p==null?BRX.gr:p>=80?BRX.ok:p>=60?BRX.am:BRX.da;}
+function brXSit(s){return{ANTES:BRX.an,NO_PRAZO:BRX.ok,ATRASO:BRX.am,GRAVE:BRX.da}[s]||BRX.gr;}
+async function brExcel(){
+  if(!BR.dados){alert("Carregue o relatório primeiro.");return;}
+  const btn=document.querySelector(".br-ac .br-btn"),rot=btn?btn.innerHTML:"";
+  if(typeof ptToast==="function")ptToast("Gerando o Excel…");
+  try{
+    const [Ex,logo]=await Promise.all([brCarregaExcelJS(),brLogoPng()]);
+    const wb=await brXlsxMontar(Ex,logo);
+    const buf=await wb.xlsx.writeBuffer();
+    const url=URL.createObjectURL(new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}));
+    const a=document.createElement("a");a.href=url;a.download=`Coberturas do supervisor ${BR.de} a ${brAteEfetivo()}.xlsx`;document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),4000);
+    if(typeof ptToast==="function")ptToast("Excel pronto");
+  }catch(e){alert("Não foi possível gerar o Excel: "+(e&&e.message||e));}
+  finally{if(btn)btn.innerHTML=rot;}
+}
+async function brXlsxMontar(Ex,logo,ctx){
+  const f=brFiltroTela(),L=brLinhas(f),R=brConta(L),A=brCompOk()?brConta(brLinhas(f,true)):null,ateE=brAteEfetivo(),D=BR.dados;
+  const idas=L.filter(x=>x.situacao!=="NAO_E_POSTO").sort((a,b)=>a.data.localeCompare(b.data)||String(a.chegada).localeCompare(String(b.chegada)));
+  const wb=new Ex.Workbook();
+  wb.creator="JARVIS · Grupo ServCamp";wb.title="Coberturas do supervisor";wb.created=new Date();
+  const quem=sessionStorage.getItem("userNome")||"";
+  const fonte=(o)=>Object.assign({name:"Segoe UI",size:10,color:{argb:BRX.texto}},o||{});
+  const preenche=c=>({type:"pattern",pattern:"solid",fgColor:{argb:c}});
+  const fio=c=>({style:"thin",color:{argb:c||BRX.linha}});
+  const caixa=(c)=>({top:fio(c),left:fio(c),bottom:fio(c),right:fio(c)});
+  const pagina=(ws,titulos,paisagem)=>{
+    ws.pageSetup={paperSize:9,orientation:paisagem?"landscape":"portrait",fitToPage:true,fitToWidth:1,fitToHeight:0,margins:{left:.4,right:.4,top:.5,bottom:.6,header:.25,footer:.3},horizontalCentered:true,printTitlesRow:titulos||undefined};
+    ws.headerFooter={oddFooter:'&L&"Segoe UI,Regular"&8JARVIS · Grupo ServCamp&R&"Segoe UI,Regular"&8Página &P de &N'};
+  };
+  /* faixa de título das tabelas: logo, título e período */
+  const topo=(ws,tit,sub,ate,larg)=>{
+    ws.getRow(1).height=30;ws.getRow(2).height=18;ws.getRow(3).height=8;
+    ws.mergeCells(1,3,1,ate);const t=ws.getCell(1,3);t.value=tit;t.font=fonte({size:18,bold:true,color:{argb:BRX.navy}});t.alignment={vertical:"middle",horizontal:"right"};
+    ws.mergeCells(2,3,2,ate);const u=ws.getCell(2,3);u.value=sub;u.font=fonte({size:9,color:{argb:BRX.mudo}});u.alignment={vertical:"top",horizontal:"right"};
+    for(let c=1;c<=ate;c++)ws.getCell(3,c).border={top:{style:"medium",color:{argb:BRX.navy}}};
+    if(logo){const id=wb.addImage({base64:logo,extension:"png"});ws.addImage(id,{tl:{col:0.1,row:0.15},ext:{width:150,height:44}});}
+  };
+  const subTxt=`${brDd(BR.de)} a ${brDd(ateE)}  ·  ${brFiltroTxt(f)}`;
+
+  /* ═══ 1. Resumo (capa) ═══ */
+  const ws=wb.addWorksheet("Resumo",{properties:{tabColor:{argb:BRX.navy}},views:[{showGridLines:false}]});
+  ws.columns=[{width:2},...Array.from({length:10},()=>({width:14})),{width:2}];
+  ws.getRow(1).height=32;ws.getRow(2).height=20;ws.getRow(3).height=8;
+  ws.mergeCells("E1:K1");const T=ws.getCell("E1");T.value="Coberturas do supervisor";T.font=fonte({size:22,bold:true,color:{argb:BRX.navy}});T.alignment={vertical:"middle",horizontal:"right"};
+  ws.mergeCells("E2:K2");const S=ws.getCell("E2");S.value="Chegada do supervisor ao posto comparada com o início da vaga de quem faltou";S.font=fonte({size:9.5,color:{argb:BRX.mudo}});S.alignment={vertical:"top",horizontal:"right"};
+  for(let c=2;c<=11;c++)ws.getCell(3,c).border={top:{style:"medium",color:{argb:BRX.navy}}};
+  if(logo){const id=wb.addImage({base64:logo,extension:"png"});ws.addImage(id,{tl:{col:1.05,row:0.12},ext:{width:170,height:50}});}
+  ws.mergeCells("B4:K4");const P=ws.getCell("B4");P.value=subTxt;P.font=fonte({size:10.5,bold:true,color:{argb:BRX.navy}});P.alignment={vertical:"middle",horizontal:"left",indent:0};ws.getRow(4).height=26;
+  /* cartões */
+  const cards=[
+    ["COBERTURAS DO SUPERVISOR",R.n,`${R.sups.size} ${R.sups.size===1?"supervisor":"supervisores"} · ${R.postos.size} ${R.postos.size===1?"posto":"postos"}`,A?`Período anterior: ${A.n}`:"",BRX.navy],
+    ["CHEGOU EM ATÉ 1H",R.pct==null?"—":R.pct/100,`do início da vaga · ${R.ate1h} de ${R.medidas}`,A&&A.pct!=null?`Período anterior: ${A.pct}%`:"",BRX.ok[0]],
+    ["1 A 3H DE ATRASO",R.sit.ATRASO,R.medidas?`${brPct(R.sit.ATRASO,R.medidas)}% das coberturas`:"",A?`Período anterior: ${A.sit.ATRASO}`:"",BRX.am[0]],
+    ["MAIS DE 3H DE ATRASO",R.sit.GRAVE,R.medidas?`${brPct(R.sit.GRAVE,R.medidas)}% das coberturas`:"",A?`Período anterior: ${A.sit.GRAVE}`:"",BRX.da[0]],
+    ["HORAS EM CAMPO",R.min/1440,`${Math.round(R.km).toLocaleString("pt-BR")} km nos dias com cobertura`,"",BRX.navy]
+  ];
+  ws.getRow(5).height=6;ws.getRow(6).height=20;ws.getRow(7).height=40;ws.getRow(8).height=18;ws.getRow(9).height=16;ws.getRow(10).height=6;
+  cards.forEach((c,i)=>{
+    const c0=2+i*2,c1=c0+1;
+    [6,7,8,9].forEach(r=>ws.mergeCells(r,c0,r,c1));
+    const rot=ws.getCell(6,c0),val=ws.getCell(7,c0),sub=ws.getCell(8,c0),ant=ws.getCell(9,c0);
+    rot.value=c[0];rot.font=fonte({size:8,bold:true,color:{argb:BRX.mudo}});rot.alignment={vertical:"bottom",horizontal:"left",indent:1};
+    val.value=c[1];val.font=fonte({size:26,bold:true,color:{argb:c[4]}});val.alignment={vertical:"middle",horizontal:"left",indent:1};
+    if(i===1&&typeof c[1]==="number")val.numFmt="0%";if(i===4)val.numFmt='[h]"h"mm';
+    sub.value=c[2];sub.font=fonte({size:8.5,color:{argb:BRX.texto}});sub.alignment={vertical:"top",horizontal:"left",indent:1,wrapText:true};
+    ant.value=c[3];ant.font=fonte({size:8,color:{argb:BRX.mudo}});ant.alignment={vertical:"top",horizontal:"left",indent:1};
+    for(let r=6;r<=9;r++)for(let k=c0;k<=c1;k++){const ce=ws.getCell(r,k);ce.fill=preenche(BRX.faixa);
+      ce.border={left:k===c0?{style:"thin",color:{argb:BRX.linha}}:undefined,right:k===c1?{style:"thin",color:{argb:BRX.linha}}:undefined,top:r===6?{style:"medium",color:{argb:c[4]}}:undefined,bottom:r===9?{style:"thin",color:{argb:BRX.linha}}:undefined};}
+  });
+  /* como chegaram */
+  let r=11;
+  const titulo=(txt)=>{ws.mergeCells(r,2,r,11);const c=ws.getCell(r,2);c.value=txt;c.font=fonte({size:11,bold:true,color:{argb:BRX.navy}});c.alignment={vertical:"middle"};ws.getRow(r).height=24;for(let k=2;k<=11;k++)ws.getCell(r,k).border={bottom:{style:"thin",color:{argb:BRX.linha}}};r++;};
+  titulo("Como o supervisor chegou");
+  [["ANTES","Antes do início da vaga"],["NO_PRAZO","Até 1h de atraso"],["ATRASO","1 a 3h de atraso"],["GRAVE","Mais de 3h de atraso"]].forEach(([k,rotulo])=>{
+    const n=R.sit[k]||0,p=R.medidas?n/R.medidas:0,cor=brXSit(k);
+    ws.getRow(r).height=20;
+    ws.mergeCells(r,2,r,4);const a=ws.getCell(r,2);a.value=rotulo;a.font=fonte({size:10});a.alignment={vertical:"middle",indent:1};
+    const b=ws.getCell(r,5);b.value=n;b.font=fonte({size:10,bold:true});b.alignment={vertical:"middle",horizontal:"right"};
+    const pc=ws.getCell(r,6);pc.value=p;pc.numFmt="0%";pc.font=fonte({size:10,color:{argb:BRX.mudo}});pc.alignment={vertical:"middle",horizontal:"right"};
+    ws.mergeCells(r,7,r,11);const bar=ws.getCell(r,7);bar.value="█".repeat(Math.round(p*34))||"▏";bar.font=fonte({size:10,color:{argb:cor[0]}});bar.alignment={vertical:"middle",indent:1};
+    r++;
+  });
+  if(R.sit.SEM_HORARIO){ws.mergeCells(r,2,r,11);const c=ws.getCell(r,2);c.value=`${R.sit.SEM_HORARIO} sem horário da vaga nem do posto (não entram nos percentuais).`;c.font=fonte({size:8.5,italic:true,color:{argb:BRX.mudo}});c.alignment={indent:1};r++;}
+  r++;titulo("Resumo");
+  brResumo(f).forEach(h=>{
+    const txt=brTxt(h);ws.mergeCells(r,2,r,11);const c=ws.getCell(r,2);c.value="•  "+txt;c.font=fonte({size:10});c.alignment={vertical:"top",wrapText:true,indent:1};
+    ws.getRow(r).height=Math.max(20,Math.ceil(txt.length/118)*16+6);r++;
+  });
+  r++;titulo("Neste arquivo");
+  [["Por supervisor","Coberturas, percentual e atrasos de cada supervisor"],["Por posto","Postos que mais precisaram de cobertura"],["Por situação","Coberturas agrupadas: antes do início, até 1h, 1 a 3h e mais de 3h de atraso"],["Cada cobertura","Cada ida do supervisor, com início da vaga, chegada e atraso (com filtros)"],["Como é calculado","Regras usadas nas contas"]].forEach(([a,b])=>{
+    ws.getRow(r).height=18;ws.mergeCells(r,2,r,3);const x=ws.getCell(r,2);x.value={text:a,hyperlink:"#'"+a+"'!A1"};x.font=fonte({size:10,bold:true,color:{argb:"FF1D6FC4"},underline:true});x.alignment={indent:1,vertical:"middle"};
+    ws.mergeCells(r,4,r,11);const y=ws.getCell(r,4);y.value=b;y.font=fonte({size:9.5,color:{argb:BRX.mudo}});y.alignment={vertical:"middle"};r++;
+  });
+  r++;ws.mergeCells(r,2,r,11);const g=ws.getCell(r,2);g.value=`Gerado em ${new Date().toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"})}${quem?" por "+quem:""}  ·  Fonte: BDV do SAR2G  ·  JARVIS · Grupo ServCamp`;g.font=fonte({size:8,color:{argb:BRX.mudo}});
+  pagina(ws,null,false);ws.pageSetup.orientation="portrait";
+
+  /* ═══ 2 e 3. Por supervisor / Por posto ═══ */
+  const tabela=(nome,dim,cor)=>{
+    const w=wb.addWorksheet(nome,{properties:{tabColor:{argb:cor}},views:[{showGridLines:false,state:"frozen",xSplit:1,ySplit:5}]});
+    const cab=[dim==="sup"?"Supervisor":"Posto","Coberturas","Chegou em até 1h","Antes do início","Até 1h de atraso","1 a 3h de atraso","Mais de 3h de atraso","Sem horário",dim==="sup"?"Postos":"Supervisores",dim==="sup"?"Horas em campo":"Motivo mais comum",dim==="sup"?"Km":"3 ou mais"];
+    w.columns=[{width:dim==="sup"?26:36},{width:14},{width:15},{width:14},{width:14},{width:14},{width:15},{width:13},{width:15},{width:dim==="sup"?17:22},{width:dim==="sup"?11:13}];
+    topo(w,dim==="sup"?"Por supervisor":"Por posto",subTxt,cab.length);
+    w.getRow(4).height=6;w.getRow(5).height=34;
+    cab.forEach((c,i)=>{const ce=w.getCell(5,i+1);ce.value=c;ce.font=fonte({size:9,bold:true,color:{argb:"FFFFFFFF"}});ce.fill=preenche(BRX.navy);ce.alignment={vertical:"middle",horizontal:i?"center":"left",wrapText:true,indent:i?0:1};ce.border={bottom:{style:"medium",color:{argb:BRX.navy}}};});
+    const gr=brAgrupa(L,x=>dim==="sup"?x.supervisor:x.posto).sort((a,b)=>b.n-a.n||a.nome.localeCompare(b.nome));
+    gr.forEach((x,i)=>{
+      const lin=6+i,tom=brXTom(x.pct);
+      const v=[dim==="sup"?brNomeCurto(x.nome):x.nome,x.n,x.pct==null?null:x.pct/100,x.sit.ANTES,x.sit.NO_PRAZO,x.sit.ATRASO,x.sit.GRAVE,x.sit.SEM_HORARIO,dim==="sup"?x.postos.size:x.sups.size,dim==="sup"?x.min/1440:brMotivoMais(x),dim==="sup"?Math.round(x.km):(x.n>=3?"Sim":"")];
+      v.forEach((val,j)=>{
+        const ce=w.getCell(lin,j+1);ce.value=val;ce.font=fonte({size:10,bold:j===0||j===1});ce.alignment={vertical:"middle",horizontal:j?"center":"left",indent:j?0:1};
+        ce.border={bottom:{style:"thin",color:{argb:BRX.linha}}};if(i%2)ce.fill=preenche(BRX.faixa);
+        if(j===2){ce.numFmt="0%";ce.fill=preenche(tom[1]);ce.font=fonte({size:10,bold:true,color:{argb:tom[0]}});}
+        if(j===6&&x.sit.GRAVE){ce.font=fonte({size:10,bold:true,color:{argb:BRX.da[0]}});ce.fill=preenche(BRX.da[1]);}
+        if(j===5&&x.sit.ATRASO){ce.font=fonte({size:10,color:{argb:BRX.am[0]}});}
+        if(dim==="sup"&&j===9)ce.numFmt='[h]"h"mm';if(dim==="sup"&&j===10)ce.numFmt="#,##0";
+      });
+      w.getRow(lin).height=22;
+    });
+    const tl=6+gr.length;w.getRow(tl).height=24;
+    const tot=["Total",R.n,R.pct==null?null:R.pct/100,R.sit.ANTES,R.sit.NO_PRAZO,R.sit.ATRASO,R.sit.GRAVE,R.sit.SEM_HORARIO,dim==="sup"?R.postos.size:R.sups.size,dim==="sup"?R.min/1440:"",dim==="sup"?Math.round(R.km):""];
+    tot.forEach((val,j)=>{const ce=w.getCell(tl,j+1);ce.value=val;ce.font=fonte({size:10,bold:true,color:{argb:BRX.navy}});ce.alignment={vertical:"middle",horizontal:j?"center":"left",indent:j?0:1};ce.border={top:{style:"medium",color:{argb:BRX.navy}}};ce.fill=preenche("FFEEF0F8");if(j===2)ce.numFmt="0%";if(dim==="sup"&&j===9)ce.numFmt='[h]"h"mm';if(dim==="sup"&&j===10)ce.numFmt="#,##0";});
+    if(gr.length)w.autoFilter={from:{row:5,column:1},to:{row:5+gr.length,column:cab.length}};
+    w.getCell(tl+2,1).value=dim==="sup"?"Horas e km são do dia inteiro do supervisor e contam uma vez por dia.":"“3 ou mais”: posto que precisou de 3 ou mais coberturas no período.";
+    w.getCell(tl+2,1).font=fonte({size:8.5,italic:true,color:{argb:BRX.mudo}});
+    pagina(w,"5:5",true);
+  };
+  tabela("Por supervisor","sup",BRX.ok[0]);
+  tabela("Por posto","posto","FF1D6FC4");
+
+  /* ═══ 4. Cada cobertura ═══ */
+  const wc=wb.addWorksheet("Cada cobertura",{properties:{tabColor:{argb:BRX.am[0]}},views:[{showGridLines:false,state:"frozen",xSplit:1,ySplit:5}]});
+  const cab2=["Data","Dia","Supervisor","Posto","Motivo","Quem faltou","RE","Início da vaga","Chegada","Atraso","Minutos","Situação","Referência do início"];
+  wc.columns=[{width:13},{width:8},{width:21},{width:30},{width:15},{width:31},{width:10},{width:15},{width:13},{width:23},{width:12},{width:25},{width:29}];
+  topo(wc,"Cada cobertura",subTxt,cab2.length);
+  wc.getRow(4).height=6;wc.getRow(5).height=30;
+  cab2.forEach((c,i)=>{const ce=wc.getCell(5,i+1);ce.value=c;ce.font=fonte({size:9,bold:true,color:{argb:"FFFFFFFF"}});ce.fill=preenche(BRX.navy);ce.alignment={vertical:"middle",horizontal:i>=6&&i<=10&&i!==5?"center":"left",wrapText:true,indent:i===0?1:0};ce.border={bottom:{style:"medium",color:{argb:BRX.navy}}};});
+  const hora=h=>{const m=bdvHoraMin(h);return m==null?null:m/1440;};
+  idas.forEach((x,i)=>{
+    const lin=6+i,sit=brXSit(x.situacao),d=x.data.split("-");
+    const v=[new Date(Date.UTC(+d[0],+d[1]-1,+d[2])),brSemana(x.data),brNomeCurto(x.supervisor),x.posto||x.destino,brMotivoTxt(x.motivo),x.falta_nome||"",x.falta_re||"",hora(x.inicio),hora(x.chegada),brDifTxt(x),x.diferenca_min,(BR_SIT[x.situacao]||["—"])[0],BR_FONTE[x.fonte_inicio]||""];
+    v.forEach((val,j)=>{
+      const ce=wc.getCell(lin,j+1);ce.value=val;ce.font=fonte({size:10,bold:j===8});ce.alignment={vertical:"middle",horizontal:j===0||j===1||(j>=6&&j<=10)?"center":"left",indent:j===2?1:0};
+      ce.border={bottom:{style:"thin",color:{argb:BRX.linha}}};if(i%2)ce.fill=preenche(BRX.faixa);
+      if(j===0)ce.numFmt="dd/mm/yyyy";if(j===7||j===8)ce.numFmt="hh:mm";if(j===10)ce.numFmt="0";
+      if(j===11||j===9){ce.font=fonte({size:10,bold:true,color:{argb:sit[0]}});if(j===11)ce.fill=preenche(sit[1]);}
+      if(j===12)ce.font=fonte({size:9,color:{argb:BRX.mudo}});
+    });
+    wc.getRow(lin).height=20;
+  });
+  if(idas.length)wc.autoFilter={from:{row:5,column:1},to:{row:5+idas.length,column:cab2.length}};
+  else{wc.mergeCells(6,1,6,cab2.length);const e=wc.getCell(6,1);e.value="Nenhuma cobertura no período, com esses filtros.";e.font=fonte({size:10,italic:true,color:{argb:BRX.mudo}});e.alignment={indent:1};}
+  wc.getCell(7+idas.length,1).value="Minutos: positivo = atraso depois do início da vaga; negativo = chegou antes do início.";wc.getCell(7+idas.length,1).font=fonte({size:8.5,italic:true,color:{argb:BRX.mudo}});
+  pagina(wc,"5:5",true);
+
+  /* ═══ 5. Por situação (agrupado, com linhas que se recolhem) ═══ */
+  const wg=wb.addWorksheet("Por situação",{properties:{tabColor:{argb:BRX.an[0]},outlineLevelRow:1,outlineProperties:{summaryBelow:false}},views:[{showGridLines:false,state:"frozen",ySplit:4}]});
+  const cabG=["Data","Dia","Supervisor","Posto","Motivo","Quem faltou","RE","Início da vaga","Chegada","Atraso"];
+  wg.columns=[{width:13},{width:8},{width:21},{width:30},{width:15},{width:31},{width:10},{width:15},{width:13},{width:23}];
+  topo(wg,"Por situação",subTxt,cabG.length);wg.getRow(4).height=6;
+  let rg=5;
+  [["ANTES","Antes do início da vaga","O supervisor chegou antes de a vaga começar"],["NO_PRAZO","Até 1h de atraso","Chegou até 1 hora depois do início da vaga"],["ATRASO","1 a 3h de atraso","Chegou de 1 a 3 horas depois do início da vaga"],["GRAVE","Mais de 3h de atraso","Chegou mais de 3 horas depois do início da vaga"]].forEach(([k,nome,desc])=>{
+    const lista=idas.filter(x=>x.situacao===k),cor=brXSit(k),pct=R.medidas?lista.length/R.medidas:0;
+    wg.getRow(rg).height=30;
+    wg.mergeCells(rg,1,rg,cabG.length);const b=wg.getCell(rg,1);
+    b.value=`${nome}   ·   ${lista.length} ${lista.length===1?"cobertura":"coberturas"}${R.medidas?"  ("+Math.round(pct*100)+"% das coberturas)":""}   ·   ${desc}`;
+    b.font=fonte({size:11.5,bold:true,color:{argb:cor[0]}});b.fill=preenche(cor[1]);b.alignment={vertical:"middle",indent:1};
+    for(let c=1;c<=cabG.length;c++)wg.getCell(rg,c).border={left:c===1?{style:"thick",color:{argb:cor[0]}}:undefined,bottom:{style:"thin",color:{argb:cor[0]}}};
+    rg++;
+    if(!lista.length){wg.mergeCells(rg,1,rg,cabG.length);const e=wg.getCell(rg,1);e.value="Nenhuma cobertura nesta situação.";e.font=fonte({size:9.5,italic:true,color:{argb:BRX.mudo}});e.alignment={indent:2};wg.getRow(rg).outlineLevel=1;rg+=2;return;}
+    const sup=brAgrupa(lista,x=>x.supervisor).sort((a,b2)=>b2.n-a.n||a.nome.localeCompare(b2.nome));
+    wg.mergeCells(rg,1,rg,cabG.length);const rs=wg.getCell(rg,1);rs.value="Por supervisor:  "+sup.map(x=>brNomeCurto(x.nome)+" "+x.n).join("   ·   ");rs.font=fonte({size:9,color:{argb:BRX.mudo}});rs.alignment={indent:2,vertical:"middle",wrapText:true};wg.getRow(rg).height=Math.max(18,Math.ceil(rs.value.length/150)*15+4);wg.getRow(rg).outlineLevel=1;rg++;
+    cabG.forEach((c,i)=>{const ce=wg.getCell(rg,i+1);ce.value=c;ce.font=fonte({size:9,bold:true,color:{argb:"FFFFFFFF"}});ce.fill=preenche(BRX.navy);ce.alignment={vertical:"middle",horizontal:i===0?"left":(i>=6?"center":"left"),indent:i===0?1:0};});
+    wg.getRow(rg).height=22;wg.getRow(rg).outlineLevel=1;rg++;
+    lista.slice().sort((a,b2)=>(b2.diferenca_min||0)-(a.diferenca_min||0)||a.data.localeCompare(b2.data)).forEach((x,i)=>{
+      const d=x.data.split("-"),v=[new Date(Date.UTC(+d[0],+d[1]-1,+d[2])),brSemana(x.data),brNomeCurto(x.supervisor),x.posto||x.destino,brMotivoTxt(x.motivo),x.falta_nome||"",x.falta_re||"",hora(x.inicio),hora(x.chegada),brDifTxt(x)];
+      v.forEach((val,j)=>{const ce=wg.getCell(rg,j+1);ce.value=val;ce.font=fonte({size:10,bold:j===8||j===9,color:j===9?{argb:cor[0]}:undefined});ce.alignment={vertical:"middle",horizontal:j===0||j===1||j>=6?"center":"left",indent:j===2?1:0};ce.border={bottom:{style:"thin",color:{argb:BRX.linha}}};if(i%2)ce.fill=preenche(BRX.faixa);if(j===0)ce.numFmt="dd/mm/yyyy";if(j===7||j===8)ce.numFmt="hh:mm";});
+      wg.getRow(rg).height=20;wg.getRow(rg).outlineLevel=1;rg++;
+    });
+    rg++;
+  });
+  wg.getCell(rg,1).value="Use os botões 1 e 2 no canto superior esquerdo da planilha (ou o sinal de + e − ao lado das linhas) para recolher ou abrir cada situação.";wg.getCell(rg,1).font=fonte({size:8.5,italic:true,color:{argb:BRX.mudo}});
+  /* escala fixa (e não "ajustar à largura"): o ExcelJS escreve as duas marcações na ordem errada e o Excel recusaria o arquivo */
+  pagina(wg,null,true);wg.pageSetup.fitToPage=false;delete wg.pageSetup.fitToWidth;delete wg.pageSetup.fitToHeight;wg.pageSetup.scale=66;
+
+  /* ═══ 6. Como é calculado ═══ */
+  const wm=wb.addWorksheet("Como é calculado",{properties:{tabColor:{argb:BRX.gr[0]}},views:[{showGridLines:false}]});
+  wm.columns=[{width:3},{width:30},{width:90}];
+  wm.getRow(1).height=30;wm.mergeCells("B1:C1");const mt=wm.getCell("B1");mt.value="Como é calculado";mt.font=fonte({size:18,bold:true,color:{argb:BRX.navy}});mt.alignment={vertical:"middle"};
+  if(logo){const id=wb.addImage({base64:logo,extension:"png"});wm.addImage(id,{tl:{col:2.55,row:0.1},ext:{width:130,height:38}});}
+  [["Atraso","Chegada do supervisor ao posto menos o início da vaga de quem faltou. Quando o supervisor chegou antes do início, aparece como “antes do início”."],
+   ["Início da vaga","1º: horário da vaga de quem faltou (planilha de faltas). 2º: jornada da pessoa naquele posto. Nas idas sem falta (férias, agenda, posto vago…): o turno do posto que já tinha começado; se o supervisor chegou antes de todos, o primeiro turno."],
+   ["Chegou em até 1h","Percentual das coberturas com horário em que o supervisor chegou antes do início da vaga ou até 1 hora depois."],
+   ["1 a 3h de atraso","Chegou de 1 a 3 horas depois do início da vaga."],["Mais de 3h de atraso","Chegou mais de 3 horas depois do início da vaga."],
+   ["Duas faltas no mesmo posto","São duas coberturas, cada uma com o horário da sua vaga."],
+   ["Horas e km em campo","São do dia inteiro do supervisor e contam uma vez por supervisor e dia (a planilha repete esses valores em todas as idas do dia)."],
+   ["Fora das contas","Idas à sede e destinos escritos em texto livre (por exemplo, “deixar colaborador em casa”) não são posto. Coberturas sem horário da vaga nem do posto não entram nos percentuais."],
+   ["Fonte","Aba BDV do SAR2G, cruzada com a planilha de faltas e a jornada dos funcionários."]].forEach(([a,b],i)=>{
+    const rr=3+i;wm.getRow(rr).height=Math.max(24,Math.ceil(b.length/95)*16+8);
+    const x=wm.getCell(rr,2),y=wm.getCell(rr,3);x.value=a;x.font=fonte({size:10,bold:true,color:{argb:BRX.navy}});x.alignment={vertical:"top",indent:1,wrapText:true};
+    y.value=b;y.font=fonte({size:10});y.alignment={vertical:"top",wrapText:true};
+    [x,y].forEach(ce=>{ce.border={bottom:{style:"thin",color:{argb:BRX.linha}}};if(i%2)ce.fill=preenche(BRX.faixa);});
+  });
+  pagina(wm,null,false);
+  wb.views=[{activeTab:0}];
+  return wb;
 }
 
 /* ── Imprimir: prévia em folha A4 com o logo; ao lado, o que entra na impressão ── */
