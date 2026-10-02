@@ -479,9 +479,9 @@ function competenciasNecessarias(ocorrencias, dataVirada) {
 // Sem acento e sem mencionar custo, hora extra, pagamento ou desconto: o
 // objetivo é só orientar a marcar dentro do horário.
 const MODELOS_PADRAO = {
-  entrada_antecipada: "{{nome}}, voce bateu o ponto fora do horario previsto ({{horario_previsto}}). Registre no horario correto, pois pode gerar inconsistencias no sistema. Contamos com voce.",
-  saida_apos_horario: "{{nome}}, voce bateu o ponto fora do horario previsto ({{horario_previsto}}). Registre no horario correto, pois pode gerar inconsistencias no sistema. Contamos com voce.",
-  ambas_no_mesmo_dia: "{{nome}}, voce bateu o ponto fora do previsto ({{entrada_prevista}} as {{saida_prevista}}). Registre no horario correto, pois pode gerar inconsistencias no sistema. Contamos com voce."
+  entrada_antecipada: "SERVCAMP: {{nome}}, voce bateu o ponto fora do horario previsto ({{horario_previsto}}). Registre no horario correto, pois pode gerar inconsistencias no sistema. Obrigado.",
+  saida_apos_horario: "SERVCAMP: {{nome}}, voce bateu o ponto fora do horario previsto ({{horario_previsto}}). Registre no horario correto, pois pode gerar inconsistencias no sistema. Obrigado.",
+  ambas_no_mesmo_dia: "SERVCAMP: {{nome}}, voce bateu o ponto fora do previsto ({{entrada_prevista}} as {{saida_prevista}}). Registre no horario correto, pois pode gerar inconsistencias no sistema. Obrigado."
 };
 
 const VARIAVEIS_MODELO = {
