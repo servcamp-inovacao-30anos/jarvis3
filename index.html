@@ -1169,7 +1169,7 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
     </div>
     <div class="ts"><div class="th2"><div style="display:flex;align-items:center;gap:7px"><div class="chb"></div><span class="ct">Registro de Coberturas</span></div><div class="tc2"><input class="sb2" type="text" placeholder="Buscar..." id="s-coberturas" oninput="rTbl('coberturas')"></div></div><div id="tbl-coberturas"></div><div class="pag"><div class="pi2" id="pi-coberturas"></div><div class="pbs" id="pb-coberturas"></div></div></div>
 
-    <div class="sec-hdr" style="margin-top:16px"><span class="sec-hdr-ic">🚗</span><div><div class="sec-hdr-t">Coberturas Realizadas pelo Supervisor</div><div class="sec-hdr-sub">Supervisores que foram pessoalmente ao local realizar a cobertura (BDV)</div></div><button id="bdvRelBtn" type="button" onclick="navTo('bdvrel')" style="display:none;margin-left:auto;border:1px solid #c7d7fe;background:#eef4ff;color:#3538cd;font:inherit;font-size:.72rem;font-weight:700;padding:7px 12px;border-radius:8px;cursor:pointer">📊 Relatório da diretoria</button></div>
+    <div class="sec-hdr" style="margin-top:16px"><span class="sec-hdr-ic">🚗</span><div><div class="sec-hdr-t">Coberturas Realizadas pelo Supervisor</div><div class="sec-hdr-sub">Supervisores que foram pessoalmente ao local realizar a cobertura (BDV)</div></div><button id="bdvRelBtn" type="button" onclick="navTo('bdvrel')" style="display:none;margin-left:auto;border:1px solid #c7d7fe;background:#eef4ff;color:#3538cd;font:inherit;font-size:.72rem;font-weight:700;padding:7px 12px;border-radius:8px;cursor:pointer">Relatório da diretoria</button></div>
     <div class="sec-kpis" style="grid-template-columns:repeat(4,1fr)">
       <div class="sk sk-bl clickable" onclick="_bdvClick('total')"><div class="sk-top"><span class="sk-ic">🚗</span><span class="sk-tag t-bl">BDV</span></div><div class="sk-lbl">Total Coberturas</div><div class="sk-v" id="bdv-tot">—</div><div class="sk-sub" id="bdv-tots">—</div></div>
       <div class="sk sk-pu"><div class="sk-top"><span class="sk-ic">⏱️</span><span class="sk-tag t-pu">Resposta</span></div><div class="sk-lbl">Tempo Médio de Resposta</div><div class="sk-v" id="bdv-resp">—</div><div class="sk-sub" id="bdv-resps">do início da vaga até a chegada</div></div>
@@ -2637,84 +2637,189 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
 
   <div class="page" id="pg-bdvrel">
     <style>
-      /* ── Relatório de coberturas do supervisor (BDV) — usa os tokens e componentes do módulo Faltas x Medidas ── */
-      #pg-bdvrel #br-sec{max-width:1240px;margin:0 auto;font-size:14px;color:var(--fm-text)}
-      #pg-bdvrel .br-top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px}
-      #pg-bdvrel .br-top .fm-ic-tile{font-size:1.2rem}
-      #pg-bdvrel .br-top .tt{flex:1;min-width:220px}
-      #pg-bdvrel .br-top h3{font-size:1.25rem;font-weight:800;margin:0;color:var(--fm-text);letter-spacing:-.01em}
-      #pg-bdvrel .br-top p{font-size:.8rem;color:var(--fm-muted);margin:3px 0 0}
-      #pg-bdvrel .br-ac{display:flex;gap:8px;flex-wrap:wrap}
-      #pg-bdvrel .fm-btn.pri{background:var(--fm-brand);border-color:var(--fm-brand);color:#fff}
-      #pg-bdvrel .fm-btn.pri:hover{filter:brightness(1.08)}
+      /* ── Relatório de coberturas do supervisor (BDV): limpo, sem emoji, só o que decide ── */
+      #pg-bdvrel #br-sec{position:relative;max-width:1240px;margin:0 auto;font-size:14px;color:var(--fm-text)}
+      #pg-bdvrel .br-prog{position:absolute;left:0;right:0;top:-8px;height:2px;overflow:hidden;opacity:0;transition:opacity .2s}
+      #pg-bdvrel .br-prog.on{opacity:1}
+      #pg-bdvrel .br-prog::before{content:"";position:absolute;top:0;bottom:0;width:30%;background:var(--fm-brand);border-radius:2px;animation:brProg 1s ease-in-out infinite}
+      @keyframes brProg{from{left:-30%}to{left:100%}}
+      #pg-bdvrel .br-top{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+      #pg-bdvrel .br-top .tt{flex:1;min-width:240px}
+      #pg-bdvrel .br-top h3{font-size:1.35rem;font-weight:800;margin:0;letter-spacing:-.015em;color:var(--fm-text)}
+      #pg-bdvrel .br-top p{font-size:.82rem;color:var(--fm-muted);margin:4px 0 0}
+      #pg-bdvrel .br-ac{display:flex;gap:8px}
+      :is(#pg-bdvrel,#brPrev) .br-btn{appearance:none;display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 15px;border:1px solid var(--fm-line);border-radius:10px;background:var(--fm-surface);color:var(--fm-text2);font:inherit;font-size:.8rem;font-weight:600;cursor:pointer;transition:background .15s,border-color .15s,color .15s}
+      :is(#pg-bdvrel,#brPrev) .br-btn svg{width:16px;height:16px}
+      :is(#pg-bdvrel,#brPrev) .br-btn:hover{border-color:var(--fm-brand);color:var(--fm-brand-tx)}
+      #pg-bdvrel .br-btn.pri{background:var(--fm-brand);border-color:var(--fm-brand);color:#fff}
+      #pg-bdvrel .br-btn.pri:hover{filter:brightness(1.07);color:#fff}
       #pg-bdvrel .br-fil{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 10px}
-      #pg-bdvrel .br-dt{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--fm-text2)}
-      #pg-bdvrel .br-dt .fm-in{width:150px}
-      #pg-bdvrel .br-aviso{font-size:.76rem;color:#b54708;background:#fffaeb;border:1px solid #fedf89;border-radius:8px;padding:7px 12px;margin:-4px 0 12px}
+      #pg-bdvrel .br-seg{display:inline-flex;padding:3px;border-radius:10px;background:var(--fm-subtle);border:1px solid var(--fm-line)}
+      #pg-bdvrel .br-seg button{appearance:none;border:0;background:none;font:inherit;font-size:.78rem;font-weight:600;color:var(--fm-text2);height:32px;padding:0 13px;border-radius:7px;cursor:pointer;transition:background .15s,color .15s,box-shadow .15s}
+      #pg-bdvrel .br-seg button:hover{color:var(--fm-text)}
+      #pg-bdvrel .br-seg button.on{background:var(--fm-surface);color:var(--fm-brand-tx);box-shadow:0 1px 3px rgba(16,24,40,.12)}
+      #pg-bdvrel .br-seg.sm button{height:28px;font-size:.74rem;padding:0 11px}
+      #pg-bdvrel .br-dts{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--fm-muted)}
+      #pg-bdvrel .br-dts input{height:38px;padding:0 10px;border:1px solid var(--fm-line);border-radius:10px;background:var(--fm-surface);color:var(--fm-text);font:inherit;font-size:.8rem}
+      #pg-bdvrel .br-dts input:focus{outline:none;border-color:var(--fm-brand);box-shadow:0 0 0 3px var(--fm-ring)}
+      /* seletor com busca e várias escolhas */
+      :is(#pg-bdvrel,#brPrev) .bm{position:relative}
+      :is(#pg-bdvrel,#brPrev) .bm-b{appearance:none;display:inline-flex;align-items:center;gap:7px;height:38px;max-width:280px;padding:0 12px;border:1px solid var(--fm-line);border-radius:10px;background:var(--fm-surface);font:inherit;font-size:.8rem;color:var(--fm-text2);cursor:pointer;transition:border-color .15s,box-shadow .15s}
+      :is(#pg-bdvrel,#brPrev) .bm-b:hover{border-color:var(--g300)}
+      :is(#pg-bdvrel,#brPrev) .bm-b .bm-r{color:var(--fm-muted)}
+      :is(#pg-bdvrel,#brPrev) .bm-b b{font-weight:600;color:var(--fm-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      :is(#pg-bdvrel,#brPrev) .bm-b.on{border-color:var(--fm-brand);background:var(--fm-sel)}
+      :is(#pg-bdvrel,#brPrev) .bm-b.on b{color:var(--fm-brand-tx)}
+      :is(#pg-bdvrel,#brPrev) .bm-b svg{width:15px;height:15px;color:var(--fm-muted);flex:none;transition:transform .15s}
+      :is(#pg-bdvrel,#brPrev) .bm.aberto .bm-b{border-color:var(--fm-brand);box-shadow:0 0 0 3px var(--fm-ring)}
+      :is(#pg-bdvrel,#brPrev) .bm.aberto .bm-b svg{transform:rotate(180deg)}
+      :is(#pg-bdvrel,#brPrev) .bm-p{position:absolute;z-index:40;top:calc(100% + 6px);left:0;width:320px;max-width:calc(100vw - 32px);background:var(--fm-surface);border:1px solid var(--fm-line);border-radius:12px;box-shadow:0 12px 32px rgba(16,24,40,.16);padding:8px;display:none}
+      :is(#pg-bdvrel,#brPrev) .bm.aberto .bm-p{display:block;animation:brPop .14s ease-out}
+      @keyframes brPop{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+      :is(#pg-bdvrel,#brPrev) .bm-s{position:relative}
+      :is(#pg-bdvrel,#brPrev) .bm-s svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--fm-muted)}
+      :is(#pg-bdvrel,#brPrev) .bm-s input{width:100%;box-sizing:border-box;height:36px;padding:0 10px 0 32px;border:1px solid var(--fm-line);border-radius:8px;background:var(--fm-subtle);color:var(--fm-text);font:inherit;font-size:.8rem}
+      :is(#pg-bdvrel,#brPrev) .bm-s input:focus{outline:none;border-color:var(--fm-brand);background:var(--fm-surface)}
+      :is(#pg-bdvrel,#brPrev) .bm-a{display:flex;justify-content:space-between;padding:6px 2px 4px}
+      :is(#pg-bdvrel,#brPrev) .bm-a button{appearance:none;border:0;background:none;font:inherit;font-size:.72rem;font-weight:600;color:var(--fm-brand-tx);cursor:pointer;padding:2px 4px;border-radius:4px}
+      :is(#pg-bdvrel,#brPrev) .bm-a button:hover{background:var(--fm-brand-soft)}
+      :is(#pg-bdvrel,#brPrev) .bm-l{max-height:280px;overflow:auto;margin:0 -2px}
+      :is(#pg-bdvrel,#brPrev) .bm-o{display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:7px;font-size:.8rem;color:var(--fm-text);cursor:pointer}
+      :is(#pg-bdvrel,#brPrev) .bm-o[hidden]{display:none}
+      :is(#pg-bdvrel,#brPrev) .bm-o:hover{background:var(--fm-subtle)}
+      :is(#pg-bdvrel,#brPrev) .bm-o input{width:16px;height:16px;accent-color:var(--fm-brand);margin:0;flex:none}
+      :is(#pg-bdvrel,#brPrev) .bm-o span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      :is(#pg-bdvrel,#brPrev) .bm-o em{font-style:normal;font-size:.72rem;color:var(--fm-muted)}
+      :is(#pg-bdvrel,#brPrev) .bm-vz{font-size:.76rem;color:var(--fm-muted);padding:8px;margin:0}
+      :is(#pg-bdvrel,#brPrev) .br-sel{position:relative;display:inline-flex;align-items:center;height:38px;border:1px solid var(--fm-line);border-radius:10px;background:var(--fm-surface);padding-left:12px;font-size:.8rem}
+      :is(#pg-bdvrel,#brPrev) .br-sel span{color:var(--fm-muted);margin-right:6px}
+      :is(#pg-bdvrel,#brPrev) .br-sel select{appearance:none;border:0;background:none;font:inherit;font-weight:600;color:var(--fm-text);height:100%;padding:0 32px 0 0;cursor:pointer}
+      :is(#pg-bdvrel,#brPrev) .br-sel select:focus{outline:none}
+      :is(#pg-bdvrel,#brPrev) .br-sel svg{position:absolute;right:10px;width:15px;height:15px;color:var(--fm-muted);pointer-events:none}
+      #pg-bdvrel .br-chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 6px;min-height:0}
+      #pg-bdvrel .br-chips:empty{display:none}
+      #pg-bdvrel .br-chip{display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 4px 0 11px;border-radius:999px;background:var(--fm-sel);border:1px solid var(--fm-brand-soft);color:var(--fm-brand-tx);font-size:.74rem;font-weight:600;animation:brPop .14s ease-out}
+      #pg-bdvrel .br-chip button{appearance:none;border:0;background:none;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:inherit;cursor:pointer;opacity:.7}
+      #pg-bdvrel .br-chip button:hover{opacity:1;background:var(--fm-brand-soft)}
+      #pg-bdvrel .br-chip svg{width:13px;height:13px}
+      #pg-bdvrel .br-limpa{appearance:none;border:0;background:none;font:inherit;font-size:.74rem;font-weight:600;color:var(--fm-muted);cursor:pointer;padding:0 8px}
+      #pg-bdvrel .br-limpa:hover{color:var(--fm-text)}
+      #pg-bdvrel .br-cont{transition:opacity .2s}
+      #pg-bdvrel .br-cont.ld{opacity:.45;pointer-events:none}
+      #pg-bdvrel .br-info{font-size:.78rem;color:var(--fm-muted);margin:12px 0 14px}
+      #pg-bdvrel .br-info b{color:var(--fm-text2)}
+      #pg-bdvrel .br-info span{color:var(--fm-muted)}
+      #pg-bdvrel .br-aviso{font-size:.78rem;color:#b54708;background:#fffaeb;border:1px solid #fedf89;border-radius:10px;padding:9px 14px;margin:-4px 0 14px}
       html[data-theme="dark"] #pg-bdvrel .br-aviso{background:rgba(245,176,0,.12);border-color:rgba(245,176,0,.38);color:#fec84b}
-      #pg-bdvrel .br-disp{font-size:.74rem;color:var(--fm-muted);margin:4px 0 12px}
-      #pg-bdvrel .br-sel{display:flex;align-items:center;gap:12px;margin:0 0 12px;font-size:1rem}
-      #pg-bdvrel .br-k{grid-template-columns:repeat(5,minmax(0,1fr))}
-      #pg-bdvrel .br-k .fm-kpi{cursor:default}
-      #pg-bdvrel .br-k .fm-kpi:hover{background:none}
-      #pg-bdvrel .br-var{display:inline-block;font-style:normal;font-weight:700;margin-top:2px}
-      #pg-bdvrel .br-var.bom{color:#067647}#pg-bdvrel .br-var.ruim{color:#d92d20}#pg-bdvrel .br-var.eq{color:var(--fm-muted);font-weight:500}
-      #pg-bdvrel .dr-r{color:#d92d20;font-style:normal;font-weight:700}
-      #pg-bdvrel .br-res{margin:14px 0 0;padding:12px 16px;border:1px solid var(--fm-line);border-left:4px solid var(--fm-brand);border-radius:10px;background:var(--fm-surface)}
-      #pg-bdvrel .br-res .t{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--fm-muted)}
-      #pg-bdvrel .br-res ul{margin:6px 0 0;padding-left:18px;font-size:.86rem;line-height:1.55;color:var(--fm-text2)}
-      #pg-bdvrel .br-res b{color:var(--fm-text)}
-      #pg-bdvrel .br-sit{margin:14px 0 4px}
-      #pg-bdvrel .br-sit-b{display:flex;height:12px;border-radius:6px;overflow:hidden;background:var(--g100)}
-      #pg-bdvrel .br-sit-b i{display:block;height:100%}
-      #pg-bdvrel .br-sit-l{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:8px;font-size:.76rem;color:var(--fm-text2)}
-      #pg-bdvrel .br-sit-l span{display:inline-flex;align-items:center;gap:6px}
-      #pg-bdvrel .br-sit-l i{width:10px;height:10px;border-radius:3px;display:inline-block}
-      #pg-bdvrel .s-an{background:#0f766e}#pg-bdvrel .s-ok{background:#22c55e}#pg-bdvrel .s-am{background:#f59e0b}#pg-bdvrel .s-da{background:#ef4444}#pg-bdvrel .s-gr{background:#cbd5e1}
-      #pg-bdvrel .br-h{font-size:.95rem;font-weight:800;margin:20px 0 8px;color:var(--fm-text)}
-      #pg-bdvrel .br-h small{font-weight:500;font-size:.74rem;color:var(--fm-muted);margin-left:8px}
-      #pg-bdvrel .br-tw{overflow-x:auto;border:1px solid var(--fm-line);border-radius:12px;background:var(--fm-surface)}
-      #pg-bdvrel .br-t{width:100%;border-collapse:collapse;font-size:.8rem;min-width:760px}
-      #pg-bdvrel .br-t th{font-size:.62rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--fm-muted);text-align:left;padding:10px 12px;border-bottom:1px solid var(--fm-line);background:var(--fm-subtle);white-space:nowrap}
-      #pg-bdvrel .br-t td{padding:10px 12px;border-bottom:1px solid var(--fm-line2);color:var(--fm-text2);vertical-align:middle}
-      #pg-bdvrel .br-t tr:last-child td{border-bottom:0}
+      #pg-bdvrel .br-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+      #pg-bdvrel .br-kpi{position:relative;display:flex;flex-direction:column;padding:16px 18px;border:1px solid var(--fm-line);border-radius:14px;background:var(--fm-surface);box-shadow:var(--fm-sh);--c:var(--fm-text)}
+      #pg-bdvrel .br-kpi.c-ok{--c:#079455}#pg-bdvrel .br-kpi.c-am{--c:#dc8a00}#pg-bdvrel .br-kpi.c-da{--c:#d92d20}
+      html[data-theme="dark"] #pg-bdvrel .br-kpi.c-ok{--c:#47cd89}html[data-theme="dark"] #pg-bdvrel .br-kpi.c-am{--c:#fdb022}html[data-theme="dark"] #pg-bdvrel .br-kpi.c-da{--c:#f97066}
+      #pg-bdvrel .br-kpi .l{font-size:.74rem;font-weight:600;color:var(--fm-muted)}
+      #pg-bdvrel .br-kpi .v{font-size:1.9rem;font-weight:800;letter-spacing:-.02em;line-height:1.1;margin:8px 0 6px;color:var(--c)}
+      #pg-bdvrel .br-kpi .s{font-size:.74rem;color:var(--fm-text2);line-height:1.4}
+      #pg-bdvrel .br-kpi .a{font-size:.7rem;color:var(--fm-muted);margin-top:auto;padding-top:8px}
+      #pg-bdvrel .br-dist{display:flex;gap:2px;height:6px;margin:12px 0 0;border-radius:3px;overflow:hidden}
+      #pg-bdvrel .br-dist i{display:block;height:100%;transition:flex .3s}
+      :is(#pg-bdvrel) .s-an{background:#0e9384}:is(#pg-bdvrel) .s-ok{background:#17b26a}:is(#pg-bdvrel) .s-am{background:#f5b000}:is(#pg-bdvrel) .s-da{background:#f04438}:is(#pg-bdvrel) .s-gr{background:#d0d5dd}
+      #pg-bdvrel .br-res{margin:18px 0 0;padding:16px 20px;border:1px solid var(--fm-line);border-radius:14px;background:var(--fm-surface)}
+      #pg-bdvrel .br-res h4,#pg-bdvrel .br-tb h4{font-size:.95rem;font-weight:700;margin:0;color:var(--fm-text)}
+      #pg-bdvrel .br-res ul{margin:10px 0 0;padding:0;list-style:none;display:grid;gap:7px}
+      #pg-bdvrel .br-res li{position:relative;padding-left:16px;font-size:.85rem;line-height:1.55;color:var(--fm-text2)}
+      #pg-bdvrel .br-res li::before{content:"";position:absolute;left:2px;top:.62em;width:5px;height:5px;border-radius:50%;background:var(--fm-brand)}
+      #pg-bdvrel .br-res b{color:var(--fm-text);font-weight:700}
+      #pg-bdvrel .br-tb{margin:22px 0 0}
+      #pg-bdvrel .br-tb-h{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+      #pg-bdvrel .br-tw{overflow-x:auto;border:1px solid var(--fm-line);border-radius:14px;background:var(--fm-surface)}
+      #pg-bdvrel .br-t{width:100%;border-collapse:collapse;font-size:.82rem;min-width:820px}
+      #pg-bdvrel .br-t>thead th{padding:0;text-align:left;border-bottom:1px solid var(--fm-line);background:var(--fm-subtle);white-space:nowrap}
+      #pg-bdvrel .br-t>thead th button{appearance:none;border:0;background:none;font:inherit;font-size:.68rem;font-weight:600;letter-spacing:.03em;color:var(--fm-muted);width:100%;text-align:inherit;padding:11px 14px;cursor:pointer;display:inline-flex;gap:4px;align-items:center;justify-content:inherit}
+      #pg-bdvrel .br-t>thead th.n button{justify-content:flex-end}
+      #pg-bdvrel .br-t>thead th button:hover,#pg-bdvrel .br-t>thead th.on button{color:var(--fm-text)}
+      #pg-bdvrel .br-t>thead th button i{font-style:normal;width:8px}
+      #pg-bdvrel .br-t>thead th.ch{width:36px}
+      #pg-bdvrel .br-g>td{padding:13px 14px;border-bottom:1px solid var(--fm-line2);color:var(--fm-text2);vertical-align:middle}
       #pg-bdvrel .br-t .n{text-align:right;white-space:nowrap}
       #pg-bdvrel .br-t b{color:var(--fm-text)}
-      #pg-bdvrel .br-t small{color:var(--fm-muted)}
-      #pg-bdvrel .br-t .br-r{color:#d92d20;font-weight:700}
-      #pg-bdvrel .br-click{cursor:pointer;transition:background .12s}
-      #pg-bdvrel .br-click:hover{background:var(--fm-subtle)}
-      #pg-bdvrel .br-click:focus-visible{outline:none;box-shadow:inset 0 0 0 3px var(--fm-ring)}
-      #pg-bdvrel .br-pc{display:inline-flex;align-items:center;gap:8px;--k:#64748b}
-      #pg-bdvrel .br-pc.k-ok{--k:#16a34a}#pg-bdvrel .br-pc.k-am{--k:#d97706}#pg-bdvrel .br-pc.k-da{--k:#dc2626}
-      #pg-bdvrel .br-pc b{color:var(--k);min-width:38px;text-align:right}
-      #pg-bdvrel .br-mb{width:70px;height:6px;border-radius:3px;background:var(--g100);overflow:hidden;display:inline-block}
-      #pg-bdvrel .br-mb i{display:block;height:100%;background:var(--k)}
-      #pg-bdvrel .br-tag{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;background:#fffaeb;border:1px solid #fedf89;color:#b54708;font-size:.62rem;font-weight:700;vertical-align:1px}
-      #pg-bdvrel .br-f{display:block;font-size:.62rem}
-      #pg-bdvrel .br-pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:.68rem;font-weight:700;color:#fff;white-space:nowrap}
-      #pg-bdvrel .br-pill.s-ok{color:#14532d}#pg-bdvrel .br-pill.s-am{color:#78350f}#pg-bdvrel .br-pill.s-gr{color:#334155}
-      #pg-bdvrel .br-nota{font-size:.74rem;color:var(--fm-muted);margin:16px 0 0;line-height:1.55}
-      #pg-bdvrel .br-nota b{color:var(--fm-text2)}
-      html[data-theme="dark"] #pg-bdvrel .br-tag{background:rgba(245,176,0,.12);border-color:rgba(245,176,0,.38);color:#fec84b}
-      @media (max-width:1100px){#pg-bdvrel .br-k{grid-template-columns:repeat(3,minmax(0,1fr))}}
-      @media (max-width:640px){#pg-bdvrel .br-k{grid-template-columns:repeat(2,minmax(0,1fr))}#pg-bdvrel .br-dt .fm-in{width:136px}}
-      /* prévia de impressão */
-      #brPrev{position:fixed;inset:0;z-index:99995;background:#475569;display:flex;flex-direction:column}
-      #brPrev .bp-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 16px;background:#0f172a;color:#e2e8f0;font:600 13px "Segoe UI",sans-serif}
-      #brPrev .bp-t{margin-right:6px}
+      #pg-bdvrel .br-t .z{color:var(--g300)}
+      #pg-bdvrel .br-t td.r{color:#d92d20;font-weight:700}
+      #pg-bdvrel .br-g{cursor:pointer;transition:background .12s}
+      #pg-bdvrel .br-g:hover{background:var(--fm-subtle)}
+      #pg-bdvrel .br-g.on{background:var(--fm-sel)}
+      #pg-bdvrel .br-g:focus-visible{outline:none;box-shadow:inset 3px 0 0 var(--fm-brand)}
+      #pg-bdvrel .br-g .ch{width:36px;text-align:center}
+      #pg-bdvrel .br-g .ch svg{width:16px;height:16px;color:var(--fm-muted);transition:transform .2s}
+      #pg-bdvrel .br-g.on .ch svg{transform:rotate(180deg);color:var(--fm-brand)}
+      #pg-bdvrel .br-tag{display:inline-block;margin-left:8px;padding:1px 8px;border-radius:999px;background:var(--fm-subtle);border:1px solid var(--fm-line);color:var(--fm-text2);font-size:.66rem;font-weight:600;vertical-align:1px}
+      #pg-bdvrel .br-pc{display:inline-flex;align-items:center;gap:9px;--k:#98a2b3}
+      #pg-bdvrel .br-pc.t-ok{--k:#17b26a}#pg-bdvrel .br-pc.t-am{--k:#f5b000}#pg-bdvrel .br-pc.t-da{--k:#f04438}
+      #pg-bdvrel .br-pc b{min-width:38px;text-align:right}
+      #pg-bdvrel .br-mb{width:72px;height:6px;border-radius:3px;background:var(--fm-line2);overflow:hidden;display:inline-block}
+      #pg-bdvrel .br-mb i{display:block;height:100%;background:var(--k);border-radius:3px;transition:width .3s}
+      #pg-bdvrel .br-x>td{padding:0;border-bottom:1px solid var(--fm-line2);background:var(--fm-subtle)}
+      #pg-bdvrel .br-x-in{padding:4px 18px 14px 18px;animation:brAbre .2s ease-out;transform-origin:top}
+      #pg-bdvrel .br-x.fecha .br-x-in{animation:brFecha .16s ease-in forwards}
+      @keyframes brAbre{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+      @keyframes brFecha{to{opacity:0;transform:translateY(-6px)}}
+      #pg-bdvrel .br-d{width:100%;border-collapse:collapse;font-size:.78rem}
+      #pg-bdvrel .br-d th{font-size:.64rem;font-weight:600;letter-spacing:.03em;color:var(--fm-muted);text-align:left;padding:10px 10px 6px;border-bottom:1px solid var(--fm-line)}
+      #pg-bdvrel .br-d td{padding:8px 10px;border-bottom:1px solid var(--fm-line2);color:var(--fm-text2)}
+      #pg-bdvrel .br-d tr:last-child td{border-bottom:0}
+      #pg-bdvrel .br-d small{color:var(--fm-muted)}
+      #pg-bdvrel .br-pill{display:inline-flex;align-items:center;gap:6px;font-size:.72rem;font-weight:600;color:var(--fm-text2);white-space:nowrap}
+      #pg-bdvrel .br-pill::before{content:"";width:8px;height:8px;border-radius:50%;background:#d0d5dd}
+      #pg-bdvrel .br-pill.s-an,#pg-bdvrel .br-pill.s-ok,#pg-bdvrel .br-pill.s-am,#pg-bdvrel .br-pill.s-da,#pg-bdvrel .br-pill.s-gr{background:none}
+      #pg-bdvrel .br-pill.s-an::before{background:#0e9384}#pg-bdvrel .br-pill.s-ok::before{background:#17b26a}#pg-bdvrel .br-pill.s-am::before{background:#f5b000}#pg-bdvrel .br-pill.s-da::before{background:#f04438}
+      #pg-bdvrel .br-mais{appearance:none;margin:10px 0 0;border:1px solid var(--fm-line);background:var(--fm-surface);border-radius:8px;height:30px;padding:0 12px;font:inherit;font-size:.74rem;font-weight:600;color:var(--fm-brand-tx);cursor:pointer}
+      #pg-bdvrel .br-mais:hover{border-color:var(--fm-brand)}
+      #pg-bdvrel .br-como{margin:18px 0 0;font-size:.78rem;color:var(--fm-muted)}
+      #pg-bdvrel .br-como summary{display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-weight:600;list-style:none}
+      #pg-bdvrel .br-como summary::-webkit-details-marker{display:none}
+      #pg-bdvrel .br-como summary svg{width:15px;height:15px}
+      #pg-bdvrel .br-como summary:hover{color:var(--fm-text2)}
+      #pg-bdvrel .br-como p{margin:8px 0 0;max-width:860px;line-height:1.6}
+      #pg-bdvrel .br-vazio{display:flex;flex-direction:column;align-items:center;gap:4px;padding:40px 16px;text-align:center;color:var(--fm-muted);font-size:.82rem}
+      #pg-bdvrel .br-vazio b{color:var(--fm-text);font-size:.95rem}
+      #pg-bdvrel .br-esq{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-top:14px}
+      #pg-bdvrel .br-esq i{display:block;height:118px;border-radius:14px;background:linear-gradient(90deg,var(--fm-line2) 0,var(--fm-subtle) 50%,var(--fm-line2) 100%);background-size:200% 100%;animation:brBrilho 1.2s linear infinite}
+      @keyframes brBrilho{to{background-position:-200% 0}}
+      @media (max-width:1100px){#pg-bdvrel .br-kpis,#pg-bdvrel .br-esq{grid-template-columns:repeat(3,minmax(0,1fr))}}
+      @media (max-width:640px){
+        #pg-bdvrel .br-kpis,#pg-bdvrel .br-esq{grid-template-columns:repeat(2,minmax(0,1fr))}
+        #pg-bdvrel .br-kpi{padding:13px 14px}#pg-bdvrel .br-kpi .v{font-size:1.5rem}
+        #pg-bdvrel .br-seg{max-width:100%;overflow-x:auto}
+        :is(#pg-bdvrel,#brPrev) .bm-b{max-width:calc(100vw - 48px)}
+      }
+      @media (prefers-reduced-motion:reduce){#pg-bdvrel *,#brPrev *{animation:none!important;transition:none!important}}
+      /* janela de impressão */
+      #brPrev{position:fixed;inset:0;z-index:99995;display:flex;flex-direction:column;background:#334155;font:14px "Segoe UI",sans-serif;
+        --fm-surface:#fff;--fm-subtle:#f8fafc;--fm-line:#e4e7ec;--fm-line2:#f2f4f7;--fm-text:#1d2939;--fm-text2:#475467;--fm-muted:#667085;--fm-brand:#1d6fc4;--fm-brand-tx:#1e4d8c;--fm-brand-soft:#e8f1fc;--fm-sel:#f0f6ff;--fm-ring:rgba(29,111,196,.22)}
+      #brPrev .bp-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 16px;background:#0f172a;color:#e2e8f0;font-weight:600;font-size:13px}
+      #brPrev .bp-t{margin-right:6px;font-size:14px}
       #brPrev .bp-g{display:inline-flex;align-items:center;gap:2px;background:#1e293b;border-radius:8px;padding:2px}
       #brPrev .bp-g span{min-width:46px;text-align:center;font-size:12px}
-      #brPrev button{appearance:none;border:0;background:transparent;color:#e2e8f0;font:inherit;font-size:12px;height:30px;padding:0 10px;border-radius:6px;cursor:pointer}
-      #brPrev button:hover{background:#334155}
-      #brPrev button.on{background:#2563eb;color:#fff}
-      #brPrev .bp-c{display:inline-flex;align-items:center;gap:6px;font-size:12px;cursor:pointer}
+      #brPrev .bp-bar button{appearance:none;border:0;background:transparent;color:#e2e8f0;font:inherit;font-size:12px;height:30px;padding:0 10px;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+      #brPrev .bp-bar button:hover{background:#334155}
+      #brPrev .bp-bar button.on{background:#2563eb;color:#fff}
+      #brPrev .bp-bar svg{width:15px;height:15px}
       #brPrev .bp-sp{flex:1}
-      #brPrev .bp-pri{background:#2563eb;color:#fff;padding:0 16px}
-      #brPrev .bp-pri:hover{background:#1d4ed8}
-      #brPrev .bp-area{flex:1;overflow:auto;padding:20px}
+      #brPrev .bp-bar .bp-pri{background:#2563eb;color:#fff;padding:0 16px;height:34px}
+      #brPrev .bp-bar .bp-pri:hover{background:#1d4ed8}
+      #brPrev .bp-corpo{flex:1;display:flex;min-height:0}
+      #brPrev .bp-lado{width:300px;flex:none;overflow:auto;background:#fff;padding:16px 18px;border-right:1px solid #e4e7ec;color:#1d2939}
+      #brPrev .bp-lado h5{font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#667085;margin:4px 0 10px}
+      #brPrev .bp-lado h5:not(:first-child){margin-top:20px}
+      #brPrev .bp-ck{display:flex;align-items:center;gap:10px;padding:7px 4px;font-size:.84rem;cursor:pointer;border-radius:6px}
+      #brPrev .bp-ck:hover{background:#f8fafc}
+      #brPrev .bp-ck input{width:17px;height:17px;accent-color:#1d6fc4;margin:0}
+      #brPrev .bp-f{display:flex;flex-direction:column;gap:8px}
+      #brPrev .bp-f .bm-b,#brPrev .bp-f .br-sel{width:100%;max-width:none;box-sizing:border-box}
+      #brPrev .bp-f .bm-p{width:100%}
+      #brPrev .bp-nota{font-size:.74rem;color:#667085;margin:16px 0 0;line-height:1.5}
+      #brPrev .bp-area{flex:1;overflow:auto;padding:24px}
       #brPrev .bp-cx{margin:0 auto;position:relative}
       #brPrev .bp-papel{position:absolute;left:0;top:0;transform-origin:0 0;border:0;background:#fff;box-shadow:0 10px 40px rgba(0,0,0,.45)}
+      @media (max-width:760px){#brPrev .bp-corpo{flex-direction:column}#brPrev .bp-lado{width:auto;max-height:40vh;border-right:0;border-bottom:1px solid #e4e7ec}}
     </style>
     <div id="br-sec"></div>
   </div>
@@ -3961,6 +4066,8 @@ function navTo(p,btn){
   document.getElementById("pg-"+p)?.classList.add("active");
   document.getElementById("pgTitle").textContent=PTITLES[p]||p;
   document.getElementById("pgSub").textContent=perLabel();
+  // o Relatório de Coberturas tem período próprio: o filtro geral (Hoje/Semana/Turno/Área) não vale lá e só confundiria
+  {const fb=document.querySelector(".fb");if(fb)fb.style.display=p==="bdvrel"?"none":"";if(p==="bdvrel")document.getElementById("pgSub").textContent="Visão da diretoria";}
   if(["faltas","coberturas","postos","os","fts","dispo","restec","hrextra","checklist"].includes(p)){rTbl(p);updSecCharts(p);}
   else if(p==="ativos"){renderAtivos();}
   else if(p==="clientes"){renderClientes();}
@@ -3988,7 +4095,7 @@ function navTo(p,btn){
 
 function refresh(){
   filterAll();
-  document.getElementById("pgSub").textContent=perLabel();
+  document.getElementById("pgSub").textContent=ST.pg==="bdvrel"?"Visão da diretoria":perLabel();
   updVG();updOC();
   // guias de banco (RH, Comercial, painéis e módulos novos) reagem ao filtro
   const _rer={
@@ -11931,11 +12038,14 @@ function vgFmDir(){
    quem faltou; nas idas sem falta, com o turno do posto. As contas moram no
    servidor (api/_bdv.js + bloco bdvRegras): aqui só se filtra, soma e desenha.
    Os dados vêm das planilhas já guardadas no banco (cada uma traz ~3 meses de BDV):
-   o servidor junta as que forem precisas para o período escolhido. */
-const BR={dados:null,de:null,ate:null,vis:"sup",sel:"",mot:"",carregando:false,erro:null,pedido:0};
-const BR_SIT={ANTES:["Antes do horário","an"],NO_PRAZO:["No prazo","ok"],ATRASO:["Com atraso","am"],GRAVE:["Atraso grave","da"],SEM_HORARIO:["Sem horário","gr"]};
+   o servidor junta as que forem precisas para o período escolhido.
+   A tela só redesenha o pedaço que mudou: filtros abertos continuam abertos e a
+   rolagem não pula. */
+const BR={dados:null,de:null,ate:null,atalho:"folha",vis:"sup",sups:[],postos:[],mot:"",aberto:{},mais:{},ord:{c:"n",d:-1},carregando:false,erro:null,pedido:0};
+const BR_SIT={ANTES:["Antes do início","an"],NO_PRAZO:["Até 1 hora","ok"],ATRASO:["De 1 a 3 horas","am"],GRAVE:["Mais de 3 horas","da"],SEM_HORARIO:["Sem horário","gr"]};
 const BR_FONTE={FALTA:"horário da vaga de quem faltou",JORNADA:"jornada de quem faltou",POSTO:"turno do posto"};
 const BR_MAX_COMPARA=200; // períodos maiores vêm sem a comparação (o servidor entrega até 400 dias)
+const BR_MOT={"":"Todos os motivos",FALTA:"Só faltas",OUTROS:"Outros motivos"};
 function brPermitido(){return fmPermitido();}
 function brPedir(metodo,t,q){
   return fetch("/api/rh?modulo=bdv&t="+t+(q?"&"+new URLSearchParams(q).toString():""),{method:metodo})
@@ -11949,6 +12059,8 @@ function brDdC(d){return d?d.slice(8,10)+"/"+d.slice(5,7):"—";}
 function brSemana(d){return["dom","seg","ter","qua","qui","sex","sáb"][new Date(d+"T12:00:00Z").getUTCDay()];}
 function brHM(min){if(min==null)return"—";const a=Math.abs(Math.round(min)),h=Math.floor(a/60),m=a%60;return h?h+"h"+String(m).padStart(2,"0"):m+" min";}
 function brNomeCurto(n){return typeof fmNomeCard==="function"?fmNomeCard(n):n;}
+function brPct(a,b){return b?Math.round(a/b*100):null;}
+function brNorm(s){return String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();}
 /* Períodos prontos. Folha = 26 de um mês a 25 do seguinte. */
 function brPeriodo(k){
   const h=brHoje(),a=+h.slice(0,4),m=+h.slice(5,7),d=+h.slice(8,10),p2=x=>String(x).padStart(2,"0");
@@ -11963,6 +12075,7 @@ function brPeriodo(k){
 /* Dias do período que já passaram: a folha atual vai até o dia 25, mas só se compara
    o que já aconteceu (7 dias desta folha contra os 7 dias anteriores, não contra 30). */
 function brNComp(){const h=brHoje(),fim=BR.ate>h?h:BR.ate;return fim<BR.de?brDias(BR.de,BR.ate):brDias(BR.de,fim);}
+function brAteEfetivo(){const h=brHoje();return BR.ate>h?h:BR.ate;}
 function brUsarPeriodo(k){const [de,ate]=brPeriodo(k);BR.de=de;BR.ate=ate;BR.atalho=k;brLoad(true);}
 function brDatas(){
   const de=document.getElementById("brDe").value,ate=document.getElementById("brAte").value;
@@ -11972,238 +12085,346 @@ function brDatas(){
   BR.de=de;BR.ate=ate;BR.atalho="";brLoad(true);
 }
 function brLoad(forcar){
+  if(!brPermitido()){brMontar();return;}
   if(!BR.de){const [de,ate]=brPeriodo("folha");BR.de=de;BR.ate=ate;BR.atalho="folha";}
+  if(!document.getElementById("brCont"))brMontar();
   const n=brNComp(),compara=n<=BR_MAX_COMPARA;
   const pedeDe=compara?brSoma(BR.de,-n):BR.de;
-  if(!forcar&&BR.dados&&BR.dados.pedeDe===pedeDe&&BR.dados.ate===BR.ate){brRender();return;}
-  BR.carregando=true;BR.erro=null;const meu=++BR.pedido;brRender();
+  if(!forcar&&BR.dados&&BR.dados.pedeDe===pedeDe&&BR.dados.ate===BR.ate){brPintaTudo();return;}
+  BR.carregando=true;BR.erro=null;const meu=++BR.pedido;brPintaPeriodo();brCarregando(true);
   brPedir("GET","coberturas",{de:pedeDe,ate:BR.ate}).then(j=>{
     if(meu!==BR.pedido)return;
     BR.dados={pedeDe,ate:BR.ate,compara,linhas:j.coberturas||[],limites:j.limites||{noPrazo:60,grave:180},disponivel:j.disponivel||{}};
-    BR.carregando=false;brRender();
-  }).catch(e=>{if(meu!==BR.pedido)return;BR.carregando=false;BR.erro=e.message;brRender();});
+    BR.carregando=false;BR.aberto={};BR.mais={};brCarregando(false);brPintaTudo();
+  }).catch(e=>{if(meu!==BR.pedido)return;BR.carregando=false;BR.erro=e.message;brCarregando(false);brPintaTudo();});
 }
-/* Linhas do período (atual ou o anterior, do mesmo tamanho), com os filtros de motivo e de seleção. */
-function brLinhas(anterior,semSel){
+function brCarregando(on){const c=document.getElementById("brCont"),b=document.getElementById("brProg");if(c)c.classList.toggle("ld",on);if(b)b.classList.toggle("on",on);}
+
+/* ── filtros ── */
+function brFiltroTela(){return{sups:BR.sups,postos:BR.postos,mot:BR.mot};}
+function brPassa(x,f){
+  return(!f.mot||(f.mot==="FALTA"?x.motivo==="FALTA":x.motivo!=="FALTA"))&&
+    (!f.sups.length||f.sups.indexOf(x.supervisor)>=0)&&(!f.postos.length||f.postos.indexOf(x.posto)>=0);
+}
+/* Linhas do período escolhido (ou do anterior, do mesmo tamanho), já filtradas. */
+function brLinhas(f,anterior){
   const D=BR.dados;if(!D)return[];
   const n=brNComp(),de=anterior?brSoma(BR.de,-n):BR.de,ate=anterior?brSoma(BR.de,-1):BR.ate;
-  return D.linhas.filter(x=>x.data>=de&&x.data<=ate&&(!BR.mot||(BR.mot==="FALTA"?x.motivo==="FALTA":x.motivo!=="FALTA"))&&
-    (semSel||!BR.sel||(BR.vis==="sup"?x.supervisor:x.posto)===BR.sel));
+  return D.linhas.filter(x=>x.data>=de&&x.data<=ate&&(!f||brPassa(x,f)));
 }
+/* A comparação só aparece se as planilhas guardadas cobrem o período anterior inteiro. */
+function brCompOk(){const D=BR.dados;return!!(D&&D.compara&&D.disponivel&&D.disponivel.primeiro&&D.disponivel.primeiro<=brSoma(BR.de,-brNComp()));}
 /* Números de um conjunto de idas. KM e horas são do DIA do supervisor (a planilha
    repete em todas as idas do dia): contam uma vez por supervisor e dia. */
 function brConta(L){
-  const r={n:0,fora:0,sit:{ANTES:0,NO_PRAZO:0,ATRASO:0,GRAVE:0,SEM_HORARIO:0},postos:new Set(),sups:new Set(),atrasos:[],km:0,min:0,dias:new Set()};
+  const r={n:0,fora:0,sit:{ANTES:0,NO_PRAZO:0,ATRASO:0,GRAVE:0,SEM_HORARIO:0},postos:new Set(),sups:new Set(),km:0,min:0,motivos:{}};
   const dia={};
   L.forEach(x=>{
     if(x.situacao==="NAO_E_POSTO"){r.fora++;return;}
     r.n++;r.sit[x.situacao]=(r.sit[x.situacao]||0)+1;
-    if(x.posto)r.postos.add(x.posto);r.sups.add(x.supervisor);r.dias.add(x.data);
-    if(x.situacao==="ATRASO"||x.situacao==="GRAVE")r.atrasos.push(x.diferenca_min);
+    if(x.posto)r.postos.add(x.posto);r.sups.add(x.supervisor);
+    const m=x.motivo||"—";r.motivos[m]=(r.motivos[m]||0)+1;
     const k=x.supervisor+"|"+x.data;if(!dia[k])dia[k]={km:0,min:0};
     if(x.km!=null)dia[k].km=Math.max(dia[k].km,x.km);if(x.tempo_min!=null)dia[k].min=Math.max(dia[k].min,x.tempo_min);
   });
   Object.values(dia).forEach(v=>{r.km+=v.km;r.min+=v.min;});
   r.medidas=r.n-r.sit.SEM_HORARIO;
-  r.noPrazo=r.sit.ANTES+r.sit.NO_PRAZO;
-  r.pct=r.medidas?Math.round(r.noPrazo/r.medidas*100):null;
-  r.atrasoMedio=r.atrasos.length?r.atrasos.reduce((a,b)=>a+b,0)/r.atrasos.length:null;
+  r.ate1h=r.sit.ANTES+r.sit.NO_PRAZO;
+  r.pct=brPct(r.ate1h,r.medidas);
   return r;
 }
 function brAgrupa(L,chave){
-  const g={};L.forEach(x=>{const k=chave(x)||"—";(g[k]=g[k]||[]).push(x);});
-  return Object.keys(g).map(k=>Object.assign(brConta(g[k]),{nome:k})).filter(x=>x.n);
+  const g={};L.forEach(x=>{if(x.situacao==="NAO_E_POSTO")return;const k=chave(x)||"—";(g[k]=g[k]||[]).push(x);});
+  return Object.keys(g).map(k=>Object.assign(brConta(g[k]),{nome:k,linhas:g[k]}));
 }
 /*fim brAgrupa*/
-const brTom=p=>p==null?"gr":p>=80?"ok":p>=60?"am":"da";
-function brVar(atual,ant,menorMelhor,fmt){
-  if(ant==null||atual==null||!BR.dados||!BR.dados.compara)return"";
-  const d=atual-ant;if(!d)return`<em class="br-var eq">igual ao período anterior</em>`;
-  const bom=menorMelhor?d<0:d>0;
-  return`<em class="br-var ${bom?"bom":"ruim"}">${d>0?"▲":"▼"} ${fmt?fmt(Math.abs(d)):Math.abs(d)} vs período anterior</em>`;
-}
-/* Três frases para a diretoria ler primeiro. */
-function brFrases(R,Ra,grSup,grPosto){
-  const f=[];
-  if(R.pct!=null)f.push(`<b>${R.pct}%</b> das ${R.medidas} coberturas foram no prazo${R.sit.ANTES?` (${R.sit.ANTES} com o supervisor chegando <b>antes do horário</b>)`:""}`+
-    (Ra&&Ra.pct!=null&&BR.dados.compara?(R.pct===Ra.pct?", igual ao período anterior.":`, ${R.pct>Ra.pct?"melhor":"pior"} que os ${Ra.pct}% do período anterior.`):"."));
-  const graves=R.sit.GRAVE;
-  if(graves){const quem=brAgrupa(brLinhas().filter(x=>x.situacao==="GRAVE"),x=>x.supervisor).sort((a,b)=>b.n-a.n);
-    f.push(`<b>${graves} ${graves===1?"atraso grave":"atrasos graves"}</b> (mais de ${brHM(BR.dados.limites.grave)} depois do início)`+(quem.length?`, ${quem.length===1?"todos com":"mais com"} <b>${_esc(brNomeCurto(quem[0].nome))}</b> (${quem[0].n}).`:"."));}
-  else if(R.n)f.push("Nenhum atraso grave no período.");
-  const reinc=grPosto.filter(x=>x.n>=3).sort((a,b)=>b.n-a.n);
-  if(reinc.length)f.push(`<b>${reinc.length} ${reinc.length===1?"posto precisou":"postos precisaram"}</b> de 3 ou mais coberturas`+` — o que mais: <b>${_esc(reinc[0].nome)}</b> (${reinc[0].n}).`);
-  else if(grSup.length){const t=grSup.slice().sort((a,b)=>b.n-a.n)[0];f.push(`Quem mais cobriu: <b>${_esc(brNomeCurto(t.nome))}</b>, com ${t.n} ${t.n===1?"ida":"idas"} a posto.`);}
-  return f;
-}
-function brKpis(R,Ra){
-  const k=(cls,rot,val,sub,extra)=>`<div class="fm-kpi ${cls||""}"><div class="fm-kpi-l">${rot}</div><div class="fm-kpi-v"><b>${val}</b><span>${sub}</span></div>${extra||""}</div>`;
-  const barra=R.pct==null?"":`<div class="fm-kpi-bar"><i style="width:${R.pct}%"></i></div>`;
-  const at=R.sit.ATRASO+R.sit.GRAVE;
-  return`<div class="fm-kpis br-k">`+
-    k("","Coberturas do supervisor",R.n,`em ${R.postos.size} ${R.postos.size===1?"posto":"postos"} · ${R.sups.size} ${R.sups.size===1?"supervisor":"supervisores"}<br>${brVar(R.n,Ra&&Ra.n)}`)+
-    k(R.pct==null?"":"v-"+brTom(R.pct),"No prazo",R.pct==null?"—":R.pct+"%",`${R.sit.ANTES} antes do horário · ${R.sit.NO_PRAZO} até ${brHM(BR.dados.limites.noPrazo)}<br>${brVar(R.pct,Ra&&Ra.pct,false,x=>x+(x===1?" ponto":" pontos"))}`,barra)+
-    k(at?"v-am":"v-ok","Com atraso",at,`${R.sit.GRAVE?`<i class="dr-r">${R.sit.GRAVE} graves</i> (mais de ${brHM(BR.dados.limites.grave)})`:"nenhum grave"}<br>${R.atrasoMedio!=null?"atraso médio "+brHM(R.atrasoMedio):""}`)+
-    k("","Horas em campo",brHM(R.min),`${Math.round(R.km).toLocaleString("pt-BR")} km rodados<br>nos dias com cobertura`)+
-    k("","Sem como medir",R.sit.SEM_HORARIO,`sem horário da vaga nem do posto<br>${R.fora} ${R.fora===1?"ida fora de posto":"idas fora de posto"} (sede…) à parte`)+`</div>`;
-}
-function brBarraSit(R){
-  const tot=R.n;if(!tot)return"";
-  return`<div class="br-sit"><div class="br-sit-b">`+Object.keys(BR_SIT).map(s=>R.sit[s]?`<i class="s-${BR_SIT[s][1]}" style="width:${R.sit[s]/tot*100}%" title="${BR_SIT[s][0]}: ${R.sit[s]}"></i>`:"").join("")+`</div>`+
-    `<div class="br-sit-l">`+Object.keys(BR_SIT).map(s=>`<span><i class="s-${BR_SIT[s][1]}"></i>${BR_SIT[s][0]} <b>${R.sit[s]||0}</b></span>`).join("")+`</div></div>`;
-}
-function brTabelaGrupos(gr,modo){
-  const ord=gr.slice().sort((a,b)=>b.n-a.n||(a.pct==null?101:a.pct)-(b.pct==null?101:b.pct)||a.nome.localeCompare(b.nome));
-  const cab=modo==="sup"?["Supervisor","Coberturas","No prazo","Antes","Atraso","Graves","Atraso médio","Postos","Horas · KM"]
-                        :["Posto","Coberturas","No prazo","Antes","Atraso","Graves","Atraso médio","Supervisores","Motivo mais comum"];
-  return`<div class="br-tw"><table class="br-t"><thead><tr>${cab.map((c,i)=>`<th${i>0?' class="n"':""}>${c}</th>`).join("")}</tr></thead><tbody>`+
-    ord.map(x=>{
-      const t=brTom(x.pct),mot=modo==="posto"?brMotivoMais(x.nome):"";
-      return`<tr class="br-click" tabindex="0" data-n="${_esc(x.nome)}" onclick="brAbrir(this.dataset.n)" onkeydown="if(event.key==='Enter')brAbrir(this.dataset.n)">`+
-        `<td><b>${_esc(modo==="sup"?brNomeCurto(x.nome):x.nome)}</b>${modo==="posto"&&x.n>=3?' <span class="br-tag">Reincidente</span>':""}</td>`+
-        `<td class="n"><b>${x.n}</b></td>`+
-        `<td class="n"><span class="br-pc k-${t}"><span class="br-mb"><i style="width:${x.pct||0}%"></i></span><b>${x.pct==null?"—":x.pct+"%"}</b></span></td>`+
-        `<td class="n">${x.sit.ANTES||"·"}</td><td class="n">${x.sit.ATRASO||"·"}</td><td class="n${x.sit.GRAVE?" br-r":""}">${x.sit.GRAVE||"·"}</td>`+
-        `<td class="n">${x.atrasoMedio==null?"—":brHM(x.atrasoMedio)}</td>`+
-        (modo==="sup"?`<td class="n">${x.postos.size}</td><td class="n">${brHM(x.min)} · ${Math.round(x.km)} km</td>`
-                     :`<td class="n">${x.sups.size}</td><td class="n">${_esc(mot)}</td>`)+`</tr>`;
-    }).join("")+`</tbody></table></div>`;
-}
-function brMotivoMais(posto){
-  const c={};brLinhas(false,true).forEach(x=>{if(x.posto===posto&&x.situacao!=="NAO_E_POSTO"){const m=x.motivo||"—";c[m]=(c[m]||0)+1;}});
-  const t=Object.entries(c).sort((a,b)=>b[1]-a[1])[0];return t?brMotivoTxt(t[0]):"—";
-}
 function brMotivoTxt(m){if(!m)return"—";if(m==="FALTA")return"Falta";const s=m.toLowerCase();return s.charAt(0).toUpperCase()+s.slice(1);}
+function brMotivoMais(r){const t=Object.entries(r.motivos).sort((a,b)=>b[1]-a[1])[0];return t?brMotivoTxt(t[0]):"—";}
 function brDifTxt(x){
   if(x.diferenca_min==null)return"—";
   if(x.diferenca_min<0)return brHM(-x.diferenca_min)+" antes";
   if(x.diferenca_min===0)return"na hora";
   return brHM(x.diferenca_min)+" depois";
 }
-function brTabelaIdas(L,modo){
-  const ord=L.filter(x=>x.situacao!=="NAO_E_POSTO").sort((a,b)=>a.data.localeCompare(b.data)||String(a.chegada).localeCompare(String(b.chegada)));
-  if(!ord.length)return fmVazio("Nenhuma cobertura nesse período","Escolha outro período ou outro filtro.");
-  return`<div class="br-tw"><table class="br-t br-id"><thead><tr><th>Data</th><th>${modo==="sup"?"Posto":"Supervisor"}</th><th>Motivo</th><th class="n">Início</th><th class="n">Chegada</th><th class="n">Diferença</th><th>Situação</th></tr></thead><tbody>`+
-    ord.map(x=>{const s=BR_SIT[x.situacao]||["—","gr"];
-      return`<tr><td><b>${brDdC(x.data)}</b> <small>${brSemana(x.data)}</small></td>`+
-        `<td>${_esc(modo==="sup"?(x.posto||x.destino):brNomeCurto(x.supervisor))}</td>`+
-        `<td>${x.motivo==="FALTA"?`Falta de <b>${_esc(x.falta_nome||"—")}</b>${x.falta_re?` <small>RE ${_esc(x.falta_re)}</small>`:""}`:_esc(brMotivoTxt(x.motivo))}</td>`+
-        `<td class="n">${x.inicio||"—"}${x.fonte_inicio?`<small class="br-f">${BR_FONTE[x.fonte_inicio]||""}</small>`:""}</td>`+
-        `<td class="n"><b>${x.chegada||"—"}</b></td><td class="n">${brDifTxt(x)}</td>`+
-        `<td><span class="br-pill s-${s[1]}">${s[0]}</span></td></tr>`;
-    }).join("")+`</tbody></table></div>`;
+function brLista(l){return l.length<2?l.join(""):l.slice(0,-1).join(", ")+" e "+l[l.length-1];}
+function brNomeDe(dim,n){return dim==="sup"?brNomeCurto(n):n;}
+/* Texto do que está filtrado, para títulos e para a folha impressa. */
+function brFiltroTxt(f){
+  const p=[];
+  p.push(f.sups.length?(f.sups.length===1?"Supervisor ":"Supervisores ")+brLista(f.sups.map(brNomeCurto)):"Todos os supervisores");
+  p.push(f.postos.length?(f.postos.length===1?"posto ":"postos ")+brLista(f.postos):"todos os postos");
+  p.push(BR_MOT[f.mot||""].toLowerCase());
+  return p.join(" · ");
 }
-function brAbrir(nome){BR.sel=nome;brRender();const el=document.getElementById("pg-bdvrel");if(el)el.scrollIntoView({block:"start"});}
-function brOpcoes(){
-  const L=brLinhas(false,true).filter(x=>x.situacao!=="NAO_E_POSTO");
-  const nomes=[...new Set(L.map(x=>BR.vis==="sup"?x.supervisor:x.posto).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
-  if(BR.sel&&nomes.indexOf(BR.sel)<0)nomes.unshift(BR.sel);
-  return`<option value="">${BR.vis==="sup"?"Todos os supervisores":"Todos os postos"}</option>`+nomes.map(n=>`<option value="${_esc(n)}"${n===BR.sel?" selected":""}>${_esc(BR.vis==="sup"?brNomeCurto(n):n)}</option>`).join("");
-}
-function brRender(){
-  const el=document.getElementById("br-sec");if(!el)return;
-  if(!brPermitido()){el.innerHTML=fmVazio("Relatório restrito","Este relatório é da diretoria e da coordenação.");return;}
-  const at=k=>`<button class="${BR.atalho===k?"on":""}" onclick="brUsarPeriodo('${k}')">${{folha:"Folha atual",folhaAnt:"Folha anterior",mes:"Mês atual","30":"Últimos 30 dias"}[k]}</button>`;
-  let h=`<div class="br-top"><span class="fm-ic-tile" aria-hidden="true">🚗</span><div class="tt"><h3>Coberturas do supervisor</h3><p>Ida do supervisor ao posto (BDV) comparada com o início da vaga de quem faltou</p></div>`+
-    `<div class="br-ac">`+
-    `<button class="fm-btn sm" onclick="brExcel()">Excel</button><button class="fm-btn sm pri" onclick="brPrevia()">Imprimir / PDF</button></div></div>`;
-  h+=`<div class="br-fil"><div class="fm-seg" role="group" aria-label="Período">${at("folha")}${at("folhaAnt")}${at("mes")}${at("30")}</div>`+
-    `<label class="br-dt">De <input type="date" id="brDe" class="fm-in" value="${BR.de}" onchange="brDatas()"></label><label class="br-dt">até <input type="date" id="brAte" class="fm-in" value="${BR.ate}" onchange="brDatas()"></label></div>`;
-  h+=`<div class="br-fil"><div class="fm-seg" role="group" aria-label="Visão"><button class="${BR.vis==="sup"?"on":""}" onclick="BR.vis='sup';BR.sel='';brRender()">Por supervisor</button><button class="${BR.vis==="posto"?"on":""}" onclick="BR.vis='posto';BR.sel='';brRender()">Por posto</button></div>`+
-    `<div class="fm-selb"><label><span class="t">${BR.vis==="sup"?"Supervisor:":"Posto:"}</span><select aria-label="Escolher" onchange="BR.sel=this.value;brRender()">${BR.dados?brOpcoes():""}</select><span class="chv">${FM_IC.chev}</span></label></div>`+
-    `<div class="fm-selb"><label><span class="t">Motivo:</span><select aria-label="Motivo" onchange="BR.mot=this.value;brRender()"><option value=""${!BR.mot?" selected":""}>Todos</option><option value="FALTA"${BR.mot==="FALTA"?" selected":""}>Só faltas</option><option value="OUTROS"${BR.mot==="OUTROS"?" selected":""}>Outros (férias, agenda, posto vago…)</option></select><span class="chv">${FM_IC.chev}</span></label></div></div>`;
-  if(BR.erro){el.innerHTML=h+fmVazio("Não foi possível carregar",_esc(BR.erro));return;}
-  if(!BR.dados){el.innerHTML=h+fmVazio("Carregando…");return;}
-  const D=BR.dados;
-  if(!D.disponivel||!D.disponivel.primeiro){el.innerHTML=h+fmVazio("Sem coberturas nesse período","Nenhuma planilha guardada traz idas do supervisor (aba BDV) para essas datas.");return;}
-  const L=brLinhas(),La=D.compara?brLinhas(true):null,R=brConta(L),Ra=La?brConta(La):null;
-  const base=brLinhas(false,true);
-  const grSup=brAgrupa(base,x=>x.supervisor),grPosto=brAgrupa(base,x=>x.posto);
-  const nc=brNComp(),nt=brDias(BR.de,BR.ate);
-  h+=`<p class="br-disp">Período ${brDd(BR.de)} a ${brDd(BR.ate)} (${nt} dias${nc<nt?`, ${nc} até hoje`:""})${D.compara?` · comparado com ${brDd(brSoma(BR.de,-nc))} a ${brDd(brSoma(BR.de,-1))}`:""}${BR.carregando?" · atualizando…":""}</p>`;
-  if(D.disponivel.primeiro>BR.de)h+=`<p class="br-aviso">As planilhas guardadas só têm BDV a partir de <b>${brDd(D.disponivel.primeiro)}</b>: antes disso não há dado.</p>`;
-  else if(D.compara&&D.disponivel.primeiro>brSoma(BR.de,-brNComp()))h+=`<p class="br-aviso">A comparação com o período anterior está incompleta: as planilhas guardadas só têm BDV a partir de <b>${brDd(D.disponivel.primeiro)}</b>.</p>`;
-  if(BR.sel)h+=`<div class="br-sel"><button class="fm-btn sm" onclick="BR.sel='';brRender()">← ${BR.vis==="sup"?"Todos os supervisores":"Todos os postos"}</button><b>${_esc(BR.vis==="sup"?brNomeCurto(BR.sel):BR.sel)}</b></div>`;
-  h+=brKpis(R,Ra);
-  if(!BR.sel&&R.n){const fr=brFrases(R,Ra,grSup,grPosto);if(fr.length)h+=`<div class="br-res"><b class="t">Resumo</b><ul>${fr.map(x=>`<li>${x}</li>`).join("")}</ul></div>`;}
-  h+=brBarraSit(R);
-  if(BR.sel)h+=`<h4 class="br-h">Coberturas ${BR.vis==="sup"?"feitas por "+_esc(brNomeCurto(BR.sel)):"no posto "+_esc(BR.sel)}</h4>`+brTabelaIdas(L,BR.vis);
-  else{
-    const gr=BR.vis==="sup"?brAgrupa(L,x=>x.supervisor):brAgrupa(L,x=>x.posto);
-    h+=`<h4 class="br-h">${BR.vis==="sup"?"Por supervisor":"Por posto"} <small>clique numa linha para ver as coberturas</small></h4>`+(gr.length?brTabelaGrupos(gr,BR.vis):fmVazio("Nenhuma cobertura nesse período","Escolha outro período ou outro filtro."));
+/* Resumo: só fatos, com os números que somam. Nada de "melhor/pior". */
+function brResumo(f){
+  const D=BR.dados,L=brLinhas(f),R=brConta(L),ateE=brAteEfetivo(),out=[];
+  if(!R.n&&!R.fora)return["Nenhuma ida do supervisor a posto no período, com esses filtros."];
+  out.push(`De <b>${brDd(BR.de)}</b> a <b>${brDd(ateE)}</b>: <b>${R.n}</b> ${R.n===1?"cobertura":"coberturas"} do supervisor, feitas por <b>${R.sups.size}</b> ${R.sups.size===1?"supervisor":"supervisores"} em <b>${R.postos.size}</b> ${R.postos.size===1?"posto":"postos"}.`);
+  if(R.medidas){
+    const s=R.sit;
+    out.push(`Chegada comparada com o início da vaga, nas <b>${R.medidas}</b> em que havia horário: <b>${s.ANTES}</b> antes do início, <b>${s.NO_PRAZO}</b> até 1 hora depois, <b>${s.ATRASO}</b> entre 1 e 3 horas depois e <b>${s.GRAVE}</b> mais de 3 horas depois.`);
+    out.push(`Chegaram até 1 hora depois do início (contando as que chegaram antes): <b>${R.pct}%</b> (${R.ate1h} de ${R.medidas}).`+
+      (brCompOk()?(()=>{const A=brConta(brLinhas(f,true));return A.medidas?` No período anterior, de ${brDd(brSoma(BR.de,-brNComp()))} a ${brDd(brSoma(BR.de,-1))}: <b>${A.pct}%</b> (${A.ate1h} de ${A.medidas}).`:"";})():""));
   }
-  h+=`<p class="br-nota"><b>Como se conta:</b> a referência é o horário de início da vaga de quem faltou (da planilha de faltas ou da jornada da pessoa). Nas idas sem falta (férias, agenda, posto vago…), o turno do posto que já tinha começado. <b>No prazo</b> = chegou antes do início ou até ${brHM(D.limites.noPrazo)} depois. <b>Atraso grave</b> = mais de ${brHM(D.limites.grave)}. Duas pessoas faltaram no mesmo posto = duas coberturas. Idas à sede e textos livres ("deixar colaborador em casa") ficam fora da conta.</p>`;
+  if(R.sit.GRAVE){
+    const g=brAgrupa(L.filter(x=>x.situacao==="GRAVE"),x=>x.supervisor).sort((a,b)=>b.n-a.n||a.nome.localeCompare(b.nome));
+    out.push(`Mais de 3 horas depois do início, por supervisor: ${brLista(g.map(x=>`<b>${_esc(brNomeCurto(x.nome))}</b> ${x.n}`))}.`);
+  }
+  const rein=brAgrupa(L,x=>x.posto).filter(x=>x.n>=3).sort((a,b)=>b.n-a.n||a.nome.localeCompare(b.nome));
+  if(rein.length)out.push(`${rein.length===1?"Posto":"Postos"} com 3 ou mais coberturas no período: ${(()=>{const l=rein.slice(0,5).map(x=>`<b>${_esc(x.nome)}</b> (${x.n})`);return rein.length>5?l.join(", ")+` e mais ${rein.length-5}`:brLista(l);})()}.`);
+  const fora=[R.sit.SEM_HORARIO?`${R.sit.SEM_HORARIO} sem horário da vaga nem do posto para comparar`:"",R.fora?`${R.fora} ${R.fora===1?"ida":"idas"} à sede ou com destino em texto livre (não é posto)`:""].filter(Boolean);
+  if(fora.length)out.push(`Fora da comparação: ${brLista(fora)}.`);
+  return out;
+}
+
+/* ── seletor com busca e várias escolhas (supervisores, postos) ── */
+const BR_MS={}; // id -> {alvo(): array do estado, aoMudar(), opcoes: [{v,t,n}]}
+function brMulti(id,rotulo,opcoes,alvo,aoMudar){
+  BR_MS[id]={alvo,aoMudar,opcoes,rotulo};
+  const sel=alvo();
+  return`<div class="bm" id="bm-${id}"><button type="button" class="bm-b${sel.length?" on":""}" aria-haspopup="listbox" aria-expanded="false" onclick="brMultiAbre('${id}')"><span class="bm-r">${rotulo}</span><b id="bmv-${id}">${brMultiValor(id)}</b>${FM_IC.chev}</button>`+
+    `<div class="bm-p" role="listbox" aria-multiselectable="true"><div class="bm-s">${FM_IC.busca}<input type="search" placeholder="Buscar pelo nome" aria-label="Buscar ${rotulo.toLowerCase()}" oninput="brMultiBusca('${id}',this.value)"></div>`+
+    `<div class="bm-a"><button type="button" onclick="brMultiTodos('${id}',true)">Marcar os mostrados</button><button type="button" onclick="brMultiTodos('${id}',false)">Limpar</button></div>`+
+    `<div class="bm-l">${opcoes.length?opcoes.map(o=>`<label class="bm-o" data-t="${_esc(brNorm(o.t+" "+o.v))}"><input type="checkbox" value="${_esc(o.v)}"${sel.indexOf(o.v)>=0?" checked":""} onchange="brMultiMarca('${id}',this.value,this.checked)"><span>${_esc(o.t)}</span><em>${o.n}</em></label>`).join(""):`<p class="bm-vz">Nada no período.</p>`}<p class="bm-vz bm-nada" hidden>Nenhum nome encontrado.</p></div></div></div>`;
+}
+function brMultiValor(id){const m=BR_MS[id],s=m.alvo();if(!s.length)return"Todos";if(s.length===1){const o=m.opcoes.find(x=>x.v===s[0]);return _esc(o?o.t:s[0]);}return s.length+" selecionados";}
+function brMultiAbre(id){
+  const el=document.getElementById("bm-"+id);if(!el)return;const abrir=!el.classList.contains("aberto");
+  document.querySelectorAll(".bm.aberto").forEach(x=>{x.classList.remove("aberto");x.querySelector(".bm-b").setAttribute("aria-expanded","false");});
+  if(abrir){el.classList.add("aberto");el.querySelector(".bm-b").setAttribute("aria-expanded","true");const i=el.querySelector(".bm-s input");if(i)setTimeout(()=>i.focus(),20);}
+}
+function brMultiBusca(id,q){
+  const el=document.getElementById("bm-"+id),n=brNorm(q.trim());let vis=0;
+  el.querySelectorAll(".bm-o").forEach(o=>{const v=!n||o.dataset.t.indexOf(n)>=0;o.hidden=!v;if(v)vis++;});
+  el.querySelector(".bm-nada").hidden=vis>0||!el.querySelectorAll(".bm-o").length;
+}
+function brMultiMarca(id,v,on){
+  const m=BR_MS[id],a=m.alvo(),i=a.indexOf(v);
+  if(on&&i<0)a.push(v);else if(!on&&i>=0)a.splice(i,1);
+  brMultiAtualiza(id);m.aoMudar();
+}
+function brMultiTodos(id,on){
+  const el=document.getElementById("bm-"+id),m=BR_MS[id],a=m.alvo();
+  el.querySelectorAll(".bm-o").forEach(o=>{if(o.hidden)return;const c=o.querySelector("input");c.checked=on;const i=a.indexOf(c.value);if(on&&i<0)a.push(c.value);else if(!on&&i>=0)a.splice(i,1);});
+  brMultiAtualiza(id);m.aoMudar();
+}
+function brMultiAtualiza(id){
+  const el=document.getElementById("bm-"+id);if(!el)return;
+  el.querySelector(".bm-b").classList.toggle("on",BR_MS[id].alvo().length>0);
+  document.getElementById("bmv-"+id).innerHTML=brMultiValor(id);
+  el.querySelectorAll(".bm-o input").forEach(c=>{c.checked=BR_MS[id].alvo().indexOf(c.value)>=0;});
+}
+document.addEventListener("mousedown",e=>{if(!e.target.closest||!e.target.closest(".bm"))document.querySelectorAll(".bm.aberto").forEach(x=>{x.classList.remove("aberto");const b=x.querySelector(".bm-b");if(b)b.setAttribute("aria-expanded","false");});});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&document.querySelector(".bm.aberto")){document.querySelectorAll(".bm.aberto").forEach(x=>x.classList.remove("aberto"));e.stopPropagation();}},true);
+/* opções de um seletor: o que existe no período (com o motivo escolhido), com a quantidade */
+function brOpcoes(dim,mot){
+  const c={};brLinhas({sups:[],postos:[],mot}).forEach(x=>{if(x.situacao==="NAO_E_POSTO")return;const k=dim==="sup"?x.supervisor:x.posto;if(k)c[k]=(c[k]||0)+1;});
+  const sel=dim==="sup"?BR.sups:BR.postos;sel.forEach(k=>{if(!(k in c))c[k]=0;});
+  return Object.keys(c).sort((a,b)=>a.localeCompare(b)).map(k=>({v:k,t:brNomeDe(dim,k),n:c[k]}));
+}
+
+/* ── montagem da tela ── */
+const BR_IC={
+  imp:_fmSvg('<path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/>'),
+  xls:_fmSvg('<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M9 13l4 5M13 13l-4 5"/>'),
+  info:_fmSvg('<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>')
+};
+function brMontar(){
+  const el=document.getElementById("br-sec");if(!el)return;
+  if(!brPermitido()){el.innerHTML=`<div class="br-vazio"><b>Relatório restrito</b><span>Este relatório é da diretoria e da coordenação.</span></div>`;return;}
+  el.innerHTML=`<div class="br-prog" id="brProg"></div>`+
+    `<header class="br-top"><div class="tt"><h3>Coberturas do supervisor</h3><p>Chegada do supervisor ao posto comparada com o início da vaga de quem faltou</p></div>`+
+    `<div class="br-ac"><button type="button" class="br-btn" onclick="brExcel()">${BR_IC.xls}Excel</button><button type="button" class="br-btn pri" onclick="brPrevia()">${BR_IC.imp}Imprimir</button></div></header>`+
+    `<div class="br-fil" id="brPer"></div><div class="br-fil" id="brFil"></div><div class="br-chips" id="brChips"></div>`+
+    `<div id="brCont" class="br-cont"></div>`;
+}
+function brPintaTudo(){if(!document.getElementById("brCont"))brMontar();if(!document.getElementById("brCont"))return;brPintaPeriodo();brPintaFiltros();brPintaConteudo();}
+function brPintaPeriodo(){
+  const el=document.getElementById("brPer");if(!el)return;
+  const at=k=>`<button type="button" class="${BR.atalho===k?"on":""}" onclick="brUsarPeriodo('${k}')">${{folha:"Folha atual",folhaAnt:"Folha anterior",mes:"Mês atual","30":"Últimos 30 dias"}[k]}</button>`;
+  el.innerHTML=`<div class="br-seg" role="group" aria-label="Período">${at("folha")}${at("folhaAnt")}${at("mes")}${at("30")}</div>`+
+    `<div class="br-dts"><input type="date" id="brDe" aria-label="De" value="${BR.de}" onchange="brDatas()"><span>a</span><input type="date" id="brAte" aria-label="Até" value="${BR.ate}" onchange="brDatas()"></div>`;
+}
+function brPintaFiltros(){
+  const el=document.getElementById("brFil");if(!el)return;
+  if(!BR.dados){el.innerHTML="";return;}
+  el.innerHTML=brMulti("sup","Supervisores",brOpcoes("sup",BR.mot),()=>BR.sups,brMudouFiltro)+
+    brMulti("posto","Postos",brOpcoes("posto",BR.mot),()=>BR.postos,brMudouFiltro)+
+    `<label class="br-sel"><span>Motivo</span><select aria-label="Motivo" onchange="BR.mot=this.value;brPintaFiltros();brMudouFiltro()">${Object.keys(BR_MOT).map(k=>`<option value="${k}"${BR.mot===k?" selected":""}>${BR_MOT[k]}</option>`).join("")}</select>${FM_IC.chev}</label>`;
+  brPintaChips();
+}
+function brPintaChips(){
+  const el=document.getElementById("brChips");if(!el)return;
+  const ch=[];
+  BR.sups.forEach(v=>ch.push(`<span class="br-chip">${_esc(brNomeCurto(v))}<button type="button" aria-label="Tirar ${_esc(brNomeCurto(v))}" data-v="${_esc(v)}" onclick="brTira('sup',this.dataset.v)">${FM_IC.x}</button></span>`));
+  BR.postos.forEach(v=>ch.push(`<span class="br-chip">${_esc(v)}<button type="button" aria-label="Tirar ${_esc(v)}" data-v="${_esc(v)}" onclick="brTira('posto',this.dataset.v)">${FM_IC.x}</button></span>`));
+  el.innerHTML=ch.length?ch.join("")+`<button type="button" class="br-limpa" onclick="BR.sups.length=0;BR.postos.length=0;brPintaFiltros();brMudouFiltro()">Limpar filtros</button>`:"";
+}
+function brTira(dim,v){const a=dim==="sup"?BR.sups:BR.postos,i=a.indexOf(v);if(i>=0)a.splice(i,1);brMultiAtualiza(dim);brPintaChips();brMudouFiltro();}
+function brMudouFiltro(){BR.aberto={};BR.mais={};brPintaChips();brPintaConteudo();}
+
+function brKpis(R,A){
+  const k=(cls,rot,val,sub,ant)=>`<div class="br-kpi ${cls}"><span class="l">${rot}</span><b class="v">${val}</b><span class="s">${sub}</span>${ant?`<span class="a">${ant}</span>`:""}</div>`;
+  const p=x=>R.medidas?brPct(x,R.medidas)+"% das comparadas":"—";
+  return`<div class="br-kpis">`+
+    k("","Coberturas",R.n,`${R.sups.size} ${R.sups.size===1?"supervisor":"supervisores"} · ${R.postos.size} ${R.postos.size===1?"posto":"postos"}`,A?`Período anterior: ${A.n}`:"")+
+    k("c-ok","Até 1 hora",R.pct==null?"—":R.pct+"%",`${R.ate1h} de ${R.medidas} · ${R.sit.ANTES} antes do início`,A&&A.pct!=null?`Período anterior: ${A.pct}%`:"")+
+    k("c-am","De 1 a 3 horas",R.sit.ATRASO,p(R.sit.ATRASO),A?`Período anterior: ${A.sit.ATRASO}`:"")+
+    k("c-da","Mais de 3 horas",R.sit.GRAVE,p(R.sit.GRAVE),A?`Período anterior: ${A.sit.GRAVE}`:"")+
+    k("","Horas em campo",brHM(R.min),`${Math.round(R.km).toLocaleString("pt-BR")} km nos dias com cobertura`,"")+`</div>`+
+    (R.medidas?`<div class="br-dist" role="img" aria-label="Distribuição da chegada">${["ANTES","NO_PRAZO","ATRASO","GRAVE"].map(s=>R.sit[s]?`<i class="s-${BR_SIT[s][1]}" style="flex:${R.sit[s]}" title="${BR_SIT[s][0]}: ${R.sit[s]}"></i>`:"").join("")}</div>`:"");
+}
+function brPill(s){const t=BR_SIT[s]||["—","gr"];return`<span class="br-pill s-${t[1]}">${t[0]}</span>`;}
+const BR_COLS={
+  sup:[["nome","Supervisor"],["n","Coberturas"],["pct","Até 1 hora"],["ANTES","Antes do início"],["ATRASO","1 a 3 h"],["GRAVE","Mais de 3 h"],["postos","Postos"],["min","Horas em campo"]],
+  posto:[["nome","Posto"],["n","Coberturas"],["pct","Até 1 hora"],["ANTES","Antes do início"],["ATRASO","1 a 3 h"],["GRAVE","Mais de 3 h"],["sups","Supervisores"],["mot","Motivo mais comum"]]
+};
+function brValorCol(x,c){if(c==="nome")return x.nome;if(c==="n")return x.n;if(c==="pct")return x.pct==null?-1:x.pct;if(c==="postos")return x.postos.size;if(c==="sups")return x.sups.size;if(c==="min")return x.min;if(c==="mot")return brMotivoMais(x);return x.sit[c]||0;}
+function brOrdena(gr){
+  const {c,d}=BR.ord;
+  return gr.slice().sort((a,b)=>{const va=brValorCol(a,c),vb=brValorCol(b,c);const r=typeof va==="string"?va.localeCompare(vb):va-vb;return(r*d)||b.n-a.n||a.nome.localeCompare(b.nome);});
+}
+function brOrdenar(c){if(BR.ord.c===c)BR.ord.d=-BR.ord.d;else BR.ord={c,d:c==="nome"||c==="mot"?1:-1};brPintaTabela();}
+function brTabelaHtml(L){
+  const vis=BR.vis,cols=BR_COLS[vis],gr=brOrdena(brAgrupa(L,x=>vis==="sup"?x.supervisor:x.posto));
+  if(!gr.length)return`<div class="br-vazio"><b>Nenhuma cobertura</b><span>Não há idas do supervisor com esses filtros no período.</span></div>`;
+  const th=cols.map(([c,t],i)=>{const on=BR.ord.c===c;return`<th class="${i?"n":""}${on?" on":""}" aria-sort="${on?(BR.ord.d>0?"ascending":"descending"):"none"}"><button type="button" onclick="brOrdenar('${c}')">${t}<i>${on?(BR.ord.d>0?"↑":"↓"):""}</i></button></th>`;}).join("");
+  return`<table class="br-t"><thead><tr>${th}<th class="ch" aria-hidden="true"></th></tr></thead><tbody>`+gr.map(x=>brLinhaGrupo(x)).join("")+`</tbody></table>`;
+}
+function brLinhaGrupo(x){
+  const vis=BR.vis,k=vis+"|"+x.nome,on=!!BR.aberto[k];
+  const pc=x.pct==null?"—":x.pct+"%",tom=x.pct==null?"gr":x.pct>=80?"ok":x.pct>=60?"am":"da";
+  const z=v=>v?v:`<span class="z">0</span>`;
+  let h=`<tr class="br-g${on?" on":""}" tabindex="0" aria-expanded="${on}" data-k="${_esc(k)}" onclick="brAbre(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();brAbre(this)}">`+
+    `<td><b>${_esc(brNomeDe(vis,x.nome))}</b>${vis==="posto"&&x.n>=3?`<span class="br-tag" title="3 ou mais coberturas no período">3+ no período</span>`:""}</td>`+
+    `<td class="n"><b>${x.n}</b></td>`+
+    `<td class="n"><span class="br-pc t-${tom}"><span class="br-mb"><i style="width:${x.pct||0}%"></i></span><b>${pc}</b></span></td>`+
+    `<td class="n">${z(x.sit.ANTES)}</td><td class="n">${z(x.sit.ATRASO)}</td><td class="n${x.sit.GRAVE?" r":""}">${z(x.sit.GRAVE)}</td>`+
+    (vis==="sup"?`<td class="n">${x.postos.size}</td><td class="n">${brHM(x.min)}</td>`:`<td class="n">${x.sups.size}</td><td class="n">${_esc(brMotivoMais(x))}</td>`)+
+    `<td class="ch">${FM_IC.chev}</td></tr>`;
+  if(on)h+=brDetalheGrupo(x);
+  return h;
+}
+function brDetalheGrupo(x){
+  const vis=BR.vis,k=vis+"|"+x.nome,todos=x.linhas.slice().sort((a,b)=>a.data.localeCompare(b.data)||String(a.chegada).localeCompare(String(b.chegada)));
+  const lim=BR.mais[k]?todos.length:12,mostra=todos.slice(0,lim);
+  return`<tr class="br-x"><td colspan="${BR_COLS[vis].length+1}"><div class="br-x-in"><table class="br-d"><thead><tr><th>Data</th><th>${vis==="sup"?"Posto":"Supervisor"}</th><th>Motivo</th><th class="n">Início da vaga</th><th class="n">Chegada</th><th class="n">Diferença</th><th>Situação</th></tr></thead><tbody>`+
+    mostra.map(i=>`<tr><td><b>${brDdC(i.data)}</b> <small>${brSemana(i.data)}</small></td><td>${_esc(vis==="sup"?(i.posto||i.destino):brNomeCurto(i.supervisor))}</td>`+
+      `<td>${i.motivo==="FALTA"?`Falta de ${_esc(i.falta_nome||"—")}${i.falta_re?` <small>RE ${_esc(i.falta_re)}</small>`:""}`:_esc(brMotivoTxt(i.motivo))}</td>`+
+      `<td class="n" title="${_esc(BR_FONTE[i.fonte_inicio]||"")}">${i.inicio||"—"}</td><td class="n"><b>${i.chegada||"—"}</b></td><td class="n">${brDifTxt(i)}</td><td>${brPill(i.situacao)}</td></tr>`).join("")+
+    `</tbody></table>${todos.length>lim?`<button type="button" class="br-mais" data-k="${_esc(k)}" onclick="event.stopPropagation();BR.mais[this.dataset.k]=1;brPintaTabela()">Mostrar todas as ${todos.length}</button>`:""}</div></td></tr>`;
+}
+/* Abre e fecha a linha ali mesmo: só aquela linha muda, a rolagem não sai do lugar. */
+function brAbre(tr){
+  const k=tr.dataset.k,on=!BR.aberto[k];BR.aberto[k]=on;
+  tr.classList.toggle("on",on);tr.setAttribute("aria-expanded",on);
+  const prox=tr.nextElementSibling;
+  if(!on){if(prox&&prox.classList.contains("br-x")){prox.classList.add("fecha");setTimeout(()=>prox.remove(),160);}return;}
+  const vis=BR.vis,nome=k.slice(vis.length+1);
+  const x=brAgrupa(brLinhas(brFiltroTela()),r=>vis==="sup"?r.supervisor:r.posto).find(g=>g.nome===nome);
+  if(x)tr.insertAdjacentHTML("afterend",brDetalheGrupo(x));
+}
+function brPintaTabela(){
+  const el=document.getElementById("brTab");if(!el)return;
+  el.innerHTML=brTabelaHtml(brLinhas(brFiltroTela()));
+}
+function brVisao(v){if(BR.vis===v)return;BR.vis=v;BR.aberto={};BR.mais={};BR.ord={c:"n",d:-1};document.querySelectorAll("#brVis button").forEach(b=>b.classList.toggle("on",b.dataset.v===v));brPintaTabela();}
+function brPintaConteudo(){
+  const el=document.getElementById("brCont");if(!el)return;
+  if(BR.erro){el.innerHTML=`<div class="br-vazio"><b>Não foi possível carregar</b><span>${_esc(BR.erro)}</span></div>`;return;}
+  if(!BR.dados){el.innerHTML=`<div class="br-esq"><i></i><i></i><i></i><i></i><i></i></div>`;return;}
+  const D=BR.dados,f=brFiltroTela(),L=brLinhas(f),R=brConta(L),A=brCompOk()?brConta(brLinhas(f,true)):null;
+  const ateE=brAteEfetivo();
+  let h=`<p class="br-info">${brDd(BR.de)} a ${brDd(ateE)}${ateE<BR.ate?` <span>(o período vai até ${brDd(BR.ate)})</span>`:""}${D.disponivel.desde?` · dados disponíveis desde <b>${brDd(D.disponivel.desde)}</b>`:""}</p>`;
+  if(!D.disponivel.primeiro)h+=`<p class="br-aviso">Nenhuma planilha guardada traz idas do supervisor (aba BDV) para essas datas.</p>`;
+  else if(D.disponivel.primeiro>BR.de)h+=`<p class="br-aviso">Não há dado antes de <b>${brDd(D.disponivel.primeiro)}</b>: as planilhas guardadas começam aí.</p>`;
+  h+=brKpis(R,A);
+  h+=`<section class="br-res"><h4>Resumo</h4><ul>${brResumo(f).map(x=>`<li>${x}</li>`).join("")}</ul></section>`;
+  h+=`<section class="br-tb"><div class="br-tb-h"><h4>Por ${BR.vis==="sup"?"supervisor":"posto"}</h4><div class="br-seg sm" id="brVis" role="group" aria-label="Agrupar por"><button type="button" data-v="sup" class="${BR.vis==="sup"?"on":""}" onclick="brVisao('sup');this.closest('.br-tb').querySelector('h4').textContent='Por supervisor'">Supervisor</button><button type="button" data-v="posto" class="${BR.vis==="posto"?"on":""}" onclick="brVisao('posto');this.closest('.br-tb').querySelector('h4').textContent='Por posto'">Posto</button></div></div><div class="br-tw" id="brTab">${brTabelaHtml(L)}</div></section>`;
+  h+=`<details class="br-como"><summary>${BR_IC.info}Como é calculado</summary><p>A referência é o horário de início da vaga de quem faltou (da planilha de faltas ou, nas planilhas antigas, da jornada da pessoa naquele posto). Nas idas sem falta (férias, agenda, posto vago…), vale o turno do posto que já tinha começado; se o supervisor chegou antes de todos, o primeiro turno. Duas pessoas faltaram no mesmo posto: são duas coberturas. Horas e km são do dia inteiro do supervisor e contam uma vez por dia. Idas à sede e destinos em texto livre ficam fora das contas.</p></details>`;
   el.innerHTML=h;
 }
+function brRender(){brPintaTudo();} // nome antigo, chamado por outras partes
+
 /* ── Excel: o que está na tela (resumo por grupo + cada cobertura) ── */
 function brExcel(){
   if(!BR.dados||typeof XLSX==="undefined"){alert("Carregue o relatório primeiro.");return;}
-  const L=brLinhas(),modo=BR.vis;
-  const gr=brAgrupa(L,x=>modo==="sup"?x.supervisor:x.posto).sort((a,b)=>b.n-a.n);
-  const res=gr.map(x=>({[modo==="sup"?"Supervisor":"Posto"]:x.nome,"Coberturas":x.n,"No prazo (%)":x.pct,"Antes do horário":x.sit.ANTES,"No prazo (até 1h)":x.sit.NO_PRAZO,"Com atraso":x.sit.ATRASO,"Atraso grave":x.sit.GRAVE,"Sem horário":x.sit.SEM_HORARIO,"Atraso médio (min)":x.atrasoMedio==null?null:Math.round(x.atrasoMedio),[modo==="sup"?"Postos":"Supervisores"]:modo==="sup"?x.postos.size:x.sups.size,"Horas em campo":+(x.min/60).toFixed(1),"KM":Math.round(x.km)}));
-  const idas=L.filter(x=>x.situacao!=="NAO_E_POSTO").map(x=>({"Data":brDd(x.data),"Supervisor":x.supervisor,"Posto":x.posto||x.destino,"Motivo":brMotivoTxt(x.motivo),"Quem faltou":x.falta_nome||"","RE":x.falta_re||"","Início":x.inicio||"","Referência do início":BR_FONTE[x.fonte_inicio]||"","Chegada":x.chegada||"","Diferença (min)":x.diferenca_min,"Situação":(BR_SIT[x.situacao]||["—"])[0]}));
-  const wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(res.length?res:[{"":"Sem coberturas no período"}]),modo==="sup"?"Por supervisor":"Por posto");
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(idas.length?idas:[{"":"Sem coberturas no período"}]),"Coberturas");
-  XLSX.writeFile(wb,`coberturas_supervisor_${BR.de}_a_${BR.ate}${BR.sel?"_"+BR.sel.replace(/[^\w]+/g,"_").slice(0,30):""}.xlsx`);
+  const f=brFiltroTela(),L=brLinhas(f);
+  const linha=(dim,x)=>({[dim==="sup"?"Supervisor":"Posto"]:x.nome,"Coberturas":x.n,"Até 1 hora (%)":x.pct,"Antes do início":x.sit.ANTES,"Até 1 hora depois":x.sit.NO_PRAZO,"De 1 a 3 horas":x.sit.ATRASO,"Mais de 3 horas":x.sit.GRAVE,"Sem horário":x.sit.SEM_HORARIO,[dim==="sup"?"Postos":"Supervisores"]:dim==="sup"?x.postos.size:x.sups.size,"Horas em campo":+(x.min/60).toFixed(1),"KM":Math.round(x.km)});
+  const porSup=brAgrupa(L,x=>x.supervisor).sort((a,b)=>b.n-a.n).map(x=>linha("sup",x));
+  const porPosto=brAgrupa(L,x=>x.posto).sort((a,b)=>b.n-a.n).map(x=>linha("posto",x));
+  const idas=L.filter(x=>x.situacao!=="NAO_E_POSTO").map(x=>({"Data":brDd(x.data),"Supervisor":x.supervisor,"Posto":x.posto||x.destino,"Motivo":brMotivoTxt(x.motivo),"Quem faltou":x.falta_nome||"","RE":x.falta_re||"","Início da vaga":x.inicio||"","Referência do início":BR_FONTE[x.fonte_inicio]||"","Chegada":x.chegada||"","Diferença (min)":x.diferenca_min,"Situação":(BR_SIT[x.situacao]||["—"])[0]}));
+  const vazio=[{"":"Sem coberturas no período"}],wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(porSup.length?porSup:vazio),"Por supervisor");
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(porPosto.length?porPosto:vazio),"Por posto");
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(idas.length?idas:vazio),"Coberturas");
+  XLSX.writeFile(wb,`coberturas_supervisor_${BR.de}_a_${BR.ate}.xlsx`);
 }
-/* ── Prévia de impressão: folha A4 com o logo, zoom, retrato/paisagem e tamanho da letra ── */
-const BRP={zoom:null,paisagem:false,letra:11};
+
+/* ── Imprimir: prévia em folha A4 com o logo; ao lado, o que entra na impressão ── */
+const BRP={zoom:null,paisagem:false,letra:11,sups:[],postos:[],mot:"",partes:{kpi:true,res:true,sup:true,posto:false,idas:false}};
 const BR_LOGO=`<svg width="190" height="56" viewBox="0 0 240 70" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Grupo ServCamp"><path d="M30 5 A28 28 0 1 0 30 61" stroke="#9a9a9a" stroke-width="11" stroke-linecap="round" fill="none" opacity=".6"/><path d="M26 61 A22 22 0 1 0 26 13" stroke="#2d2d6b" stroke-width="11" stroke-linecap="round" fill="none"/><text x="68" y="22" font-family="Segoe UI,sans-serif" font-size="13" fill="#64748b" font-style="italic">Grupo</text><text x="68" y="44" font-family="Segoe UI,sans-serif" font-size="22" fill="#9a9a9a" font-weight="700" letter-spacing="1">SERV</text><text x="138" y="44" font-family="Segoe UI,sans-serif" font-size="22" fill="#2d2d6b" font-weight="900" letter-spacing="1">CAMP</text><text x="138" y="60" font-family="Segoe UI,sans-serif" font-size="11" fill="#64748b" font-style="italic">terceirizações</text></svg>`;
-const BR_PAPEL_CSS=`*{box-sizing:border-box}body{margin:0;background:#fff;color:#0f172a;font-family:"Segoe UI",Arial,sans-serif}
-.pp{padding:14mm 12mm;font-size:var(--l,11px);line-height:1.4}
+const BR_PAPEL_CSS=`*{box-sizing:border-box}body{margin:0;background:#fff;color:#0f172a;font-family:"Segoe UI",Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.pp{padding:14mm 12mm;font-size:var(--l,11px);line-height:1.45}
 .pp-h{display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:3px solid #2d2d6b;padding-bottom:8px;margin-bottom:12px}
-.pp-h .t{text-align:right}.pp-h h1{font-size:1.55em;margin:0;color:#2d2d6b}.pp-h p{margin:2px 0 0;color:#475569;font-size:.92em}
+.pp-h .t{text-align:right}.pp-h h1{font-size:1.55em;margin:0;color:#2d2d6b}.pp-h p{margin:3px 0 0;color:#475569;font-size:.9em}
 .pp-k{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:0 0 12px}
 .pp-k div{border:1px solid #e2e8f0;border-radius:6px;padding:7px 9px}.pp-k span{display:block;font-size:.78em;color:#64748b;text-transform:uppercase;letter-spacing:.03em}
-.pp-k b{display:block;font-size:1.6em;color:#0f172a;margin:2px 0}.pp-k small{color:#475569;font-size:.82em}
-.pp-r{background:#f8fafc;border-left:4px solid #2d2d6b;padding:7px 12px;margin:0 0 12px}.pp-r ul{margin:4px 0 0;padding-left:16px}.pp-r li{margin:2px 0}
+.pp-k b{display:block;font-size:1.6em;color:#0f172a;margin:2px 0}.pp-k small{color:#475569;font-size:.82em;display:block}
+.pp-r{background:#f8fafc;border-left:4px solid #2d2d6b;padding:7px 12px;margin:0 0 12px}.pp-r ul{margin:4px 0 0;padding-left:16px}.pp-r li{margin:3px 0}
 h2{font-size:1.12em;color:#2d2d6b;margin:14px 0 6px}
 table{width:100%;border-collapse:collapse;font-size:.92em}th{background:#2d2d6b;color:#fff;text-align:left;padding:5px 6px;font-weight:600}
 td{padding:4px 6px;border-bottom:1px solid #e2e8f0;vertical-align:top}tr:nth-child(even) td{background:#f8fafc}td.n,th.n{text-align:right}
 thead{display:table-header-group}tr{page-break-inside:avoid}
-.s-an{color:#0f766e;font-weight:700}.s-ok{color:#15803d;font-weight:700}.s-am{color:#b45309;font-weight:700}.s-da{color:#b91c1c;font-weight:700}.s-gr{color:#64748b}
+.s-an{color:#0e7c70;font-weight:700}.s-ok{color:#067647;font-weight:700}.s-am{color:#b45309;font-weight:700}.s-da{color:#b91c1c;font-weight:700}.s-gr{color:#64748b}
 small{color:#64748b}.pp-n{margin-top:12px;color:#64748b;font-size:.85em;border-top:1px solid #e2e8f0;padding-top:6px}
 .pp-f{display:flex;justify-content:space-between;margin-top:6px;color:#94a3b8;font-size:.8em}
 @media print{.pp{padding:0}}`;
 function brPapelHtml(){
-  const L=brLinhas(),La=BR.dados.compara?brLinhas(true):null,R=brConta(L),Ra=La?brConta(La):null,modo=BR.vis;
-  const base=brLinhas(false,true),fr=BR.sel?[]:brFrases(R,Ra,brAgrupa(base,x=>x.supervisor),brAgrupa(base,x=>x.posto));
-  const limpa=s=>String(s).replace(/<em class="br-var[^>]*>.*?<\/em>/g,"").replace(/<i class="dr-r">(.*?)<\/i>/g,"$1");
-  const at=R.sit.ATRASO+R.sit.GRAVE,mot={"":"todos os motivos",FALTA:"só faltas",OUTROS:"outros motivos (férias, agenda, posto vago…)"}[BR.mot];
-  const alvo=BR.sel?(modo==="sup"?"Supervisor: "+brNomeCurto(BR.sel):"Posto: "+BR.sel):(modo==="sup"?"Geral por supervisor":"Geral por posto");
-  let h=`<div class="pp"><div class="pp-h">${BR_LOGO}<div class="t"><h1>Relatório de coberturas do supervisor</h1><p>${_esc(alvo)} · ${brDd(BR.de)} a ${brDd(BR.ate)} · ${_esc(mot)}</p></div></div>`;
-  h+=`<div class="pp-k"><div><span>Coberturas</span><b>${R.n}</b><small>${R.postos.size} postos · ${R.sups.size} supervisores</small></div>`+
-    `<div><span>No prazo</span><b>${R.pct==null?"—":R.pct+"%"}</b><small>${R.sit.ANTES} antes do horário${Ra&&Ra.pct!=null?` · antes: ${Ra.pct}%`:""}</small></div>`+
-    `<div><span>Com atraso</span><b>${at}</b><small>${R.sit.GRAVE} graves${R.atrasoMedio!=null?" · média "+brHM(R.atrasoMedio):""}</small></div>`+
-    `<div><span>Horas em campo</span><b>${brHM(R.min)}</b><small>${Math.round(R.km).toLocaleString("pt-BR")} km</small></div>`+
-    `<div><span>Sem como medir</span><b>${R.sit.SEM_HORARIO}</b><small>${R.fora} fora de posto</small></div></div>`;
-  if(fr.length)h+=`<div class="pp-r"><b>Resumo</b><ul>${fr.map(x=>`<li>${limpa(x)}</li>`).join("")}</ul></div>`;
-  if(!BR.sel){
-    const gr=brAgrupa(L,x=>modo==="sup"?x.supervisor:x.posto).sort((a,b)=>b.n-a.n||a.nome.localeCompare(b.nome));
-    h+=`<h2>${modo==="sup"?"Por supervisor":"Por posto"}</h2><table><thead><tr><th>${modo==="sup"?"Supervisor":"Posto"}</th><th class="n">Coberturas</th><th class="n">No prazo</th><th class="n">Antes</th><th class="n">Atraso</th><th class="n">Graves</th><th class="n">Atraso médio</th><th class="n">${modo==="sup"?"Horas · KM":"Supervisores"}</th></tr></thead><tbody>`+
-      gr.map(x=>`<tr><td><b>${_esc(modo==="sup"?brNomeCurto(x.nome):x.nome)}</b>${modo==="posto"&&x.n>=3?" <small>(reincidente)</small>":""}</td><td class="n">${x.n}</td><td class="n s-${brTom(x.pct)}">${x.pct==null?"—":x.pct+"%"}</td><td class="n">${x.sit.ANTES}</td><td class="n">${x.sit.ATRASO}</td><td class="n${x.sit.GRAVE?" s-da":""}">${x.sit.GRAVE}</td><td class="n">${x.atrasoMedio==null?"—":brHM(x.atrasoMedio)}</td><td class="n">${modo==="sup"?brHM(x.min)+" · "+Math.round(x.km)+" km":x.sups.size}</td></tr>`).join("")+`</tbody></table>`;
+  const f={sups:BRP.sups,postos:BRP.postos,mot:BRP.mot},P=BRP.partes,L=brLinhas(f),R=brConta(L),A=brCompOk()?brConta(brLinhas(f,true)):null,ateE=brAteEfetivo();
+  let h=`<div class="pp"><div class="pp-h">${BR_LOGO}<div class="t"><h1>Coberturas do supervisor</h1><p>${brDd(BR.de)} a ${brDd(ateE)} · ${_esc(brFiltroTxt(f))}</p></div></div>`;
+  if(P.kpi)h+=`<div class="pp-k"><div><span>Coberturas</span><b>${R.n}</b><small>${R.sups.size} supervisores · ${R.postos.size} postos</small>${A?`<small>Período anterior: ${A.n}</small>`:""}</div>`+
+    `<div><span>Até 1 hora</span><b class="s-ok">${R.pct==null?"—":R.pct+"%"}</b><small>${R.ate1h} de ${R.medidas} · ${R.sit.ANTES} antes do início</small>${A&&A.pct!=null?`<small>Período anterior: ${A.pct}%</small>`:""}</div>`+
+    `<div><span>De 1 a 3 horas</span><b class="s-am">${R.sit.ATRASO}</b><small>${R.medidas?brPct(R.sit.ATRASO,R.medidas)+"% das comparadas":"—"}</small>${A?`<small>Período anterior: ${A.sit.ATRASO}</small>`:""}</div>`+
+    `<div><span>Mais de 3 horas</span><b class="s-da">${R.sit.GRAVE}</b><small>${R.medidas?brPct(R.sit.GRAVE,R.medidas)+"% das comparadas":"—"}</small>${A?`<small>Período anterior: ${A.sit.GRAVE}</small>`:""}</div>`+
+    `<div><span>Horas em campo</span><b>${brHM(R.min)}</b><small>${Math.round(R.km).toLocaleString("pt-BR")} km</small></div></div>`;
+  if(P.res)h+=`<div class="pp-r"><b>Resumo</b><ul>${brResumo(f).map(x=>`<li>${x}</li>`).join("")}</ul></div>`;
+  const tabela=dim=>{
+    const gr=brAgrupa(L,x=>dim==="sup"?x.supervisor:x.posto).sort((a,b)=>b.n-a.n||a.nome.localeCompare(b.nome));
+    if(!gr.length)return"";
+    return`<h2>Por ${dim==="sup"?"supervisor":"posto"}</h2><table><thead><tr><th>${dim==="sup"?"Supervisor":"Posto"}</th><th class="n">Coberturas</th><th class="n">Até 1 hora</th><th class="n">Antes do início</th><th class="n">1 a 3 h</th><th class="n">Mais de 3 h</th><th class="n">${dim==="sup"?"Postos":"Supervisores"}</th><th class="n">${dim==="sup"?"Horas em campo":"Motivo mais comum"}</th></tr></thead><tbody>`+
+      gr.map(x=>`<tr><td><b>${_esc(brNomeDe(dim,x.nome))}</b>${dim==="posto"&&x.n>=3?" <small>(3+ no período)</small>":""}</td><td class="n">${x.n}</td><td class="n">${x.pct==null?"—":x.pct+"%"}</td><td class="n">${x.sit.ANTES}</td><td class="n">${x.sit.ATRASO}</td><td class="n${x.sit.GRAVE?" s-da":""}">${x.sit.GRAVE}</td><td class="n">${dim==="sup"?x.postos.size:x.sups.size}</td><td class="n">${dim==="sup"?brHM(x.min):_esc(brMotivoMais(x))}</td></tr>`).join("")+`</tbody></table>`;
+  };
+  if(P.sup)h+=tabela("sup");
+  if(P.posto)h+=tabela("posto");
+  if(P.idas){
+    const idas=L.filter(x=>x.situacao!=="NAO_E_POSTO").sort((a,b)=>a.data.localeCompare(b.data)||String(a.chegada).localeCompare(String(b.chegada)));
+    h+=`<h2>Cada cobertura (${idas.length})</h2><table><thead><tr><th>Data</th><th>Supervisor</th><th>Posto</th><th>Motivo</th><th class="n">Início</th><th class="n">Chegada</th><th class="n">Diferença</th><th>Situação</th></tr></thead><tbody>`+
+      idas.map(x=>{const s=BR_SIT[x.situacao]||["—","gr"];return`<tr><td>${brDdC(x.data)} <small>${brSemana(x.data)}</small></td><td>${_esc(brNomeCurto(x.supervisor))}</td><td>${_esc(x.posto||x.destino)}</td><td>${x.motivo==="FALTA"?"Falta: "+_esc(x.falta_nome||"—")+(x.falta_re?` <small>RE ${_esc(x.falta_re)}</small>`:""):_esc(brMotivoTxt(x.motivo))}</td><td class="n">${x.inicio||"—"}</td><td class="n">${x.chegada||"—"}</td><td class="n">${brDifTxt(x)}</td><td class="s-${s[1]}">${s[0]}</td></tr>`;}).join("")+`</tbody></table>`;
   }
-  const idas=L.filter(x=>x.situacao!=="NAO_E_POSTO").sort((a,b)=>a.data.localeCompare(b.data)||String(a.chegada).localeCompare(String(b.chegada)));
-  if(BR.sel||BRP.detalhe){
-    h+=`<h2>Coberturas, uma a uma (${idas.length})</h2><table><thead><tr><th>Data</th><th>${modo==="sup"&&BR.sel?"Posto":"Supervisor · Posto"}</th><th>Motivo</th><th class="n">Início</th><th class="n">Chegada</th><th class="n">Diferença</th><th>Situação</th></tr></thead><tbody>`+
-      idas.map(x=>{const s=BR_SIT[x.situacao]||["—","gr"];return`<tr><td>${brDdC(x.data)} <small>${brSemana(x.data)}</small></td><td>${_esc(modo==="sup"&&BR.sel?(x.posto||x.destino):brNomeCurto(x.supervisor)+" · "+(x.posto||x.destino))}</td><td>${x.motivo==="FALTA"?"Falta: "+_esc(x.falta_nome||"—")+(x.falta_re?` <small>RE ${_esc(x.falta_re)}</small>`:""):_esc(brMotivoTxt(x.motivo))}</td><td class="n">${x.inicio||"—"}</td><td class="n">${x.chegada||"—"}</td><td class="n">${brDifTxt(x)}</td><td class="s-${s[1]}">${s[0]}</td></tr>`;}).join("")+`</tbody></table>`;
-  }
-  h+=`<p class="pp-n">Referência: início da vaga de quem faltou; nas idas sem falta, o turno do posto. No prazo = antes do início ou até ${brHM(BR.dados.limites.noPrazo)} depois; atraso grave = mais de ${brHM(BR.dados.limites.grave)}. Fonte: BDV do SAR2G.</p>`+
+  if(!P.kpi&&!P.res&&!P.sup&&!P.posto&&!P.idas)h+=`<p class="pp-n">Escolha ao lado o que entra na impressão.</p>`;
+  h+=`<p class="pp-n">Referência: início da vaga de quem faltou; nas idas sem falta, o turno do posto. "Até 1 hora" inclui as chegadas antes do início. Fonte: BDV do SAR2G.</p>`+
     `<div class="pp-f"><span>JARVIS · Grupo ServCamp</span><span>Gerado em ${new Date().toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"})} por ${_esc(sessionStorage.getItem("userNome")||"—")}</span></div></div>`;
   return h;
 }
 function brPrevia(){
   if(!BR.dados||!BR.dados.linhas){alert("Carregue o relatório primeiro.");return;}
   brPreviaFechar();
-  const o=document.createElement("div");o.id="brPrev";o.setAttribute("role","dialog");o.setAttribute("aria-modal","true");o.setAttribute("aria-label","Prévia de impressão");
-  o.innerHTML=`<div class="bp-bar"><b class="bp-t">Prévia de impressão</b>`+
-    `<div class="bp-g"><button onclick="brZoom(-.1)" aria-label="Diminuir">−</button><span id="bpZ">100%</span><button onclick="brZoom(.1)" aria-label="Aumentar">+</button><button onclick="BRP.zoom=null;brPreviaEscala()">Ajustar à tela</button></div>`+
-    `<div class="bp-g"><button id="bpRet" onclick="BRP.paisagem=false;brPreviaDesenha()">Retrato</button><button id="bpPai" onclick="BRP.paisagem=true;brPreviaDesenha()">Paisagem</button></div>`+
-    `<div class="bp-g"><button onclick="BRP.letra=Math.max(8,BRP.letra-1);brPreviaDesenha()" aria-label="Letra menor">A−</button><span id="bpL">11</span><button onclick="BRP.letra=Math.min(16,BRP.letra+1);brPreviaDesenha()" aria-label="Letra maior">A+</button></div>`+
-    (BR.sel?"":`<label class="bp-c"><input type="checkbox" ${BRP.detalhe?"checked":""} onchange="BRP.detalhe=this.checked;brPreviaDesenha()"> Incluir cada cobertura</label>`)+
-    `<span class="bp-sp"></span><button class="bp-pri" onclick="brImprimir()">Imprimir / Salvar PDF</button><button onclick="brPreviaFechar()" aria-label="Fechar">✕</button></div>`+
-    `<div class="bp-area" id="bpArea"><div class="bp-cx" id="bpCx"><iframe class="bp-papel" id="bpPapel" title="Folha do relatório"></iframe></div></div>`;
+  BRP.sups=BR.sups.slice();BRP.postos=BR.postos.slice();BRP.mot=BR.mot;
+  BRP.partes.sup=BR.vis==="sup"||BRP.partes.sup;BRP.partes.posto=BR.vis==="posto"||BRP.partes.posto;
+  const o=document.createElement("div");o.id="brPrev";o.setAttribute("role","dialog");o.setAttribute("aria-modal","true");o.setAttribute("aria-label","Imprimir relatório");
+  const parte=(k,t)=>`<label class="bp-ck"><input type="checkbox" ${BRP.partes[k]?"checked":""} onchange="BRP.partes.${k}=this.checked;brPreviaDesenha()"><span>${t}</span></label>`;
+  o.innerHTML=`<div class="bp-bar"><b class="bp-t">Imprimir</b>`+
+    `<div class="bp-g"><button type="button" onclick="brZoom(-.1)" aria-label="Diminuir">−</button><span id="bpZ">100%</span><button type="button" onclick="brZoom(.1)" aria-label="Aumentar">+</button><button type="button" onclick="BRP.zoom=null;brPreviaEscala()">Ajustar</button></div>`+
+    `<div class="bp-g"><button type="button" id="bpRet" onclick="BRP.paisagem=false;brPreviaDesenha()">Retrato</button><button type="button" id="bpPai" onclick="BRP.paisagem=true;brPreviaDesenha()">Paisagem</button></div>`+
+    `<div class="bp-g"><button type="button" onclick="BRP.letra=Math.max(8,BRP.letra-1);brPreviaDesenha()" aria-label="Letra menor">A−</button><span id="bpL">11</span><button type="button" onclick="BRP.letra=Math.min(16,BRP.letra+1);brPreviaDesenha()" aria-label="Letra maior">A+</button></div>`+
+    `<span class="bp-sp"></span><button type="button" class="bp-pri" onclick="brImprimir()">${BR_IC.imp}Imprimir ou salvar PDF</button><button type="button" class="bp-x" onclick="brPreviaFechar()" aria-label="Fechar">${FM_IC.x}</button></div>`+
+    `<div class="bp-corpo"><aside class="bp-lado" id="pg-bdvrel-imp"><h5>O que imprimir</h5>${parte("kpi","Indicadores")}${parte("res","Resumo")}${parte("sup","Tabela por supervisor")}${parte("posto","Tabela por posto")}${parte("idas","Cada cobertura, uma a uma")}`+
+    `<h5>Filtros da impressão</h5><div class="bp-f">${brMulti("psup","Supervisores",brOpcoes("sup",""),()=>BRP.sups,brPreviaDesenha)}${brMulti("pposto","Postos",brOpcoes("posto",""),()=>BRP.postos,brPreviaDesenha)}`+
+    `<label class="br-sel"><span>Motivo</span><select aria-label="Motivo da impressão" onchange="BRP.mot=this.value;brPreviaDesenha()">${Object.keys(BR_MOT).map(k=>`<option value="${k}"${BRP.mot===k?" selected":""}>${BR_MOT[k]}</option>`).join("")}</select>${FM_IC.chev}</label></div>`+
+    `<p class="bp-nota">Período: ${brDd(BR.de)} a ${brDd(brAteEfetivo())}. Para mudar, escolha na tela do relatório.</p></aside>`+
+    `<div class="bp-area" id="bpArea"><div class="bp-cx" id="bpCx"><iframe class="bp-papel" id="bpPapel" title="Folha do relatório"></iframe></div></div></div>`;
   document.body.appendChild(o);document.addEventListener("keydown",brPreviaTecla);
   window.addEventListener("resize",brPreviaEscala);
   brPreviaDesenha();
@@ -12211,7 +12432,7 @@ function brPrevia(){
 function brPapelLargura(){return BRP.paisagem?1123:794;} // A4 a 96 dpi
 /* A folha é um documento à parte: o estilo dela não vaza para o sistema, e é ela mesma que vai para a impressora. */
 function brPapelDoc(){
-  return`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório de coberturas ${brDd(BR.de)} a ${brDd(BR.ate)}</title><style>@page{size:A4 ${BRP.paisagem?"landscape":"portrait"};margin:12mm}${BR_PAPEL_CSS}.pp{--l:${BRP.letra}px}</style></head><body>${brPapelHtml()}</body></html>`;
+  return`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Coberturas do supervisor ${brDd(BR.de)} a ${brDd(brAteEfetivo())}</title><style>@page{size:A4 ${BRP.paisagem?"landscape":"portrait"};margin:12mm}${BR_PAPEL_CSS}.pp{--l:${BRP.letra}px}</style></head><body>${brPapelHtml()}</body></html>`;
 }
 function brPreviaDesenha(){
   const p=document.getElementById("bpPapel");if(!p)return;
@@ -12221,7 +12442,7 @@ function brPreviaDesenha(){
   document.getElementById("bpL").textContent=BRP.letra;
   document.getElementById("bpRet").classList.toggle("on",!BRP.paisagem);document.getElementById("bpPai").classList.toggle("on",BRP.paisagem);
 }
-function brZoomAtual(){const ar=document.getElementById("bpArea");return BRP.zoom==null?Math.min(1.5,Math.max(.3,(ar.clientWidth-40)/brPapelLargura())):BRP.zoom;}
+function brZoomAtual(){const ar=document.getElementById("bpArea");return BRP.zoom==null?Math.min(1.4,Math.max(.3,(ar.clientWidth-48)/brPapelLargura())):BRP.zoom;}
 function brPreviaEscala(){
   const p=document.getElementById("bpPapel"),cx=document.getElementById("bpCx");if(!p)return;
   const z=brZoomAtual(),w=brPapelLargura(),hh=parseFloat(p.style.height)||1123;
@@ -12229,7 +12450,7 @@ function brPreviaEscala(){
   document.getElementById("bpZ").textContent=Math.round(z*100)+"%";
 }
 function brZoom(d){BRP.zoom=Math.min(2,Math.max(.3,Math.round((brZoomAtual()+d)*10)/10));brPreviaEscala();}
-function brPreviaTecla(e){if(e.key==="Escape")brPreviaFechar();}
+function brPreviaTecla(e){if(e.key==="Escape"&&!document.querySelector(".bm.aberto"))brPreviaFechar();}
 function brPreviaFechar(){const o=document.getElementById("brPrev");if(o)o.remove();document.removeEventListener("keydown",brPreviaTecla);window.removeEventListener("resize",brPreviaEscala);}
 function brImprimir(){
   const p=document.getElementById("bpPapel");if(!p||!p.contentWindow)return;

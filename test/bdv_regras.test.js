@@ -105,10 +105,11 @@ test("a planilha mais nova vale nos dias que ela tem; as mais antigas completam 
 });
 
 test("GET coberturas: só diretoria e coordenação, com período obrigatório", async () => {
+  bdvApi._zerarCache();
   supabaseFalso({ dashboard_snapshots: [envio(1, "2026-09-21", [ida("POSTO A", "2026-09-10", "6:30:00"), ida("POSTO A", "2026-09-20", "7:00:00")])] });
   let r = await pedir({ de: "2026-09-01", ate: "2026-09-15" }, "raphaelvictor");
   assert.equal(r.statusCode, 200); assert.equal(r.body.coberturas.length, 1);
-  assert.deepEqual(r.body.disponivel, { primeiro: "2026-09-10", ultimo: "2026-09-20" });
+  assert.deepEqual(r.body.disponivel, { primeiro: "2026-09-10", ultimo: "2026-09-20", desde: "2026-09-10" });
   assert.deepEqual(r.body.limites, { noPrazo: 60, grave: 180 });
   assert.equal(r.body.coberturas[0].situacao, "NO_PRAZO");
   r = await pedir({ de: "2026-09-01", ate: "2026-09-15" }, "adrianomacedo");
@@ -120,7 +121,19 @@ test("GET coberturas: só diretoria e coordenação, com período obrigatório",
 });
 
 test("sem nenhuma planilha guardada: lista vazia, sem erro", async () => {
+  bdvApi._zerarCache();
   supabaseFalso({ dashboard_snapshots: [] });
   const r = await pedir({ de: "2026-09-01", ate: "2026-09-15" }, "raphaelvictor");
   assert.equal(r.statusCode, 200); assert.deepEqual(r.body.coberturas, []); assert.equal(r.body.disponivel.primeiro, null);
+});
+
+test("desde quando há dados: o primeiro dia da planilha guardada mais antiga que tenha BDV", async () => {
+  bdvApi._zerarCache();
+  supabaseFalso({ dashboard_snapshots: [
+    { id: 1, created_at: "2026-05-01T10:00:00Z", data: { bdvCobertura: [] } },           // planilha antiga sem a aba
+    envio(2, "2026-06-20", [ida("POSTO A", "2026-04-02", "6:10:00"), ida("POSTO A", "2026-03-15", "7:00:00")]),
+    envio(3, "2026-10-02", [ida("POSTO A", "2026-09-01", "6:20:00")])
+  ] });
+  const r = await pedir({ de: "2026-09-01", ate: "2026-09-30" }, "raphaelvictor");
+  assert.equal(r.body.disponivel.desde, "2026-03-15");
 });

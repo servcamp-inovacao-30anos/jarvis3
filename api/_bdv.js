@@ -55,18 +55,35 @@ async function idasDoPeriodo(db, de, ate) {
   return { linhas, primeiro, ultimo, lidas };
 }
 
+/* Desde quando há BDV guardado: o primeiro dia da planilha guardada mais antiga
+   que tenha a aba. Muda pouco (só quando alguém apaga envios antigos): fica em
+   memória por algumas horas. */
+let _desde = { valor: undefined, em: 0 };
+async function dadosDesde(db) {
+  if (_desde.valor !== undefined && Date.now() - _desde.em < 6 * 3600000) return _desde.valor;
+  const antigos = await db.obter("dashboard_snapshots?select=id&order=created_at.asc&limit=4");
+  let valor = null;
+  for (const e of antigos || []) {
+    const [p] = await db.obter(`dashboard_snapshots?select=bdv:data->bdvCobertura&id=eq.${e.id}`);
+    const datas = ((p && p.bdv) || []).map(x => String(x.DATA || "").slice(0, 10)).filter(ehData).sort();
+    if (datas.length) { valor = datas[0]; break; }
+  }
+  _desde = { valor, em: Date.now() };
+  return valor;
+}
+
 async function verCoberturas({ req, res, db }) {
   const q = req.query || {};
   const de = String(q.de || ""), ate = String(q.ate || "");
   if (!ehData(de) || !ehData(ate) || de > ate) return erro(res, 400, "Informe o período (de e até).", "PERIODO_INVALIDO");
   if ((Date.parse(ate) - Date.parse(de)) / 864e5 > MAX_DIAS) return erro(res, 400, `Período de no máximo ${MAX_DIAS} dias.`, "PERIODO_LONGO");
-  const r = await idasDoPeriodo(db, de, ate);
+  const [r, desde] = await Promise.all([idasDoPeriodo(db, de, ate), dadosDesde(db)]);
   const coberturas = r.linhas.map(x => ({
     data: x.data, supervisor: x.supervisor, destino: x.destino, posto: x.posto, chegada: x.chegada, inicio: x.inicio,
     fonte_inicio: x.fonte_inicio, diferenca_min: x.diferenca_min, situacao: x.situacao, motivo: x.motivo,
     falta_re: x.falta_re, falta_nome: x.falta_nome, falta_abono: x.falta_abono, km: x.km, tempo_min: x.tempo_min
   }));
-  return res.status(200).json({ ok: true, de, ate, limites: R.BDV_LIMITES, disponivel: { primeiro: r.primeiro, ultimo: r.ultimo }, planilhas_lidas: r.lidas, coberturas });
+  return res.status(200).json({ ok: true, de, ate, limites: R.BDV_LIMITES, disponivel: { primeiro: r.primeiro, ultimo: r.ultimo, desde }, planilhas_lidas: r.lidas, coberturas });
 }
 
 const ROTAS = {
@@ -91,4 +108,5 @@ module.exports = async function bdv(req, res) {
 };
 
 module.exports.idasDoPeriodo = idasDoPeriodo;
+module.exports._zerarCache = () => { _desde = { valor: undefined, em: 0 }; };
 module.exports.LEITORES = LEITORES;
