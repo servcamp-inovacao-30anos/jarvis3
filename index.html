@@ -81,6 +81,20 @@ html[data-theme="dark"] .kb-nome,
 html[data-theme="dark"] .cv-view-on{color:#e6edf5!important;}
 html[data-theme="dark"] .cv-view{color:#9fb0c7;}
 html[data-theme="dark"] .cv-view-on{background:#2e8fef!important;color:#fff!important;}
+html[data-theme="dark"] .cpx-tabs{background:#101a2b;}
+html[data-theme="dark"] .cpx-meta{background:#182234;border-color:#293648;border-left-color:#0d9488;}
+html[data-theme="dark"] .cdm-ok{background:linear-gradient(135deg,#0f2a1c,#12301f)!important}
+html[data-theme="dark"] .cdm-atencao{background:linear-gradient(135deg,#2a2210,#35270c)!important}
+html[data-theme="dark"] .cpx-kpi,html[data-theme="dark"] .cpx-grupo,html[data-theme="dark"] .cpx-chip{background:#182234;border-color:#293648;}
+html[data-theme="dark"] .cpx-kpi .v,html[data-theme="dark"] .cpx-grupo .nm{color:#e6edf5;}
+html[data-theme="dark"] .cpx-grupo .k,html[data-theme="dark"] .cpx-tbl td{color:#c2ccdb;}
+html[data-theme="dark"] .cpx-tbl th,html[data-theme="dark"] .cpx-tbl td{border-color:#293648;}
+html[data-theme="dark"] .cpx-chip{color:#c2ccdb;}
+html[data-theme="dark"] .cpx-chip-on{background:#2e8fef;border-color:#2e8fef;color:#fff;}
+html[data-theme="dark"] .cpx-chip-alerta{color:#fca5a5;border-color:#f87171;}
+html[data-theme="dark"] .cpx-kpi{border-top-color:var(--cpx-c,#2e8fef);}
+html[data-theme="dark"] .cpx-grupo.pend{border-color:#5b2730;border-left-color:#dc2626;}
+html[data-theme="dark"] .cpx-grupo.ok{border-left-color:#16a34a;}
 html[data-theme="dark"] .rh-badge{filter:brightness(1.15);}
 /* número "Faltas Contrato" usava --b9 (azul quase preto) */
 html[data-theme="dark"] .c7 .oc-v{color:#8fb8ff;}
@@ -878,7 +892,7 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
   <div class="nav-cat" data-cat="com">
     <div class="nav-cat-h" onclick="navCatToggle('com')"><span class="nav-cat-t">💼 Comercial</span><span class="nav-cat-ar">▾</span></div>
     <div class="nav-cat-b">
-      <div class="ni" data-pg="compro" data-perm="com" onclick="navTo('compro',this)"><span class="ni-ic">💼</span><span>Propostas &amp; Cadência</span><span class="nib nib-novo">NOVO</span></div>
+      <div class="ni" data-pg="compro" data-perm="com" onclick="navTo('compro',this)"><span class="ni-ic">💼</span><span>Propostas e Serviços Extras</span><span hidden>cadência cadencia reforço</span><span class="nib nib-novo">NOVO</span></div>
     </div>
   </div>
   <div class="nav-cat" data-cat="dir">
@@ -953,6 +967,7 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
   <div class="cnt">
   <!-- VISÃO GERAL -->
   <div class="page active" id="pg-visao">
+    <div id="vg-contrato" hidden></div>
     <div class="vg-kpis" style="grid-template-columns:repeat(3,1fr)">
       <div class="sk sk-bl clickable" onclick="skDet('vg','clientes',this)"><div class="sk-top"><span class="sk-ic">🏢</span><span class="sk-tag t-bl">Fixo</span></div><div class="sk-lbl">Clientes Ativos</div><div class="sk-v" id="vg-cl">—</div><div class="sk-sub" id="vg-cls">—</div></div>
       <div class="sk clickable" onclick="_showNovosClientes()" style="background:linear-gradient(135deg,#fff7e6,#ffedcc);border:2px solid #f5a623;box-shadow:0 4px 18px rgba(245,166,35,.25);position:relative;overflow:hidden">
@@ -1766,7 +1781,15 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
     </div>
   </div>
   <div class="page" id="pg-compro">
-    <div class="sec-hdr"><span class="sec-hdr-ic">💼</span><div><div class="sec-hdr-t">Comercial — Propostas &amp; Cadência</div><div class="sec-hdr-sub">CRM do Grupo ServCamp: cadastro de propostas e follow-up automático (WhatsApp + E-mail)</div></div></div>
+    <div class="sec-hdr"><span class="sec-hdr-ic">💼</span><div><div class="sec-hdr-t">Comercial — Propostas e Serviços Extras</div><div class="sec-hdr-sub">Propostas com follow-up automático (WhatsApp + E-mail) e serviços extras dos clientes em contrato</div></div></div>
+    <!-- Duas abas na mesma guia. Trocar de aba só mostra/esconde: nenhum dado
+         das propostas é recarregado nem alterado por isso. -->
+    <div id="cpx-meta-ano" class="cpx-meta"></div>
+    <div class="cpx-tabs" role="tablist" aria-label="Seções do Comercial" onkeydown="cpxAbaTecla(event)">
+      <button type="button" role="tab" class="cv-view cv-view-on" id="cpx-tab-prop" aria-selected="true" aria-controls="cpx-aba-prop" tabindex="0" onclick="cpxAba('prop')">💼 Propostas &amp; Cadência</button>
+      <button type="button" role="tab" class="cv-view" id="cpx-tab-extra" aria-selected="false" aria-controls="cpx-aba-extra" tabindex="-1" onclick="cpxAba('extra')">🧾 Serviços Extras<span id="cpx-tab-badge"></span></button>
+    </div>
+    <div id="cpx-aba-prop" role="tabpanel" aria-labelledby="cpx-tab-prop">
     <div id="cp-wa-aviso"></div>
     <div style="background:#fff;border:1px solid #e5e9f0;border-radius:14px;padding:20px 24px;margin-bottom:14px">
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px"><div id="cp-form-title" style="font-size:.85rem;font-weight:800;color:#0d1f35">➕ Nova Proposta</div><div id="cp-radar" style="margin-left:auto"></div></div>
@@ -1820,6 +1843,41 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       <div id="cp-kanban"></div>
       <div id="cp-tbl" style="overflow-x:auto;display:none"></div>
       <div id="cp-agenda" style="display:none"></div></div>
+    </div>
+    <div id="cpx-aba-extra" role="tabpanel" aria-labelledby="cpx-tab-extra" hidden>
+      <div id="cpx-aviso"></div>
+      <div class="cpx-kpis" id="cpx-kpis"></div>
+      <div style="background:#fff;border:1px solid #e5e9f0;border-radius:14px;padding:20px 24px;margin-bottom:14px">
+        <div id="cpx-form-title" style="font-size:.85rem;font-weight:800;color:#0d1f35;margin-bottom:14px">➕ Novo Serviço Extra</div>
+        <form onsubmit="return cpxSalvar(event)" id="cpxForm" novalidate>
+          <input type="hidden" id="cpxf-id">
+          <div class="cpx-grid">
+            <div style="grid-column:span 2"><label class="rhf-l" for="cpxf-cliente">Cliente *</label><input class="rhf-i" id="cpxf-cliente" type="text" list="dl-cpx-cli" placeholder="Digite para buscar entre os clientes em contrato" autocomplete="off"><datalist id="dl-cpx-cli"></datalist></div>
+            <div><label class="rhf-l" for="cpxf-ini">Data de início *</label><input class="rhf-i" id="cpxf-ini" type="date" onchange="cpxFimMin()"></div>
+            <div><label class="rhf-l" for="cpxf-fim">Data de encerramento *</label><input class="rhf-i" id="cpxf-fim" type="date"></div>
+          </div>
+          <div class="cpx-grid">
+            <div><label class="rhf-l" for="cpxf-qtd">Qtd. de colaboradores *</label><input class="rhf-i" id="cpxf-qtd" type="number" min="1" step="1" inputmode="numeric" placeholder="Ex: 2"></div>
+            <div><label class="rhf-l" for="cpxf-tipo">Tipo de serviço *</label><select class="rhf-i" id="cpxf-tipo" onchange="cpxTipoOutro()"><option value="">Selecione…</option><option>LIMPEZA</option><option>PORTARIA</option><option value="__OUTRO">Outro (escrever)</option></select></div>
+            <div id="cpxf-outro-box" hidden><label class="rhf-l" for="cpxf-outro">Qual serviço? *</label><input class="rhf-i" id="cpxf-outro" type="text" placeholder="Ex: Jardinagem, Zeladoria, Recepção"></div>
+            <div id="cpxf-obs-box"><label class="rhf-l" for="cpxf-obs">Observações</label><input class="rhf-i" id="cpxf-obs" type="text" placeholder="Ex: evento no salão, cobrir férias, mutirão"></div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <button type="submit" class="rh-btn" id="cpxBtnSalvar">💾 Salvar Serviço Extra</button>
+            <button type="button" class="rh-btn rh-btn-sec" onclick="cpxLimpar()">✖ Limpar</button>
+            <span id="cpxf-msg" role="status" aria-live="polite" style="font-size:.74rem;font-weight:700"></span>
+          </div>
+        </form>
+      </div>
+      <div class="ts" style="margin-bottom:14px"><div class="th2"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div class="chb"></div><span class="ct">Serviços extras cadastrados <span id="cpx-lista-cnt" style="font-weight:600;color:#94a3b8;font-size:.72rem"></span></span>
+          <span id="cpx-lista-filtros" style="display:inline-flex;gap:4px;flex-wrap:wrap"></span></div>
+        <div class="tc2"><input class="sb2" type="text" placeholder="Buscar cliente ou serviço..." id="s-cpx" oninput="cpxRenderLista()"></div></div>
+        <div id="cpx-lista" style="overflow-x:auto"></div></div>
+      <div class="ts"><div class="th2"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div class="chb" style="background:#dc2626"></div><span class="ct">Reforços faturados na Cobertura <span id="cpx-ref-cnt" style="font-weight:600;color:#94a3b8;font-size:.72rem"></span></span>
+          <span id="cpx-ref-filtros" style="display:inline-flex;gap:4px;flex-wrap:wrap"></span></div></div>
+        <div style="font-size:.7rem;color:#64748b;padding:0 2px 10px;max-width:90ch">Lançamentos da Cobertura com motivo <b>REFORÇO FATURADO</b>. Em vermelho: o cliente não tem serviço extra cadastrado para aquele dia. Se não foi passado para faturar, avise o faturamento e cadastre o serviço extra aqui. Clique num cliente para ver cada lançamento. O período desta lista é escolhido nos botões acima; o período do topo da tela não se aplica a ela.</div>
+        <div id="cpx-ref"></div></div>
+    </div>
   </div>
   <div class="page" id="pg-metas">
     <div class="sec-hdr"><span class="sec-hdr-ic">🎯</span><div><div class="sec-hdr-t">Metas da Diretoria</div><div class="sec-hdr-sub">Metas definidas aqui, no sistema — não vêm da planilha</div></div></div>
@@ -2764,6 +2822,62 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
     .cv-skel{border-radius:14px;height:104px;background:linear-gradient(90deg,#eef2f7 25%,#f8fafc 37%,#eef2f7 63%);background-size:400px 100%;animation:cvShimmer 1.2s infinite linear}
     .cv-view{border:none;background:transparent;color:#64748b;font-size:.72rem;font-weight:800;padding:7px 16px;border-radius:8px;cursor:pointer;transition:all .15s}
     .cv-view-on{background:#0d1f35;color:#fff;box-shadow:0 2px 8px rgba(13,31,53,.25)}
+    /* Comercial: meta anual na guia e metas no Painel Comercial */
+    .cpx-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#fff;border:1px solid #e5e9f0;border-left:4px solid #0d9488;border-radius:12px;padding:10px 14px;margin:0 0 12px}
+    .cpx-meta:empty{display:none}
+    .cdm-card{position:relative;overflow:hidden}
+    .cdm-ok{background:linear-gradient(135deg,#f0fdf4,#dcfce7)!important}
+    .cdm-atencao{background:linear-gradient(135deg,#fffbeb,#fef3c7)!important}
+    .cdm-festa{animation:cdmPulso 1.6s ease-in-out 3}
+    @keyframes cdmPulso{0%,100%{box-shadow:0 0 0 0 rgba(22,163,74,.0)}50%{box-shadow:0 0 0 6px rgba(22,163,74,.25)}}
+    .cdm-confete{position:absolute;inset:0;pointer-events:none}
+    .cdm-confete i{position:absolute;top:-10px;width:6px;height:10px;border-radius:2px;opacity:.9;animation:cdmCai 2.4s ease-in infinite}
+    .cdm-confete i:nth-child(3n){background:#16a34a}.cdm-confete i:nth-child(3n+1){background:#f5a623}.cdm-confete i:nth-child(3n+2){background:#2e8fef}
+    .cdm-confete i:nth-child(1){left:6%;animation-delay:0s}.cdm-confete i:nth-child(2){left:14%;animation-delay:.6s}.cdm-confete i:nth-child(3){left:22%;animation-delay:1.2s}
+    .cdm-confete i:nth-child(4){left:30%;animation-delay:.3s}.cdm-confete i:nth-child(5){left:38%;animation-delay:.9s}.cdm-confete i:nth-child(6){left:46%;animation-delay:1.5s}
+    .cdm-confete i:nth-child(7){left:54%;animation-delay:.2s}.cdm-confete i:nth-child(8){left:62%;animation-delay:.8s}.cdm-confete i:nth-child(9){left:70%;animation-delay:1.4s}
+    .cdm-confete i:nth-child(10){left:78%;animation-delay:.5s}.cdm-confete i:nth-child(11){left:86%;animation-delay:1.1s}.cdm-confete i:nth-child(12){left:94%;animation-delay:1.7s}
+    @keyframes cdmCai{to{transform:translateY(150px) rotate(360deg);opacity:0}}
+    /* Comercial: abas Propostas | Serviços Extras */
+    .cpx-tabs{display:inline-flex;gap:2px;background:#eef2f7;border-radius:11px;padding:4px;margin:0 0 14px}
+    .cpx-tabs .cv-view{font-size:.78rem;padding:9px 20px;display:inline-flex;align-items:center;gap:7px}
+    .cpx-tabs .cv-view:focus-visible{outline:2px solid #2e8fef;outline-offset:2px}
+    .cpx-badge{background:#dc2626;color:#fff;border-radius:9px;font-size:.6rem;font-weight:800;padding:1px 7px;line-height:1.5}
+    .cpx-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px}
+    .cpx-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+    .cpx-kpi{background:#fff;border:1px solid #e5e9f0;border-radius:14px;padding:14px 16px;border-top:3px solid var(--cpx-c,#2e8fef)}
+    .cpx-kpi-btn{display:block;width:100%;text-align:left;font:inherit;cursor:pointer;transition:transform .12s,box-shadow .12s}
+    .cpx-kpi-btn:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(13,31,53,.1)}
+    .cpx-kpi-btn:focus-visible{outline:2px solid #2e8fef;outline-offset:2px}
+    .cpx-kpi .l{font-size:.6rem;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:#64748b}
+    .cpx-kpi .v{font-size:1.45rem;font-weight:900;color:#0d1f35;font-variant-numeric:tabular-nums;line-height:1.2;margin-top:4px}
+    .cpx-kpi .s{font-size:.64rem;color:#94a3b8}
+    .cpx-pill{display:inline-block;font-size:.6rem;font-weight:800;padding:2px 9px;border-radius:999px;white-space:nowrap}
+    .cpx-p-and{background:#dcfce7;color:#15803d}.cpx-p-ag{background:#e0ecff;color:#1e4d8c}.cpx-p-enc{background:#eef2f7;color:#64748b}
+    .cpx-p-ok{background:#dcfce7;color:#15803d}.cpx-p-pend{background:#fee2e2;color:#b91c1c}
+    .cpx-chip{border:1px solid #dbe2ec;background:#fff;color:#475569;border-radius:999px;font-size:.64rem;font-weight:800;padding:4px 11px;cursor:pointer}
+    .cpx-chip-on{background:#0d1f35;border-color:#0d1f35;color:#fff}
+    .cpx-tbl{width:100%;border-collapse:collapse;font-size:.74rem;min-width:760px}
+    .cpx-tbl th{text-align:left;font-size:.6rem;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:#94a3b8;padding:8px 10px;border-bottom:2px solid #e5e9f0;white-space:nowrap}
+    .cpx-tbl td{padding:8px 10px;border-bottom:1px solid #eef2f7;color:#334155;vertical-align:middle}
+    .cpx-tbl td.n{font-variant-numeric:tabular-nums;text-align:center}
+    .cpx-grupo{border:1px solid #e5e9f0;border-radius:12px;margin-bottom:8px;overflow:hidden}
+    .cpx-grupo.pend{border-color:#fecaca;border-left:4px solid #dc2626}
+    .cpx-grupo.ok{border-left:4px solid #16a34a}
+    .cpx-grupo summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:minmax(180px,1.6fr) repeat(3,minmax(70px,.55fr)) minmax(150px,1fr) auto 14px;gap:10px;align-items:center;padding:10px 14px;font-size:.74rem}
+    .cpx-grupo summary::-webkit-details-marker{display:none}
+    .cpx-grupo summary::after{content:"▸";color:#94a3b8;font-size:.8rem;transition:transform .15s;justify-self:end}
+    .cpx-grupo[open] summary::after{transform:rotate(90deg)}
+    .cpx-chip-alerta{border-color:#dc2626;color:#b91c1c}
+    button.rh-act{border:0;background:transparent;font:inherit}
+    .cpx-grupo summary:focus-visible{outline:2px solid #2e8fef;outline-offset:-2px}
+    .cpx-grupo .nm{font-weight:800;color:#0d1f35}
+    .cpx-grupo .nm small{display:block;font-weight:600;color:#94a3b8;font-size:.62rem}
+    .cpx-grupo .k{font-variant-numeric:tabular-nums;color:#334155}
+    .cpx-grupo .k small{display:block;font-size:.58rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.3px}
+    .cpx-grupo .det{padding:0 14px 12px;overflow-x:auto}
+    @media(max-width:1000px){.cpx-grid,.cpx-kpis{grid-template-columns:repeat(2,1fr)}.cpx-grupo summary{grid-template-columns:1fr 1fr 1fr}.cpx-grupo summary>span:first-child,.cpx-grupo summary>span:last-of-type{grid-column:1/-1}.cpx-grupo summary>span:last-of-type{justify-content:flex-start!important}.cpx-grupo summary::after{display:none}}
+    @media(max-width:560px){.cpx-grid,.cpx-kpis{grid-template-columns:1fr}.cpx-grid>div{grid-column:auto!important}.cpx-tabs{display:flex}.cpx-tabs .cv-view{flex:1;justify-content:center;padding:9px 8px}.cpx-grupo summary{grid-template-columns:1fr 1fr}}
     .kb-legend{margin:0 2px 12px;background:#f4f7fb;border:1px solid #e5e9f0;border-radius:12px;padding:2px 12px}
     .kb-legend>summary{cursor:pointer;font-size:.72rem;font-weight:600;color:#475569;padding:8px 2px;list-style:none;user-select:none}
     .kb-legend>summary::-webkit-details-marker{display:none}
@@ -2935,6 +3049,7 @@ function _abrirSessao(u){
   applyUserUI();
   if(typeof hqBeat==="function")hqBeat(); // já aparece na Sede Virtual
   tvModoChecar(); // se abriu a TV sem estar logado ainda, ativa só depois do login
+  vgContrato();
 }
 /* Troca de senha. modo: "primeiro" (ainda na senha padrão), "obrigatoria" (must_change
    marcado no banco) ou "voluntaria" (menu do perfil — pede a senha atual). */
@@ -3027,12 +3142,122 @@ function showWelcome(){
   setTimeout(function(){
     div.style.transition="opacity .4s ease";
     div.style.opacity="0";
-    setTimeout(function(){div.remove();},400);
+    setTimeout(function(){div.remove();_celebrarContrato();},400);
   },2200);
 }
+
+/* ── Contrato fechado em destaque ──────────────────────────────────────────
+   Toda proposta do Comercial que vira FECHADO aparece sozinha, por 30 dias
+   contados do fechado_em: faixa fixa no topo da Visão Geral, confete caindo
+   no dashboard e, a cada login, um cartão logo depois das boas-vindas. Sem
+   valores em R$ (COM_VALORES segue desligado). */
+const CONTRATO_DIAS_DESTAQUE=30;
+let _contratosRecentes=null;
+function _ctEsc(t){return String(t==null?"":t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function _ctTitulo(t){return String(t||"").toLowerCase().replace(/(^|\s)\S/g,c=>c.toUpperCase());}
+function _ctData(iso){const s=String(iso||"");return s.length>=10?s.slice(8,10)+"/"+s.slice(5,7):"—";}
+function contratosRecentes(){
+  if(!_contratosRecentes){
+    _contratosRecentes=fetch("/api/comercial?t=propostas").then(r=>r.json()).then(j=>{
+      const hoje=new Date(Date.now()-3*3600000).toISOString().slice(0,10); // Brasília
+      const limite=new Date(Date.parse(hoje+"T12:00:00Z")-(CONTRATO_DIAS_DESTAQUE-1)*86400000).toISOString().slice(0,10);
+      return ((j&&j.rows)||[]).filter(p=>p.status==="FECHADO"&&p.fechado_em&&String(p.fechado_em).slice(0,10)>=limite&&String(p.fechado_em).slice(0,10)<=hoje)
+        .sort((a,b)=>String(b.fechado_em)<String(a.fechado_em)?-1:1);
+    }).catch(()=>{_contratosRecentes=null;return[];});
+  }
+  return _contratosRecentes;
+}
+function _ctLinha(p){
+  const det=[p.servico&&_ctTitulo(p.servico),p.cidade&&_ctTitulo(p.cidade)].filter(Boolean).join(" · ");
+  return {nome:_ctEsc(p.nome),det:_ctEsc(det),quem:_ctEsc(p.responsavel||"Comercial"),quando:_ctData(p.fechado_em)};
+}
+function vgContrato(){
+  const el=document.getElementById("vg-contrato");if(!el)return;
+  contratosRecentes().then(lista=>{
+    if(!lista.length){el.hidden=true;el.innerHTML="";return;}
+    _ctConfete();
+    el.innerHTML=lista.slice(0,3).map(p=>{const l=_ctLinha(p);return(
+      '<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:12px;padding:14px 18px;border-radius:14px;'+
+      'background:linear-gradient(135deg,#fff7e6,#ffedcc);border:2px solid #f5a623;box-shadow:0 4px 18px rgba(245,166,35,.22)">'+
+        '<span style="font-size:1.7rem;line-height:1">🏆</span>'+
+        '<div style="flex:1;min-width:220px">'+
+          '<div style="font-size:.66rem;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:#a3650c">Novo contrato fechado</div>'+
+          '<div style="font-size:1.05rem;font-weight:900;color:#0d1f35">'+l.nome+(l.det?' <span style="font-size:.78rem;font-weight:700;color:#b5790f">· '+l.det+'</span>':'')+'</div>'+
+          '<div style="font-size:.74rem;color:#7c5a17">Fechado em '+l.quando+' por <b>'+l.quem+'</b>. Parabéns ao Comercial!</div>'+
+        '</div>'+
+      '</div>');}).join("");
+    el.hidden=false;
+  });
+}
+/* Confete caindo no dashboard enquanto houver contrato no destaque. Canvas
+   por cima de tudo, mas sem capturar clique; pausa com a aba escondida e não
+   roda para quem pediu menos movimento no sistema. */
+let _ctConfeteLigado=false;
+function _ctConfete(){
+  // Aparece mesmo com "reduzir animações" do sistema ligado: pedido da
+  // diretoria (o Windows desligava o confete sem ninguém perceber).
+  if(_ctConfeteLigado)return;
+  _ctConfeteLigado=true;
+  const cv=document.createElement("canvas");
+  cv.id="contratoConfete";
+  cv.setAttribute("aria-hidden","true");
+  cv.style.cssText="position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:9000";
+  document.body.appendChild(cv);
+  const cx=cv.getContext("2d"),cor=["#f5a623","#2e8fef","#16a34a","#fbbf24","#e11d48","#8b5cf6"];
+  let W=0,H=0,dpr=1;
+  const medir=()=>{dpr=window.devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*dpr;cv.height=H*dpr;cx.setTransform(dpr,0,0,dpr,0,0);};
+  medir();addEventListener("resize",medir);
+  const novo=topo=>({x:Math.random()*W,y:topo?-20-Math.random()*H*.2:Math.random()*H,w:5+Math.random()*5,h:8+Math.random()*6,
+    vy:.6+Math.random()*1.1,vx:-.4+Math.random()*.8,r:Math.random()*6.28,vr:-.06+Math.random()*.12,c:cor[Math.floor(Math.random()*cor.length)]});
+  const pecas=Array.from({length:Math.min(60,Math.round(W/22))},()=>novo(false));
+  let ant=0;
+  (function passo(t){
+    requestAnimationFrame(passo);
+    if(document.hidden)return;
+    const dt=Math.min(3,ant?(t-ant)/16.7:1);ant=t;
+    cx.clearRect(0,0,W,H);
+    for(const p of pecas){
+      p.y+=p.vy*dt;p.x+=(p.vx+Math.sin((p.y+p.r*40)/60)*.4)*dt;p.r+=p.vr*dt;
+      if(p.y>H+20)Object.assign(p,novo(true));
+      cx.save();cx.translate(p.x,p.y);cx.rotate(p.r);cx.globalAlpha=.85;cx.fillStyle=p.c;cx.fillRect(-p.w/2,-p.h/2,p.w,p.h*Math.abs(Math.cos(p.r)));cx.restore();
+    }
+  })(0);
+}
+// Cartão de comemoração: logo depois das boas-vindas, a cada login, durante o destaque.
+function _celebrarContrato(){
+  contratosRecentes().then(lista=>{
+    const novos=lista;
+    if(!novos.length||document.getElementById("contratoOverlay"))return;
+    const l=_ctLinha(novos[0]),mais=novos.length-1;
+    const div=document.createElement("div");
+    div.id="contratoOverlay";
+    div.style.cssText="position:fixed;inset:0;background:rgba(13,31,53,.85);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;animation:fadeIn .3s ease";
+    const fechar=()=>{div.style.transition="opacity .3s ease";div.style.opacity="0";setTimeout(()=>div.remove(),300);};
+    div.onclick=e=>{if(e.target===div)fechar();};
+    const cor=["#f5a623","#2e8fef","#16a34a","#ffffff","#fbbf24"];
+    const confete=matchMedia("(prefers-reduced-motion: reduce)").matches?"":Array.from({length:26},(_,i)=>
+      '<i style="position:absolute;top:-12px;left:'+(4+i*3.6).toFixed(1)+'%;width:7px;height:12px;border-radius:2px;background:'+cor[i%cor.length]+
+      ';opacity:.9;animation:ctCai '+(1.8+(i%5)*.35).toFixed(2)+'s ease-in '+((i%7)*.12).toFixed(2)+'s forwards"></i>').join("");
+    div.innerHTML='<div style="position:relative;overflow:hidden;background:linear-gradient(135deg,#0d1f35,#1e4d8c);border-radius:18px;padding:38px 40px 30px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4);max-width:440px;width:100%;animation:popIn .4s ease">'+
+      confete+
+      '<div style="font-size:2.6rem;margin-bottom:8px">🏆</div>'+
+      '<div style="color:#fbbf24;font-size:.76rem;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px">Novo contrato fechado</div>'+
+      '<div style="color:#fff;font-size:1.6rem;font-weight:900;line-height:1.15;margin-bottom:6px">'+l.nome+'</div>'+
+      (l.det?'<div style="color:#b9cce8;font-size:.9rem;font-weight:700;margin-bottom:14px">'+l.det+'</div>':'')+
+      '<div style="display:inline-block;background:rgba(255,255,255,.14);color:#fff;font-size:.8rem;font-weight:700;padding:6px 16px;border-radius:20px;margin-bottom:18px">Fechado em '+l.quando+' por '+l.quem+'</div>'+
+      '<div style="color:#e2ecf8;font-size:.86rem;margin-bottom:20px">Parabéns ao Comercial pela conquista!'+(mais>0?'<br><span style="color:#9ec5f5;font-size:.76rem">e mais '+mais+' contrato'+(mais>1?'s':'')+' neste mês</span>':'')+'</div>'+
+      '<button type="button" id="contratoOk" style="width:100%;padding:11px;border-radius:8px;border:none;background:linear-gradient(135deg,#f5a623,#d97706);color:#fff;font-weight:800;font-size:.86rem;cursor:pointer">Entrar no Dashboard</button>'+
+      '</div><style>@keyframes ctCai{to{transform:translateY(520px) rotate(540deg);opacity:0}}'+
+      '@keyframes fadeIn{from{opacity:0}to{opacity:1}}@keyframes popIn{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}</style>';
+    document.body.appendChild(div);
+    document.getElementById("contratoOk").onclick=fechar;
+  });
+}
+
 if(sessionStorage.getItem("logged")==="1"){
   document.getElementById("loginOverlay").classList.add("hidden");
   applyUserUI();
+  vgContrato();
 }
 function _cnt(arr,key,n){var m={};arr.forEach(function(x){var v=x[key]||"—";m[v]=(m[v]||0)+1;});return Object.entries(m).sort(function(a,b){return b[1]-a[1]}).slice(0,n||10).map(function(e){return e[0]+": "+e[1]}).join("; ");}
 function _chatContext(){
@@ -3505,7 +3730,7 @@ function setTurno(t,btn){document.querySelectorAll("#trnoPg .pi").forEach(b=>b.c
 function setArea(){ST.area=document.getElementById("areaS").value;rpg();refresh();}
 function rpg(){Object.keys(ST.tpg).forEach(k=>ST.tpg[k]=1);}
 
-const PTITLES={metas:"Metas da Diretoria",visao:"Visão Geral",ativos:"Funcionários Ativos",clientes:"Clientes",faltas:"Faltas & Top 10",coberturas:"Coberturas",postos:"Justificativa de Postos Descobertos",os:"OS Avulsos",fts:"FTS",dispo:"Sem Alocação",restec:"Reservas Técnicas",hrextra:"Horas Extras",checklist:"Check List",rhvagas:"RH — Controle de Vagas",rhentrev:"RH — Entrevistas & Funil",rhdesl:"RH — Desligamentos",rhres:"RH — Reservas → Efetivação",rhtrein:"RH — Treinamentos",rhdash:"Painel RH — Diretoria",compro:"Comercial — Propostas & Cadência",comdash:"Painel Comercial",config:"Configurações — Acessos & Usuários",sede:"Base Virtual — Equipe",prj:"Projetos — Evolução & Inovação",audqual:"Auditoria de Qualidade",ligacoes:"Feedback de Faltas",faltasmed:"Faltas x Medidas",faltassup:"Faltas da Supervisão"};
+const PTITLES={metas:"Metas da Diretoria",visao:"Visão Geral",ativos:"Funcionários Ativos",clientes:"Clientes",faltas:"Faltas & Top 10",coberturas:"Coberturas",postos:"Justificativa de Postos Descobertos",os:"OS Avulsos",fts:"FTS",dispo:"Sem Alocação",restec:"Reservas Técnicas",hrextra:"Horas Extras",checklist:"Check List",rhvagas:"RH — Controle de Vagas",rhentrev:"RH — Entrevistas & Funil",rhdesl:"RH — Desligamentos",rhres:"RH — Reservas → Efetivação",rhtrein:"RH — Treinamentos",rhdash:"Painel RH — Diretoria",compro:"Comercial — Propostas e Serviços Extras",comdash:"Painel Comercial",config:"Configurações — Acessos & Usuários",sede:"Base Virtual — Equipe",prj:"Projetos — Evolução & Inovação",audqual:"Auditoria de Qualidade",ligacoes:"Feedback de Faltas",faltasmed:"Faltas x Medidas",faltassup:"Faltas da Supervisão"};
 
 /* ── Sidebar 2.0: accordion com estado salvo + busca de módulos ── */
 function navCatToggle(k){
@@ -3642,7 +3867,7 @@ function navTo(p,btn){
   else if(p==="rhres"){rhResLoad();}
   else if(p==="rhtrein"){rhTreLoad();}
   else if(p==="rhdash"){rhDashLoad();}
-  else if(p==="compro"){comLoad();}
+  else if(p==="compro"){comLoad();cpxLoad();}
   else if(p==="metas"){mtLoad();}
   else if(p==="comdash"){comDashLoad();}
   else if(p==="config"){cfgLoad();}
@@ -3671,7 +3896,7 @@ function refresh(){
     rhres:()=>{rhResRender();rhResRenderTbl();},
     rhtrein:()=>{rhTreRender();rhTreRenderTbl();},
     rhdash:()=>{if(RDASH.loaded)rhDashRender();},
-    compro:()=>comRenderAll(), comdash:()=>comDashRender()
+    compro:()=>{comRenderAll();cpxRender();}, comdash:()=>comDashRender()
   };
   if(_rer[ST.pg]){try{_rer[ST.pg]();}catch(e){console.error("refiltrar "+ST.pg+":",e);}return;}
   if(ST.pg==="visao")updVGCharts();
@@ -3713,7 +3938,13 @@ function updOC(){
   document.getElementById("oc9").textContent=(F.justif||[]).filter(r=>(r.MOTIVO||"").toUpperCase().includes("VAGO SEM COBERTURA")).length;
   const _ncList=DASHBOARD_DATA.novosClientes||[];
   document.getElementById("vg-novoscli").textContent=_ncList.length;
-  document.getElementById("vg-novosclis").innerHTML=_ncList.length?`<b>${_ncList[_ncList.length-1].CLIENTE}</b>`:"nenhum ainda";
+  // o mais recente pela data da implantação (a planilha não vem ordenada)
+  const _ncUlt=_ncList.slice().sort((a,b)=>String(b.DATA||"").localeCompare(String(a.DATA||"")))[0];
+  const _ncIso=_ncUlt&&_ncUlt.DATA?String(_ncUlt.DATA).slice(0,10):"";
+  const _ncDt=_ncIso?_ncIso.split("-").reverse().join("/"):"";
+  // data futura = implantação agendada (a LABMASS fechou em 29/09 com início em 03/11)
+  const _ncFut=_ncIso&&_ncIso>new Date(Date.now()-3*3600000).toISOString().slice(0,10);
+  document.getElementById("vg-novosclis").innerHTML=_ncUlt?`<b>${_ncUlt.CLIENTE}</b>${_ncDt?`<br>${_ncFut?"implantação prevista para":"implantado em"} <b>${_ncDt}</b>`:""}`:"nenhum ainda";
   vgSemaforo();
   vgComparativos();
   vgCardChecklist();
@@ -3746,6 +3977,8 @@ function vgPode(perm){
 }
 /* clique dos cards restritos: navega para quem pode, informa quem não pode */
 function vgAbrir(pg,perm){
+  // cards de propostas/visitas abrem sempre na aba Propostas da guia Comercial
+  if(pg==="compro"&&vgPode(perm)&&typeof cpxAba==="function")cpxAba("prop");
   if(vgPode(perm))return navTo(pg,null);
   if(typeof hqToast==="function")hqToast("Você não tem acesso a essa guia — o número fica visível aqui.");
 }
@@ -7972,7 +8205,7 @@ function rhDashVagas(){
   }
 }
 /* ═══════════════ MÓDULO COMERCIAL (CRM) ═══════════════ */
-let COM_P=[],COM_LOG=[],COM_METAS=[],COM_TBL_STATUS="TODAS",COM_VIEW="kanban";
+let COM_P=[],COM_LOG=[],COM_METAS=[],COM_METAANO=[],COM_EXTRAS=[],COM_TBL_STATUS="TODAS",COM_VIEW="kanban";
 const COM_ST_COLORS={"LEAD":"#64748b","PROSPECÇÃO":"#7c3aed","PROPOSTA":"#2e8fef","NEGOCIAÇÃO":"#f97316","CONTRATO":"#0d9488","FECHADO":"#16a34a","PERDIDO":"#dc2626","PAUSADO":"#94a3b8"};
 const COM_ST_ORDER=["LEAD","PROSPECÇÃO","PROPOSTA","NEGOCIAÇÃO","CONTRATO","FECHADO","PERDIDO","PAUSADO"];
 const COM_ST_DESC={"LEAD":"Contato novo, ainda não trabalhado — a entrada do funil.","PROSPECÇÃO":"Primeiro contato feito; entendendo a necessidade e qualificando.","PROPOSTA":"Orçamento já enviado ao cliente; aguardando retorno.","NEGOCIAÇÃO":"Cliente respondeu; ajustando preço, prazo e condições.","CONTRATO":"Fechado verbalmente; formalizando a assinatura.","FECHADO":"Venda ganha. 🎉","PERDIDO":"Não avançou — recusa, sumiço ou concorrente.","PAUSADO":"Congelado por ora; retomar mais tarde (não é perdido)."};
@@ -8038,11 +8271,12 @@ function comLogEvento(pid,detalhe,canal){
    realmente envia. Ao mudar a mensagem, mude NOS DOIS lugares, senão a
    pré-visualização mente para ela.
 
-   COM_CADENCIA_LIGADA reflete o agendamento em vercel.json. Hoje está em
-   "crons": [] (desligado depois do envio acidental de 11/08). Ao religar o
-   agendamento, trocar esta constante para true — senão a tela promete um envio
-   que não vai acontecer. */
-var COM_CADENCIA_LIGADA=false;
+   COM_CADENCIA_LIGADA reflete o agendamento em vercel.json (crons do
+   comercial-cron). Ficou desligado depois do envio acidental de 11/08 e voltou
+   em setembro. Se a agenda for pausada de novo ("crons": []), trocar esta
+   constante e COM_CAD_AGENDA_ATIVA para false no mesmo commit — senão a tela
+   promete um envio que não vai acontecer. */
+var COM_CADENCIA_LIGADA=true;
 const COM_CAD_HORA="09:00";
 const COM_CAD_DIAS={2:2,3:5,4:10,5:20};
 const COM_CAD_TXT={
@@ -8062,6 +8296,9 @@ function comCadParada(x){
   if(x.cadencia_ativa===false)return"a cadência foi desligada nesta proposta";
   if(!x.data_envio_proposta)return"a data de envio da proposta ainda não foi registrada";
   if((x.cadencia_etapa||0)>=5)return"a régua chegou ao fim (Msg 5 já enviada)";
+  // Msg 2 a 5 são e-mail: sem endereço o servidor nem considera a proposta
+  // (filtro email=not.is.null em api/comercial-cron.js), então não é "vencida".
+  if(!String(x.email||"").trim())return"o cliente não tem e-mail cadastrado";
   return null;
 }
 /* Data do envio REAL de uma etapa já mandada, lida do log — não da âncora.
@@ -8111,7 +8348,10 @@ function comFetchAll(){
   return Promise.all([
     fetch("/api/comercial?t=propostas").then(r=>r.json()).then(j=>{COM_P=(j&&j.rows)||[];}),
     fetch("/api/comercial?t=cadencia").then(r=>r.json()).then(j=>{COM_LOG=(j&&j.rows)||[];}),
-    fetch("/api/comercial?t=metas").then(r=>r.json()).then(j=>{COM_METAS=(j&&j.rows)||[];})
+    fetch("/api/comercial?t=metas").then(r=>r.json()).then(j=>{COM_METAS=(j&&j.rows)||[];}),
+    // meta anual e serviços extras: tabelas novas; se faltarem, o resto carrega igual
+    fetch("/api/comercial?t=metaano").then(r=>r.json()).then(j=>{COM_METAANO=(j&&j.rows)||[];}).catch(()=>{COM_METAANO=[];}),
+    fetch("/api/comercial?t=extras").then(r=>r.json()).then(j=>{COM_EXTRAS=(j&&j.rows)||[];}).catch(()=>{COM_EXTRAS=[];})
   ]);
 }
 /* Aviso de WhatsApp fora do ar.
@@ -8151,10 +8391,10 @@ function comLoad(){
   comWaStatus();
   comFetchAll().then(comRenderAll).catch(err=>{console.error("Erro comercial:",err);if(kb)kb.innerHTML='<div style="padding:30px;text-align:center;color:#dc2626;font-size:.8rem">Erro ao carregar. Verifique a conexão.</div>';});
 }
-/* A agenda da Vercel esta PAUSADA desde 11/08 (vercel.json com "crons": []).
-   O radar precisa dizer isso, senao exibe datas futuras como se fossem promessas.
-   TROQUE PARA true NO MESMO COMMIT em que a agenda voltar. */
-const COM_CAD_AGENDA_ATIVA=false;
+/* Agenda da Vercel (crons em vercel.json). Ficou PAUSADA de 11/08 ate voltar
+   em setembro; com false o radar avisa que nada sai sozinho. Se a agenda for
+   pausada de novo (vercel.json com "crons": []), TROQUE PARA false no mesmo commit. */
+const COM_CAD_AGENDA_ATIVA=true;
 
 /* Radar da Cadencia — o que ja saiu, o que parou e o que sai a seguir.
    Reaproveita comCadParada() e comCadProxima(), as MESMAS funcoes que o painel
@@ -8234,7 +8474,357 @@ function comRadar(){
       '<span><i style="background:#16304f"></i>n&atilde;o enviada</span>'+
     '</div></div>';
 }
-function comRenderAll(){comRadar();comRenderView();}
+function comRenderAll(){comRadar();comRenderView();cpxMetaRender();}
+
+/* ══ Meta anual de contratos (combinada Comercial × diretoria) ══
+   Definida aqui, na guia Propostas e Serviços Extras; o Painel Comercial lê a
+   mesma linha (com_meta_anual, uma por ano). Fechados = propostas FECHADO com
+   fechado_em no ano. */
+function comMetaAno(ano){const r=(COM_METAANO||[]).find(x=>Number(x.ano)===Number(ano));return r?Number(r.meta_contratos):null;}
+function comFechadosAno(ano){return(COM_P||[]).filter(p=>p.status==="FECHADO"&&String(p.fechado_em||"").slice(0,4)===String(ano));}
+function cpxMetaRender(){
+  const el=document.getElementById("cpx-meta-ano");if(!el)return;
+  const ano=new Date(Date.now()-3*3600000).getUTCFullYear(),meta=comMetaAno(ano),fec=comFechadosAno(ano).length;
+  const pct=meta?Math.min(100,Math.round(fec/meta*100)):0;
+  el.innerHTML='<span style="font-size:1.1rem">🎯</span><div style="flex:1;min-width:200px"><div style="font-size:.62rem;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:#64748b">Meta anual de contratos fechados · '+ano+'</div>'+
+    '<div style="font-size:.78rem;color:#0d1f35;font-weight:700">'+(meta?fec+' de '+meta+' fechados ('+pct+'%)'+(fec>=meta?' · meta batida 🎉':' · faltam '+(meta-fec)):'Meta ainda não definida. Ela aparece para a diretoria no Painel Comercial.')+'</div>'+
+    (meta?'<div style="height:6px;background:#eef2f7;border-radius:4px;margin-top:5px;max-width:360px"><div style="height:6px;border-radius:4px;width:'+pct+'%;background:'+(fec>=meta?'#16a34a':'#2e8fef')+'"></div></div>':'')+'</div>'+
+    '<label for="cpx-meta-inp" style="font-size:.66rem;font-weight:700;color:#64748b">Meta '+ano+'</label>'+
+    '<input id="cpx-meta-inp" class="rhf-i" type="number" min="0" step="1" style="width:90px" value="'+(meta==null?'':meta)+'" placeholder="Ex: 12">'+
+    '<button type="button" class="rh-btn" style="padding:8px 14px" onclick="cpxMetaSalvar('+ano+')">Salvar meta</button><span id="cpx-meta-msg" role="status" style="font-size:.7rem;font-weight:700"></span>';
+}
+function cpxMetaSalvar(ano){
+  const v=Number(document.getElementById("cpx-meta-inp").value),m=document.getElementById("cpx-meta-msg");
+  if(!Number.isInteger(v)||v<0){m.style.color="#dc2626";m.textContent="Informe um número inteiro.";return;}
+  fetch("/api/comercial?t=metaano",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ano,meta_contratos:v,atualizado_por:sessionStorage.getItem("userNome")||null})})
+    .then(r=>r.json().catch(()=>({})).then(j=>{if(!r.ok)throw new Error(j.error||"Falha ao salvar.");}))
+    .then(()=>fetch("/api/comercial?t=metaano").then(r=>r.json()).then(j=>{COM_METAANO=(j&&j.rows)||[];}))
+    .then(()=>{cpxMetaRender();const n=document.getElementById("cpx-meta-msg");n.style.color="#16a34a";n.textContent="✅ Meta salva";})
+    .catch(e=>{m.style.color="#dc2626";m.textContent="Não foi possível salvar: "+((e&&e.message)||e);});
+}
+// Visitas do mês: cada "Visitar" registra um evento VISITA no log. A data vem do
+// texto ("Visita realizada em DD/MM/AAAA") ou, nos registros antigos, do envio.
+function comVisitasMes(M){
+  return(COM_LOG||[]).filter(l=>l.canal==="VISITA").map(l=>{
+    const m=String(l.detalhe||"").match(/em (\d{2})\/(\d{2})\/(\d{4})/);
+    return{l,dia:m?m[3]+"-"+m[2]+"-"+m[1]:String(l.enviado_em||"").slice(0,10)};
+  }).filter(x=>comNoMes(x.dia,M));
+}
+const COM_META_VISITAS=4;
+
+/* ══════════ SERVIÇOS EXTRAS (segunda aba da guia Comercial) ══════════
+   Serviço extra = trabalho a mais num cliente que JÁ está em contrato (evento,
+   mutirão, reforço pedido). Fica em com_servicos_extras (api/comercial.js,
+   ?t=extras). A aba também lista os lançamentos da Cobertura com motivo
+   REFORÇO FATURADO e marca os que não têm serviço extra cadastrado para o
+   cliente naquele dia: é assim que o Comercial descobre um extra que
+   aconteceu e não foi passado para faturar.
+   Trocar de aba só mostra/esconde as seções: nada das propostas é recarregado
+   nem gravado por isso. */
+// CPX_OK: já houve ao menos uma leitura certa. Numa falha passageira depois
+// disso, a última lista boa continua valendo (não vira "tudo sem serviço extra").
+// CPX_SIG: assinatura do último desenho; o batimento de 15 s (RT_GUIA) só
+// redesenha quando algo mudou, para não fechar o grupo que a pessoa abriu.
+let CPX_E=[],CPX_ERRO=null,CPX_CARREGADO=false,CPX_OK=false,CPX_SIG="";
+let CPX_FL="TODOS",CPX_RP="30",CPX_SO_PEND=true;
+const CPX_REF_MOTIVO="REFORÇO FATURADO";
+const CPX_SIT_PILL={"EM ANDAMENTO":["Em andamento","cpx-p-and"],"AGENDADO":["Agendado","cpx-p-ag"],"ENCERRADO":["Encerrado","cpx-p-enc"]};
+function cpxHoje(){return new Date(Date.now()-3*3600000).toISOString().slice(0,10);} // dia de Brasília
+function cpxBR(iso){const s=String(iso||"").slice(0,10);return /^\d{4}-\d{2}-\d{2}$/.test(s)?s.split("-").reverse().join("/"):"—";}
+function cpxSemTabela(msg){return /PGRST205|42P01|does not exist|schema cache|Tabela desconhecida/i.test(String(msg||""));}
+// os serviços extras na memória são confiáveis para cruzar com a Cobertura?
+function cpxDadosOk(){return !CPX_ERRO||(CPX_OK&&!cpxSemTabela(CPX_ERRO));}
+function cpxEsc(t){return String(t==null?"":t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function cpxDia(v){return String(v||"").slice(0,10);}
+function cpxSituacao(e,hoje){
+  hoje=hoje||cpxHoje();
+  if(cpxDia(e.data_inicio)>hoje)return"AGENDADO";
+  if(e.data_fim&&cpxDia(e.data_fim)<hoje)return"ENCERRADO";
+  return"EM ANDAMENTO";
+}
+// Clientes em contrato: mesma lista e mesma chave (normTxt do NOME) do KPI
+// "Clientes Ativos" da Visão Geral. É também o nome que a Cobertura usa no LOCAL.
+function cpxClientes(){
+  const D=(typeof DASHBOARD_DATA!=="undefined"&&DASHBOARD_DATA)||{};
+  const m={};
+  (D.clientes||[]).forEach(r=>{const n=String(r.NOME||"").trim();if(n&&!m[normTxt(n)])m[normTxt(n)]=n;});
+  return Object.values(m).sort((a,b)=>a.localeCompare(b,"pt-BR"));
+}
+function cpxCobre(cliente,dia){
+  const k=normTxt(cliente);
+  return CPX_E.some(e=>normTxt(e.cliente)===k&&cpxDia(e.data_inicio)<=dia&&(!e.data_fim||dia<=cpxDia(e.data_fim)));
+}
+// Lançamentos REFORÇO FATURADO da planilha, respeitando TURNO e ÁREA do topo.
+function cpxReforcos(){
+  const D=(typeof DASHBOARD_DATA!=="undefined"&&DASHBOARD_DATA)||{};
+  const alvo=normTxt(CPX_REF_MOTIVO);
+  return(D.cobertura||[]).filter(r=>normTxt(r.MOTIVO)===alvo&&r.DATA&&String(r.LOCAL||"").trim()&&mT(r)&&mA(r));
+}
+function cpxDesde(rp){
+  const h=cpxHoje();
+  if(rp==="tudo")return"";
+  if(rp==="mes")return h.slice(0,8)+"01";
+  return new Date(Date.parse(h+"T12:00:00Z")-(Number(rp)-1)*86400000).toISOString().slice(0,10);
+}
+// Agrupa os reforços por cliente. dias/diasPend são conjuntos de "AAAA-MM-DD".
+function cpxGrupos(desde){
+  const g={};
+  cpxReforcos().forEach(r=>{
+    const dia=cpxDia(r.DATA);if(desde&&dia<desde)return;
+    const nome=String(r.LOCAL).trim(),k=normTxt(nome);
+    const x=g[k]||(g[k]={cliente:nome,rows:[],dias:new Set(),diasPend:new Set(),colabs:new Set(),sup:new Set(),porDia:{}});
+    const cob=cpxCobre(nome,dia);
+    x.rows.push({...r,_dia:dia,_cob:cob});
+    x.dias.add(dia);if(!cob)x.diasPend.add(dia);
+    if(r.NOME)x.colabs.add(normTxt(r.NOME));
+    if(r.AREA)x.sup.add(String(r.AREA).trim());
+    (x.porDia[dia]=x.porDia[dia]||new Set()).add(normTxt(r.NOME||String(x.rows.length)));
+  });
+  return Object.values(g).map(x=>{
+    const ds=[...x.dias].sort();
+    x.ini=ds[0];x.fim=ds[ds.length-1];x.ult=x.fim;
+    x.rows.sort((a,b)=>a._dia<b._dia?1:a._dia>b._dia?-1:0);
+    return x;
+  });
+}
+
+function cpxAba(a){
+  const ex=a==="extra";
+  document.getElementById("cpx-aba-prop").hidden=ex;
+  document.getElementById("cpx-aba-extra").hidden=!ex;
+  [["cpx-tab-prop",!ex],["cpx-tab-extra",ex]].forEach(([id,on])=>{const b=document.getElementById(id);b.classList.toggle("cv-view-on",on);b.setAttribute("aria-selected",on?"true":"false");b.tabIndex=on?0:-1;});
+  if(ex){if(!CPX_CARREGADO)cpxLoad();else cpxRender();}
+}
+// setas ← → trocam de aba (padrão de abas acessíveis)
+function cpxAbaTecla(ev){
+  if(ev.key!=="ArrowLeft"&&ev.key!=="ArrowRight")return;
+  ev.preventDefault();
+  const ex=document.getElementById("cpx-aba-extra").hidden;
+  cpxAba(ex?"extra":"prop");
+  document.getElementById(ex?"cpx-tab-extra":"cpx-tab-prop").focus();
+}
+function cpxLoad(){
+  return fetch("/api/comercial?t=extras").then(r=>r.json().catch(()=>({})).then(j=>{
+    if(!r.ok)throw new Error((j&&(j.details||j.error))||("HTTP "+r.status));
+    CPX_E=(j&&j.rows)||[];CPX_ERRO=null;CPX_OK=true;
+  })).catch(e=>{CPX_ERRO=String((e&&e.message)||e);if(!CPX_OK||cpxSemTabela(CPX_ERRO))CPX_E=[];})
+    .then(()=>{
+      const sig=JSON.stringify(CPX_E)+"|"+(CPX_ERRO||"");
+      const mudou=!CPX_CARREGADO||sig!==CPX_SIG;
+      CPX_SIG=sig;CPX_CARREGADO=true;
+      if(mudou)cpxRender();
+    });
+}
+function cpxRender(){
+  const hoje=cpxHoje();
+  const temPlan=typeof DASHBOARD_DATA!=="undefined"&&DASHBOARD_DATA&&(DASHBOARD_DATA.clientes||[]).length;
+  // aviso: tabela ausente, erro de leitura ou planilha não carregada
+  const av=document.getElementById("cpx-aviso");
+  if(av){
+    let t="";
+    if(CPX_ERRO){
+      t=cpxSemTabela(CPX_ERRO)
+        ?'<b>A tabela dos serviços extras ainda não existe no banco.</b> Os reforços da Cobertura aparecem abaixo, mas nenhum serviço extra pode ser salvo até ela ser criada.'
+        :'<b>Não foi possível atualizar os serviços extras agora.</b> '+(CPX_OK?'A lista abaixo é a última carregada; o sistema tenta de novo sozinho.':cpxEsc(CPX_ERRO.slice(0,160)));
+    }else if(!temPlan)t='<b>Planilha ainda não carregada.</b> A lista de clientes e os reforços da Cobertura vêm dela.';
+    av.innerHTML=t?'<div style="background:#fff7ed;border:1px solid #fed7aa;border-left:4px solid #f97316;border-radius:12px;padding:11px 16px;margin-bottom:14px;font-size:.73rem;color:#92400e">⚠️ '+t+'</div>':"";
+  }
+  // badge da aba: dias-cliente de reforço sem serviço extra nos últimos 30 dias
+  const g30=cpxGrupos(cpxDesde("30"));
+  const pend30=g30.reduce((t,x)=>t+x.diasPend.size,0),cliPend30=g30.filter(x=>x.diasPend.size).length;
+  const bd=document.getElementById("cpx-tab-badge");
+  if(bd)bd.innerHTML=cpxDadosOk()&&pend30?' <span class="cpx-badge" title="Dias com reforço faturado sem serviço extra cadastrado (últimos 30 dias)">'+pend30+'</span>':"";
+  const aba=document.getElementById("cpx-aba-extra");
+  if(!aba||aba.hidden)return;
+  // datalist de clientes
+  const dl=document.getElementById("dl-cpx-cli");
+  if(dl)dl.innerHTML=cpxClientes().map(n=>'<option value="'+cpxEsc(n)+'"></option>').join("");
+  // KPIs
+  const sit=CPX_E.map(e=>({e,s:cpxSituacao(e,hoje)}));
+  const and=sit.filter(x=>x.s==="EM ANDAMENTO"),ag=sit.filter(x=>x.s==="AGENDADO").sort((a,b)=>cpxDia(a.e.data_inicio)<cpxDia(b.e.data_inicio)?-1:1);
+  const mes=hoje.slice(0,7),encMes=sit.filter(x=>x.s==="ENCERRADO"&&cpxDia(x.e.data_fim).slice(0,7)===mes);
+  const colHoje=and.reduce((t,x)=>t+(Number(x.e.qtd_colaboradores)||0),0);
+  // cada card abre a lista correspondente logo abaixo (ver cpxKpiAbrir)
+  const ACAO={"Em andamento":"EM ANDAMENTO","Agendados":"AGENDADO","Encerrados no mês":"ENCERRADO","Dias com reforço sem serviço extra":"REF"};
+  const kpi=(c,l,v,s)=>'<button type="button" class="cpx-kpi cpx-kpi-btn" style="--cpx-c:'+c+'" onclick="cpxKpiAbrir(\''+ACAO[l]+'\')" title="Clique para ver os registros"><div class="l">'+l+'</div><div class="v">'+v+'</div><div class="s">'+s+'</div></button>';
+  document.getElementById("cpx-kpis").innerHTML=
+    kpi("#16a34a","Em andamento",and.length,colHoje+" colaborador"+(colHoje===1?"":"es")+" hoje")+
+    kpi("#2e8fef","Agendados",ag.length,ag.length?"próximo: "+cpxEsc(ag[0].e.cliente)+" em "+cpxBR(ag[0].e.data_inicio):"nenhum agendado")+
+    kpi("#64748b","Encerrados no mês",encMes.length,"terminaram em "+cpxBR(hoje).slice(3))+
+    kpi("#dc2626","Dias com reforço sem serviço extra",cpxDadosOk()?pend30:"—",!cpxDadosOk()?"aguardando a lista de serviços extras":pend30?cliPend30+" cliente"+(cliPend30===1?"":"s")+" · últimos 30 dias":"tudo cadastrado nos últimos 30 dias");
+  cpxRenderLista();
+  cpxRenderRef();
+}
+// Clique num card: filtra a lista certa e rola até ela.
+function cpxKpiAbrir(k){
+  let alvo;
+  if(k==="REF"){CPX_RP="30";CPX_SO_PEND=true;cpxRenderRef();alvo=document.getElementById("cpx-ref");
+    const g=alvo&&alvo.querySelector("details");if(g)g.open=true;}
+  else{CPX_FL=k;const b=document.getElementById("s-cpx");if(b)b.value="";cpxRenderLista();alvo=document.getElementById("cpx-lista");}
+  if(alvo){const ts=alvo.closest(".ts")||alvo;ts.scrollIntoView({behavior:"smooth",block:"start"});ts.style.transition="box-shadow .3s";ts.style.boxShadow="0 0 0 3px #2e8fef";setTimeout(()=>{ts.style.boxShadow="";},1200);}
+}
+function cpxRenderLista(){
+  const el=document.getElementById("cpx-lista");if(!el)return;
+  const hoje=cpxHoje(),q=normTxt(document.getElementById("s-cpx")?.value||"");
+  const todos=CPX_E.map(e=>({e,s:cpxSituacao(e,hoje)}));
+  const cnt=s=>todos.filter(x=>s==="TODOS"||x.s===s).length;
+  document.getElementById("cpx-lista-filtros").innerHTML=[["TODOS","Todos"],["EM ANDAMENTO","Em andamento"],["AGENDADO","Agendados"],["ENCERRADO","Encerrados"]]
+    .map(([k,t])=>'<button type="button" class="cpx-chip'+(CPX_FL===k?" cpx-chip-on":"")+'" aria-pressed="'+(CPX_FL===k)+'" onclick="CPX_FL=\''+k+'\';cpxRenderLista()">'+t+' '+cnt(k)+'</button>').join("");
+  const ordem={"EM ANDAMENTO":0,"AGENDADO":1,"ENCERRADO":2};
+  const lista=todos.filter(x=>(CPX_FL==="TODOS"||x.s===CPX_FL)&&(!q||normTxt(x.e.cliente+" "+x.e.tipo_servico+" "+(x.e.observacao||"")).includes(q)))
+    .sort((a,b)=>ordem[a.s]-ordem[b.s]||(a.s==="ENCERRADO"?(cpxDia(b.e.data_fim)<cpxDia(a.e.data_fim)?-1:1):(cpxDia(a.e.data_inicio)<cpxDia(b.e.data_inicio)?-1:1)));
+  document.getElementById("cpx-lista-cnt").textContent=CPX_E.length?"· "+lista.length+" de "+CPX_E.length:"";
+  if(!CPX_E.length){el.innerHTML='<div style="padding:26px;text-align:center;color:#94a3b8;font-size:.76rem">Nenhum serviço extra cadastrado ainda.</div>';return;}
+  if(!lista.length){el.innerHTML='<div style="padding:26px;text-align:center;color:#94a3b8;font-size:.76rem">Nenhum serviço extra neste filtro.</div>';return;}
+  const refs=cpxReforcos();
+  el.innerHTML='<table class="cpx-tbl"><thead><tr><th>Cliente</th><th>Serviço</th><th>Início</th><th>Encerramento</th><th style="text-align:center">Colab.</th><th>Situação</th><th style="text-align:center" title="Lançamentos REFORÇO FATURADO na Cobertura dentro do período">Reforços na Cobertura</th><th>Responsável</th><th></th></tr></thead><tbody>'+
+    lista.map(({e,s})=>{
+      const k=normTxt(e.cliente),ini=cpxDia(e.data_inicio),fim=e.data_fim?cpxDia(e.data_fim):"9999-12-31";
+      const nRef=refs.filter(r=>normTxt(r.LOCAL)===k&&cpxDia(r.DATA)>=ini&&cpxDia(r.DATA)<=fim).length;
+      const p=CPX_SIT_PILL[s];
+      return '<tr><td style="font-weight:800;color:#0d1f35">'+cpxEsc(e.cliente)+(e.observacao?'<div style="font-weight:500;color:#94a3b8;font-size:.64rem">'+cpxEsc(e.observacao)+'</div>':'')+'</td>'+
+        '<td>'+cpxEsc(e.tipo_servico)+'</td><td class="n" style="text-align:left">'+cpxBR(e.data_inicio)+'</td><td class="n" style="text-align:left">'+(e.data_fim?cpxBR(e.data_fim):'<span style="color:#94a3b8">sem data</span>')+'</td>'+
+        '<td class="n">'+(Number(e.qtd_colaboradores)||"—")+'</td><td><span class="cpx-pill '+p[1]+'">'+p[0]+'</span></td>'+
+        '<td class="n">'+(nRef||'<span style="color:#cbd5e1">—</span>')+'</td><td>'+cpxEsc(String(e.responsavel||"—").split(" ")[0])+'</td>'+
+        '<td style="white-space:nowrap"><button type="button" class="rh-act" title="Editar" aria-label="Editar serviço extra de '+cpxEsc(e.cliente)+'" onclick="cpxEditar('+Number(e.id)+')">✏️</button><button type="button" class="rh-act" title="Excluir" aria-label="Excluir serviço extra de '+cpxEsc(e.cliente)+'" onclick="cpxExcluir('+Number(e.id)+')">🗑️</button></td></tr>';
+    }).join("")+'</tbody></table>';
+}
+function cpxRenderRef(){
+  const el=document.getElementById("cpx-ref");if(!el)return;
+  const temCob=typeof DASHBOARD_DATA!=="undefined"&&DASHBOARD_DATA&&(DASHBOARD_DATA.cobertura||[]).length;
+  document.getElementById("cpx-ref-filtros").innerHTML=[["7","7 dias"],["30","30 dias"],["mes","Mês atual"],["tudo","Tudo"]]
+    .map(([k,t])=>'<button type="button" class="cpx-chip'+(CPX_RP===k?" cpx-chip-on":"")+'" aria-pressed="'+(CPX_RP===k)+'" onclick="CPX_RP=\''+k+'\';cpxRenderRef()">'+t+'</button>').join("")+
+    '<button type="button" class="cpx-chip'+(CPX_SO_PEND?" cpx-chip-on":"")+'" aria-pressed="'+CPX_SO_PEND+'" onclick="CPX_SO_PEND=!CPX_SO_PEND;cpxRenderRef()" title="Mostrar só o que não tem serviço extra cadastrado"><span aria-hidden="true">'+(CPX_SO_PEND?"☑":"☐")+'</span> Só sem serviço extra</button>';
+  if(!temCob){document.getElementById("cpx-ref-cnt").textContent="";el.innerHTML='<div style="padding:26px;text-align:center;color:#94a3b8;font-size:.76rem">Sem planilha de Cobertura carregada.</div>';return;}
+  const todos=cpxGrupos(cpxDesde(CPX_RP));
+  const nLanc=todos.reduce((t,x)=>t+x.rows.length,0),nPend=todos.reduce((t,x)=>t+x.diasPend.size,0);
+  document.getElementById("cpx-ref-cnt").textContent="· "+nLanc+" lançamento"+(nLanc===1?"":"s")+" em "+todos.length+" cliente"+(todos.length===1?"":"s")+" · "+nPend+" dia"+(nPend===1?"":"s")+" sem serviço extra";
+  const gs=todos.filter(x=>!CPX_SO_PEND||x.diasPend.size)
+    .sort((a,b)=>(b.diasPend.size?1:0)-(a.diasPend.size?1:0)||(a.ult<b.ult?1:a.ult>b.ult?-1:0));
+  if(!gs.length){el.innerHTML='<div style="padding:26px;text-align:center;color:#16a34a;font-size:.76rem;font-weight:700">'+(todos.length?"✅ Todo reforço deste período tem serviço extra cadastrado.":"Nenhum reforço faturado lançado neste período.")+'</div>';return;}
+  // grupos que a pessoa deixou abertos continuam abertos depois do redesenho
+  const abertos=new Set([...el.querySelectorAll("details[open]")].map(d=>d.dataset.k));
+  const podeCadastrar=!CPX_ERRO||!cpxSemTabela(CPX_ERRO);
+  el.innerHTML=gs.map(x=>{
+    const pend=x.diasPend.size,k=normTxt(x.cliente);
+    const situ=pend?'<span class="cpx-pill cpx-p-pend">'+pend+' dia'+(pend===1?'':'s')+' sem serviço extra</span>':'<span class="cpx-pill cpx-p-ok">✅ coberto por serviço extra</span>';
+    const bt=pend&&podeCadastrar?'<button type="button" class="cpx-chip cpx-chip-alerta" data-k="'+cpxEsc(k)+'" onclick="event.preventDefault();event.stopPropagation();cpxDoReforco(this.dataset.k)">➕ Cadastrar serviço extra</button>':'';
+    const linhas=x.rows.map(r=>'<tr><td class="n" style="text-align:left">'+cpxBR(r._dia)+'</td><td>'+cpxEsc(r.NOME||"—")+'</td><td>'+cpxEsc(r.CARGO||"—")+'</td><td>'+cpxEsc(r.TURNO||"—")+'</td><td>'+cpxEsc(r.AREA||"—")+'</td><td>'+(r._cob?'<span class="cpx-pill cpx-p-ok">coberto</span>':'<span class="cpx-pill cpx-p-pend">sem serviço extra</span>')+'</td></tr>').join("");
+    return '<details class="cpx-grupo '+(pend?"pend":"ok")+'" data-k="'+cpxEsc(k)+'"'+(abertos.has(k)?' open':'')+'><summary>'+
+      '<span class="nm">'+cpxEsc(x.cliente)+'<small>'+cpxEsc([...x.sup].join(", ")||"—")+'</small></span>'+
+      '<span class="k">'+x.dias.size+'<small>dia'+(x.dias.size===1?'':'s')+'</small></span>'+
+      '<span class="k">'+x.rows.length+'<small>lançamento'+(x.rows.length===1?'':'s')+'</small></span>'+
+      '<span class="k">'+x.colabs.size+'<small>colaborador'+(x.colabs.size===1?'':'es')+'</small></span>'+
+      '<span class="k">'+cpxBR(x.ini)+(x.fim!==x.ini?' a '+cpxBR(x.fim):'')+'<small>período</small></span>'+
+      '<span style="display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap">'+situ+bt+'</span>'+
+      '</summary><div class="det"><table class="cpx-tbl" style="min-width:620px"><thead><tr><th>Data</th><th>Colaborador</th><th>Cargo</th><th>Turno</th><th>Supervisor</th><th>Situação</th></tr></thead><tbody>'+linhas+'</tbody></table></div></details>';
+  }).join("");
+}
+
+/* formulário */
+function cpxTipoOutro(){
+  const o=document.getElementById("cpxf-tipo").value==="__OUTRO";
+  document.getElementById("cpxf-outro-box").hidden=!o;
+  if(o)document.getElementById("cpxf-outro").focus();
+}
+function cpxFimMin(){const i=document.getElementById("cpxf-ini").value;document.getElementById("cpxf-fim").min=i||"";}
+function cpxMsg(t,ok){const m=document.getElementById("cpxf-msg");m.textContent=t;m.style.color=ok?"#16a34a":"#dc2626";}
+function cpxSetTipo(t){
+  const v=String(t||"").trim().toUpperCase(),sel=document.getElementById("cpxf-tipo");
+  if(!v){sel.value="";document.getElementById("cpxf-outro").value="";}
+  else if(v==="LIMPEZA"||v==="PORTARIA"){sel.value=v;document.getElementById("cpxf-outro").value="";}
+  else{sel.value="__OUTRO";document.getElementById("cpxf-outro").value=v;}
+  document.getElementById("cpxf-outro-box").hidden=sel.value!=="__OUTRO";
+}
+function cpxLimpar(){
+  document.getElementById("cpxForm").reset();
+  document.getElementById("cpxf-id").value="";
+  document.getElementById("cpxf-outro-box").hidden=true;
+  document.getElementById("cpxf-fim").min="";
+  document.getElementById("cpx-form-title").textContent="➕ Novo Serviço Extra";
+  document.getElementById("cpxBtnSalvar").textContent="💾 Salvar Serviço Extra";
+  cpxMsg("",true);
+}
+function cpxForm(){document.getElementById("cpxForm").scrollIntoView({behavior:"smooth",block:"center"});}
+function cpxEditar(id){
+  const e=CPX_E.find(x=>Number(x.id)===Number(id));if(!e)return;
+  cpxLimpar();
+  document.getElementById("cpxf-id").value=e.id;
+  document.getElementById("cpxf-cliente").value=e.cliente||"";
+  document.getElementById("cpxf-ini").value=cpxDia(e.data_inicio);cpxFimMin();
+  document.getElementById("cpxf-fim").value=e.data_fim?cpxDia(e.data_fim):"";
+  document.getElementById("cpxf-qtd").value=e.qtd_colaboradores||"";
+  cpxSetTipo(e.tipo_servico);
+  document.getElementById("cpxf-obs").value=e.observacao||"";
+  document.getElementById("cpx-form-title").textContent="✏️ Editando serviço extra — "+(e.cliente||"");
+  document.getElementById("cpxBtnSalvar").textContent="💾 Salvar alterações";
+  cpxForm();
+}
+// "Cadastrar serviço extra" a partir de um grupo de reforços sem cadastro:
+// só preenche o formulário; quem confere e salva é a pessoa. Os dias pendentes
+// são quebrados em blocos de dias seguidos e só o bloco MAIS RECENTE vem
+// preenchido: juntar 03/09 e 24/09 num período só faria o cadastro "cobrir"
+// tudo no meio e esconder reforços que entrarem depois nesse intervalo.
+function cpxBlocos(dias){
+  const b=[];
+  dias.forEach(d=>{const u=b[b.length-1];if(u&&Date.parse(d+"T12:00:00Z")-Date.parse(u[u.length-1]+"T12:00:00Z")===86400000)u.push(d);else b.push([d]);});
+  return b;
+}
+function cpxDoReforco(k){
+  const x=cpxGrupos(cpxDesde(CPX_RP)).find(g=>normTxt(g.cliente)===k);if(!x)return;
+  const blocos=cpxBlocos([...x.diasPend].sort());if(!blocos.length)return;
+  const bl=blocos[blocos.length-1];
+  cpxLimpar();
+  document.getElementById("cpxf-cliente").value=x.cliente;
+  document.getElementById("cpxf-ini").value=bl[0];cpxFimMin();
+  document.getElementById("cpxf-fim").value=bl[bl.length-1];
+  document.getElementById("cpxf-qtd").value=Math.max(1,...bl.map(d=>(x.porDia[d]||new Set()).size));
+  const doBloco=x.rows.filter(r=>!r._cob&&bl.includes(r._dia));
+  const c=[...new Set(doBloco.map(r=>normTxt(r.CARGO)).filter(v=>v&&v!=="—"))];
+  cpxSetTipo(c.length&&c.every(v=>v.includes("SERVICOS GERAIS")||v.includes("LIMPEZA"))?"LIMPEZA":c.length&&c.every(v=>v.includes("PORTEIRO")||v.includes("PORTARIA"))?"PORTARIA":"");
+  document.getElementById("cpxf-obs").value="Reforço faturado lançado na Cobertura ("+doBloco.length+" lançamento"+(doBloco.length===1?"":"s")+")";
+  document.getElementById("cpx-form-title").textContent="➕ Novo Serviço Extra — a partir dos reforços de "+x.cliente;
+  const outros=blocos.length-1;
+  cpxMsg("Confira os dados e clique em Salvar."+(outros?" Há mais "+outros+" período"+(outros===1?"":"s")+" com reforço sem serviço extra neste cliente: cadastre um de cada vez.":""),true);
+  cpxForm();
+}
+function cpxSalvar(ev){
+  ev.preventDefault();
+  if(CPX_ERRO&&cpxSemTabela(CPX_ERRO)){cpxMsg("Não dá para salvar ainda: a tabela dos serviços extras não existe no banco.",false);return false;}
+  const id=document.getElementById("cpxf-id").value;
+  const orig=id?CPX_E.find(x=>String(x.id)===String(id)):null;
+  const digitado=document.getElementById("cpxf-cliente").value.trim();
+  // cliente precisa ser um dos clientes em contrato (é a chave que cruza com a Cobertura)
+  const cli=cpxClientes().find(n=>normTxt(n)===normTxt(digitado))||(orig&&normTxt(orig.cliente)===normTxt(digitado)?orig.cliente:null);
+  const ini=document.getElementById("cpxf-ini").value,fim=document.getElementById("cpxf-fim").value;
+  const qtd=Number(document.getElementById("cpxf-qtd").value);
+  const tsel=document.getElementById("cpxf-tipo").value;
+  const tipo=(tsel==="__OUTRO"?document.getElementById("cpxf-outro").value:tsel).trim().toUpperCase();
+  if(!cli){cpxMsg("Escolha um cliente da lista de clientes em contrato.",false);document.getElementById("cpxf-cliente").focus();return false;}
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(ini)){cpxMsg("Informe a data de início.",false);document.getElementById("cpxf-ini").focus();return false;}
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(fim)){cpxMsg("Informe a data de encerramento.",false);document.getElementById("cpxf-fim").focus();return false;}
+  if(fim<ini){cpxMsg("A data de encerramento não pode ser antes do início.",false);document.getElementById("cpxf-fim").focus();return false;}
+  if(!Number.isInteger(qtd)||qtd<1||qtd>999){cpxMsg("Informe a quantidade de colaboradores (número inteiro, a partir de 1).",false);document.getElementById("cpxf-qtd").focus();return false;}
+  if(!tipo){cpxMsg(tsel==="__OUTRO"?"Escreva qual é o serviço.":"Escolha o tipo de serviço.",false);document.getElementById(tsel==="__OUTRO"?"cpxf-outro":"cpxf-tipo").focus();return false;}
+  const row={cliente:cli,data_inicio:ini,data_fim:fim,qtd_colaboradores:qtd,tipo_servico:tipo,observacao:document.getElementById("cpxf-obs").value.trim()||null};
+  // responsável = quem cadastrou; editar depois não troca o nome
+  if(id)row.id=Number(id);
+  else{const quem=sessionStorage.getItem("userNome")||null;row.responsavel=quem;row.criado_por=quem;}
+  const bt=document.getElementById("cpxBtnSalvar");bt.disabled=true;
+  fetch("/api/comercial?t=extras",{method:id?"PATCH":"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(row)})
+    .then(r=>r.json().catch(()=>({})).then(j=>{if(!r.ok)throw new Error(j.error||"Falha ao salvar.");}))
+    .then(()=>{cpxLimpar();cpxMsg(id?"✅ Alterações salvas.":"✅ Serviço extra cadastrado.",true);return cpxLoad();})
+    .catch(e=>cpxMsg("Não foi possível salvar: "+((e&&e.message)||e),false))
+    .finally(()=>{bt.disabled=false;});
+  return false;
+}
+function cpxExcluir(id){
+  const e=CPX_E.find(x=>Number(x.id)===Number(id));if(!e)return;
+  if(!confirm("Excluir o serviço extra de "+e.cliente+" ("+cpxBR(e.data_inicio)+(e.data_fim?" a "+cpxBR(e.data_fim):"")+")? Não dá para desfazer."))return;
+  fetch("/api/comercial?t=extras&id="+encodeURIComponent(e.id),{method:"DELETE"})
+    .then(r=>{if(!r.ok)throw new Error();if(String(document.getElementById("cpxf-id").value)===String(e.id))cpxLimpar();return cpxLoad();})
+    .catch(()=>alert("Não foi possível excluir o serviço extra."));
+}
 function comSetStatusFiltro(s){COM_TBL_STATUS=s;comRenderView();}
 function comSetView(v){
   COM_VIEW=v;
@@ -8274,7 +8864,8 @@ function comDet(kind){
     const arr=P.filter(p=>["PROPOSTA","NEGOCIAÇÃO","CONTRATO"].includes(p.status));
     title="💰 Receita em Negociação — "+soma(arr);rows=arr.sort((a,b)=>(Number(b.valor)||0)-(Number(a.valor)||0)).map(det);
   }else if(kind==="fechadaMes"){
-    const arr=P.filter(p=>p.status==="FECHADO"&&noMes(p.fechado_em));
+    // pela data do fechamento, como o card (ver comDashRender)
+    const arr=comVisBase().filter(p=>p.status==="FECHADO"&&noMes(p.fechado_em));
     title="🏆 Fechadas no Mês"+_mes+" — "+soma(arr);
     headers=["Cliente","Tipo","Cidade","Serviço","Valor","Envio","Fechamento","Dias p/ fechar","Resp."];
     rows=arr.map(p=>[p.nome,p.tipo_cliente==="CONDOMINIO"?"COND":"EMP",p.cidade||"—",p.servico||"—",fmtBRL(p.valor),p.data_envio_proposta?rhFmt(p.data_envio_proposta):"—",rhFmt(p.fechado_em),comDias(p),(p.responsavel||"—").split(" ")[0]]);
@@ -8284,12 +8875,15 @@ function comDet(kind){
     headers=["Cliente","Tipo","Cidade","Valor","Origem","Motivo da perda","Resp."];
     rows=arr.map(p=>[p.nome,p.tipo_cliente==="CONDOMINIO"?"COND":"EMP",p.cidade||"—",fmtBRL(p.valor),p.origem_lead||"—",p.motivo_perda||"—",(p.responsavel||"—").split(" ")[0]]);
   }else if(kind==="conversao"){
-    const arr=P.filter(p=>noMes(p.data_envio_proposta));
-    const fec=arr.filter(p=>p.status==="FECHADO").length;
-    title=`🎯 Conversão do Mês${_mes} — ${fec} fechada(s) de ${arr.length} enviada(s)`;
-    rows=arr.sort((a,b)=>(a.status==="FECHADO"?-1:1)-(b.status==="FECHADO"?-1:1)).map(det);
+    // Mesma conta do card: fechadas NO MÊS (pela data do fechamento) sobre
+    // enviadas no mês. A fechada que foi enviada antes também aparece na lista.
+    const env=P.filter(p=>noMes(p.data_envio_proposta));
+    const fecM=comVisBase().filter(p=>p.status==="FECHADO"&&noMes(p.fechado_em));
+    const arr=env.concat(fecM.filter(p=>!env.includes(p)));
+    title=`🎯 Conversão do Mês${_mes} — ${fecM.length} fechada(s) no mês · ${env.length} enviada(s)`;
+    rows=arr.sort((a,b)=>(fecM.includes(a)?-1:1)-(fecM.includes(b)?-1:1)).map(det);
   }else if(kind==="ticket"){
-    const arr=P.filter(p=>p.status==="FECHADO");
+    const arr=comVisBase().filter(p=>p.status==="FECHADO");
     const t=arr.length?arr.reduce((s,p)=>s+(Number(p.valor)||0),0)/arr.length:0;
     title="📈 Contratos Fechados — ticket médio "+fmtBRL(t);
     headers=["Cliente","Tipo","Cidade","Serviço","Valor","Fechamento","Resp."];
@@ -8317,10 +8911,29 @@ function comDet(kind){
     headers=["Cliente","Tipo","Cidade","Status","Últ. visita","Quem visitou","Total visitas"];
     rows=arr.map(p=>[p.nome,p.tipo_cliente==="CONDOMINIO"?"COND":"EMP",p.cidade||"—",p.status,rhFmt(p.ultima_visita),p.visita_por||"— (não registrado)",p.visitas||0]);
   }else if(kind==="tempo"){
-    const arr=P.filter(p=>p.status==="FECHADO"&&p.data_envio_proposta&&p.fechado_em);
+    const arr=comVisBase().filter(p=>p.status==="FECHADO"&&p.data_envio_proposta&&p.fechado_em);
     title="⏱️ Tempo de Fechamento (proposta → contrato)";
     headers=["Cliente","Cidade","Valor","Envio","Fechamento","Dias p/ fechar"];
     rows=arr.map(p=>({p,d:comDias(p)})).sort((a,b)=>b.d-a.d).map(o=>[o.p.nome,o.p.cidade||"—",fmtBRL(o.p.valor),rhFmt(o.p.data_envio_proposta),rhFmt(o.p.fechado_em),o.d]);
+  }else if(kind==="visitasMeta"){
+    // cada visita registrada no mês (é o que conta para a meta de 4)
+    const vs=comVisitasMes(_M).sort((a,b)=>a.dia<b.dia?1:-1);
+    title=`🏠 Visitas no Mês${_mes} — ${vs.length} de ${COM_META_VISITAS}`;
+    headers=["Data","Cliente","Registro","Quem registrou"];
+    rows=vs.map(x=>{const p=(COM_P||[]).find(q=>q.id===x.l.proposta_id)||{};return[rhFmt(x.dia),p.nome||"—",x.l.detalhe||"—",x.l.destinatario||"—"];});
+  }else if(kind==="metaAno"){
+    const ano=_M.ini.getFullYear(),meta=comMetaAno(ano),arr=comFechadosAno(ano);
+    title=`🎯 Contratos fechados em ${ano} — ${arr.length}${meta?" de "+meta+" da meta":" (meta não definida)"}`;
+    headers=["Cliente","Tipo","Cidade","Serviço","Fechamento","Resp."];
+    rows=arr.sort((a,b)=>String(b.fechado_em)<String(a.fechado_em)?-1:1).map(p=>[p.nome,p.tipo_cliente==="CONDOMINIO"?"COND":"EMP",p.cidade||"—",p.servico||"—",rhFmt(p.fechado_em),(p.responsavel||"—").split(" ")[0]]);
+  }else if(kind==="extrasAnd"||kind==="extrasEnc"){
+    const hj=new Date(Date.now()-3*3600000).toISOString().slice(0,10),mes=ymd(_M.ini).slice(0,7);
+    const arr=(COM_EXTRAS||[]).filter(e=>kind==="extrasAnd"
+      ?String(e.data_inicio).slice(0,10)<=hj&&(!e.data_fim||String(e.data_fim).slice(0,10)>=hj)
+      :e.data_fim&&String(e.data_fim).slice(0,10)<hj&&String(e.data_fim).slice(0,7)===mes);
+    title=kind==="extrasAnd"?"🧾 Serviços Extras em Andamento — "+arr.length:"✅ Serviços Extras Encerrados no Mês"+_mes+" — "+arr.length;
+    headers=["Cliente","Serviço","Início","Encerramento","Colab.","Observação","Responsável"];
+    rows=arr.map(e=>[e.cliente,e.tipo_servico,rhFmt(e.data_inicio),e.data_fim?rhFmt(e.data_fim):"—",e.qtd_colaboradores,e.observacao||"—",(e.responsavel||"—").split(" ")[0]]);
   }else if(kind==="prevista"){
     const arr=P.filter(p=>COM_ST_ATIVOS.includes(p.status)&&(Number(p.valor)||0)>0);
     title="🔮 Receita Prevista — pipeline ponderado pela chance";
@@ -8641,12 +9254,48 @@ function _comPatch(id,patch,depois){
     .then(({ok})=>{if(!ok)throw new Error();comFetchAll().then(()=>{comRenderAll();if(depois)depois();});})
     .catch(()=>alert("Erro ao atualizar a proposta."));
 }
+/* Registrar visita: a data vem preenchida com hoje e pode ser trocada por um dia
+   anterior (visita feita ontem e lançada hoje). Data futura não vale.
+   ultima_visita guarda a MAIS RECENTE: lançar uma visita antiga não faz a
+   última voltar no tempo. */
 function comVisita(id){
   const x=COM_P.find(p=>p.id===id);if(!x)return;
-  if(!confirm("Registrar 1 visita realizada em "+(x.nome||"")+" hoje?"))return;
-  const quem=sessionStorage.getItem("userNome")||"";
-  comLogEvento(id,"Visita realizada ("+((x.visitas||0)+1)+"ª)"+(quem?" — por "+quem:""),"VISITA");
-  _comPatch(id,{visitas:(x.visitas||0)+1,ultima_visita:ymd(new Date()),visita_por:quem||null});
+  const old=document.getElementById("comVisitaOverlay");if(old)old.remove();
+  const hoje=ymd(new Date());
+  const esc=t=>String(t==null?"":t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");
+  const div=document.createElement("div");
+  div.id="comVisitaOverlay";
+  div.style.cssText="position:fixed;inset:0;background:rgba(13,31,53,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px";
+  div.innerHTML='<div role="dialog" aria-labelledby="comVisitaT" style="background:#fff;border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.3);max-width:380px;width:100%;padding:22px 24px">'+
+    '<div id="comVisitaT" style="font-size:.95rem;font-weight:800;color:#0d1f35;margin-bottom:4px">🏠 Registrar visita</div>'+
+    '<div style="font-size:.78rem;color:#475569;margin-bottom:14px">'+esc(x.nome)+' · '+((x.visitas||0)+1)+'ª visita</div>'+
+    '<label for="comVisitaData" style="display:block;font-size:.66rem;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:#64748b;margin-bottom:5px">Data da visita</label>'+
+    '<input type="date" id="comVisitaData" value="'+hoje+'" max="'+hoje+'" style="width:100%;box-sizing:border-box;padding:9px 10px;border:1px solid #cbd5e1;border-radius:8px;font:inherit;font-size:.85rem">'+
+    '<div id="comVisitaErro" style="color:#dc2626;font-size:.72rem;min-height:16px;margin-top:6px"></div>'+
+    '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">'+
+      '<button type="button" id="comVisitaCancelar" style="padding:9px 16px;border-radius:8px;border:1px solid #cbd5e1;background:#fff;color:#334155;font-weight:700;font-size:.8rem;cursor:pointer">Cancelar</button>'+
+      '<button type="button" id="comVisitaOk" style="padding:9px 16px;border-radius:8px;border:none;background:linear-gradient(135deg,#2e8fef,#1e4d8c);color:#fff;font-weight:800;font-size:.8rem;cursor:pointer">Registrar</button>'+
+    '</div></div>';
+  document.body.appendChild(div);
+  const fechar=()=>div.remove();
+  div.onclick=e=>{if(e.target===div)fechar();};
+  div.onkeydown=e=>{if(e.key==="Escape")fechar();if(e.key==="Enter")salvar();};
+  document.getElementById("comVisitaCancelar").onclick=fechar;
+  document.getElementById("comVisitaOk").onclick=()=>salvar();
+  const inp=document.getElementById("comVisitaData");inp.focus();
+  function salvar(){
+    const d=inp.value,erro=document.getElementById("comVisitaErro");
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(d)){erro.textContent="Escolha a data da visita.";return;}
+    if(d>hoje){erro.textContent="A data da visita não pode ser no futuro.";return;}
+    fechar();
+    const quem=sessionStorage.getItem("userNome")||"";
+    const n=(x.visitas||0)+1,dBR=d.split("-").reverse().join("/");
+    const ult=x.ultima_visita&&String(x.ultima_visita).slice(0,10)>d?String(x.ultima_visita).slice(0,10):d;
+    comLogEvento(id,"Visita realizada em "+dBR+" ("+n+"ª)"+(quem?" — por "+quem:""),"VISITA");
+    const patch={visitas:n,ultima_visita:ult};
+    if(ult===d)patch.visita_por=quem||null; // "quem visitou" acompanha a última visita
+    _comPatch(id,patch);
+  }
 }
 function comRespondeu(id){
   const x=COM_P.find(p=>p.id===id);if(!x)return;
@@ -8899,7 +9548,7 @@ function cfgRender(){
 const HQ_SALAS=[
   {k:"oper",lbl:"Operações",ic:"🖥️",cor:"#2e8fef",cx:160,cy:230,desc:"Visão Geral, faltas, coberturas, OS…"},
   {k:"rh",lbl:"RH",ic:"🗂️",cor:"#7c3aed",cx:228,cy:105,desc:"Vagas, entrevistas, desligamentos"},
-  {k:"com",lbl:"Comercial",ic:"💼",cor:"#f97316",cx:748,cy:100,desc:"Propostas & Cadência"},
+  {k:"com",lbl:"Comercial",ic:"💼",cor:"#f97316",cx:748,cy:100,desc:"Propostas e Serviços Extras"},
   {k:"dir",lbl:"Diretoria",ic:"📊",cor:"#0d9488",cx:882,cy:270,desc:"Painéis executivos"},
   {k:"lounge",lbl:"Lounge & Café",ic:"☕",cor:"#a16207",cx:330,cy:415,desc:"Café, papo e descanso"},
   {k:"reuniao",lbl:"Reunião",ic:"🤝",cor:"#64748b",cx:876,cy:466,desc:"Sala de reunião com mesa oval"},
@@ -12506,13 +13155,18 @@ function comDashRender(){
   const noMes=d=>comNoMes(d,_M);
   const noMesAnt=d=>comNoMesAnt(d,_M);
   const P=comPF();
+  // Fechamento conta pela DATA DO FECHAMENTO, com qualquer data de cadastro.
+  // Em comPF() proposta FECHADA só entra se foi criada no período: a LABMASS,
+  // cadastrada em julho e fechada em 29/09, sumia de setembro (0 fechadas).
+  // Mesmo motivo de comVisBase() para as visitas.
+  const PF=comVisBase();
   const envMes=P.filter(p=>noMes(p.data_envio_proposta)),envAnt=P.filter(p=>noMesAnt(p.data_envio_proposta));
-  const fecMes=P.filter(p=>p.status==="FECHADO"&&noMes(p.fechado_em)),fecAnt=P.filter(p=>p.status==="FECHADO"&&noMesAnt(p.fechado_em));
+  const fecMes=PF.filter(p=>p.status==="FECHADO"&&noMes(p.fechado_em)),fecAnt=PF.filter(p=>p.status==="FECHADO"&&noMesAnt(p.fechado_em));
   const visMes=comVisBase().filter(p=>noMes(p.ultima_visita));
   const emp=envMes.filter(p=>p.tipo_cliente!=="CONDOMINIO").length,cond=envMes.filter(p=>p.tipo_cliente==="CONDOMINIO").length;
   const taxa=envMes.length?Math.round(fecMes.length/envMes.length*100):null;
   const taxaAnt=envAnt.length?Math.round(fecAnt.length/envAnt.length*100):null;
-  const fechTodas=P.filter(p=>p.status==="FECHADO"&&p.data_envio_proposta&&p.fechado_em);
+  const fechTodas=PF.filter(p=>p.status==="FECHADO"&&p.data_envio_proposta&&p.fechado_em);
   const tempoMedio=fechTodas.length?(fechTodas.reduce((s,p)=>s+comDias(p),0)/fechTodas.length).toFixed(1):"—";
   const ativas=P.filter(p=>COM_ST_ATIVOS.includes(p.status));
   const emNeg=P.filter(p=>["PROPOSTA","NEGOCIAÇÃO","CONTRATO"].includes(p.status));
@@ -12590,6 +13244,28 @@ function comDashRender(){
     ?kpi("ticket","📈","Ticket médio",ticket===null?"—":fmtBRL0(ticket),`${fechTodas.length} contratos`,"#0d9488",comSpark(sFecR,"#16a34a"))
     :kpi("fechadaMes","🏆","Fechadas no mês",fecMes.length,`total histórico: ${fechTodas.length}`,"#0d9488",comSpark(sFecN,"#16a34a"));
   h+=`</div>`;
+  /* ── METAS DO COMERCIAL + SERVIÇOS EXTRAS ──
+     Meta anual (definida na guia Propostas e Serviços Extras), visitas do mês
+     contra a meta fixa de 4 e os serviços extras cadastrados. */
+  {
+    const ano=_M.ini.getFullYear(),metaA=comMetaAno(ano),fecA=comFechadosAno(ano).length;
+    const pctA=metaA?Math.min(100,Math.round(fecA/metaA*100)):0,batA=metaA&&fecA>=metaA;
+    const vis=comVisitasMes(_M).length,saldo=vis-COM_META_VISITAS,batV=vis>=COM_META_VISITAS;
+    const hojeE=new Date(Date.now()-3*3600000).toISOString().slice(0,10),mesE=ymd(_M.ini).slice(0,7);
+    const exAnd=(COM_EXTRAS||[]).filter(e=>String(e.data_inicio).slice(0,10)<=hojeE&&(!e.data_fim||String(e.data_fim).slice(0,10)>=hojeE));
+    const exEnc=(COM_EXTRAS||[]).filter(e=>e.data_fim&&String(e.data_fim).slice(0,10)<hojeE&&String(e.data_fim).slice(0,7)===mesE);
+    const colAnd=exAnd.reduce((t,e)=>t+(Number(e.qtd_colaboradores)||0),0);
+    const card=(cls,cor,ic,lbl,val,sub,extra,onc)=>`<div class="cvk cdm-card ${cls}" style="border-top:3px solid ${cor};${onc?"cursor:pointer":""}"${onc?` onclick="${onc}" title="Clique para ver os registros"`:""}><div style="font-size:1.05rem">${ic}</div><div class="cvk-lb" style="margin-top:5px">${lbl}</div><div class="cvk-v" style="font-size:1.3rem">${val}</div><div style="font-size:.64rem;color:#64748b">${sub}</div>${extra||""}</div>`;
+    const barra=(p,c)=>`<div style="height:6px;background:#eef2f7;border-radius:4px;margin-top:7px"><div style="height:6px;border-radius:4px;width:${p}%;background:${c}"></div></div>`;
+    h+=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px">`;
+    h+=card(batA?"cdm-ok":"","#0d9488","🎯",`Meta anual de contratos · ${ano}`,metaA?`${fecA} <span style="font-size:.8rem;color:#94a3b8">/ ${metaA}</span>`:"—",
+      metaA?(batA?"meta batida 🎉":`faltam ${metaA-fecA} · ${pctA}%`):"meta não definida (Propostas e Serviços Extras)",metaA?barra(pctA,batA?"#16a34a":"#0d9488"):"","comDet('metaAno')");
+    h+=card(batV?"cdm-ok cdm-festa":"cdm-atencao",batV?"#16a34a":"#f59e0b",batV?"🎉":"⚠️",`Visitas no mês · meta ${COM_META_VISITAS}`,`${vis} <span style="font-size:.8rem;color:#94a3b8">/ ${COM_META_VISITAS}</span>`,
+      batV?`meta batida · ${saldo>0?"+"+saldo+" acima":"no alvo"}`:`ponto de atenção · faltam ${-saldo}`,barra(Math.min(100,Math.round(vis/COM_META_VISITAS*100)),batV?"#16a34a":"#f59e0b")+(batV?`<div class="cdm-confete" aria-hidden="true">${"<i></i>".repeat(12)}</div>`:""),"comDet('visitasMeta')");
+    h+=card("","#16a34a","🧾","Serviços extras em andamento",exAnd.length,`${colAnd} colaborador${colAnd===1?"":"es"} hoje`,"","comDet('extrasAnd')");
+    h+=card("","#64748b","✅","Serviços extras encerrados no mês",exEnc.length,_M.ini.toLocaleDateString("pt-BR",{month:"long",year:"numeric"}),"","comDet('extrasEnc')");
+    h+=`</div>`;
+  }
   /* ── POSSIVEIS NOVOS CLIENTES ── */
   // Pipeline ATUAL, de proposito fora do filtro de mes: uma proposta de julho
   // ainda em negociacao continua sendo um cliente possivel hoje. Filtrar por mes
@@ -12631,7 +13307,11 @@ function comDashRender(){
   /* ── FUNIL com R$ e conversão por etapa ── */
   // COM_ST_ORDER traz os 8 status. A lista fixa de 6 deixava PERDIDO e PAUSADO
   // de fora: em julho eram 11 de 29 propostas sumindo do funil sem aviso.
-  const funilAtivo=COM_ST_ORDER.map(s=>{const arr=MB.filter(p=>p.status===s);_cdGuarda("funil",s,arr);return[s,arr.length,arr.reduce((t,p)=>t+(Number(p.valor)||0),0)];});
+  // FECHADO entra no mês do FECHAMENTO, não no do envio: a LABMASS (enviada em
+  // julho, fechada em 29/09) aparecia como fechada no funil de julho. As demais
+  // etapas seguem a base do mês (MB, pelo envio). Mesma regra de "Fechadas no mês".
+  const MBF=MB.filter(p=>p.status!=="FECHADO").concat(comVisBase().filter(p=>p.status==="FECHADO"&&noMes(p.fechado_em)));
+  const funilAtivo=COM_ST_ORDER.map(s=>{const arr=MBF.filter(p=>p.status===s);_cdGuarda("funil",s,arr);return[s,arr.length,arr.reduce((t,p)=>t+(Number(p.valor)||0),0)];});
   h+=`<div style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:14px;margin-bottom:14px">`;
   h+=`<div style="background:#fff;border:1px solid #e5e9f0;border-radius:14px;padding:18px 22px"><div style="font-size:.8rem;font-weight:800;color:#0d1f35;margin-bottom:12px">🔻 Funil Comercial <span style="font-size:.6rem;color:#94a3b8;font-weight:700">quantidade${COM_VALORES?" · valor":""} · conversão etapa a etapa</span></div>
     <div style="font-size:.76rem">${funilAtivo.map(([s,v,r],i)=>{
@@ -12952,7 +13632,7 @@ var RT_GUIA={
   rhvagas:function(){rhLoad();},rhentrev:function(){rhEntLoad();},rhdesl:function(){rhDesLoad();},
   rhres:function(){rhResLoad();},rhtrein:function(){rhTreLoad();},
   rhdash:function(){rhDashLoad(true);},
-  compro:function(){comLoad();},comdash:function(){comDashLoad();},
+  compro:function(){comLoad();cpxLoad();},comdash:function(){comDashLoad();},
   audqual:function(){audLoad();},ligacoes:function(){ligLoad();},prj:function(){prjLoad();}
 };
 function rtBanner(){

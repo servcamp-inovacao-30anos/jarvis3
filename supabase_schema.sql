@@ -313,3 +313,48 @@ revoke all on public.fm_faltas, public.fm_dias, public.fm_medidas, public.fm_adm
   public.fm_feriados, public.fm_auditoria from anon, authenticated;
 grant select, insert, update, delete on public.fm_faltas, public.fm_dias, public.fm_medidas,
   public.fm_admissoes, public.fm_feriados, public.fm_auditoria to service_role;
+
+-- Comercial: serviços extras em clientes já em contrato
+-- Aba "Serviços Extras" da guia Comercial (api/comercial.js, ?t=extras).
+-- O cliente é o NOME da lista de clientes da planilha, a mesma chave que a
+-- Cobertura usa no LOCAL: é por ela que os lançamentos REFORÇO FATURADO são
+-- cruzados com o que foi cadastrado aqui. Só cria; pode rodar mais de uma vez.
+-- ============================================================================
+create table if not exists public.com_servicos_extras (
+  id                bigint generated always as identity primary key,
+  cliente           text not null,
+  data_inicio       date not null,
+  data_fim          date not null,
+  qtd_colaboradores integer not null,
+  tipo_servico      text not null,      -- LIMPEZA | PORTARIA | texto livre
+  observacao        text,
+  responsavel       text,
+  criado_por        text,
+  criado_em         timestamptz not null default now(),
+  atualizado_em     timestamptz not null default now(),
+  constraint com_servicos_extras_qtd   check (qtd_colaboradores between 1 and 999),
+  constraint com_servicos_extras_datas check (data_fim >= data_inicio)
+);
+create index if not exists com_servicos_extras_cliente_idx on public.com_servicos_extras (cliente, data_inicio);
+
+alter table public.com_servicos_extras enable row level security;
+revoke all on public.com_servicos_extras from anon, authenticated;
+grant select, insert, update, delete on public.com_servicos_extras to service_role;
+
+-- ============================================================================
+-- Comercial: meta anual de contratos fechados (uma linha por ano)
+-- Definida na guia Propostas e Serviços Extras e exibida no Painel Comercial
+-- (api/comercial.js, ?t=metaano, upsert por ano). Só cria; pode rodar de novo.
+-- ============================================================================
+create table if not exists public.com_meta_anual (
+  id             bigint generated always as identity primary key,
+  ano            integer not null unique,
+  meta_contratos integer not null,
+  atualizado_por text,
+  criado_em      timestamptz not null default now(),
+  atualizado_em  timestamptz not null default now(),
+  constraint com_meta_anual_meta check (meta_contratos between 0 and 100000)
+);
+alter table public.com_meta_anual enable row level security;
+revoke all on public.com_meta_anual from anon, authenticated;
+grant select, insert, update, delete on public.com_meta_anual to service_role;
