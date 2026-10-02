@@ -6884,12 +6884,21 @@ function buildDataFromWorkbook(wb){
   return data;
 }
 function saveToStorage(data,fname,ts){
+  // ts = momento REAL do upload (created_at do Supabase). Sem ts = upload local agora.
+  // A data da planilha é gravada PRIMEIRO e à parte: a planilha (~3 MB) passa do
+  // limite do Safari no iPhone (~5 MB, contando em dobro). Antes, a falha deixava
+  // a data velha guardada e o celular dizia "NÃO ATUALIZADA (há 37 dias)" mesmo
+  // com os dados novos na tela.
+  try{localStorage.setItem(LS_META,JSON.stringify({fname:fname,ts:ts||Date.now()}));}catch(e){}
   try{
     localStorage.setItem(LS_KEY,JSON.stringify(data));
-    // ts = momento REAL do upload (created_at do Supabase). Sem ts = upload local agora.
-    localStorage.setItem(LS_META,JSON.stringify({fname:fname,ts:ts||Date.now()}));
     return true;
-  }catch(e){console.error("Erro ao salvar dados",e);return false;}
+  }catch(e){
+    // não coube: apaga a cópia antiga para ela não reaparecer como se fosse atual
+    try{localStorage.removeItem(LS_KEY);}catch(e2){}
+    console.warn("Planilha grande demais para guardar neste aparelho; segue só em memória.",e);
+    return false;
+  }
 }
 function loadFromStorage(){
   try{
