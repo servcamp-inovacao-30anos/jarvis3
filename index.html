@@ -440,6 +440,22 @@ html[data-theme="dark"] .oc-forte .oc-sb{color:#fca5a5!important;}
 /* card composto (Check List / Ligações): dois números lado a lado */
 .oc-duo{display:flex;gap:10px;align-items:baseline;}
 .oc-duo .d2{font-size:.72rem;font-weight:900;color:#dc2626;}
+/* faltas x medidas (dentro do card Disciplina) */
+#ocDiscFm:not(:empty){margin-top:10px;padding-top:10px;border-top:1px solid var(--g200,#e2e8f0);font-size:.78rem;letter-spacing:0;font-weight:600;}
+.vgfm{cursor:pointer;border-radius:8px;--k:#64748b;}
+.vgfm.ok{--k:#16a34a}.vgfm.am{--k:#d97706}.vgfm.da{--k:#dc2626}
+.vgfm:focus-visible{outline:2px solid var(--k);outline-offset:3px}
+.vgfm-t{display:flex;flex-direction:column;gap:2px}
+.vgfm-t span{font-size:.74rem;font-weight:700;color:var(--g500,#64748b);white-space:nowrap}
+.vgfm-t b{font-size:1.6rem;font-weight:900;line-height:1.1;color:var(--k)}
+.vgfm-t b small{font-size:.66rem;font-weight:700;color:var(--g500,#64748b);margin-left:4px}
+.vgfm-b{height:6px;border-radius:3px;background:var(--g200,#e2e8f0);overflow:hidden;margin:7px 0 8px}
+.vgfm-b i{display:block;height:100%;border-radius:3px;background:var(--k)}
+.vgfm-n{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:.78rem;font-weight:600;color:var(--g500,#64748b)}
+.vgfm-n b{font-size:.95rem;font-weight:800;color:inherit}
+.vgfm-n .r{color:#dc2626}
+.vgfm-l{margin-top:8px;font-size:.74rem;font-weight:700;color:#2563eb}
+.vgfm:hover .vgfm-l{text-decoration:underline}
 .oc-lock{position:absolute;top:6px;right:8px;font-size:.5rem;color:#cbd5e1;}
 .oc{background:var(--wh);border-radius:var(--r);padding:10px 12px;box-shadow:var(--sh);border:1px solid var(--g200);cursor:pointer;transition:all .15s;position:relative;}
 .oc:hover{box-shadow:var(--shm);border-color:var(--b1);}
@@ -11513,12 +11529,15 @@ function fmVgPinta(){
   if(!vgFmPermitido()){el.innerHTML="";return;}
   if(!FM.vg)return;
   const r=FM.vg,n=k=>r[k]||0;
-  let txt;
+  const abre=`onclick="event.stopPropagation();vgFmDir()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();vgFmDir()}"`;
   if(FM.dados&&FM.dados.casos&&!FM.dados.vazio){
-    const {R}=vgFmCalcula();
-    txt=`⚖️ Faltas × medidas: <b>${R.pct==null?"—":R.pct+"%"}</b> concluído · <b>${R.abertos.length}</b> pendentes · <b>${R.n.da}</b> atrasadas`;
-  }else txt=`⚖️ <b>${n("NO_PRAZO")}</b> no prazo · <b>${n("PRAZO_VENCIDO")}</b> vencidos · <b>${n("COORDENACAO")}</b> coordenação`;
-  el.innerHTML=`<span style="cursor:pointer;text-decoration:underline dotted" title="Ver por supervisor e por posto" onclick="event.stopPropagation();vgFmDir()">${txt} · ver detalhes ›</span>`;
+    const {R}=vgFmCalcula(),p=R.pct,at=R.n.da;
+    el.innerHTML=`<div class="vgfm ${vgFmTom(p)}" role="button" tabindex="0" title="Ver por supervisor e por posto" ${abre}>`+
+      `<div class="vgfm-t"><span>Faltas × medidas</span><b>${p==null?"—":p+"%"}<small>concluído</small></b></div>`+
+      `<div class="vgfm-b"><i style="width:${p==null?0:p}%"></i></div>`+
+      `<div class="vgfm-n"><span><b>${R.abertos.length}</b> ${R.abertos.length===1?"pendente":"pendentes"}</span>${at?`<span class="r"><b>${at}</b> ${at===1?"atrasada":"atrasadas"}</span>`:""}</div>`+
+      `<div class="vgfm-l">Ver por supervisor e posto ›</div></div>`;
+  }else el.innerHTML=`<div class="vgfm" role="button" tabindex="0" ${abre}><div class="vgfm-n"><span><b>${n("NO_PRAZO")}</b> no prazo</span><span class="r"><b>${n("PRAZO_VENCIDO")}</b> vencidos</span><span><b>${n("COORDENACAO")}</b> coordenação</span></div><div class="vgfm-l">Ver detalhes ›</div></div>`;
 }
 function fmVgResumo(){
   if(!vgFmPermitido())return;
