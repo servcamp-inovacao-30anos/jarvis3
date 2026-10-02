@@ -68,6 +68,7 @@ test("cor da taxa: verde a partir de 80%, âmbar a partir de 50%, vermelho abaix
 });
 
 test("o card só abre para quem tem permissão e a linha do card abre o painel da diretoria", () => {
-  assert.ok(html.includes("function vgFmDir(){\n  if(!fmPermitido())return;"));
+  assert.ok(html.includes("function vgFmDir(){\n  if(!vgFmPermitido())return;"));
+  assert.ok(html.includes("function vgFmPermitido(){return fmPermitido()||fsPermitido();}"), "supervisores também veem o resumo");
   assert.ok(html.includes('onclick="event.stopPropagation();vgFmDir()"'));
 });

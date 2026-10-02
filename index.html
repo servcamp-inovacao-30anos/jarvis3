@@ -3603,6 +3603,8 @@ document.addEventListener("keydown",function(e){
 setTimeout(function(){navStarsInit();navCatsRestaura();navFavRender();navCatsAtualiza();navMiniRestaura();sbPerfilRender();},0);
 /* Painel operacional Faltas x Medidas: só admin e quem tem a permissão fm. */
 function fmPermitido(){return sessionStorage.getItem("userAdmin")==="1"||sessionStorage.getItem("userFm")==="1";}
+/* resumo e painel da Visão Geral: quem vê o painel operacional + a supervisão (supervisores e coordenação) */
+function vgFmPermitido(){return fmPermitido()||fsPermitido();}
 function fsPermitido(){return sessionStorage.getItem("userAdmin")==="1"||sessionStorage.getItem("userSup")==="1"||sessionStorage.getItem("userLig")==="1";}
 function navTo(p,btn){
   if(p==="faltasmed"&&!fmPermitido()){p=fsPermitido()?"faltassup":"visao";btn=null;}
@@ -11081,13 +11083,13 @@ function vgFmFechar(){
 }
 function vgFmTecla(e){if(e.key==="Escape")vgFmFechar();}
 function vgFmDir(){
-  if(!fmPermitido())return;
+  if(!vgFmPermitido())return;
   vgFmFechar();
   const o=document.createElement("div");o.id="vgFmDir";o.className="dr-ov";o.setAttribute("role","dialog");o.setAttribute("aria-modal","true");o.setAttribute("aria-label","Faltas injustificadas e medidas disciplinares");
   o.onclick=e=>{if(e.target===o)vgFmFechar();};
   o.innerHTML=`<div class="dr-card"><div class="dr-top"><span class="fm-ic-tile" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5v16.5M8 20h8"/><path d="M5 7h14"/><circle cx="12" cy="4.2" r=".9"/><path d="M5 7l-2.8 6.2a3 3 0 0 0 5.6 0z"/><path d="M19 7l-2.8 6.2a3 3 0 0 0 5.6 0z"/></svg></span>`+
-    `<div class="tt"><h3>Faltas injustificadas e medidas</h3><p>Visão da diretoria · o que está pendente de medida disciplinar, por supervisor e por posto</p></div>`+
-    `<button type="button" class="ir" onclick="vgFmFechar();navTo('faltasmed')">Abrir o painel completo</button>`+
+    `<div class="tt"><h3>Faltas injustificadas e medidas</h3><p>${fmPermitido()?"Visão da diretoria":"Visão geral"} · o que está pendente de medida disciplinar, por supervisor e por posto</p></div>`+
+    `<button type="button" class="ir" onclick="vgFmFechar();navTo('${fmPermitido()?"faltasmed":"faltassup"}')">${fmPermitido()?"Abrir o painel completo":"Abrir Faltas da Supervisão"}</button>`+
     `<button type="button" class="x" aria-label="Fechar" onclick="vgFmFechar()">${FM_IC.x}</button></div><div id="vgFmCorpo"></div></div>`;
   document.body.appendChild(o);document.addEventListener("keydown",vgFmTecla);
   vgFmRender();
@@ -11508,7 +11510,7 @@ function fmFeriadoRemover(d){
 /* Card "Disciplina" da Visão Geral: uma linha com os casos do módulo. */
 function fmVgPinta(){
   const el=document.getElementById("ocDiscFm");if(!el)return;
-  if(!fmPermitido()){el.innerHTML="";return;}
+  if(!vgFmPermitido()){el.innerHTML="";return;}
   if(!FM.vg)return;
   const r=FM.vg,n=k=>r[k]||0;
   let txt;
@@ -11519,7 +11521,7 @@ function fmVgPinta(){
   el.innerHTML=`<span style="cursor:pointer;text-decoration:underline dotted" title="Ver por supervisor e por posto" onclick="event.stopPropagation();vgFmDir()">${txt} · ver detalhes ›</span>`;
 }
 function fmVgResumo(){
-  if(!fmPermitido())return;
+  if(!vgFmPermitido())return;
   if(FM.vg&&Date.now()-FM.vgEm<300000){fmVgPinta();return;}
   fmPedir("GET","casos").then(j=>{FM.dados=FM.dados||j;FM.vg=j.resumo;FM.vgEm=Date.now();fmVgPinta();}).catch(()=>{});
 }

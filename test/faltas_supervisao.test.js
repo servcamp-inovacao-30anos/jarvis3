@@ -85,5 +85,5 @@ test("porta de entrada: sem permissão, navTo('faltasmed') não abre o painel op
   const dentro = t => assert.ok(html.includes(t), "faltou no index.html: " + t);
   dentro('function fmPermitido(){return sessionStorage.getItem("userAdmin")==="1"||sessionStorage.getItem("userFm")==="1";}');
   dentro('if(p==="faltasmed"&&!fmPermitido()){p=fsPermitido()?"faltassup":"visao";btn=null;}');
-  dentro("function fmVgResumo(){\n  if(!fmPermitido())return;");
+  dentro("function fmVgResumo(){\n  if(!vgFmPermitido())return;");
 });
