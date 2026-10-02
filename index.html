@@ -12602,21 +12602,21 @@ async function brExcel(){
   finally{if(btn)btn.innerHTML=rot;}
 }
 async function brXlsxMontar(Ex,logo,ctx){
-  const f=brFiltroTela(),L=brLinhas(f),R=brConta(L),A=brCompOk()?brConta(brLinhas(f,true)):null,ateE=brAteEfetivo(),D=BR.dados;
+  const f=brFiltroTela(),L=brLinhas(f),R=brConta(L),A=brCompOk()?brConta(brLinhas(f,true)):null,ateE=brAteEfetivo();
   const idas=L.filter(x=>x.situacao!=="NAO_E_POSTO").sort((a,b)=>a.data.localeCompare(b.data)||String(a.chegada).localeCompare(String(b.chegada)));
   const wb=new Ex.Workbook();
   wb.creator="JARVIS · Grupo ServCamp";wb.title="Coberturas do supervisor";wb.created=new Date();
+  wb.calcProperties={fullCalcOnLoad:true}; // o Excel recalcula tudo ao abrir
   const quem=sessionStorage.getItem("userNome")||"";
   const fonte=(o)=>Object.assign({name:"Segoe UI",size:10,color:{argb:BRX.texto}},o||{});
   const preenche=c=>({type:"pattern",pattern:"solid",fgColor:{argb:c}});
+  const dxf=c=>({type:"pattern",pattern:"solid",bgColor:{argb:c}}); // preenchimento de formatação condicional
   const fio=c=>({style:"thin",color:{argb:c||BRX.linha}});
-  const caixa=(c)=>({top:fio(c),left:fio(c),bottom:fio(c),right:fio(c)});
   const pagina=(ws,titulos,paisagem)=>{
     ws.pageSetup={paperSize:9,orientation:paisagem?"landscape":"portrait",fitToPage:true,fitToWidth:1,fitToHeight:0,margins:{left:.4,right:.4,top:.5,bottom:.6,header:.25,footer:.3},horizontalCentered:true,printTitlesRow:titulos||undefined};
     ws.headerFooter={oddFooter:'&L&"Segoe UI,Regular"&8JARVIS · Grupo ServCamp&R&"Segoe UI,Regular"&8Página &P de &N'};
   };
-  /* faixa de título das tabelas: logo, título e período */
-  const topo=(ws,tit,sub,ate,larg)=>{
+  const topo=(ws,tit,sub,ate)=>{
     ws.getRow(1).height=30;ws.getRow(2).height=18;ws.getRow(3).height=8;
     ws.mergeCells(1,3,1,ate);const t=ws.getCell(1,3);t.value=tit;t.font=fonte({size:18,bold:true,color:{argb:BRX.navy}});t.alignment={vertical:"middle",horizontal:"right"};
     ws.mergeCells(2,3,2,ate);const u=ws.getCell(2,3);u.value=sub;u.font=fonte({size:9,color:{argb:BRX.mudo}});u.alignment={vertical:"top",horizontal:"right"};
@@ -12624,6 +12624,13 @@ async function brXlsxMontar(Ex,logo,ctx){
     if(logo){const id=wb.addImage({base64:logo,extension:"png"});ws.addImage(id,{tl:{col:0.1,row:0.15},ext:{width:150,height:44}});}
   };
   const subTxt=`${brDd(BR.de)} a ${brDd(ateE)}  ·  ${brFiltroTxt(f)}`;
+  /* a aba "Cada cobertura" é a BASE: tudo o mais é fórmula em cima dela */
+  const CCN="'Cada cobertura'!",N=5+Math.max(1,idas.length),rg=c=>`${CCN}$${c}$6:$${c}$${N}`;
+  const SUPC=rg("C"),POSC=rg("D"),SITC=rg("L");
+  const SITN={ANTES:"Antes do início da vaga",NO_PRAZO:"Até 1h de atraso",ATRASO:"1 a 3h de atraso",GRAVE:"Mais de 3h de atraso"};
+  const fm=(formula,result)=>({formula,result});
+  const distintos=(a,b)=>`IFERROR(ROUND(SUMPRODUCT((${a}<>"")/COUNTIFS(${a},${a}&"",${b},${b}&"")),0),0)`;
+  const n1=(k)=>R.sit[k]||0,den=n1("ANTES")+n1("NO_PRAZO")+n1("ATRASO")+n1("GRAVE");
 
   /* ═══ 1. Resumo (capa) ═══ */
   const ws=wb.addWorksheet("Resumo",{properties:{tabColor:{argb:BRX.navy}},views:[{showGridLines:false}]});
@@ -12633,14 +12640,16 @@ async function brXlsxMontar(Ex,logo,ctx){
   ws.mergeCells("E2:K2");const S=ws.getCell("E2");S.value="Chegada do supervisor ao posto comparada com o início da vaga de quem faltou";S.font=fonte({size:9.5,color:{argb:BRX.mudo}});S.alignment={vertical:"top",horizontal:"right"};
   for(let c=2;c<=11;c++)ws.getCell(3,c).border={top:{style:"medium",color:{argb:BRX.navy}}};
   if(logo){const id=wb.addImage({base64:logo,extension:"png"});ws.addImage(id,{tl:{col:1.05,row:0.12},ext:{width:170,height:50}});}
-  ws.mergeCells("B4:K4");const P=ws.getCell("B4");P.value=subTxt;P.font=fonte({size:10.5,bold:true,color:{argb:BRX.navy}});P.alignment={vertical:"middle",horizontal:"left",indent:0};ws.getRow(4).height=26;
-  /* cartões */
+  ws.mergeCells("B4:K4");const P=ws.getCell("B4");P.value=subTxt;P.font=fonte({size:10.5,bold:true,color:{argb:BRX.navy}});P.alignment={vertical:"middle",horizontal:"left"};ws.getRow(4).height=26;
+  /* tabela "Como o supervisor chegou" (linhas 13 a 16): as contas dos cartões saem daqui */
+  const T0=13;
+  const E=k=>`$E$${T0+k}`,SOMA=`SUM($E$${T0}:$E$${T0+3})`;
   const cards=[
-    ["COBERTURAS DO SUPERVISOR",R.n,`${R.sups.size} ${R.sups.size===1?"supervisor":"supervisores"} · ${R.postos.size} ${R.postos.size===1?"posto":"postos"}`,A?`Período anterior: ${A.n}`:"",BRX.navy],
-    ["CHEGOU EM ATÉ 1H",R.pct==null?"—":R.pct/100,`do início da vaga · ${R.ate1h} de ${R.medidas}`,A&&A.pct!=null?`Período anterior: ${A.pct}%`:"",BRX.ok[0]],
-    ["1 A 3H DE ATRASO",R.sit.ATRASO,R.medidas?`${brPct(R.sit.ATRASO,R.medidas)}% das coberturas`:"",A?`Período anterior: ${A.sit.ATRASO}`:"",BRX.am[0]],
-    ["MAIS DE 3H DE ATRASO",R.sit.GRAVE,R.medidas?`${brPct(R.sit.GRAVE,R.medidas)}% das coberturas`:"",A?`Período anterior: ${A.sit.GRAVE}`:"",BRX.da[0]],
-    ["HORAS EM CAMPO",R.min/1440,`${Math.round(R.km).toLocaleString("pt-BR")} km nos dias com cobertura`,"",BRX.navy]
+    ["COBERTURAS DO SUPERVISOR",fm(`COUNTA(${SUPC})`,R.n),null,fm(`ROUND(SUMPRODUCT((${SUPC}<>"")/COUNTIF(${SUPC},${SUPC}&"")),0)&IF(ROUND(SUMPRODUCT((${SUPC}<>"")/COUNTIF(${SUPC},${SUPC}&"")),0)=1," supervisor"," supervisores")&" · "&ROUND(SUMPRODUCT((${POSC}<>"")/COUNTIF(${POSC},${POSC}&"")),0)&IF(ROUND(SUMPRODUCT((${POSC}<>"")/COUNTIF(${POSC},${POSC}&"")),0)=1," posto"," postos")`,`${R.sups.size} ${R.sups.size===1?"supervisor":"supervisores"} · ${R.postos.size} ${R.postos.size===1?"posto":"postos"}`),A?`Período anterior: ${A.n}`:"",BRX.navy,"0"],
+    ["CHEGOU EM ATÉ 1H",fm(`IFERROR((${E(0)}+${E(1)})/${SOMA},"—")`,den?(n1("ANTES")+n1("NO_PRAZO"))/den:"—"),"0%",fm(`"do início da vaga · "&(${E(0)}+${E(1)})&" de "&${SOMA}`,`do início da vaga · ${n1("ANTES")+n1("NO_PRAZO")} de ${den}`),A&&A.pct!=null?`Período anterior: ${A.pct}%`:"",BRX.ok[0]],
+    ["1 A 3H DE ATRASO",fm(`${E(2)}`,n1("ATRASO")),"0",fm(`IFERROR(TEXT(${E(2)}/${SOMA},"0%")&" das coberturas","")`,den?Math.round(n1("ATRASO")/den*100)+"% das coberturas":""),A?`Período anterior: ${A.sit.ATRASO}`:"",BRX.am[0]],
+    ["MAIS DE 3H DE ATRASO",fm(`${E(3)}`,n1("GRAVE")),"0",fm(`IFERROR(TEXT(${E(3)}/${SOMA},"0%")&" das coberturas","")`,den?Math.round(n1("GRAVE")/den*100)+"% das coberturas":""),A?`Período anterior: ${A.sit.GRAVE}`:"",BRX.da[0]],
+    ["HORAS EM CAMPO",R.min/1440,'[h]"h"mm',`${Math.round(R.km).toLocaleString("pt-BR")} km nos dias com cobertura`,"",BRX.navy]
   ];
   ws.getRow(5).height=6;ws.getRow(6).height=20;ws.getRow(7).height=40;ws.getRow(8).height=18;ws.getRow(9).height=16;ws.getRow(10).height=6;
   cards.forEach((c,i)=>{
@@ -12648,41 +12657,48 @@ async function brXlsxMontar(Ex,logo,ctx){
     [6,7,8,9].forEach(r=>ws.mergeCells(r,c0,r,c1));
     const rot=ws.getCell(6,c0),val=ws.getCell(7,c0),sub=ws.getCell(8,c0),ant=ws.getCell(9,c0);
     rot.value=c[0];rot.font=fonte({size:8,bold:true,color:{argb:BRX.mudo}});rot.alignment={vertical:"bottom",horizontal:"left",indent:1};
-    val.value=c[1];val.font=fonte({size:26,bold:true,color:{argb:c[4]}});val.alignment={vertical:"middle",horizontal:"left",indent:1};
-    if(i===1&&typeof c[1]==="number")val.numFmt="0%";if(i===4)val.numFmt='[h]"h"mm';
-    sub.value=c[2];sub.font=fonte({size:8.5,color:{argb:BRX.texto}});sub.alignment={vertical:"top",horizontal:"left",indent:1,wrapText:true};
-    ant.value=c[3];ant.font=fonte({size:8,color:{argb:BRX.mudo}});ant.alignment={vertical:"top",horizontal:"left",indent:1};
+    val.value=c[1];val.numFmt=c[2]||"General";val.font=fonte({size:26,bold:true,color:{argb:c[5]}});val.alignment={vertical:"middle",horizontal:"left",indent:1};
+    sub.value=c[3];sub.font=fonte({size:8.5,color:{argb:BRX.texto}});sub.alignment={vertical:"top",horizontal:"left",indent:1,wrapText:true};
+    ant.value=c[4];ant.font=fonte({size:8,color:{argb:BRX.mudo}});ant.alignment={vertical:"top",horizontal:"left",indent:1};
     for(let r=6;r<=9;r++)for(let k=c0;k<=c1;k++){const ce=ws.getCell(r,k);ce.fill=preenche(BRX.faixa);
-      ce.border={left:k===c0?{style:"thin",color:{argb:BRX.linha}}:undefined,right:k===c1?{style:"thin",color:{argb:BRX.linha}}:undefined,top:r===6?{style:"medium",color:{argb:c[4]}}:undefined,bottom:r===9?{style:"thin",color:{argb:BRX.linha}}:undefined};}
+      ce.border={left:k===c0?{style:"thin",color:{argb:BRX.linha}}:undefined,right:k===c1?{style:"thin",color:{argb:BRX.linha}}:undefined,top:r===6?{style:"medium",color:{argb:c[5]}}:undefined,bottom:r===9?{style:"thin",color:{argb:BRX.linha}}:undefined};}
   });
-  /* como chegaram */
   let r=11;
   const titulo=(txt)=>{ws.mergeCells(r,2,r,11);const c=ws.getCell(r,2);c.value=txt;c.font=fonte({size:11,bold:true,color:{argb:BRX.navy}});c.alignment={vertical:"middle"};ws.getRow(r).height=24;for(let k=2;k<=11;k++)ws.getCell(r,k).border={bottom:{style:"thin",color:{argb:BRX.linha}}};r++;};
-  titulo("Como o supervisor chegou");
-  [["ANTES","Antes do início da vaga"],["NO_PRAZO","Até 1h de atraso"],["ATRASO","1 a 3h de atraso"],["GRAVE","Mais de 3h de atraso"]].forEach(([k,rotulo])=>{
-    const n=R.sit[k]||0,p=R.medidas?n/R.medidas:0,cor=brXSit(k);
+  titulo("Como o supervisor chegou");r=T0;
+  ["ANTES","NO_PRAZO","ATRASO","GRAVE"].forEach((k,i)=>{
+    const nome=SITN[k],cor=brXSit(k),n=n1(k),p=den?n/den:0;
     ws.getRow(r).height=20;
-    ws.mergeCells(r,2,r,4);const a=ws.getCell(r,2);a.value=rotulo;a.font=fonte({size:10});a.alignment={vertical:"middle",indent:1};
-    const b=ws.getCell(r,5);b.value=n;b.font=fonte({size:10,bold:true});b.alignment={vertical:"middle",horizontal:"right"};
-    const pc=ws.getCell(r,6);pc.value=p;pc.numFmt="0%";pc.font=fonte({size:10,color:{argb:BRX.mudo}});pc.alignment={vertical:"middle",horizontal:"right"};
-    ws.mergeCells(r,7,r,11);const bar=ws.getCell(r,7);bar.value="█".repeat(Math.round(p*34))||"▏";bar.font=fonte({size:10,color:{argb:cor[0]}});bar.alignment={vertical:"middle",indent:1};
+    ws.mergeCells(r,2,r,4);const a=ws.getCell(r,2);a.value=nome;a.font=fonte({size:10});a.alignment={vertical:"middle",indent:1};
+    const b=ws.getCell(r,5);b.value=fm(`COUNTIF(${SITC},"${nome}")`,n);b.font=fonte({size:10,bold:true});b.alignment={vertical:"middle",horizontal:"right"};
+    const pc=ws.getCell(r,6);pc.value=fm(`IFERROR(E${r}/${SOMA},0)`,p);pc.numFmt="0%";pc.font=fonte({size:10,color:{argb:BRX.mudo}});pc.alignment={vertical:"middle",horizontal:"right"};
+    ws.mergeCells(r,7,r,11);const bar=ws.getCell(r,7);bar.value=fm(`IF(F${r}=0,"▏",REPT("█",ROUND(F${r}*34,0)))`,"█".repeat(Math.round(p*34))||"▏");bar.font=fonte({size:10,color:{argb:cor[0]}});bar.alignment={vertical:"middle",indent:1};
     r++;
   });
-  if(R.sit.SEM_HORARIO){ws.mergeCells(r,2,r,11);const c=ws.getCell(r,2);c.value=`${R.sit.SEM_HORARIO} sem horário da vaga nem do posto (não entram nos percentuais).`;c.font=fonte({size:8.5,italic:true,color:{argb:BRX.mudo}});c.alignment={indent:1};r++;}
-  r++;titulo("Resumo");
+  ws.mergeCells(r,2,r,11);{const c=ws.getCell(r,2);c.value=fm(`IF(COUNTIF(${SITC},"Sem horário")=0,"",COUNTIF(${SITC},"Sem horário")&" sem horário da vaga nem do posto (não entram nos percentuais).")`,R.sit.SEM_HORARIO?`${R.sit.SEM_HORARIO} sem horário da vaga nem do posto (não entram nos percentuais).`:"");c.font=fonte({size:8.5,italic:true,color:{argb:BRX.mudo}});c.alignment={indent:1};}r+=2;
+  titulo("Resumo");
   brResumo(f).forEach(h=>{
     const txt=brTxt(h);ws.mergeCells(r,2,r,11);const c=ws.getCell(r,2);c.value="•  "+txt;c.font=fonte({size:10});c.alignment={vertical:"top",wrapText:true,indent:1};
     ws.getRow(r).height=Math.max(20,Math.ceil(txt.length/118)*16+6);r++;
   });
   r++;titulo("Neste arquivo");
-  [["Por supervisor","Coberturas, percentual e atrasos de cada supervisor"],["Por posto","Postos que mais precisaram de cobertura"],["Por situação","Coberturas agrupadas: antes do início, até 1h, 1 a 3h e mais de 3h de atraso"],["Cada cobertura","Cada ida do supervisor, com início da vaga, chegada e atraso (com filtros)"],["Como é calculado","Regras usadas nas contas"]].forEach(([a,b])=>{
+  [["Por supervisor","Coberturas, percentual e atrasos de cada supervisor"],["Por posto","Postos que mais precisaram de cobertura"],["Cada cobertura","A BASE: cada ida do supervisor, com início da vaga, chegada e atraso (com filtros)"],["Por situação","Coberturas agrupadas: antes do início, até 1h, 1 a 3h e mais de 3h de atraso"],["Como é calculado","Regras usadas nas contas"]].forEach(([a,b])=>{
     ws.getRow(r).height=18;ws.mergeCells(r,2,r,3);const x=ws.getCell(r,2);x.value={text:a,hyperlink:"#'"+a+"'!A1"};x.font=fonte({size:10,bold:true,color:{argb:"FF1D6FC4"},underline:true});x.alignment={indent:1,vertical:"middle"};
     ws.mergeCells(r,4,r,11);const y=ws.getCell(r,4);y.value=b;y.font=fonte({size:9.5,color:{argb:BRX.mudo}});y.alignment={vertical:"middle"};r++;
   });
-  r++;ws.mergeCells(r,2,r,11);const g=ws.getCell(r,2);g.value=`Gerado em ${new Date().toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"})}${quem?" por "+quem:""}  ·  Fonte: BDV do SAR2G  ·  JARVIS · Grupo ServCamp`;g.font=fonte({size:8,color:{argb:BRX.mudo}});
-  pagina(ws,null,false);ws.pageSetup.orientation="portrait";
+  r++;ws.mergeCells(r,2,r,11);ws.getRow(r).height=44;
+  const fx=ws.getCell(r,2);fx.value="Os números desta capa e das abas “Por supervisor” e “Por posto” são fórmulas ligadas à aba “Cada cobertura”. Se você corrigir um horário de chegada, apagar uma linha ou mudar um nome nela, os atrasos, as situações e todos os totais se recalculam sozinhos. O texto do resumo e as horas e km em campo são fixos, da data em que o arquivo foi gerado.";
+  fx.font=fonte({size:9,italic:true,color:{argb:BRX.mudo}});fx.alignment={wrapText:true,vertical:"top",indent:1};fx.fill=preenche(BRX.faixa);
+  r+=2;ws.mergeCells(r,2,r,11);const g=ws.getCell(r,2);g.value=`Gerado em ${new Date().toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"})}${quem?" por "+quem:""}  ·  Fonte: BDV do SAR2G  ·  JARVIS · Grupo ServCamp`;g.font=fonte({size:8,color:{argb:BRX.mudo}});
+  pagina(ws,null,false);
 
-  /* ═══ 2 e 3. Por supervisor / Por posto ═══ */
+  /* regras de cor que acompanham os valores (se o número mudar, a cor muda) */
+  const corPct=(w,ref,c0)=>w.addConditionalFormatting({ref,rules:[
+    {type:"expression",priority:1,formulae:[`AND(ISNUMBER(${c0}),${c0}>=0.8)`],style:{fill:dxf(BRX.ok[1]),font:{bold:true,color:{argb:BRX.ok[0]}}}},
+    {type:"expression",priority:2,formulae:[`AND(ISNUMBER(${c0}),${c0}>=0.6,${c0}<0.8)`],style:{fill:dxf(BRX.am[1]),font:{bold:true,color:{argb:BRX.am[0]}}}},
+    {type:"expression",priority:3,formulae:[`AND(ISNUMBER(${c0}),${c0}<0.6)`],style:{fill:dxf(BRX.da[1]),font:{bold:true,color:{argb:BRX.da[0]}}}}]});
+
+  /* ═══ 2 e 3. Por supervisor / Por posto (contas por fórmula) ═══ */
   const tabela=(nome,dim,cor)=>{
     const w=wb.addWorksheet(nome,{properties:{tabColor:{argb:cor}},views:[{showGridLines:false,state:"frozen",xSplit:1,ySplit:5}]});
     const cab=[dim==="sup"?"Supervisor":"Posto","Coberturas","Chegou em até 1h","Antes do início","Até 1h de atraso","1 a 3h de atraso","Mais de 3h de atraso","Sem horário",dim==="sup"?"Postos":"Supervisores",dim==="sup"?"Horas em campo":"Motivo mais comum",dim==="sup"?"Km":"3 ou mais"];
@@ -12691,53 +12707,71 @@ async function brXlsxMontar(Ex,logo,ctx){
     w.getRow(4).height=6;w.getRow(5).height=34;
     cab.forEach((c,i)=>{const ce=w.getCell(5,i+1);ce.value=c;ce.font=fonte({size:9,bold:true,color:{argb:"FFFFFFFF"}});ce.fill=preenche(BRX.navy);ce.alignment={vertical:"middle",horizontal:i?"center":"left",wrapText:true,indent:i?0:1};ce.border={bottom:{style:"medium",color:{argb:BRX.navy}}};});
     const gr=brAgrupa(L,x=>dim==="sup"?x.supervisor:x.posto).sort((a,b)=>b.n-a.n||a.nome.localeCompare(b.nome));
+    const KEY=dim==="sup"?SUPC:POSC,OUT=dim==="sup"?POSC:SUPC;
     gr.forEach((x,i)=>{
-      const lin=6+i,tom=brXTom(x.pct);
-      const v=[dim==="sup"?brNomeCurto(x.nome):x.nome,x.n,x.pct==null?null:x.pct/100,x.sit.ANTES,x.sit.NO_PRAZO,x.sit.ATRASO,x.sit.GRAVE,x.sit.SEM_HORARIO,dim==="sup"?x.postos.size:x.sups.size,dim==="sup"?x.min/1440:brMotivoMais(x),dim==="sup"?Math.round(x.km):(x.n>=3?"Sim":"")];
+      const lin=6+i,nm=dim==="sup"?brNomeCurto(x.nome):x.nome,cnt=(sit)=>sit?`COUNTIFS(${KEY},$A${lin},${SITC},"${sit}")`:`COUNTIFS(${KEY},$A${lin})`;
+      const den2=x.n-x.sit.SEM_HORARIO,pct=den2?(x.sit.ANTES+x.sit.NO_PRAZO)/den2:"";
+      const v=[nm,fm(cnt(),x.n),fm(`IFERROR((D${lin}+E${lin})/(B${lin}-H${lin}),"")`,pct),fm(cnt(SITN.ANTES),x.sit.ANTES),fm(cnt(SITN.NO_PRAZO),x.sit.NO_PRAZO),fm(cnt(SITN.ATRASO),x.sit.ATRASO),fm(cnt(SITN.GRAVE),x.sit.GRAVE),fm(cnt("Sem horário"),x.sit.SEM_HORARIO),
+        fm(`IFERROR(ROUND(SUMPRODUCT((${KEY}=$A${lin})/COUNTIFS(${KEY},${KEY}&"",${OUT},${OUT}&"")),0),0)`,dim==="sup"?x.postos.size:x.sups.size),
+        dim==="sup"?x.min/1440:brMotivoMais(x),dim==="sup"?Math.round(x.km):fm(`IF(B${lin}>=3,"Sim","")`,x.n>=3?"Sim":"")];
       v.forEach((val,j)=>{
         const ce=w.getCell(lin,j+1);ce.value=val;ce.font=fonte({size:10,bold:j===0||j===1});ce.alignment={vertical:"middle",horizontal:j?"center":"left",indent:j?0:1};
         ce.border={bottom:{style:"thin",color:{argb:BRX.linha}}};if(i%2)ce.fill=preenche(BRX.faixa);
-        if(j===2){ce.numFmt="0%";ce.fill=preenche(tom[1]);ce.font=fonte({size:10,bold:true,color:{argb:tom[0]}});}
-        if(j===6&&x.sit.GRAVE){ce.font=fonte({size:10,bold:true,color:{argb:BRX.da[0]}});ce.fill=preenche(BRX.da[1]);}
-        if(j===5&&x.sit.ATRASO){ce.font=fonte({size:10,color:{argb:BRX.am[0]}});}
-        if(dim==="sup"&&j===9)ce.numFmt='[h]"h"mm';if(dim==="sup"&&j===10)ce.numFmt="#,##0";
+        if(j===2)ce.numFmt="0%";if(dim==="sup"&&j===9)ce.numFmt='[h]"h"mm';if(dim==="sup"&&j===10)ce.numFmt="#,##0";
       });
       w.getRow(lin).height=22;
     });
-    const tl=6+gr.length;w.getRow(tl).height=24;
-    const tot=["Total",R.n,R.pct==null?null:R.pct/100,R.sit.ANTES,R.sit.NO_PRAZO,R.sit.ATRASO,R.sit.GRAVE,R.sit.SEM_HORARIO,dim==="sup"?R.postos.size:R.sups.size,dim==="sup"?R.min/1440:"",dim==="sup"?Math.round(R.km):""];
+    const tl=6+gr.length,u=5+Math.max(1,gr.length);w.getRow(tl).height=24;
+    const s=c=>fm(`SUM(${c}6:${c}${u})`,0);
+    const tot=["Total",fm(`SUM(B6:B${u})`,R.n),fm(`IFERROR((D${tl}+E${tl})/(B${tl}-H${tl}),"")`,R.pct==null?"":R.pct/100),fm(`SUM(D6:D${u})`,R.sit.ANTES),fm(`SUM(E6:E${u})`,R.sit.NO_PRAZO),fm(`SUM(F6:F${u})`,R.sit.ATRASO),fm(`SUM(G6:G${u})`,R.sit.GRAVE),fm(`SUM(H6:H${u})`,R.sit.SEM_HORARIO),
+      dim==="sup"?fm(`IFERROR(ROUND(SUMPRODUCT((${POSC}<>"")/COUNTIF(${POSC},${POSC}&"")),0),0)`,R.postos.size):fm(`IFERROR(ROUND(SUMPRODUCT((${SUPC}<>"")/COUNTIF(${SUPC},${SUPC}&"")),0),0)`,R.sups.size),
+      dim==="sup"?fm(`SUM(J6:J${u})`,R.min/1440):"",dim==="sup"?fm(`SUM(K6:K${u})`,Math.round(R.km)):""];
     tot.forEach((val,j)=>{const ce=w.getCell(tl,j+1);ce.value=val;ce.font=fonte({size:10,bold:true,color:{argb:BRX.navy}});ce.alignment={vertical:"middle",horizontal:j?"center":"left",indent:j?0:1};ce.border={top:{style:"medium",color:{argb:BRX.navy}}};ce.fill=preenche("FFEEF0F8");if(j===2)ce.numFmt="0%";if(dim==="sup"&&j===9)ce.numFmt='[h]"h"mm';if(dim==="sup"&&j===10)ce.numFmt="#,##0";});
-    if(gr.length)w.autoFilter={from:{row:5,column:1},to:{row:5+gr.length,column:cab.length}};
-    w.getCell(tl+2,1).value=dim==="sup"?"Horas e km são do dia inteiro do supervisor e contam uma vez por dia.":"“3 ou mais”: posto que precisou de 3 ou mais coberturas no período.";
+    if(gr.length){
+      corPct(w,`C6:C${u}`,"C6");
+      w.addConditionalFormatting({ref:`G6:G${u}`,rules:[{type:"cellIs",operator:"greaterThan",priority:4,formulae:[0],style:{fill:dxf(BRX.da[1]),font:{bold:true,color:{argb:BRX.da[0]}}}}]});
+      w.addConditionalFormatting({ref:`F6:F${u}`,rules:[{type:"cellIs",operator:"greaterThan",priority:5,formulae:[0],style:{font:{color:{argb:BRX.am[0]}}}}]});
+      w.autoFilter={from:{row:5,column:1},to:{row:u,column:cab.length}};
+    }
+    w.getCell(tl+2,1).value=dim==="sup"?"Coberturas, situações, percentuais e totais são fórmulas ligadas à aba “Cada cobertura”. Horas e km são do dia inteiro do supervisor e contam uma vez por dia (valores fixos).":"Coberturas, situações, percentuais e totais são fórmulas ligadas à aba “Cada cobertura”. “3 ou mais”: posto que precisou de 3 ou mais coberturas.";
     w.getCell(tl+2,1).font=fonte({size:8.5,italic:true,color:{argb:BRX.mudo}});
     pagina(w,"5:5",true);
   };
   tabela("Por supervisor","sup",BRX.ok[0]);
   tabela("Por posto","posto","FF1D6FC4");
 
-  /* ═══ 4. Cada cobertura ═══ */
+  /* ═══ 4. Cada cobertura (BASE: atraso, minutos e situação são fórmulas) ═══ */
   const wc=wb.addWorksheet("Cada cobertura",{properties:{tabColor:{argb:BRX.am[0]}},views:[{showGridLines:false,state:"frozen",xSplit:1,ySplit:5}]});
   const cab2=["Data","Dia","Supervisor","Posto","Motivo","Quem faltou","RE","Início da vaga","Chegada","Atraso","Minutos","Situação","Referência do início"];
   wc.columns=[{width:13},{width:8},{width:21},{width:30},{width:15},{width:31},{width:10},{width:15},{width:13},{width:23},{width:12},{width:25},{width:29}];
   topo(wc,"Cada cobertura",subTxt,cab2.length);
   wc.getRow(4).height=6;wc.getRow(5).height=30;
-  cab2.forEach((c,i)=>{const ce=wc.getCell(5,i+1);ce.value=c;ce.font=fonte({size:9,bold:true,color:{argb:"FFFFFFFF"}});ce.fill=preenche(BRX.navy);ce.alignment={vertical:"middle",horizontal:i>=6&&i<=10&&i!==5?"center":"left",wrapText:true,indent:i===0?1:0};ce.border={bottom:{style:"medium",color:{argb:BRX.navy}}};});
+  cab2.forEach((c,i)=>{const ce=wc.getCell(5,i+1);ce.value=c;ce.font=fonte({size:9,bold:true,color:{argb:"FFFFFFFF"}});ce.fill=preenche(BRX.navy);ce.alignment={vertical:"middle",horizontal:i>=6&&i<=10?"center":"left",wrapText:true,indent:i===0?1:0};ce.border={bottom:{style:"medium",color:{argb:BRX.navy}}};});
   const hora=h=>{const m=bdvHoraMin(h);return m==null?null:m/1440;};
   idas.forEach((x,i)=>{
-    const lin=6+i,sit=brXSit(x.situacao),d=x.data.split("-");
-    const v=[new Date(Date.UTC(+d[0],+d[1]-1,+d[2])),brSemana(x.data),brNomeCurto(x.supervisor),x.posto||x.destino,brMotivoTxt(x.motivo),x.falta_nome||"",x.falta_re||"",hora(x.inicio),hora(x.chegada),brDifTxt(x),x.diferenca_min,(BR_SIT[x.situacao]||["—"])[0],BR_FONTE[x.fonte_inicio]||""];
+    const lin=6+i,d=x.data.split("-"),K=`K${lin}`,min=x.diferenca_min;
+    const fMin=`IF(OR(H${lin}="",I${lin}=""),"",ROUND(IF((I${lin}-H${lin})*1440<-720,(I${lin}-H${lin})*1440+1440,(I${lin}-H${lin})*1440),0))`;
+    const fAtr=`IF(${K}="","—",IF(${K}<0,IF(-${K}>=60,INT(-${K}/60)&"h"&TEXT(MOD(-${K},60),"00"),-${K}&" min")&" antes do início",IF(${K}=0,"no horário",IF(${K}>=60,INT(${K}/60)&"h"&TEXT(MOD(${K},60),"00"),${K}&" min")&" de atraso")))`;
+    const fSit=`IF(${K}="","Sem horário",IF(${K}<0,"${SITN.ANTES}",IF(${K}<=60,"${SITN.NO_PRAZO}",IF(${K}<=180,"${SITN.ATRASO}","${SITN.GRAVE}"))))`;
+    const v=[new Date(Date.UTC(+d[0],+d[1]-1,+d[2])),brSemana(x.data),brNomeCurto(x.supervisor),x.posto||x.destino,brMotivoTxt(x.motivo),x.falta_nome||"",x.falta_re||"",hora(x.inicio),hora(x.chegada),
+      fm(fAtr,brDifTxt(x)),fm(fMin,min==null?"":min),fm(fSit,(BR_SIT[x.situacao]||["Sem horário"])[0]),BR_FONTE[x.fonte_inicio]||""];
     v.forEach((val,j)=>{
-      const ce=wc.getCell(lin,j+1);ce.value=val;ce.font=fonte({size:10,bold:j===8});ce.alignment={vertical:"middle",horizontal:j===0||j===1||(j>=6&&j<=10)?"center":"left",indent:j===2?1:0};
+      const ce=wc.getCell(lin,j+1);ce.value=val;ce.font=fonte({size:10,bold:j===8||j===9||j===11});ce.alignment={vertical:"middle",horizontal:j===0||j===1||(j>=6&&j<=10)?"center":"left",indent:j===2?1:0};
       ce.border={bottom:{style:"thin",color:{argb:BRX.linha}}};if(i%2)ce.fill=preenche(BRX.faixa);
       if(j===0)ce.numFmt="dd/mm/yyyy";if(j===7||j===8)ce.numFmt="hh:mm";if(j===10)ce.numFmt="0";
-      if(j===11||j===9){ce.font=fonte({size:10,bold:true,color:{argb:sit[0]}});if(j===11)ce.fill=preenche(sit[1]);}
       if(j===12)ce.font=fonte({size:9,color:{argb:BRX.mudo}});
     });
     wc.getRow(lin).height=20;
   });
-  if(idas.length)wc.autoFilter={from:{row:5,column:1},to:{row:5+idas.length,column:cab2.length}};
-  else{wc.mergeCells(6,1,6,cab2.length);const e=wc.getCell(6,1);e.value="Nenhuma cobertura no período, com esses filtros.";e.font=fonte({size:10,italic:true,color:{argb:BRX.mudo}});e.alignment={indent:1};}
-  wc.getCell(7+idas.length,1).value="Minutos: positivo = atraso depois do início da vaga; negativo = chegou antes do início.";wc.getCell(7+idas.length,1).font=fonte({size:8.5,italic:true,color:{argb:BRX.mudo}});
+  if(idas.length){
+    const u=5+idas.length,regra=(cel,txt,cor,p)=>({type:"expression",priority:p,formulae:[`${cel}="${txt}"`],style:{fill:dxf(cor[1]),font:{bold:true,color:{argb:cor[0]}}}});
+    wc.addConditionalFormatting({ref:`L6:L${u}`,rules:[regra("$L6",SITN.ANTES,BRX.an,1),regra("$L6",SITN.NO_PRAZO,BRX.ok,2),regra("$L6",SITN.ATRASO,BRX.am,3),regra("$L6",SITN.GRAVE,BRX.da,4),regra("$L6","Sem horário",BRX.gr,5)]});
+    const txtCor=(txt,cor,p)=>({type:"expression",priority:p,formulae:[`$L6="${txt}"`],style:{font:{bold:true,color:{argb:cor[0]}}}});
+    wc.addConditionalFormatting({ref:`J6:J${u}`,rules:[txtCor(SITN.ANTES,BRX.an,6),txtCor(SITN.NO_PRAZO,BRX.ok,7),txtCor(SITN.ATRASO,BRX.am,8),txtCor(SITN.GRAVE,BRX.da,9)]});
+    wc.autoFilter={from:{row:5,column:1},to:{row:u,column:cab2.length}};
+  }else{wc.mergeCells(6,1,6,cab2.length);const e=wc.getCell(6,1);e.value="Nenhuma cobertura no período, com esses filtros.";e.font=fonte({size:10,italic:true,color:{argb:BRX.mudo}});e.alignment={indent:1};}
+  wc.getCell(7+idas.length,1).value="Atraso, Minutos e Situação são fórmulas: ao mudar o Início da vaga ou a Chegada, eles e todos os totais das outras abas se recalculam. Minutos: positivo = depois do início da vaga; negativo = antes.";
+  wc.getCell(7+idas.length,1).font=fonte({size:8.5,italic:true,color:{argb:BRX.mudo}});
   pagina(wc,"5:5",true);
 
   /* ═══ 5. Por situação (agrupado, com linhas que se recolhem) ═══ */
@@ -12745,28 +12779,30 @@ async function brXlsxMontar(Ex,logo,ctx){
   const cabG=["Data","Dia","Supervisor","Posto","Motivo","Quem faltou","RE","Início da vaga","Chegada","Atraso"];
   wg.columns=[{width:13},{width:8},{width:21},{width:30},{width:15},{width:31},{width:10},{width:15},{width:13},{width:23}];
   topo(wg,"Por situação",subTxt,cabG.length);wg.getRow(4).height=6;
-  let rg=5;
-  [["ANTES","Antes do início da vaga","O supervisor chegou antes de a vaga começar"],["NO_PRAZO","Até 1h de atraso","Chegou até 1 hora depois do início da vaga"],["ATRASO","1 a 3h de atraso","Chegou de 1 a 3 horas depois do início da vaga"],["GRAVE","Mais de 3h de atraso","Chegou mais de 3 horas depois do início da vaga"]].forEach(([k,nome,desc])=>{
-    const lista=idas.filter(x=>x.situacao===k),cor=brXSit(k),pct=R.medidas?lista.length/R.medidas:0;
-    wg.getRow(rg).height=30;
-    wg.mergeCells(rg,1,rg,cabG.length);const b=wg.getCell(rg,1);
-    b.value=`${nome}   ·   ${lista.length} ${lista.length===1?"cobertura":"coberturas"}${R.medidas?"  ("+Math.round(pct*100)+"% das coberturas)":""}   ·   ${desc}`;
+  let rr=5;
+  [["ANTES","O supervisor chegou antes de a vaga começar"],["NO_PRAZO","Chegou até 1 hora depois do início da vaga"],["ATRASO","Chegou de 1 a 3 horas depois do início da vaga"],["GRAVE","Chegou mais de 3 horas depois do início da vaga"]].forEach(([k,desc])=>{
+    const nome=SITN[k],lista=idas.filter(x=>x.situacao===k),cor=brXSit(k),pct=den?lista.length/den:0;
+    wg.getRow(rr).height=30;
+    wg.mergeCells(rr,1,rr,cabG.length);const b=wg.getCell(rr,1);
+    const cn=`COUNTIF(${SITC},"${nome}")`;
+    b.value=fm(`"${nome}   ·   "&${cn}&IF(${cn}=1," cobertura"," coberturas")&IFERROR("  ("&TEXT(${cn}/(COUNTIF(${SITC},"${SITN.ANTES}")+COUNTIF(${SITC},"${SITN.NO_PRAZO}")+COUNTIF(${SITC},"${SITN.ATRASO}")+COUNTIF(${SITC},"${SITN.GRAVE}")),"0%")&" das coberturas)","")&"   ·   ${desc}"`,
+      `${nome}   ·   ${lista.length} ${lista.length===1?"cobertura":"coberturas"}${den?"  ("+Math.round(pct*100)+"% das coberturas)":""}   ·   ${desc}`);
     b.font=fonte({size:11.5,bold:true,color:{argb:cor[0]}});b.fill=preenche(cor[1]);b.alignment={vertical:"middle",indent:1};
-    for(let c=1;c<=cabG.length;c++)wg.getCell(rg,c).border={left:c===1?{style:"thick",color:{argb:cor[0]}}:undefined,bottom:{style:"thin",color:{argb:cor[0]}}};
-    rg++;
-    if(!lista.length){wg.mergeCells(rg,1,rg,cabG.length);const e=wg.getCell(rg,1);e.value="Nenhuma cobertura nesta situação.";e.font=fonte({size:9.5,italic:true,color:{argb:BRX.mudo}});e.alignment={indent:2};wg.getRow(rg).outlineLevel=1;rg+=2;return;}
+    for(let c=1;c<=cabG.length;c++)wg.getCell(rr,c).border={left:c===1?{style:"thick",color:{argb:cor[0]}}:undefined,bottom:{style:"thin",color:{argb:cor[0]}}};
+    rr++;
+    if(!lista.length){wg.mergeCells(rr,1,rr,cabG.length);const e=wg.getCell(rr,1);e.value="Nenhuma cobertura nesta situação.";e.font=fonte({size:9.5,italic:true,color:{argb:BRX.mudo}});e.alignment={indent:2};wg.getRow(rr).outlineLevel=1;rr+=2;return;}
     const sup=brAgrupa(lista,x=>x.supervisor).sort((a,b2)=>b2.n-a.n||a.nome.localeCompare(b2.nome));
-    wg.mergeCells(rg,1,rg,cabG.length);const rs=wg.getCell(rg,1);rs.value="Por supervisor:  "+sup.map(x=>brNomeCurto(x.nome)+" "+x.n).join("   ·   ");rs.font=fonte({size:9,color:{argb:BRX.mudo}});rs.alignment={indent:2,vertical:"middle",wrapText:true};wg.getRow(rg).height=Math.max(18,Math.ceil(rs.value.length/150)*15+4);wg.getRow(rg).outlineLevel=1;rg++;
-    cabG.forEach((c,i)=>{const ce=wg.getCell(rg,i+1);ce.value=c;ce.font=fonte({size:9,bold:true,color:{argb:"FFFFFFFF"}});ce.fill=preenche(BRX.navy);ce.alignment={vertical:"middle",horizontal:i===0?"left":(i>=6?"center":"left"),indent:i===0?1:0};});
-    wg.getRow(rg).height=22;wg.getRow(rg).outlineLevel=1;rg++;
+    wg.mergeCells(rr,1,rr,cabG.length);const rs=wg.getCell(rr,1);rs.value="Por supervisor:  "+sup.map(x=>brNomeCurto(x.nome)+" "+x.n).join("   ·   ");rs.font=fonte({size:9,color:{argb:BRX.mudo}});rs.alignment={indent:2,vertical:"middle",wrapText:true};wg.getRow(rr).height=Math.max(18,Math.ceil(rs.value.length/150)*15+4);wg.getRow(rr).outlineLevel=1;rr++;
+    cabG.forEach((c,i)=>{const ce=wg.getCell(rr,i+1);ce.value=c;ce.font=fonte({size:9,bold:true,color:{argb:"FFFFFFFF"}});ce.fill=preenche(BRX.navy);ce.alignment={vertical:"middle",horizontal:i===0?"left":(i>=6?"center":"left"),indent:i===0?1:0};});
+    wg.getRow(rr).height=22;wg.getRow(rr).outlineLevel=1;rr++;
     lista.slice().sort((a,b2)=>(b2.diferenca_min||0)-(a.diferenca_min||0)||a.data.localeCompare(b2.data)).forEach((x,i)=>{
       const d=x.data.split("-"),v=[new Date(Date.UTC(+d[0],+d[1]-1,+d[2])),brSemana(x.data),brNomeCurto(x.supervisor),x.posto||x.destino,brMotivoTxt(x.motivo),x.falta_nome||"",x.falta_re||"",hora(x.inicio),hora(x.chegada),brDifTxt(x)];
-      v.forEach((val,j)=>{const ce=wg.getCell(rg,j+1);ce.value=val;ce.font=fonte({size:10,bold:j===8||j===9,color:j===9?{argb:cor[0]}:undefined});ce.alignment={vertical:"middle",horizontal:j===0||j===1||j>=6?"center":"left",indent:j===2?1:0};ce.border={bottom:{style:"thin",color:{argb:BRX.linha}}};if(i%2)ce.fill=preenche(BRX.faixa);if(j===0)ce.numFmt="dd/mm/yyyy";if(j===7||j===8)ce.numFmt="hh:mm";});
-      wg.getRow(rg).height=20;wg.getRow(rg).outlineLevel=1;rg++;
+      v.forEach((val,j)=>{const ce=wg.getCell(rr,j+1);ce.value=val;ce.font=fonte({size:10,bold:j===8||j===9,color:j===9?{argb:cor[0]}:undefined});ce.alignment={vertical:"middle",horizontal:j===0||j===1||j>=6?"center":"left",indent:j===2?1:0};ce.border={bottom:{style:"thin",color:{argb:BRX.linha}}};if(i%2)ce.fill=preenche(BRX.faixa);if(j===0)ce.numFmt="dd/mm/yyyy";if(j===7||j===8)ce.numFmt="hh:mm";});
+      wg.getRow(rr).height=20;wg.getRow(rr).outlineLevel=1;rr++;
     });
-    rg++;
+    rr++;
   });
-  wg.getCell(rg,1).value="Use os botões 1 e 2 no canto superior esquerdo da planilha (ou o sinal de + e − ao lado das linhas) para recolher ou abrir cada situação.";wg.getCell(rg,1).font=fonte({size:8.5,italic:true,color:{argb:BRX.mudo}});
+  wg.getCell(rr,1).value="Os totais de cada faixa (no título colorido) são fórmulas ligadas à aba “Cada cobertura”; a lista abaixo de cada faixa é da data em que o arquivo foi gerado. Use os botões 1 e 2 no canto superior esquerdo (ou o + e − ao lado das linhas) para recolher ou abrir cada situação.";wg.getCell(rr,1).font=fonte({size:8.5,italic:true,color:{argb:BRX.mudo}});
   /* escala fixa (e não "ajustar à largura"): o ExcelJS escreve as duas marcações na ordem errada e o Excel recusaria o arquivo */
   pagina(wg,null,true);wg.pageSetup.fitToPage=false;delete wg.pageSetup.fitToWidth;delete wg.pageSetup.fitToHeight;wg.pageSetup.scale=66;
 
@@ -12775,16 +12811,17 @@ async function brXlsxMontar(Ex,logo,ctx){
   wm.columns=[{width:3},{width:30},{width:90}];
   wm.getRow(1).height=30;wm.mergeCells("B1:C1");const mt=wm.getCell("B1");mt.value="Como é calculado";mt.font=fonte({size:18,bold:true,color:{argb:BRX.navy}});mt.alignment={vertical:"middle"};
   if(logo){const id=wb.addImage({base64:logo,extension:"png"});wm.addImage(id,{tl:{col:2.55,row:0.1},ext:{width:130,height:38}});}
-  [["Atraso","Chegada do supervisor ao posto menos o início da vaga de quem faltou. Quando o supervisor chegou antes do início, aparece como “antes do início”."],
+  [["Atraso","Chegada do supervisor ao posto menos o início da vaga de quem faltou. Quando o supervisor chegou antes do início, aparece como “antes do início”. Na aba “Cada cobertura” é uma fórmula: Minutos = (Chegada − Início da vaga) em minutos."],
+   ["Situação","Fórmula na aba “Cada cobertura”: antes do início da vaga (minutos negativos); até 1h de atraso (0 a 60); 1 a 3h de atraso (61 a 180); mais de 3h de atraso (acima de 180). Sem início ou sem chegada: “Sem horário”."],
    ["Início da vaga","1º: horário da vaga de quem faltou (planilha de faltas). 2º: jornada da pessoa naquele posto. Nas idas sem falta (férias, agenda, posto vago…): o turno do posto que já tinha começado; se o supervisor chegou antes de todos, o primeiro turno."],
-   ["Chegou em até 1h","Percentual das coberturas com horário em que o supervisor chegou antes do início da vaga ou até 1 hora depois."],
-   ["1 a 3h de atraso","Chegou de 1 a 3 horas depois do início da vaga."],["Mais de 3h de atraso","Chegou mais de 3 horas depois do início da vaga."],
+   ["Chegou em até 1h","Percentual das coberturas com horário em que o supervisor chegou antes do início da vaga ou até 1 hora depois. Fórmula: (antes do início + até 1h) ÷ (coberturas − sem horário)."],
    ["Duas faltas no mesmo posto","São duas coberturas, cada uma com o horário da sua vaga."],
-   ["Horas e km em campo","São do dia inteiro do supervisor e contam uma vez por supervisor e dia (a planilha repete esses valores em todas as idas do dia)."],
+   ["Horas e km em campo","São do dia inteiro do supervisor e contam uma vez por supervisor e dia (a planilha repete esses valores em todas as idas do dia). Valores fixos."],
    ["Fora das contas","Idas à sede e destinos escritos em texto livre (por exemplo, “deixar colaborador em casa”) não são posto. Coberturas sem horário da vaga nem do posto não entram nos percentuais."],
+   ["Fórmulas","Capa, “Por supervisor”, “Por posto” e os totais de “Por situação” são calculados a partir da aba “Cada cobertura”. Corrigir um horário ou apagar uma linha lá recalcula tudo."],
    ["Fonte","Aba BDV do SAR2G, cruzada com a planilha de faltas e a jornada dos funcionários."]].forEach(([a,b],i)=>{
-    const rr=3+i;wm.getRow(rr).height=Math.max(24,Math.ceil(b.length/95)*16+8);
-    const x=wm.getCell(rr,2),y=wm.getCell(rr,3);x.value=a;x.font=fonte({size:10,bold:true,color:{argb:BRX.navy}});x.alignment={vertical:"top",indent:1,wrapText:true};
+    const r2=3+i;wm.getRow(r2).height=Math.max(24,Math.ceil(b.length/95)*16+8);
+    const x=wm.getCell(r2,2),y=wm.getCell(r2,3);x.value=a;x.font=fonte({size:10,bold:true,color:{argb:BRX.navy}});x.alignment={vertical:"top",indent:1,wrapText:true};
     y.value=b;y.font=fonte({size:10});y.alignment={vertical:"top",wrapText:true};
     [x,y].forEach(ce=>{ce.border={bottom:{style:"thin",color:{argb:BRX.linha}}};if(i%2)ce.fill=preenche(BRX.faixa);});
   });
