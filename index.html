@@ -2722,7 +2722,8 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       #pg-bdvrel .br-dist{display:flex;gap:2px;height:6px;margin:12px 0 0;border-radius:3px;overflow:hidden}
       #pg-bdvrel .br-dist i{display:block;height:100%;transition:flex .3s}
       :is(#pg-bdvrel) .s-an{background:#0e9384}:is(#pg-bdvrel) .s-ok{background:#17b26a}:is(#pg-bdvrel) .s-am{background:#f5b000}:is(#pg-bdvrel) .s-da{background:#f04438}:is(#pg-bdvrel) .s-gr{background:#d0d5dd}
-      #pg-bdvrel .br-res{margin:18px 0 0;padding:16px 20px;border:1px solid var(--fm-line);border-radius:14px;background:var(--fm-surface)}
+      #pg-bdvrel .br-res{margin:18px 0 0;padding:16px 20px;border:1px solid var(--fm-line);border-radius:14px;background:var(--fm-surface);animation:brAbre .22s ease-out}
+      #pg-bdvrel .br-res h4 span{font-size:.76rem;font-weight:600;color:var(--fm-brand-tx);background:var(--fm-sel);border-radius:999px;padding:2px 10px;margin-left:8px;vertical-align:1px}
       #pg-bdvrel .br-res h4,#pg-bdvrel .br-tb h4{font-size:.95rem;font-weight:700;margin:0;color:var(--fm-text)}
       #pg-bdvrel .br-res ul{margin:10px 0 0;padding:0;list-style:none;display:grid;gap:7px}
       #pg-bdvrel .br-res li{position:relative;padding-left:16px;font-size:.85rem;line-height:1.55;color:var(--fm-text2)}
@@ -12170,20 +12171,65 @@ function brFiltroTxt(f){
 /* Resumo: só fatos, com os números que somam. Nada de "melhor/pior". */
 function brResumo(f){
   const L=brLinhas(f),R=brConta(L),pl=(n,a,b)=>n===1?a:b,out=[];
-  if(!R.n)return["Nenhuma cobertura do supervisor no período."];
-  out.push(`<b>${R.n}</b> ${pl(R.n,"cobertura feita","coberturas feitas")} pelo supervisor, em <b>${R.postos.size}</b> ${pl(R.postos.size,"posto","postos")}.`);
-  if(R.medidas){
-    let x=`<b>${R.pct}%</b> com o supervisor chegando em até 1h do início da vaga`;
-    if(brCompOk()){const A=brConta(brLinhas(f,true));if(A.medidas)x+=` (período anterior: ${A.pct}%)`;}
-    out.push(x+".");
+  const cob=n=>n+" "+(f.mot==="FALTA"?pl(n,"cobertura de falta","coberturas de falta"):f.mot==="OUTROS"?pl(n,"cobertura por outro motivo","coberturas por outros motivos"):pl(n,"cobertura","coberturas"));
+  if(!R.n)return["Nenhuma cobertura do supervisor nesse período com esses filtros."];
+  const A=brCompOk()?brConta(brLinhas(f,true)):null;
+  const ant=(x,y)=>A&&y!=null?` (período anterior: ${y})`:"";
+  const pctTxt=r=>r.medidas?`<b>${r.pct}%</b> em até 1h`:"sem horário para comparar";
+  const graveTxt=r=>r.sit.GRAVE?`<b>${r.sit.GRAVE}</b> com mais de 3h de atraso`:"nenhuma com mais de 3h de atraso";
+  const nomeS=n=>_esc(brNomeCurto(n)),nomeP=n=>_esc(n);
+  const ns=f.sups.length,np=f.postos.length;
+  /* atrasos de mais de 3h, um a um quando são poucos */
+  const graves=(L2,comPosto,comSup)=>{
+    const g=L2.filter(x=>x.situacao==="GRAVE").sort((a,b)=>a.data.localeCompare(b.data));
+    if(!g.length)return"Nenhuma cobertura com mais de 3h de atraso.";
+    if(g.length<=4)return`Mais de 3h de atraso: ${brLista(g.map(x=>[comPosto?nomeP(x.posto||x.destino):"",comSup?nomeS(x.supervisor):"",`em ${brDdC(x.data)} (${brHM(x.diferenca_min)})`].filter(Boolean).join(" ")))}.`;
+    const q=brAgrupa(g,x=>comSup?x.supervisor:x.posto).sort((a,b)=>b.n-a.n||a.nome.localeCompare(b.nome));
+    return`<b>${g.length}</b> com mais de 3h de atraso: ${brLista(q.slice(0,5).map(x=>`${comSup?nomeS(x.nome):nomeP(x.nome)} (${x.n})`))}${q.length>5?` e mais ${q.length-5}`:""}.`;
+  };
+  const motivos=r=>{const m=Object.entries(r.motivos).sort((a,b)=>b[1]-a[1]);const l=m.slice(0,4).map(([k,v])=>brMotivoTxt(k).toLowerCase()+" "+v);return m.length?"Motivos: "+(m.length>4?l.join(", ")+" e outros":brLista(l))+".":"";};
+  const comparar=(dim)=>{
+    const gr=brAgrupa(L,x=>dim==="sup"?x.supervisor:x.posto).sort((a,b)=>b.n-a.n||a.nome.localeCompare(b.nome));
+    gr.forEach(x=>out.push(`<b>${dim==="sup"?nomeS(x.nome):nomeP(x.nome)}</b>: ${cob(x.n)} · ${pctTxt(x)} · ${graveTxt(x)}.`));
+    out.push(`Juntos: ${cob(R.n)}, ${pctTxt(R)}${ant(R.pct,A&&A.pct!=null?A.pct+"%":null)}.`);
+  };
+  if(ns===1&&np<=1){
+    const quem=nomeS(f.sups[0]),onde=np===1?` no posto <b>${nomeP(f.postos[0])}</b>`:` em <b>${R.postos.size}</b> ${pl(R.postos.size,"posto","postos")}`;
+    out.push(`<b>${quem}</b> fez <b>${cob(R.n)}</b>${onde}${ant(R.n,A?A.n:null)}.`);
+    if(R.medidas)out.push(`Chegou em até 1h do início da vaga em <b>${R.pct}%</b> delas (${R.ate1h} de ${R.medidas}).${A&&A.pct!=null?` Período anterior: ${A.pct}%.`:""}`);
+    out.push(graves(L,np!==1,false));
+    if(np!==1){const top=brAgrupa(L,x=>x.posto).sort((a,b)=>b.n-a.n||a.nome.localeCompare(b.nome))[0];if(top&&top.n>=2)out.push(`Posto onde mais cobriu: <b>${nomeP(top.nome)}</b> (${top.n}).`);}
+    const m=motivos(R);if(m)out.push(m);
+    return out;
   }
+  if(ns>=2){comparar("sup");if(np===1)out.unshift(`No posto <b>${nomeP(f.postos[0])}</b>:`);return out;}
+  if(np===1){
+    const quem=brAgrupa(L,x=>x.supervisor).sort((a,b)=>b.n-a.n||a.nome.localeCompare(b.nome));
+    out.push(`<b>${nomeP(f.postos[0])}</b> precisou de <b>${cob(R.n)}</b>${ant(R.n,A?A.n:null)}, ${quem.length===1?"todas com":"feitas por"} ${brLista(quem.map(x=>`${nomeS(x.nome)}${quem.length>1?" ("+x.n+")":""}`))}.`);
+    const m=motivos(R);if(m)out.push(m);
+    if(R.medidas)out.push(`O supervisor chegou em até 1h do início da vaga em <b>${R.pct}%</b> delas (${R.ate1h} de ${R.medidas}).${A&&A.pct!=null?` Período anterior: ${A.pct}%.`:""}`);
+    out.push(graves(L,false,true));
+    return out;
+  }
+  if(np>=2){comparar("posto");return out;}
+  /* sem seleção: o quadro geral */
+  out.push(`<b>${cob(R.n)}</b> feitas pelo supervisor, em <b>${R.postos.size}</b> ${pl(R.postos.size,"posto","postos")}${ant(R.n,A?A.n:null)}.`);
+  if(R.medidas)out.push(`<b>${R.pct}%</b> com o supervisor chegando em até 1h do início da vaga${ant(R.pct,A&&A.pct!=null?A.pct+"%":null)}.`);
   if(R.sit.GRAVE){
     const g=brAgrupa(L.filter(x=>x.situacao==="GRAVE"),x=>x.supervisor).sort((a,b)=>b.n-a.n||a.nome.localeCompare(b.nome));
-    out.push(`<b>${R.sit.GRAVE}</b> ${pl(R.sit.GRAVE,"cobertura","coberturas")} com mais de 3h de atraso: ${brLista(g.map(x=>`${_esc(brNomeCurto(x.nome))} (${x.n})`))}.`);
+    out.push(`<b>${R.sit.GRAVE}</b> ${pl(R.sit.GRAVE,"cobertura","coberturas")} com mais de 3h de atraso: ${brLista(g.map(x=>`${nomeS(x.nome)} (${x.n})`))}.`);
   }else if(R.medidas)out.push("Nenhuma cobertura com mais de 3h de atraso.");
   const top=brAgrupa(L,x=>x.posto).sort((a,b)=>b.n-a.n||a.nome.localeCompare(b.nome))[0];
-  if(top&&top.n>=2)out.push(`Posto que mais precisou de cobertura: <b>${_esc(top.nome)}</b> (${top.n}).`);
+  if(top&&top.n>=2)out.push(`Posto que mais precisou de cobertura: <b>${nomeP(top.nome)}</b> (${top.n}).`);
   return out;
+}
+/* O que o resumo está mostrando, em poucas palavras: período e filtros. */
+function brEscopo(f){
+  const p=[`${brDdC(BR.de)} a ${brDdC(brAteEfetivo())}`];
+  if(f.sups.length)p.push(f.sups.length<=2?brLista(f.sups.map(brNomeCurto)):f.sups.length+" supervisores");
+  if(f.postos.length)p.push(f.postos.length<=2?brLista(f.postos):f.postos.length+" postos");
+  if(f.mot)p.push(f.mot==="FALTA"?"só faltas":"outros motivos");
+  return p.join(" · ");
 }
 
 /* ── seletor com busca e várias escolhas (supervisores, postos) ── */
@@ -12349,7 +12395,7 @@ function brPintaConteudo(){
   if(!D.disponivel.primeiro)h+=`<p class="br-aviso">Nenhuma planilha guardada traz idas do supervisor (aba BDV) para essas datas.</p>`;
   else if(D.disponivel.primeiro>BR.de)h+=`<p class="br-aviso">Não há dado antes de <b>${brDd(D.disponivel.primeiro)}</b>: as planilhas guardadas começam aí.</p>`;
   h+=brKpis(R,A);
-  h+=`<section class="br-res"><h4>Resumo</h4><ul>${brResumo(f).map(x=>`<li>${x}</li>`).join("")}</ul></section>`;
+  h+=`<section class="br-res"><h4>Resumo <span>${_esc(brEscopo(f))}</span></h4><ul>${brResumo(f).map(x=>`<li>${x}</li>`).join("")}</ul></section>`;
   h+=`<section class="br-tb"><div class="br-tb-h"><h4>Por ${BR.vis==="sup"?"supervisor":"posto"}</h4><div class="br-seg sm" id="brVis" role="group" aria-label="Agrupar por"><button type="button" data-v="sup" class="${BR.vis==="sup"?"on":""}" onclick="brVisao('sup');this.closest('.br-tb').querySelector('h4').textContent='Por supervisor'">Supervisor</button><button type="button" data-v="posto" class="${BR.vis==="posto"?"on":""}" onclick="brVisao('posto');this.closest('.br-tb').querySelector('h4').textContent='Por posto'">Posto</button></div></div><div class="br-tw" id="brTab">${brTabelaHtml(L)}</div></section>`;
   h+=`<details class="br-como"><summary>${BR_IC.info}Como é calculado</summary><p>A referência é o horário de início da vaga de quem faltou (da planilha de faltas ou, nas planilhas antigas, da jornada da pessoa naquele posto). Nas idas sem falta (férias, agenda, posto vago…), vale o turno do posto que já tinha começado; se o supervisor chegou antes de todos, o primeiro turno. Duas pessoas faltaram no mesmo posto: são duas coberturas. Horas e km são do dia inteiro do supervisor e contam uma vez por dia. Idas à sede e destinos em texto livre ficam fora das contas.${R.fora||R.sit.SEM_HORARIO?` Neste período ficaram de fora: ${brLista([R.fora?R.fora+" "+(R.fora===1?"ida":"idas")+" à sede ou com destino em texto livre":"",R.sit.SEM_HORARIO?R.sit.SEM_HORARIO+" sem horário da vaga nem do posto":""].filter(Boolean))}.`:""}</p></details>`;
   el.innerHTML=h;
@@ -12401,7 +12447,7 @@ function brPapelHtmlCtx(){
     `<div><span>1 a 3h de atraso</span><b class="s-am">${R.sit.ATRASO}</b><small>${R.medidas?brPct(R.sit.ATRASO,R.medidas)+"% das coberturas":"—"}</small>${A?`<small>Período anterior: ${A.sit.ATRASO}</small>`:""}</div>`+
     `<div><span>Mais de 3h de atraso</span><b class="s-da">${R.sit.GRAVE}</b><small>${R.medidas?brPct(R.sit.GRAVE,R.medidas)+"% das coberturas":"—"}</small>${A?`<small>Período anterior: ${A.sit.GRAVE}</small>`:""}</div>`+
     `<div><span>Horas em campo</span><b>${brHM(R.min)}</b><small>${Math.round(R.km).toLocaleString("pt-BR")} km</small></div></div>`;
-  if(P.res)h+=`<div class="pp-r"><b>Resumo</b><ul>${brResumo(f).map(x=>`<li>${x}</li>`).join("")}</ul></div>`;
+  if(P.res)h+=`<div class="pp-r"><b>Resumo</b> <small>${_esc(brEscopo(f))}</small><ul>${brResumo(f).map(x=>`<li>${x}</li>`).join("")}</ul></div>`;
   const tabela=dim=>{
     const gr=brAgrupa(L,x=>dim==="sup"?x.supervisor:x.posto).sort((a,b)=>b.n-a.n||a.nome.localeCompare(b.nome));
     if(!gr.length)return"";
