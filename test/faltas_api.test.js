@@ -167,7 +167,7 @@ test("rota desconhecida", async () => {
 test("importar pelo api/import.js guarda as faltas junto", async () => {
   const importar = require("../api/import");
   const tab = tabelasVazias(); supabaseFalso(tab);
-  const r = await chamar(importar, { method: "POST", headers: { "content-type": "application/json" }, body: { data: { ...planilha(), clientes: [] }, source_filename: "Base dados.xlsx" } });
+  const r = await chamar(importar, { method: "POST", usuario: "aprovador", headers: { "content-type": "application/json" }, body: { data: { ...planilha(), clientes: [] }, source_filename: "Base dados.xlsx" } });
   assert.equal(r.statusCode, 200);
   assert.equal(tab.dashboard_snapshots.length, 1);
   assert.equal(tab.fm_faltas.length, 1);
@@ -180,7 +180,7 @@ test("importar pelo api/import.js guarda as faltas junto", async () => {
 test("falha no módulo não derruba a importação da planilha", async () => {
   const importar = require("../api/import");
   const tab = tabelasVazias(); supabaseFalso(tab, { falhar: (metodo, caminho) => caminho.startsWith("fm_") });
-  const r = await chamar(importar, { method: "POST", headers: { "content-type": "application/json" }, body: { data: { ...planilha(), clientes: [] } } });
+  const r = await chamar(importar, { method: "POST", usuario: "aprovador", headers: { "content-type": "application/json" }, body: { data: { ...planilha(), clientes: [] } } });
   assert.equal(r.statusCode, 200);
   assert.equal(tab.dashboard_snapshots.length, 1, "o snapshot foi salvo");
   assert.equal(r.body.faltas_medidas.ok, false, "e a resposta avisa que o módulo falhou, em vez de calar");
@@ -206,7 +206,7 @@ test("retorno numa planilha seguinte: os dias de quem faltou antes continuam sen
 test("a cópia da planilha que as telas carregam não leva os dias da ficha", async () => {
   const importar = require("../api/import");
   const tab = tabelasVazias(); supabaseFalso(tab);
-  await chamar(importar, { method: "POST", headers: { "content-type": "application/json" }, body: { data: { ...planilha(), clientes: [] } } });
+  await chamar(importar, { method: "POST", usuario: "aprovador", headers: { "content-type": "application/json" }, body: { data: { ...planilha(), clientes: [] } } });
   assert.equal(tab.dashboard_snapshots[0].data.fichaDias, undefined);
   assert.equal(tab.fm_dias.length, 2, "mas o módulo guardou");
 });

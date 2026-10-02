@@ -112,7 +112,7 @@ test("materialização e reimportação", async t => {
 test("importar pelo api/import.js materializa junto", async () => {
   const tabelas = { pt_config: config("2026-09-01"), pt_contatos: contatos() };
   supabaseFalso(tabelas);
-  const r = await chamar(importar, { method: "POST", headers: { "content-type": "application/json" }, body: { data: planilha(), source_filename: "Base dados.xlsx" } });
+  const r = await chamar(importar, { method: "POST", usuario: "aprovador", headers: { "content-type": "application/json" }, body: { data: planilha(), source_filename: "Base dados.xlsx" } });
   assert.equal(r.statusCode, 200);
   assert.equal(tabelas.dashboard_snapshots.length, 1);
   assert.equal(tabelas.pt_ocorrencias.length, 3);
@@ -122,7 +122,7 @@ test("importar pelo api/import.js materializa junto", async () => {
 test("falha no módulo de ponto não derruba a importação da planilha", async () => {
   const tabelas = { pt_config: config("2026-09-01") };
   supabaseFalso(tabelas, { falhar: (metodo, caminho) => caminho.startsWith("pt_") });
-  const r = await chamar(importar, { method: "POST", headers: { "content-type": "application/json" }, body: { data: planilha() } });
+  const r = await chamar(importar, { method: "POST", usuario: "aprovador", headers: { "content-type": "application/json" }, body: { data: planilha() } });
   assert.equal(r.statusCode, 200);
   assert.equal(tabelas.dashboard_snapshots.length, 1, "o snapshot foi salvo");
 });
