@@ -10739,9 +10739,21 @@ function fsMeuSup(){
   if(!nome)return"";
   return l.find(s=>fsNorm(s)===nome)||(nome.indexOf(" ")<0?l.find(s=>fsNorm(s).split(" ")[0]===nome):"")||"";
 }
+/* Lembra, neste computador, qual supervisor a coordenação/admin escolheu para "ver como". */
+function fsLer(k){try{return localStorage.getItem(k)||"";}catch(e){return"";}}
+function fsGravar(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+/* O supervisor com mais casos em aberto: ponto de partida de quem não é supervisor. */
+function fsComoPadrao(l){
+  const n={};FM.dados.casos.forEach(c=>{if(c.supervisor&&FM_ABERTAS.indexOf(c.situacao)>=0)n[c.supervisor]=(n[c.supervisor]||0)+1;});
+  return[...l].sort((a,b)=>(n[b]||0)-(n[a]||0)||a.localeCompare(b))[0]||"";
+}
+/* Qual área vale em "Minha área": a do supervisor logado ou, para admin/coordenação, a do supervisor escolhido em "Ver como". */
 function fsEscopo(){
-  const meu=fsMeuSup(),v=FS.vista||(meu?"minha":"todas");
-  return{meu,vista:(v==="minha"&&meu)?"minha":"todas"};
+  const real=fsMeuSup(),l=fsSupsLista();
+  let meu=real;
+  if(!meu){const c=FS.como||fsLer("fsComo");meu=l.indexOf(c)>=0?c:fsComoPadrao(l);}
+  const v=FS.vista||(real?"minha":"todas");
+  return{meu,real,simulado:!real&&!!meu,vista:(v==="minha"&&meu)?"minha":"todas"};
 }
 function fsNaArea(sup){const e=fsEscopo();return e.vista==="minha"?sup===e.meu:(!FS.sup||sup===FS.sup);}
 function fsCat(c,hoje){
@@ -10782,11 +10794,12 @@ function fsRender(){
   const abertas=base.filter(doAbertas),tratadas=base.filter(c=>c.situacao==="TRATADA"||c.situacao==="TRATADA_FORA_DO_PRAZO");
   const nHist=(FM.hist&&!FM.hist.erro)?fmHistPessoas().filter(p=>p.val.length&&fsNaArea(p.supervisor)).length:null;
   // quem está sendo visto
-  const quem=e.vista==="minha"?"Área de "+fmNomeCard(e.meu):(FS.sup?"Área de "+fmNomeCard(FS.sup):"Todas as áreas");
+  const quem=e.vista==="minha"?"Área de "+fmNomeCard(e.meu)+(e.simulado?" (visão de supervisor)":""):(FS.sup?"Área de "+fmNomeCard(FS.sup):"Todas as áreas");
   const sups=fsSupsLista();
+  const verComo=(e.simulado&&e.vista==="minha")?`<div class="fm-selb on"><span class="ic">${FM_IC.user}</span><label><span class="t">Ver como:</span><select aria-label="Ver como qual supervisor" onchange="FS.como=this.value;fsGravar('fsComo',this.value);FS.ab={};fsRender()">${sups.map(s=>`<option value="${_esc(s)}"${s===e.meu?" selected":""}>${_esc(fmNomeCard(s))}</option>`).join("")}</select><span class="chv">${FM_IC.chev}</span></label></div>`:"";
   const seg=e.meu?`<div class="fm-seg" role="group" aria-label="Área"><button class="${e.vista==="minha"?"on":""}" onclick="FS.vista='minha';FS.ab={};fsRender()">Minha área</button><button class="${e.vista==="todas"?"on":""}" onclick="FS.vista='todas';FS.ab={};fsRender()">Todas as áreas</button></div>`:"";
   const selSup=e.vista==="todas"?`<div class="fm-selb${FS.sup?" on":""}"><span class="ic">${FM_IC.user}</span><label><span class="t">Supervisor:</span><select aria-label="Supervisor" onchange="FS.sup=this.value;FS.ab={};fsRender()"><option value="">Todos</option>${sups.map(s=>`<option value="${_esc(s)}"${s===FS.sup?" selected":""}>${_esc(fmNomeCard(s))}</option>`).join("")}</select><span class="chv">${FM_IC.chev}</span></label></div>`:"";
-  let h=`<div class="fs-top"><div><h4>Faltas injustificadas</h4><p>${_esc(quem)} · quem faltou sem justificativa, até quando aplicar a medida e o histórico de cada pessoa. Dados da planilha de <b>${fmDdA(j.dataBase)}</b>.</p></div><div class="fs-esc">${seg}${selSup}</div></div>`;
+  let h=`<div class="fs-top"><div><h4>Faltas injustificadas</h4><p>${_esc(quem)} · quem faltou sem justificativa, até quando aplicar a medida e o histórico de cada pessoa. Dados da planilha de <b>${fmDdA(j.dataBase)}</b>.</p></div><div class="fs-esc">${seg}${verComo}${selSup}</div></div>`;
   const aba=(id,rot,n)=>`<button type="button" role="tab" aria-selected="${FS.aba===id}" class="fm-tab${FS.aba===id?" on":""}" onclick="FS.aba='${id}';fsRender()">${rot}<span class="n">${n==null?"…":n}</span></button>`;
   h+=`<div class="fm-tabs" role="tablist">${aba("ABERTAS","Faltas em aberto",abertas.length)}${aba("HIST","Histórico e reincidência",nHist)}</div>`;
   h+=FS.aba==="HIST"?fsHistTela(e):fsAbertasTela(e,abertas,tratadas,hoje);
