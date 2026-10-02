@@ -16,7 +16,7 @@ const ponto = require("./_ponto");
 
 // Quem lê o relatório: os mesmos do painel Faltas x Medidas. A checagem é no
 // servidor sempre que o login emite token (AUTH_SECRET definida).
-const LEITORES = new Set(["joaoygor", "raphaelvictor", "ingridycampana", "paulocampana", "jussilenealmeida", "amauriantonio"]);
+const LEITORES = new Set(["joaoygor", "raphaelvictor", "ingridycampana", "paulocampana", "jussilenealmeida", "amauriantonio", "eduardocipriano"]);
 const MAX_DIAS = 400;
 const MAX_PLANILHAS = 15; // planilhas lidas por pedido, no máximo (uma por mês do período)
 const CAMPOS_PLANILHA = "bdvCobertura:data->bdvCobertura,faltas:data->faltas,ativos:data->ativos,cobertura:data->cobertura";

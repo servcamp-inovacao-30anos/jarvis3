@@ -853,7 +853,7 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
     <div class="nav-cat-b">
       <div class="ni" data-pg="faltas" onclick="navTo('faltas',this)"><span class="ni-ic">🚫</span><span>Faltas &amp; Top 10</span></div>
       <div class="ni" data-pg="coberturas" onclick="navTo('coberturas',this)"><span class="ni-ic">🛡️</span><span>Coberturas</span></div>
-      <div class="ni" data-pg="bdvrel" data-perm="fm" onclick="navTo('bdvrel',this)"><span class="ni-ic">🚗</span><span>Relatório de Coberturas</span><span class="nib nib-novo">NOVO</span></div>
+      <div class="ni" data-pg="bdvrel" data-perm="bdv"onclick="navTo('bdvrel',this)"><span class="ni-ic">🚗</span><span>Relatório de Coberturas</span><span class="nib nib-novo">NOVO</span></div>
       <div class="ni" data-pg="postos" onclick="navTo('postos',this)"><span class="ni-ic">⚠️</span><span>Justif. Postos Desc.</span></div>
       <div class="ni" data-pg="os" onclick="navTo('os',this)"><span class="ni-ic">📋</span><span>OS Avulsos</span></div>
       <div class="ni" data-pg="fts" onclick="navTo('fts',this)"><span class="ni-ic">🔄</span><span>FTS</span></div>
@@ -3214,7 +3214,7 @@ const USERS={
   "paulocampana":{nome:"Paulo Campana",cargo:"Diretor",admin:false,fm:true,rhDash:true,comDash:true,metas:true},
   "ingridycampana":{nome:"Ingridy Campana",cargo:"Diretora",admin:false,fm:true,rhDash:true,com:true,comDash:true,prj:true,qual:true,lig:true,metas:true},
   "amauriantonio":{nome:"Amauri Antônio",cargo:"Gerente",admin:false,fm:true},
-  "eduardocipriano":{nome:"Eduardo Cipriano",cargo:"Diretora RH",admin:false},
+  "eduardocipriano":{nome:"Eduardo Cipriano",cargo:"Diretora RH",admin:false,bdv:true},
   "sirleimodesto":{nome:"Sirlei Modesto",cargo:"Diretor RH",admin:false},
   "jussilenealmeida":{nome:"Jussilene Almeida",cargo:"Coordenação",admin:false,fm:true,lig:true},
   "gabrielaalvarenga":{nome:"Gabriela Alvarenga",cargo:"Comercial",admin:false,com:true,comDash:true},
@@ -3311,6 +3311,7 @@ function _abrirSessao(u){
   sessionStorage.setItem("userLig",usr.lig?"1":"0");
   sessionStorage.setItem("userSup",usr.sup?"1":"0");
   sessionStorage.setItem("userFm",usr.fm?"1":"0");
+  sessionStorage.setItem("userBdv",usr.bdv?"1":"0");
   sessionStorage.setItem("userMetas",usr.metas?"1":"0");
   applyUserUI();
   if(typeof hqBeat==="function")hqBeat(); // já aparece na Sede Virtual
@@ -3387,7 +3388,8 @@ function applyUserUI(){
     const isMetas=sessionStorage.getItem("userMetas")==="1";
     const isSup=sessionStorage.getItem("userSup")==="1";
     const isFm=sessionStorage.getItem("userFm")==="1";
-    const navOk={rh:isAdmin||isRh,rhdash:isAdmin||isRh||isRhDash,com:isAdmin||isCom,comdash:isAdmin||isComDash,prj:isAdmin||isPrj,admin:isAdmin,qual:isAdmin||isQual,lig:isAdmin||isLig,metas:isAdmin||isMetas,fm:isAdmin||isFm,sup:isAdmin||isSup||isLig};
+    const isBdv=sessionStorage.getItem("userBdv")==="1";
+    const navOk={bdv:isAdmin||isFm||isBdv,rh:isAdmin||isRh,rhdash:isAdmin||isRh||isRhDash,com:isAdmin||isCom,comdash:isAdmin||isComDash,prj:isAdmin||isPrj,admin:isAdmin,qual:isAdmin||isQual,lig:isAdmin||isLig,metas:isAdmin||isMetas,fm:isAdmin||isFm,sup:isAdmin||isSup||isLig};
   document.querySelectorAll('#navRoot [data-perm]').forEach(function(el){el.style.display=navOk[el.dataset.perm]?"":"none";});
   if(typeof navCatsAtualiza==="function")navCatsAtualiza(); // categoria sem itens visíveis some
   if(typeof sbPerfilRender==="function")sbPerfilRender();
@@ -4111,11 +4113,13 @@ setTimeout(function(){navStarsInit();navCatsRestaura();navFavRender();navCatsAtu
 function fmPermitido(){return sessionStorage.getItem("userAdmin")==="1"||sessionStorage.getItem("userFm")==="1";}
 /* resumo e painel da Visão Geral: quem vê o painel operacional + a supervisão (supervisores e coordenação) */
 function vgFmPermitido(){return fmPermitido()||fsPermitido();}
+/* Relatório de Coberturas: quem tem fm + quem recebeu a permissão só deste relatório (bdv) */
+function bdvPermitido(){return fmPermitido()||sessionStorage.getItem("userBdv")==="1";}
 function fsPermitido(){return sessionStorage.getItem("userAdmin")==="1"||sessionStorage.getItem("userSup")==="1"||sessionStorage.getItem("userLig")==="1";}
 function navTo(p,btn){
   if(p==="faltasmed"&&!fmPermitido()){p=fsPermitido()?"faltassup":"visao";btn=null;}
   if(p==="faltassup"&&!fsPermitido()){p="visao";btn=null;}
-  if(p==="bdvrel"&&!fmPermitido()){p="coberturas";btn=null;}
+  if(p==="bdvrel"&&!bdvPermitido()){p="coberturas";btn=null;}
   ST.pg=p;
   document.querySelectorAll(".ni").forEach(n=>n.classList.remove("active"));
   document.querySelectorAll('.ni[data-pg="'+p+'"]').forEach(function(n){
@@ -5221,7 +5225,7 @@ function updCobC(){
   const le=topN(cobertura,"LOCAL",8);mkBar("cC5",le.map(([k])=>k.length>16?k.substring(0,16)+"…":k),le.map(([,v])=>v),blues.slice(0,le.length),true);
   // BDV Coberturas
   const bdv=F.bdvCobertura||[];
-  {const b=document.getElementById("bdvRelBtn");if(b)b.style.display=fmPermitido()?"":"none";}
+  {const b=document.getElementById("bdvRelBtn");if(b)b.style.display=bdvPermitido()?"":"none";}
   document.getElementById("bdv-tot").textContent=bdv.length;
   document.getElementById("bdv-tots").innerHTML=`<b>${new Set(bdv.map(r=>r.NOME)).size}</b> supervisores`;
   document.getElementById("bdv-sups").textContent=new Set(bdv.map(r=>r.NOME)).size;
@@ -12122,7 +12126,7 @@ const BR_SIT={ANTES:["Antes do início da vaga","an"],NO_PRAZO:["Até 1h de atra
 const BR_FONTE={FALTA:"horário da vaga de quem faltou",JORNADA:"jornada de quem faltou",POSTO:"turno do posto"};
 const BR_MAX_COMPARA=200; // períodos maiores vêm sem a comparação (o servidor entrega até 400 dias)
 const BR_MOT={"":"Todos os motivos",FALTA:"Só faltas",OUTROS:"Outros motivos"};
-function brPermitido(){return fmPermitido();}
+function brPermitido(){return bdvPermitido();}
 function brPedir(metodo,t,q){
   return fetch("/api/rh?modulo=bdv&t="+t+(q?"&"+new URLSearchParams(q).toString():""),{method:metodo})
     .then(r=>r.json().catch(()=>({})).then(j=>{if(!r.ok)throw new Error(j.error||("Falha HTTP "+r.status));return j;}));
