@@ -1,12 +1,12 @@
 // api/_auth.js — autenticação das APIs por token assinado (HMAC-SHA256).
 // Arquivo com prefixo "_" → NÃO vira rota na Vercel; é só importado.
 //
-// Rollout seguro em 2 etapas (nada quebra ao dar deploy):
-//   1) Deploy com AUTH_ENFORCE ausente → modo "graça": ninguém é bloqueado,
-//      mas o login já passa a emitir token e o front já o envia.
-//   2) Depois de confirmar que todos conseguem entrar, definir na Vercel
-//      AUTH_ENFORCE=1 → aí sim as APIs passam a exigir token válido.
-// Requer também a env AUTH_SECRET (segredo forte). Sem ela, fica em graça.
+// Com AUTH_SECRET definida, as APIs EXIGEM token válido (o login o emite e o
+// front o envia em toda chamada). O modo "graça" (ninguém é bloqueado) só vale
+// sem AUTH_SECRET — aí o login nem tem como emitir token — ou com
+// AUTH_ENFORCE=0, a chave de emergência para desligar a exigência sem deploy.
+// (Antes era o contrário: só exigia com AUTH_ENFORCE=1, e essa variável nunca
+// foi ligada na Vercel — as APIs ficaram abertas a quem soubesse o endereço.)
 
 const crypto = require("crypto");
 
@@ -48,10 +48,10 @@ function tokenFrom(req) {
 
 // Guard usado no topo de cada endpoint protegido.
 // Retorna { ok:true } quando pode seguir; { ok:false } quando deve bloquear (401).
-// Em modo graça (sem AUTH_ENFORCE=1 ou sem AUTH_SECRET) SEMPRE deixa passar.
+// Em modo graça (sem AUTH_SECRET, ou AUTH_ENFORCE=0) SEMPRE deixa passar.
 function requireAuth(req) {
   const secret = process.env.AUTH_SECRET;
-  const enforce = process.env.AUTH_ENFORCE === "1";
+  const enforce = process.env.AUTH_ENFORCE !== "0";
   if (!enforce || !secret) return { ok: true, user: null, enforced: false };
   const p = verify(tokenFrom(req), secret);
   if (!p) return { ok: false, enforced: true };

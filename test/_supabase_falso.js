@@ -85,7 +85,7 @@ function rpc(tabelas, nome, a) {
 function supabaseFalso(tabelas, opcoes) {
   const o = opcoes || {};
   const log = [];
-  const COM_ID = new Set(["pt_ocorrencias", "pt_mensagens", "pt_competencias", "pt_auditoria", "pt_sms_uso", "dashboard_snapshots", "fm_auditoria", "bdv_coberturas"]);
+  const COM_ID = new Set(["pt_ocorrencias", "pt_mensagens", "pt_competencias", "pt_auditoria", "pt_sms_uso", "dashboard_snapshots", "fm_auditoria"]);
   global.fetch = async (url, init = {}) => {
     const u = new URL(url);
     const caminho = u.pathname.replace("/rest/v1/", "");

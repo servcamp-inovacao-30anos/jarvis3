@@ -93,7 +93,7 @@ test("carga de contatos: prévia não grava, confirmação grava", async t => {
 
 test("api/rh.js desvia ?modulo=ponto para o módulo de ponto", async () => {
   const log = supabaseFalso({});
-  const r = await chamar(rh, { query: { modulo: "ponto", t: "contatos" } });
+  const r = await chamar(rh, { query: { modulo: "ponto", t: "contatos" }, usuario: "outra.pessoa" });
   assert.equal(r.statusCode, 403);
   assert.equal(r.body.codigo, "NAO_AUTORIZADO");
   assert.equal(log.length, 0);

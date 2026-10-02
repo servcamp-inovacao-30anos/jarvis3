@@ -2,14 +2,14 @@
 //
 // Prefixo "_" → não vira rota. É chamado pelo api/rh.js quando a URL traz
 // ?modulo=bdv (o plano Hobby da Vercel já está nas 12 funções).
-//   /api/rh?modulo=bdv&t=...
-//     GET  coberturas?de=AAAA-MM-DD&ate=AAAA-MM-DD   diretoria e coordenação
-//     POST reprocessar                               só aprovadores: refaz a partir da última planilha
-// E o api/import.js chama materializar() a cada planilha recebida.
+//   /api/rh?modulo=bdv&t=coberturas&de=AAAA-MM-DD&ate=AAAA-MM-DD   diretoria e coordenação
 //
-// A planilha traz só os últimos meses e é substituída a cada envio: por isso
-// as coberturas vão para tabela própria (bdv_coberturas), e o relatório pode
-// pegar qualquer período. As regras moram em _bdv_regras.js (puras, testadas).
+// Sem tabela própria: cada planilha enviada já fica guardada inteira em
+// dashboard_snapshots, e cada uma traz uns 3 meses de BDV. Para o período
+// pedido, lê a planilha mais recente e, se o período começa antes do que ela
+// cobre, a última planilha de cada mês anterior, voltando até cobrir o início.
+// Cada dia vem sempre da planilha mais nova que o tem. As regras moram em
+// _bdv_regras.js (puras, testadas).
 
 const R = require("./_bdv_regras");
 const ponto = require("./_ponto");
@@ -18,36 +18,41 @@ const ponto = require("./_ponto");
 // servidor sempre que o login emite token (AUTH_SECRET definida).
 const LEITORES = new Set(["joaoygor", "raphaelvictor", "ingridycampana", "paulocampana", "jussilenealmeida", "amauriantonio"]);
 const MAX_DIAS = 400;
+const MAX_PLANILHAS = 15; // planilhas lidas por pedido, no máximo (uma por mês do período)
+const CAMPOS_PLANILHA = "bdvCobertura:data->bdvCobertura,faltas:data->faltas,ativos:data->ativos,cobertura:data->cobertura";
 
 function erro(res, status, mensagem, codigo) { return res.status(status).json({ error: mensagem, codigo }); }
-// o que define a linha: se nada disso mudou, ela não precisa ir ao banco de novo
-const assinar = x => require("crypto").createHash("sha1").update(JSON.stringify([x.data, x.supervisor, x.destino, x.posto, x.chegada, x.inicio, x.fonte_inicio, x.diferenca_min, x.situacao, x.motivo, x.falta_re, x.falta_nome, x.falta_abono, x.km, x.tempo_min])).digest("hex").slice(0, 16);
 const ehData = d => /^\d{4}-\d{2}-\d{2}$/.test(String(d || ""));
+const diaSP = iso => new Date(Date.parse(iso) - 3 * 3600000).toISOString().slice(0, 10);
 
-/* Guarda as idas do supervisor (BDV) da planilha. No período que a planilha cobre, ela manda: o que estava no banco e não veio
-   mais (lançamento corrigido) sai. Só vai ao banco o que mudou: quase tudo é
-   igual ao envio anterior. */
-async function materializar(data, opcoes) {
-  const o = opcoes || {};
-  const db = o.db || ponto.conectar();
-  if (!db) return { ok: false, motivo: "CONFIG_AUSENTE" };
-  const bdv = data && data.bdvCobertura;
-  // Sem a aba do BDV (ou vazia) não se apaga nada: a planilha pode ter vindo sem ela.
-  if (!Array.isArray(bdv) || !bdv.length) return { ok: true, ignorado: "SEM_BDV_NA_PLANILHA" };
-  const agora = new Date().toISOString();
-  const linhas = R.bdvMontar(bdv, data.faltas, data.ativos, data.cobertura, R.BDV_JORNADAS_REF)
-    .filter(x => ehData(x.data))
-    .map(x => Object.assign(x, { assinatura: assinar(x) }));
-  if (!linhas.length) return { ok: true, ignorado: "SEM_DATAS_VALIDAS" };
-  const datas = linhas.map(x => x.data).sort(), de = datas[0], ate = datas[datas.length - 1];
-  const existentes = await db.listar(`bdv_coberturas?select=id,chave,assinatura&data=gte.${de}&data=lte.${ate}&order=id.asc`);
-  const antes = new Map(existentes.map(x => [x.chave, x.assinatura]));
-  const novas = new Set(linhas.map(x => x.chave));
-  const sair = existentes.filter(x => !novas.has(x.chave)).map(x => x.id);
-  for (let i = 0; i < sair.length; i += 200) await db.remover(`bdv_coberturas?id=in.(${sair.slice(i, i + 200).join(",")})`);
-  const gravar = linhas.filter(x => antes.get(x.chave) !== x.assinatura).map(x => Object.assign(x, { atualizado_em: agora }));
-  if (gravar.length) await db.upsert("bdv_coberturas", gravar, "chave");
-  return { ok: true, registros: linhas.length, gravados: gravar.length, removidos: sair.length, de, ate };
+/* Idas do supervisor entre de e ate, montadas a partir das planilhas guardadas.
+   Devolve também até onde se conseguiu voltar (primeiro dia com dado). */
+async function idasDoPeriodo(db, de, ate) {
+  const todos = await db.listar("dashboard_snapshots?select=id,created_at&order=created_at.desc");
+  // a mais recente e a última de cada mês anterior
+  const meses = new Set(), envios = [];
+  todos.forEach(e => { const m = diaSP(e.created_at).slice(0, 7); if (!envios.length || !meses.has(m)) envios.push(e); meses.add(m); });
+  const linhas = [];
+  let limite = null; // dias >= limite já vieram de uma planilha mais nova
+  let primeiro = null, ultimo = null, lidas = 0;
+  for (const e of envios) {
+    if (lidas >= MAX_PLANILHAS || (limite && limite <= de)) break;
+    const criado = diaSP(e.created_at);
+    if (criado < de) break;                     // esta e as mais velhas param antes do período
+    const [p] = await db.obter(`dashboard_snapshots?select=${CAMPOS_PLANILHA}&id=eq.${e.id}`);
+    lidas++;
+    const bdv = (p && Array.isArray(p.bdvCobertura)) ? p.bdvCobertura : [];
+    const datas = bdv.map(x => String(x.DATA || "").slice(0, 10)).filter(ehData).sort();
+    if (!datas.length) { if (!limite) limite = criado; continue; } // planilha sem a aba do BDV
+    if (!ultimo) ultimo = datas[datas.length - 1];
+    R.bdvMontar(bdv, p.faltas, p.ativos, p.cobertura, R.BDV_JORNADAS_REF).forEach(x => {
+      if (x.data >= de && x.data <= ate && (!limite || x.data < limite)) linhas.push(x);
+    });
+    primeiro = datas[0];
+    limite = datas[0];
+  }
+  linhas.sort((a, b) => a.data.localeCompare(b.data) || String(a.chegada).localeCompare(String(b.chegada)));
+  return { linhas, primeiro, ultimo, lidas };
 }
 
 async function verCoberturas({ req, res, db }) {
@@ -55,28 +60,17 @@ async function verCoberturas({ req, res, db }) {
   const de = String(q.de || ""), ate = String(q.ate || "");
   if (!ehData(de) || !ehData(ate) || de > ate) return erro(res, 400, "Informe o período (de e até).", "PERIODO_INVALIDO");
   if ((Date.parse(ate) - Date.parse(de)) / 864e5 > MAX_DIAS) return erro(res, 400, `Período de no máximo ${MAX_DIAS} dias.`, "PERIODO_LONGO");
-  const campos = "data,supervisor,destino,posto,chegada,inicio,fonte_inicio,diferenca_min,situacao,motivo,falta_re,falta_nome,falta_abono,km,tempo_min";
-  const [linhas, limites] = await Promise.all([
-    db.listar(`bdv_coberturas?select=${campos}&data=gte.${de}&data=lte.${ate}&order=data.asc,chegada.asc,id.asc`),
-    db.obter("bdv_coberturas?select=data&order=data.asc&limit=1").then(async a => {
-      const b = await db.obter("bdv_coberturas?select=data&order=data.desc&limit=1");
-      return { primeiro: a[0] ? String(a[0].data).slice(0, 10) : null, ultimo: b[0] ? String(b[0].data).slice(0, 10) : null };
-    })
-  ]);
-  linhas.forEach(x => { x.data = String(x.data).slice(0, 10); if (x.km != null) x.km = Number(x.km); });
-  return res.status(200).json({ ok: true, de, ate, limites: R.BDV_LIMITES, disponivel: limites, coberturas: linhas });
-}
-
-async function reprocessar({ res, db }) {
-  const snap = await db.obter("dashboard_snapshots?select=bdvCobertura:data->bdvCobertura,faltas:data->faltas,ativos:data->ativos,cobertura:data->cobertura&order=created_at.desc&limit=1");
-  if (!snap || !snap[0]) return erro(res, 404, "Nenhuma planilha enviada ainda.", "SEM_PLANILHA");
-  const r = await materializar(snap[0], { db });
-  return res.status(200).json(r);
+  const r = await idasDoPeriodo(db, de, ate);
+  const coberturas = r.linhas.map(x => ({
+    data: x.data, supervisor: x.supervisor, destino: x.destino, posto: x.posto, chegada: x.chegada, inicio: x.inicio,
+    fonte_inicio: x.fonte_inicio, diferenca_min: x.diferenca_min, situacao: x.situacao, motivo: x.motivo,
+    falta_re: x.falta_re, falta_nome: x.falta_nome, falta_abono: x.falta_abono, km: x.km, tempo_min: x.tempo_min
+  }));
+  return res.status(200).json({ ok: true, de, ate, limites: R.BDV_LIMITES, disponivel: { primeiro: r.primeiro, ultimo: r.ultimo }, planilhas_lidas: r.lidas, coberturas });
 }
 
 const ROTAS = {
-  "GET coberturas": { leitor: true, fn: verCoberturas },
-  "POST reprocessar": { aprovador: true, fn: reprocessar }
+  "GET coberturas": { leitor: true, fn: verCoberturas }
 };
 
 module.exports = async function bdv(req, res) {
@@ -86,7 +80,6 @@ module.exports = async function bdv(req, res) {
   const ator = ponto.usuarioDoToken(req);
   // Sem AUTH_SECRET o login não emite token: aí não há como saber quem pediu.
   if (rota.leitor && process.env.AUTH_SECRET && !(ator && LEITORES.has(ator))) return erro(res, 403, "Relatório restrito à diretoria e à coordenação.", "NAO_AUTORIZADO");
-  if (rota.aprovador && !(ator && ponto.APROVADORES.has(ator))) return erro(res, 403, "Ação restrita aos aprovadores.", "NAO_AUTORIZADO");
   const db = ponto.conectar();
   if (!db) return erro(res, 500, "SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY não configuradas.", "CONFIG_AUSENTE");
   try {
@@ -97,5 +90,5 @@ module.exports = async function bdv(req, res) {
   }
 };
 
-module.exports.materializar = materializar;
+module.exports.idasDoPeriodo = idasDoPeriodo;
 module.exports.LEITORES = LEITORES;

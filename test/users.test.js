@@ -61,14 +61,15 @@ test("item 1: GET ?userKey devolve só has_custom e must_change, nunca a senha",
   }
 });
 
-test("GET ?all=1: só campos seguros, e exige token quando AUTH_ENFORCE=1", async () => {
+test("GET ?all=1: só campos seguros, e exige token sempre que há AUTH_SECRET", async () => {
   sb.semear("raphaelvictor", { custom_password: "texto-claro-antigo", must_change: false, last_login: "2026-09-01T10:00:00Z", login_count: 3 });
-  let r = await chamar("GET", { query: { all: "1" } });   // modo graça
+  assert.equal((await chamar("GET", { query: { all: "1" } })).status, 401, "sem token: recusado, mesmo sem AUTH_ENFORCE");
+  const r = await chamar("GET", { query: { all: "1" }, token: _auth.sign("joaoygor", SEGREDO, 1) });
   assert.equal(r.status, 200);
   assert.deepEqual(r.dados.users, [{ user_key: "raphaelvictor", has_custom: true, must_change: false, last_login: "2026-09-01T10:00:00Z", login_count: 3, updated_at: null }]);
-  process.env.AUTH_ENFORCE = "1";
-  assert.equal((await chamar("GET", { query: { all: "1" } })).status, 401);
-  assert.equal((await chamar("GET", { query: { all: "1" }, token: _auth.sign("joaoygor", SEGREDO, 1) })).status, 200);
+  process.env.AUTH_ENFORCE = "0"; // chave de emergência
+  assert.equal((await chamar("GET", { query: { all: "1" } })).status, 200, "AUTH_ENFORCE=0 desliga a exigência");
+  delete process.env.AUTH_ENFORCE;
 });
 
 test("item 2: trocar a senha de alguém sem a senha atual não funciona", async () => {

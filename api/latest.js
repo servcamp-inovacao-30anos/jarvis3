@@ -48,8 +48,8 @@ module.exports = async function handler(req, res) {
     return res.status(404).json({ error: "Nenhum snapshot encontrado ainda." });
   }
 
-  // Cache curto na CDN da Vercel: útil em picos de acesso, sem atrasar
-  // a propagação de uma nova importação por mais de alguns segundos.
-  res.setHeader("Cache-Control", "s-maxage=10, stale-while-revalidate=30");
+  // Nada de cache compartilhado (s-maxage): a resposta é a planilha inteira e só
+  // vale para quem está logado; a rede da Vercel não pode repassá-la a outra pessoa.
+  res.setHeader("Cache-Control", "private, no-store");
   return res.status(200).json(rows[0]);
 };

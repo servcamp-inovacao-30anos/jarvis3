@@ -85,45 +85,42 @@ test("o bloco de regras é igual no servidor e na tela", () => {
   assert.equal(corta(fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8")), corta(fs.readFileSync(path.join(__dirname, "..", "api", "_bdv_regras.js"), "utf8")));
 });
 
-// ── servidor ────────────────────────────────────────────────────────────────
+// ── servidor: lê as planilhas já guardadas (sem tabela própria) ──────────────
 const planilha = bdv => ({ bdvCobertura: bdv, faltas: [falta(1, "POSTO A", "2026-09-10")], ativos: [ativo(1, "POSTO A", "12H 06:00 - 18:00")], cobertura: [] });
-const pedir = (method, t, query, usuario) => chamar(rh, { method, query: { modulo: "bdv", t, ...query }, usuario });
+const envio = (id, criado, bdv) => ({ id, created_at: criado + "T15:00:00Z", data: planilha(bdv) });
+const pedir = (query, usuario) => chamar(rh, { method: "GET", query: { modulo: "bdv", t: "coberturas", ...query }, usuario });
 
-test("materializar guarda, atualiza e tira o que sumiu no período da planilha; sem aba do BDV não apaga nada", async () => {
-  const t = { bdv_coberturas: [] }; supabaseFalso(t);
-  let r = await bdvApi.materializar(planilha([ida("POSTO A", "2026-09-10", "6:30:00"), ida("POSTO A", "2026-09-11", "7:00:00")]));
-  assert.equal(r.ok, true); assert.equal(t.bdv_coberturas.length, 2);
-  r = await bdvApi.materializar(planilha([ida("POSTO A", "2026-09-10", "6:30:00")]));
-  assert.equal(r.removidos, 0, "o dia 11 está fora do período desta planilha: fica");
-  r = await bdvApi.materializar(planilha([ida("POSTO A", "2026-09-10", "6:45:00"), ida("POSTO A", "2026-09-11", "7:00:00")]));
-  assert.equal(r.removidos, 1, "a ida das 06:30 foi corrigida para 06:45");
-  assert.deepEqual(t.bdv_coberturas.map(x => x.chegada).sort(), ["06:45", "07:00"]);
-  r = await bdvApi.materializar(planilha([ida("POSTO A", "2026-09-10", "6:45:00"), ida("POSTO A", "2026-09-11", "7:00:00")]));
-  assert.equal(r.gravados, 0, "nada mudou: nada vai ao banco");
-  r = await bdvApi.materializar(planilha([]));
-  assert.equal(r.ignorado, "SEM_BDV_NA_PLANILHA"); assert.equal(t.bdv_coberturas.length, 2);
+test("a planilha mais nova vale nos dias que ela tem; as mais antigas completam o começo do período", async () => {
+  supabaseFalso({ dashboard_snapshots: [
+    envio(1, "2026-08-20", [ida("POSTO A", "2026-08-01", "6:10:00"), ida("POSTO A", "2026-09-02", "9:00:00")]),  // 02/09 ainda não existia: não vem desta
+    envio(2, "2026-09-30", [ida("POSTO A", "2026-08-15", "7:00:00"), ida("POSTO A", "2026-09-10", "6:30:00")]),
+    envio(3, "2026-10-02", [ida("POSTO A", "2026-09-01", "6:20:00"), ida("POSTO A", "2026-09-10", "6:45:00")])  // corrigiu o dia 10
+  ] });
+  const db = ponto.conectar();
+  const r = await bdvApi.idasDoPeriodo(db, "2026-08-01", "2026-09-30");
+  assert.deepEqual(r.linhas.map(x => [x.data, x.chegada]), [["2026-08-01", "06:10"], ["2026-08-15", "07:00"], ["2026-09-01", "06:20"], ["2026-09-10", "06:45"]]);
+  assert.equal(r.primeiro, "2026-08-01"); assert.equal(r.ultimo, "2026-09-10"); assert.equal(r.lidas, 3);
+  const so = await bdvApi.idasDoPeriodo(db, "2026-09-05", "2026-09-30");
+  assert.equal(so.lidas, 1, "o período cabe na planilha mais nova: lê só ela");
 });
 
 test("GET coberturas: só diretoria e coordenação, com período obrigatório", async () => {
-  const t = { bdv_coberturas: [] }; supabaseFalso(t);
-  await bdvApi.materializar(planilha([ida("POSTO A", "2026-09-10", "6:30:00"), ida("POSTO A", "2026-09-20", "7:00:00")]));
-  let r = await pedir("GET", "coberturas", { de: "2026-09-01", ate: "2026-09-15" }, "raphaelvictor");
+  supabaseFalso({ dashboard_snapshots: [envio(1, "2026-09-21", [ida("POSTO A", "2026-09-10", "6:30:00"), ida("POSTO A", "2026-09-20", "7:00:00")])] });
+  let r = await pedir({ de: "2026-09-01", ate: "2026-09-15" }, "raphaelvictor");
   assert.equal(r.statusCode, 200); assert.equal(r.body.coberturas.length, 1);
   assert.deepEqual(r.body.disponivel, { primeiro: "2026-09-10", ultimo: "2026-09-20" });
   assert.deepEqual(r.body.limites, { noPrazo: 60, grave: 180 });
-  r = await pedir("GET", "coberturas", { de: "2026-09-01", ate: "2026-09-15" }, "adrianomacedo");
+  assert.equal(r.body.coberturas[0].situacao, "NO_PRAZO");
+  r = await pedir({ de: "2026-09-01", ate: "2026-09-15" }, "adrianomacedo");
   assert.equal(r.statusCode, 403, "supervisor não lê o relatório");
-  r = await pedir("GET", "coberturas", { de: "2026-09-01", ate: "2026-09-15" });
-  assert.equal(r.statusCode, 403, "sem login também não");
-  r = await pedir("GET", "coberturas", { de: "2026-09-15", ate: "2026-09-01" }, "raphaelvictor");
+  r = await pedir({ de: "2026-09-01", ate: "2026-09-15" });
+  assert.equal(r.statusCode, 401, "sem login, nem passa da porta");
+  r = await pedir({ de: "2026-09-15", ate: "2026-09-01" }, "raphaelvictor");
   assert.equal(r.statusCode, 400);
 });
 
-test("POST reprocessar: só aprovadores, a partir da última planilha", async () => {
-  const t = { bdv_coberturas: [], dashboard_snapshots: [{ id: 1, created_at: "2026-09-21T10:00:00Z", data: planilha([ida("POSTO A", "2026-09-10", "6:30:00")]) }] };
-  supabaseFalso(t);
-  let r = await pedir("POST", "reprocessar", {}, "jussilenealmeida");
-  assert.equal(r.statusCode, 403);
-  r = await pedir("POST", "reprocessar", {}, "aprovador");
-  assert.equal(r.statusCode, 200); assert.equal(r.body.registros, 1); assert.equal(t.bdv_coberturas.length, 1);
+test("sem nenhuma planilha guardada: lista vazia, sem erro", async () => {
+  supabaseFalso({ dashboard_snapshots: [] });
+  const r = await pedir({ de: "2026-09-01", ate: "2026-09-15" }, "raphaelvictor");
+  assert.equal(r.statusCode, 200); assert.deepEqual(r.body.coberturas, []); assert.equal(r.body.disponivel.primeiro, null);
 });
