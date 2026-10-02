@@ -214,7 +214,7 @@ on conflict (chave) do nothing;
 insert into public.pt_config (chave, valor) values
   ('modelo_entrada_antecipada', E'SERVCAMP | ORIENTACAO DE PONTO\nOla, {{nome}}. Em {{data}} sua entrada foi as {{horario_marcado}}, {{minutos}} antes do previsto ({{horario_previsto}}). Oriente-se a marcar no horario. RE {{re}}.'),
   ('modelo_saida_apos_horario', E'SERVCAMP | ORIENTACAO DE PONTO\nOla, {{nome}}. Em {{data}} sua saida foi as {{horario_marcado}}, {{minutos}} apos o previsto ({{horario_previsto}}). Oriente-se a marcar no horario. RE {{re}}.'),
-  ('modelo_ambas_no_mesmo_dia', E'SERVCAMP | ORIENTACAO DE PONTO\nOla, {{nome}}. Em {{data}} sua entrada foi as {{entrada_marcada}} e a saida as {{saida_marcada}}, fora do previsto ({{entrada_prevista}} as {{saida_prevista}}). Oriente-se a marcar no horario. RE {{re}}.')
+  ('modelo_ambas_no_mesmo_dia', E'SERVCAMP | ORIENTACAO DE PONTO\nOla, {{nome}}. Em {{data}} entrada as {{entrada_marcada}} e saida as {{saida_marcada}} (previsto {{entrada_prevista}} as {{saida_prevista}}). Marque no horario. RE {{re}}.')
 on conflict (chave) do nothing;
 
 -- ============================================================================

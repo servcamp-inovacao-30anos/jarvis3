@@ -140,7 +140,7 @@ test("planejarMensagens", async t => {
     assert.equal(inserir.length, 1);
     assert.equal(inserir[0].template_id, "ambas_no_mesmo_dia");
     assert.deepEqual(inserir[0].ocorrencia_ids, [1, 2]);
-    assert.match(inserir[0].texto_gerado, /entrada foi as 17:54 e a saida as 06:40, fora do previsto \(18:00 as 06:00\)/);
+    assert.match(inserir[0].texto_gerado, /entrada as 17:54 e saida as 06:40 \(previsto 18:00 as 06:00\)/);
   });
   await t.test("dias diferentes são mensagens diferentes", () => {
     const { inserir } = R.planejarMensagens([oc(1), oc(2, { data_jornada: "2026-09-25" })], { contatosPorRE: contatos });
@@ -206,7 +206,7 @@ test("modelos de mensagem", async t => {
     assert.equal(R.segmentosSMS(R.renderizar(R.MODELOS_PADRAO.entrada_antecipada, vars)), 1);
     assert.equal(R.segmentosSMS(R.renderizar(R.MODELOS_PADRAO.saida_apos_horario, vars)), 1);
   });
-  await t.test("ambas no mesmo dia cabe em 1 SMS", { todo: "o texto do plano rende 171 caracteres (2 SMS) mesmo com nome curto — aguardando decisão sobre o texto" }, () => {
+  await t.test("ambas no mesmo dia cabe em 1 SMS", () => {
     assert.equal(R.segmentosSMS(R.renderizar(R.MODELOS_PADRAO.ambas_no_mesmo_dia, vars)), 1);
   });
 });

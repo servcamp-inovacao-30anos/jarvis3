@@ -481,7 +481,7 @@ function competenciasNecessarias(ocorrencias, dataVirada) {
 const MODELOS_PADRAO = {
   entrada_antecipada: "SERVCAMP | ORIENTACAO DE PONTO\nOla, {{nome}}. Em {{data}} sua entrada foi as {{horario_marcado}}, {{minutos}} antes do previsto ({{horario_previsto}}). Oriente-se a marcar no horario. RE {{re}}.",
   saida_apos_horario: "SERVCAMP | ORIENTACAO DE PONTO\nOla, {{nome}}. Em {{data}} sua saida foi as {{horario_marcado}}, {{minutos}} apos o previsto ({{horario_previsto}}). Oriente-se a marcar no horario. RE {{re}}.",
-  ambas_no_mesmo_dia: "SERVCAMP | ORIENTACAO DE PONTO\nOla, {{nome}}. Em {{data}} sua entrada foi as {{entrada_marcada}} e a saida as {{saida_marcada}}, fora do previsto ({{entrada_prevista}} as {{saida_prevista}}). Oriente-se a marcar no horario. RE {{re}}."
+  ambas_no_mesmo_dia: "SERVCAMP | ORIENTACAO DE PONTO\nOla, {{nome}}. Em {{data}} entrada as {{entrada_marcada}} e saida as {{saida_marcada}} (previsto {{entrada_prevista}} as {{saida_prevista}}). Marque no horario. RE {{re}}."
 };
 
 const VARIAVEIS_MODELO = {

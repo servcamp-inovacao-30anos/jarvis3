@@ -23,8 +23,12 @@ test("validarModelo", async t => {
     assert.equal(R.validarModelo("entrada_antecipada", R.MODELOS_PADRAO.entrada_antecipada).erro, undefined);
     assert.equal(R.validarModelo("saida_apos_horario", R.MODELOS_PADRAO.saida_apos_horario).erro, undefined);
   });
-  await t.test("o modelo 'ambas no mesmo dia' do plano passa de 160 caracteres", () => {
+  await t.test("o modelo 'ambas no mesmo dia' também cabe em 160 caracteres", () => {
     const v = R.validarModelo("ambas_no_mesmo_dia", R.MODELOS_PADRAO.ambas_no_mesmo_dia);
+    assert.equal(v.erro, undefined);
+  });
+  await t.test("um modelo longo demais continua sendo barrado", () => {
+    const v = R.validarModelo("ambas_no_mesmo_dia", R.MODELOS_PADRAO.ambas_no_mesmo_dia + " " + "x".repeat(60));
     assert.equal(v.erro, "ACIMA_DE_160");
     assert.ok(v.caracteres > 160);
   });
@@ -94,7 +98,7 @@ test("GET config", async () => {
   assert.equal(r.body.pode_aprovar, false);
   assert.equal(r.body.virada_travada, false);
   const ambas = r.body.modelos.find(m => m.id === "ambas_no_mesmo_dia");
-  assert.equal(ambas.problema, "ACIMA_DE_160");
+  assert.equal(ambas.problema, null);
   assert.equal(r.body.modelos.find(m => m.id === "entrada_antecipada").problema, null);
 });
 
