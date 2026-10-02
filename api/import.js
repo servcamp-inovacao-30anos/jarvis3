@@ -80,7 +80,10 @@ module.exports = async function handler(req, res) {
   };
 
   const ctype = String((req.headers && req.headers["content-type"]) || "").toLowerCase();
-  const ehArquivo = ctype.indexOf("json") < 0;
+  // Upload manual comprimido: o navegador manda o JSON em gzip para caber no
+  // limite de 4,5 MB do corpo da Vercel. Continua sendo o caminho manual.
+  const ehGzip = String((req.headers && req.headers["x-conteudo"]) || "").toLowerCase() === "json-gzip";
+  const ehArquivo = !ehGzip && ctype.indexOf("json") < 0;
 
   // ── quem pode entrar ──────────────────────────────────────────────────────
   const tokenRobo = String((req.headers && req.headers["x-ingest-token"]) || "");
@@ -116,6 +119,10 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: "Não consegui ler a planilha.", details: String(e.message || e).slice(0, 300) });
     }
   } else {
+    if (ehGzip) {
+      try { bruto = require("zlib").gunzipSync(bruto, { maxOutputLength: 200 * 1024 * 1024 }); }
+      catch (e) { return res.status(400).json({ error: "Corpo comprimido inválido." }); }
+    }
     let body;
     try { body = JSON.parse(bruto.toString("utf8")); }
     catch (e) { return res.status(400).json({ error: "Corpo da requisição não é um JSON válido." }); }

@@ -7363,12 +7363,17 @@ function loadFromSupabase(){
 function syncToSupabase(data,fname){
   if(typeof fetch!=="function")return;
   const statusEl=document.getElementById("dataStatusTxt");
-  fetch("/api/import",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({data:data,source_filename:fname||null})
+  const json=JSON.stringify({data:data,source_filename:fname||null});
+  // A Vercel recusa corpo acima de 4,5 MB; em gzip a planilha cabe com folga.
+  const montar=(typeof CompressionStream==="function")
+    ? new Response(new Blob([json]).stream().pipeThrough(new CompressionStream("gzip"))).blob()
+        .then(function(gz){return {headers:{"Content-Type":"application/octet-stream","x-conteudo":"json-gzip"},body:gz};})
+    : Promise.resolve({headers:{"Content-Type":"application/json"},body:json});
+  montar.then(function(req){
+    return fetch("/api/import",{method:"POST",headers:req.headers,body:req.body});
   }).then(function(resp){
-    if(!resp.ok)return resp.json().then(function(j){throw new Error(j&&j.error?j.error:("HTTP "+resp.status));});
+    if(resp.status===413)throw new Error("Planilha grande demais para o envio (HTTP 413)");
+    if(!resp.ok)return resp.json().catch(function(){return null;}).then(function(j){throw new Error(j&&j.error?j.error:("HTTP "+resp.status));});
     return resp.json();
   }).then(function(j){
     if(statusEl)statusEl.textContent=statusEl.textContent+" · Sincronizado com Supabase";
@@ -7376,6 +7381,7 @@ function syncToSupabase(data,fname){
   }).catch(function(err){
     console.error("Falha ao sincronizar com Supabase:",err);
     if(statusEl)statusEl.textContent=statusEl.textContent+" · Falha ao sincronizar com Supabase";
+    alert("A planilha NÃO foi enviada ao servidor.\nOs outros aparelhos continuam com a anterior.\n\nMotivo: "+(err&&err.message?err.message:err));
     if(typeof fmAposEnvio==="function")fmAposEnvio(false,err);
   });
 }
