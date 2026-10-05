@@ -31,7 +31,7 @@ test("todo usuário com cargo Supervisor tem a tela da supervisão; ninguém mai
 test("menu: supervisor não vê o painel operacional; coordenação (lig) e admin veem a tela da supervisão", () => {
   const m = html.match(/const navOk=\{[^}]*\};/);
   assert.ok(m, "navOk não encontrado");
-  const navOk = ({ isAdmin, isSup, isLig, isFm }) => new Function("isAdmin", "isSup", "isLig", "isFm", "isRh", "isRhDash", "isCom", "isComDash", "isPrj", "isQual", "isMetas", m[0] + "\nreturn navOk;")(isAdmin, isSup, isLig, !!isFm, false, false, false, false, false, false, false);
+  const navOk = ({ isAdmin, isSup, isLig, isFm }) => new Function("isAdmin", "isSup", "isLig", "isFm", "isRh", "isRhDash", "isCom", "isComDash", "isPrj", "isQual", "isMetas", "isBdv", m[0] + "\nreturn navOk;")(isAdmin, isSup, isLig, !!isFm, false, false, false, false, false, false, false, false);
   const sup = navOk({ isAdmin: false, isSup: true, isLig: false });
   assert.equal(sup.sup, true); assert.equal(sup.fm, false, "o supervisor não vê o painel operacional");
   const coord = navOk({ isAdmin: false, isSup: false, isLig: true, isFm: true });
@@ -64,12 +64,12 @@ test("limite para a medida: o texto certo para cada situação", () => {
   const fsCat = funcao("fsCat");
   const f = (c, hoje) => new Function("FM", "fmDif", "fmDdS", "fmDd", "fmMedidaTxt", fsCat + lim + "\nreturn fsLimite;")({ dados: { hoje } }, esc.fmDif, esc.fmDdS, esc.fmDd, esc.fmMedidaTxt)(c);
   assert.ok(cat > 0);
-  assert.deepEqual(f({ situacao: "PRAZO_VENCIDO", prazoFim: "2026-09-29" }, "2026-10-01"), { tom: "da", t: "Venceu dia 2026-09-29", s: "Atrasada há 2 dias" });
-  assert.deepEqual(f({ situacao: "NO_PRAZO", prazoFim: "2026-10-01" }, "2026-10-01"), { tom: "am", t: "Hoje, 2026-10-01", s: "Último dia para aplicar" });
-  assert.deepEqual(f({ situacao: "NO_PRAZO", prazoFim: "2026-10-04" }, "2026-10-01"), { tom: "am", t: "dia 2026-10-04", s: "Faltam 3 dias" });
-  assert.equal(f({ situacao: "AGUARDANDO_RETORNO", retornoPrevisto: "2026-10-03" }, "2026-10-01").s, "Volta prevista dia 2026-10-03");
-  assert.equal(f({ situacao: "COORDENACAO", posto: "ABANDONO" }, "2026-10-01").s, "Abandono de posto");
-  assert.equal(f({ situacao: "COORDENACAO", posto: "POSTO A", motivo: "" }, "2026-10-01").s, "Mais de 3 dias sem voltar");
+  assert.deepEqual(f({ situacao: "PRAZO_VENCIDO", prazoFim: "2026-09-29" }, "2026-10-01"), { tom: "da", t: "Venceu dia 2026-09-29", s: "Era até o próximo plantão · atrasada há 2 dias" });
+  assert.deepEqual(f({ situacao: "NO_PRAZO", prazoFim: "2026-10-01" }, "2026-10-01"), { tom: "am", t: "Aplicar hoje, 2026-10-01", s: "Próximo plantão: último dia" });
+  assert.deepEqual(f({ situacao: "NO_PRAZO", prazoFim: "2026-10-04" }, "2026-10-01"), { tom: "am", t: "Até dia 2026-10-04", s: "Próximo plantão · faltam 3 dias" });
+  assert.equal(f({ situacao: "NO_PRAZO", prazoFim: "2026-10-03", semRetorno: true }, "2026-10-01").s, "Próximo plantão · faltam 2 dias · ainda não voltou", "quem ainda não voltou já tem a data do próximo plantão");
+  assert.deepEqual(f({ situacao: "COORDENACAO", posto: "ABANDONO" }, "2026-10-01"), { tom: "vi", t: "Abandono", s: "A coordenação decide" });
+  assert.equal(f({ situacao: "COORDENACAO", posto: "POSTO A", motivo: "" }, "2026-10-01").t, "Continua faltando");
   assert.equal(f({ situacao: "TRATADA", medida: { DATA: "2026-09-30" } }, "2026-10-01").t, "Medida aplicada");
 });
 

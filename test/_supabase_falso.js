@@ -142,16 +142,18 @@ function supabaseFalso(tabelas, opcoes) {
 
 // Chama um handler da Vercel com req/res de mentira. "usuario" gera um token
 // assinado com o AUTH_SECRET do teste, como o login faria.
-function chamar(handler, { method = "GET", query = {}, body, usuario, headers = {} } = {}) {
+function chamar(handler, { method = "GET", query = {}, body, usuario, headers = {}, token } = {}) {
   const _auth = require("../api/_auth");
   const h = { ...headers };
   if (usuario) h.authorization = "Bearer " + _auth.sign(usuario, process.env.AUTH_SECRET, 1);
+  if (token) h.authorization = "Bearer " + token;
   const req = { method, query, body, headers: h };
   const res = {
-    statusCode: 0, body: null,
+    statusCode: 0, body: null, cab: {},
     status(c) { this.statusCode = c; return this; },
     json(b) { this.body = b; return this; },
-    setHeader() {}
+    send(b) { this.body = b; return this; },
+    setHeader(k, v) { this.cab[k] = v; }
   };
   return Promise.resolve(handler(req, res)).then(() => res);
 }

@@ -20,8 +20,10 @@ function unb64url(s) {
 }
 
 // Emite um token {u: userKey, exp: epoch_ms}. Validade padrão: 12h.
-function sign(userKey, secret, horas) {
-  const payload = { u: String(userKey), exp: Date.now() + (horas || 12) * 3600000 };
+// "extra" acrescenta campos ao token; com {s: "xl"} ele vira uma chave de ESCOPO RESTRITO:
+// só vale na rota que pedir esse escopo (veja requireAuth) e é recusado em todas as outras.
+function sign(userKey, secret, horas, extra) {
+  const payload = Object.assign({ u: String(userKey), exp: Date.now() + (horas || 12) * 3600000 }, extra || {});
   const body = b64url(JSON.stringify(payload));
   const sig = b64url(crypto.createHmac("sha256", secret).update(body).digest());
   return body + "." + sig;
@@ -49,12 +51,18 @@ function tokenFrom(req) {
 // Guard usado no topo de cada endpoint protegido.
 // Retorna { ok:true } quando pode seguir; { ok:false } quando deve bloquear (401).
 // Em modo graça (sem AUTH_SECRET, ou AUTH_ENFORCE=0) SEMPRE deixa passar.
-function requireAuth(req) {
+// escopo: nome do escopo que esta rota aceita (só as rotas de chave restrita passam isto).
+// daQuery: aceita o token também em ?k= (o Excel não manda cabeçalho; a chave vai no endereço).
+function requireAuth(req, escopo, daQuery) {
   const secret = process.env.AUTH_SECRET;
   const enforce = process.env.AUTH_ENFORCE !== "0";
   if (!enforce || !secret) return { ok: true, user: null, enforced: false };
-  const p = verify(tokenFrom(req), secret);
+  let t = tokenFrom(req);
+  if (!t && daQuery && req.query && req.query.k) t = String(req.query.k);
+  const p = verify(t, secret);
   if (!p) return { ok: false, enforced: true };
+  // chave de escopo restrito (ex.: a do Excel) não serve em nenhuma outra rota
+  if (p.s && p.s !== escopo) return { ok: false, enforced: true };
   return { ok: true, user: p, enforced: true };
 }
 

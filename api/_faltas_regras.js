@@ -1,15 +1,16 @@
 // api/_faltas_regras.js — regras do módulo Faltas x Medidas. Funções puras:
 // sem banco, sem rede, sem relógio (o "hoje" vem de fora), para serem testadas.
 //
-// O caminho de uma falta injustificada (código I da Ficha de Presença):
-//   1ª falta → a pessoa volta ao trabalho (retorno) → prazo para aplicar a medida
-//   · 5x2 e 6x1: 3 dias de trabalho, contando o dia do retorno
-//   · 12x36:     2 plantões, contando o dia do retorno
-// A medida é presencial (a pessoa assina), por isso o prazo conta do retorno.
+// O caminho de uma falta injustificada (código I da Ficha de Presença), em TODAS as escalas:
+//   1ª falta → o prazo para aplicar a medida é até o PRÓXIMO PLANTÃO da pessoa (o próximo dia de trabalho depois da falta)
+//   · se ela volta nesse plantão, o prazo termina nele; se ainda não voltou, o prazo é a data prevista do plantão
+//   · se esse plantão passa e a planilha não mostra a volta, segue faltando e a coordenação decide
+// A medida é presencial (a pessoa assina), por isso o prazo é o dia em que ela volta ao trabalho.
 // Qualquer medida do SAR2G dentro do prazo, por qualquer motivo, cobre a falta:
 // é o que impede punir duas vezes. Medida anterior à falta não cobre (reset).
 
 const FAMILIAS = {
+  // prazo = quantos dias de trabalho seguidos sem voltar mandam o caso para a coordenação (não é o prazo da medida)
   "5X2": { prazo: 3, folgaNaSemana: new Set([0, 6]) }, // folga sábado e domingo
   "6X1": { prazo: 3, folgaNaSemana: new Set([0]) },    // folga domingo (todas as siglas 6x1)
   "12X36": { prazo: 2, alternado: true }                // dia sim, dia não
@@ -176,20 +177,28 @@ function montarCasos(entrada) {
       const f1 = injust[i];
       const F = FAMILIAS[f1.familia];
       const dia = agenda({ familia: f1.familia, escala: f1.ESCALA, ancora: f1.data, dias: fichaDias[re] || {}, faltasPorDia, feriados, dataBase });
+      // dias sem trabalho entre a 1ª falta e hoje (folga da escala, férias, feriado não): aparecem como folga no calendário de quem continua faltando
+      const folgasAte = d => { const l = []; for (let x = somaDias(f1.data, 1), g = 0; x <= d && g < 120; x = somaDias(x, 1), g++) { const y = dia(x); if (!y.trabalho && !y.feriado && y.presente !== true) l.push(x); } return l; };
+      // dias de trabalho, depois do dia em que devia ter voltado, em que a planilha não mostra a pessoa de volta
+      const semVoltaAte = (de, ate) => { const l = []; for (let x = de, g = 0; x && x <= ate && g < 120; x = somaDias(x, 1), g++) { const y = dia(x); if (y.trabalho && y.presente !== true) l.push(x); } return l; };
       const caso = pessoa(ref, {});
       Object.assign(caso, { familia: f1.familia, escala: f1.ESCALA || "", primeiraFalta: f1.data, faltas: [f1.data], retorno: null, retornoPrevisto: null, prazo: [], prazoFim: null, medida: null, situacao: null, motivo: "" });
 
       // 1. depois da 1ª falta: volta ou continua faltando?
-      let seguidas = 0, ultimaFalta = f1.data, retorno = null, coord = false;
+      let seguidas = 0, ultimaFalta = f1.data, retorno = null, coord = false, primeiroTrabalho = null;
       for (let d = somaDias(f1.data, 1), guarda = 0; guarda < 90 && d <= dataBase; d = somaDias(d, 1), guarda++) {
         const x = dia(d);
         if (!x.trabalho) continue;
+        if (!primeiroTrabalho) primeiroTrabalho = d;
         if (x.falta === "I") { seguidas++; ultimaFalta = d; caso.faltas.push(d); if (seguidas >= F.prazo) { coord = true; break; } continue; }
         if (x.presente === true) { retorno = d; break; }
         // falta abonada ou dia sem registro: não conta como retorno nem como falta
       }
       // o SAR2G marca abandono trocando o posto por "ABANDONO"
-      const abandono = injust.some(f => f.data >= f1.data && f.data <= ultimaFalta && /ABANDONO/i.test(String(f.LOCAL || "")));
+      // ou a Ficha de Presença passa a marcar ABANDONO num dia depois da primeira falta (alguém tirou a pessoa da pasta de ativos)
+      const diasFicha = fichaDias[re] || {};
+      const abandono = injust.some(f => f.data >= f1.data && f.data <= ultimaFalta && /ABANDONO/i.test(String(f.LOCAL || "")))
+        || Object.keys(diasFicha).some(d => d > f1.data && d <= dataBase && /ABANDONO/i.test(String(diasFicha[d] || "")));
 
       if (coord || abandono) {
         caso.situacao = SITUACOES.COORDENACAO;
@@ -197,6 +206,24 @@ function montarCasos(entrada) {
         caso.motivo = abandono
           ? "Marcado como ABANDONO no SAR2G."
           : `Continua faltando: faltou em ${ddmmSemana(f1.data)} e em mais ${seguidas} ${unidade} seguidos sem voltar (${emLista(caso.faltas.slice(1).map(ddmmSemana))}).`;
+        if (abandono) {
+          // desde quando: o 1º dia em que o SAR2G trocou o posto por ABANDONO ou a ficha passou a marcar abandono
+          const diasF = fichaDias[re] || {};
+          const datas = injust.filter(f => f.data >= f1.data && /ABANDONO/i.test(String(f.LOCAL || ""))).map(f => f.data)
+            .concat(Object.keys(diasF).filter(d => d >= f1.data && /ABANDONO/i.test(String(diasF[d] || "")))).sort();
+          // O SAR2G troca o posto de TODAS as faltas por ABANDONO: isso não diz quando o abandono foi marcado.
+          // A data só vale se a Ficha de Presença marcar abandono em algum dia; senão fica em branco.
+          const fichaAband = Object.keys(diasF).filter(d => d >= f1.data && /ABANDONO/i.test(String(diasF[d] || ""))).sort();
+          caso.abandono = true;
+          caso.abandonoDesde = fichaAband[0] || "";
+          const antes = lista.filter(f => f.LOCAL && !/ABANDONO/i.test(String(f.LOCAL)));
+          caso.postoAnterior = antes.length ? String(antes[antes.length - 1].LOCAL) : "";
+          caso.motivo = caso.abandonoDesde ? `Abandono marcado no SAR2G em ${ddmmSemana(caso.abandonoDesde)}. Faltando desde ${ddmmSemana(f1.data)}.` : `Abandono marcado no SAR2G (a planilha não informa a data). Faltando desde ${ddmmSemana(f1.data)}.`;
+        } else {
+          caso.continua = true;
+          caso.deveriaTerVoltado = primeiroTrabalho;
+          caso.folgas = folgasAte(hoje && hoje > dataBase ? hoje : dataBase);
+        }
         // as faltas seguintes, sem presença no meio, são a mesma ausência
         let k = injust.findIndex(f => f.data > ultimaFalta);
         while (k >= 0 && k < injust.length && !presencaEntre(dia, ultimaFalta, injust[k].data)) { caso.faltas.push(injust[k].data); ultimaFalta = injust[k].data; k++; }
@@ -209,50 +236,40 @@ function montarCasos(entrada) {
       }
 
       if (!retorno) {
-        caso.situacao = SITUACOES.AGUARDANDO_RETORNO;
         // próximo dia de trabalho depois da última falta; se esse dia já passou
         // sem registro na planilha, o próximo depois do último dia da planilha
         const inicio = somaDias(ultimaFalta >= dataBase ? ultimaFalta : dataBase, 1);
         caso.retornoPrevisto = proximosDiasDeTrabalho(dia, inicio, 1)[0] || null;
+        // o prazo para aplicar a medida é até esse próximo plantão
+        caso.situacao = caso.retornoPrevisto ? SITUACOES.NO_PRAZO : SITUACOES.AGUARDANDO_RETORNO;
+        if (caso.retornoPrevisto) { caso.prazo = [caso.retornoPrevisto]; caso.prazoFim = caso.retornoPrevisto; caso.semRetorno = true; }
         aplicarMedida(caso, medidas, usadas);
+        // A volta prevista já passou e a planilha não mostra a pessoa de volta: segue faltando, e a coordenação decide.
+        // Quando a planilha for atualizada e mostrar a volta, o caso sai daqui sozinho (tudo é recalculado a cada leitura).
+        if (caso.semRetorno && caso.situacao === SITUACOES.NO_PRAZO && hoje && caso.retornoPrevisto && caso.retornoPrevisto < hoje) {
+          caso.situacao = SITUACOES.COORDENACAO;
+          caso.prazo = []; caso.prazoFim = null; caso.semRetorno = false; // sem prazo: quem decide é a coordenação
+          caso.motivo = `Continua faltando: era para ter voltado em ${ddmmSemana(caso.retornoPrevisto)} e a planilha ainda não mostra a volta.`;
+          caso.continua = true;
+          caso.deveriaTerVoltado = caso.retornoPrevisto;
+          caso.folgas = folgasAte(hoje);
+          caso.continuouEm = semVoltaAte(somaDias(caso.retornoPrevisto, 1), hoje);
+        }
         casos.push(caso);
         i = injust.findIndex(f => f.data > ultimaFalta);
         if (i < 0) break;
         continue;
       }
 
-      // 2. voltou: o prazo são os próximos dias de trabalho, contando o retorno
+      // 2. voltou: o prazo é até o próximo plantão, que é o dia em que a pessoa voltou
       caso.retorno = retorno;
-      // 12x36: se voltou num dia trocado, os plantões seguintes contam a partir do retorno
-      const diaPrazo = F.alternado ? agenda({ familia: f1.familia, escala: f1.ESCALA, ancora: retorno, dias: fichaDias[re] || {}, faltasPorDia, feriados, dataBase }) : dia;
-      caso.prazo = proximosDiasDeTrabalho(diaPrazo, retorno, F.prazo);
-      caso.prazoFim = caso.prazo[caso.prazo.length - 1] || retorno;
-      // Falta de novo dentro do prazo: mesmo caso, o prazo continua o do 1º retorno.
-      // Faltas seguidas (sem presença no meio) também entram no caso, mesmo passando
-      // do fim do prazo. Passando de F.prazo dias seguidos sem voltar, a coordenação decide.
-      const depois = injust.filter(f => f.data > retorno);
-      let fimCaso = caso.prazoFim, sequenciaCoord = null;
-      for (let k = 0; k < depois.length; k++) {
-        if (depois[k].data > caso.prazoFim) break;
-        const seq = [depois[k].data];
-        let j = k + 1;
-        while (j < depois.length && !presencaEntre(dia, seq[seq.length - 1], depois[j].data)) { seq.push(depois[j].data); j++; }
-        seq.forEach(d => caso.faltas.push(d));
-        if (seq[seq.length - 1] > fimCaso) fimCaso = seq[seq.length - 1];
-        if (!sequenciaCoord && seq.length >= F.prazo + 1) sequenciaCoord = seq;
-        k = j - 1;
-      }
-      caso.faltas = [...new Set(caso.faltas)].sort();
-      if (sequenciaCoord) {
-        const seguidas2 = sequenciaCoord.length - 1;
-        const un2 = f1.familia === "12X36" ? (seguidas2 === 1 ? "plantão" : "plantões") : (seguidas2 === 1 ? "dia de trabalho" : "dias de trabalho");
-        caso.situacao = SITUACOES.COORDENACAO;
-        caso.motivo = `Continua faltando: voltou em ${ddmmSemana(retorno)}, mas faltou de novo em ${ddmmSemana(sequenciaCoord[0])} e em mais ${seguidas2} ${un2} seguidos sem voltar (${emLista(sequenciaCoord.slice(1).map(ddmmSemana))}).`;
-        caso.prazo = []; caso.prazoFim = null; // sem prazo: quem decide é a coordenação
-      } else caso.situacao = hoje > caso.prazoFim ? SITUACOES.PRAZO_VENCIDO : SITUACOES.NO_PRAZO;
+      caso.prazo = [retorno];
+      caso.prazoFim = retorno;
+      caso.situacao = hoje > caso.prazoFim ? SITUACOES.PRAZO_VENCIDO : SITUACOES.NO_PRAZO;
       aplicarMedida(caso, medidas, usadas);
       casos.push(caso);
-      i = injust.findIndex(f => f.data > fimCaso);
+      // falta depois do retorno é outro caso, com o prazo do próximo plantão dela
+      i = injust.findIndex(f => f.data > retorno);
       if (i < 0) break;
     }
   }
@@ -277,7 +294,7 @@ function aplicarMedida(caso, medidas, usadas) {
 }
 function aplicarMedidaValida(caso, validas) {
   if (!validas.length) {
-    if (caso.situacao === SITUACOES.PRAZO_VENCIDO) caso.motivo = `Voltou em ${ddmm(caso.retorno)} e o prazo acabou em ${ddmm(caso.prazoFim)} sem medida.`;
+    if (caso.situacao === SITUACOES.PRAZO_VENCIDO) caso.motivo = `O prazo era até o próximo plantão, ${ddmmSemana(caso.prazoFim)}, e ainda não há medida.`;
     return;
   }
   const m = validas[0];
@@ -307,6 +324,7 @@ function calendario(caso, opcoes) {
   const dias = o.dias || {}, abon = new Set(o.abonadas || []), feriados = new Set((o.feriados || []).map(iso)), hoje = iso(o.hoje);
   const faltas = new Set(caso.faltas || []), prazo = new Set(caso.prazo || []);
   const medida = caso.medida && iso(caso.medida.DATA);
+  const continuouEm = new Set(caso.continuouEm || []), cont = !!caso.continua, devia = caso.deveriaTerVoltado || null, folgasC = new Set(caso.folgas || []), aband = caso.abandonoDesde || null;
   // A folha da 1ª falta; se o prazo (ou o retorno, ou a medida) passa para a
   // folha seguinte, vai até ele: falta no dia 25 tem o prazo inteiro no mês seguinte.
   const folha = competenciaDe(caso.primeiraFalta);
@@ -322,10 +340,15 @@ function calendario(caso, opcoes) {
   const out = [];
   for (let d = inicio; d <= fim; d = somaDias(d, 1)) {
     let tipo;
+    // abandono: do dia em que o SAR2G marcou até hoje; continua faltando: o dia em que devia ter voltado e as faltas seguidas
+    if (aband && d >= aband && (!hoje || d <= hoje)) tipo = "ABANDONO";
+    else if (cont && d === devia) tipo = "DEVIA_VOLTAR";
+    else if (cont && continuouEm.has(d)) tipo = "CONTINUOU";
     // medida lançada num dia de falta: o dia continua falta, com a marca da medida por cima
-    if (faltas.has(d)) tipo = "FALTA";
+    else if (faltas.has(d)) tipo = cont && d !== caso.primeiraFalta ? "CONTINUOU" : "FALTA";
     else if (d === medida) tipo = "MEDIDA";
     else if (abon.has(d)) tipo = "ABONADA";
+    else if (caso.prazoFim && d === caso.prazoFim) tipo = "PRAZO";
     else if (d === caso.retorno) tipo = "RETORNO";
     else if (d === caso.retornoPrevisto) tipo = "RETORNO_PREVISTO";
     else if (prazo.has(d)) tipo = "PRAZO";
@@ -334,8 +357,9 @@ function calendario(caso, opcoes) {
       // (a marca "feriado" vai junto, para a tela mostrar os dois)
       const t = trabalhouNoDia(dias[d]);
       tipo = t === true ? "TRABALHOU" : feriados.has(d) ? "FERIADO" : t === false ? "FOLGA" : "";
+      if (!tipo && folgasC.has(d)) tipo = "FOLGA";
     }
-    out.push({ data: d, dia: Number(d.slice(8, 10)), semana: diaDaSemana(d), tipo, medida: d === medida, hoje: d === hoje, futuro: hoje ? d > hoje : false, noPrazo: prazo.has(d), feriado: feriados.has(d), fimDoPrazo: d === caso.prazoFim, naFolha: d >= folha.inicio && d <= folha.fim, atestado: !!(o.atestado && d >= o.atestado.inicio && d <= o.atestado.fim) });
+    out.push({ data: d, dia: Number(d.slice(8, 10)), semana: diaDaSemana(d), tipo, medida: d === medida, hoje: d === hoje, futuro: hoje ? d > hoje : false, noPrazo: prazo.has(d), feriado: feriados.has(d), fimDoPrazo: d === caso.prazoFim, retorno: d === caso.retorno, naFolha: d >= folha.inicio && d <= folha.fim, atestado: !!(o.atestado && d >= o.atestado.inicio && d <= o.atestado.fim) });
   }
   return out;
 }
@@ -421,21 +445,21 @@ function turnoDoSupervisor(nome) {
 }
 
 // Calendário compacto para a resposta da tela: cada dia vira UM número
-// (tipo * 128 + bandeiras). A data e o dia da semana a tela calcula. Sem isso,
+// (tipo * 256 + bandeiras). A data e o dia da semana a tela calcula. Sem isso,
 // cada caso levava ~16 KB de calendário e 250 casos estouravam o limite de 4,5 MB
 // de resposta da Vercel.
-const TIPOS_CAL = ["", "TRABALHOU", "FOLGA", "FERIADO", "FALTA", "ABONADA", "RETORNO", "RETORNO_PREVISTO", "PRAZO", "MEDIDA"];
+const TIPOS_CAL = ["", "TRABALHOU", "FOLGA", "FERIADO", "FALTA", "ABONADA", "RETORNO", "RETORNO_PREVISTO", "PRAZO", "MEDIDA", "CONTINUOU", "DEVIA_VOLTAR", "ABANDONO"];
 function compactarCalendario(cal) {
   if (!cal || !cal.length) return { i: "", d: [] };
-  return { i: cal[0].data, d: cal.map(x => TIPOS_CAL.indexOf(x.tipo || "") * 128 + (x.medida ? 1 : 0) + (x.hoje ? 2 : 0) + (x.futuro ? 4 : 0) + (x.feriado ? 8 : 0) + (x.fimDoPrazo ? 16 : 0) + (x.naFolha ? 32 : 0) + (x.atestado ? 64 : 0)) };
+  return { i: cal[0].data, d: cal.map(x => TIPOS_CAL.indexOf(x.tipo || "") * 256 + (x.retorno ? 128 : 0) + (x.medida ? 1 : 0) + (x.hoje ? 2 : 0) + (x.futuro ? 4 : 0) + (x.feriado ? 8 : 0) + (x.fimDoPrazo ? 16 : 0) + (x.naFolha ? 32 : 0) + (x.atestado ? 64 : 0)) };
 }
 function expandirCalendario(k) {
   const out = [];
   if (!k || !k.i) return out;
   let d = k.i;
   k.d.forEach(v => {
-    const f = v & 127, x = paraData(d);
-    out.push({ data: d, dia: x.getUTCDate(), semana: x.getUTCDay(), tipo: TIPOS_CAL[v >> 7], medida: !!(f & 1), hoje: !!(f & 2), futuro: !!(f & 4), feriado: !!(f & 8), fimDoPrazo: !!(f & 16), naFolha: !!(f & 32), atestado: !!(f & 64) });
+    const f = v & 255, x = paraData(d);
+    out.push({ data: d, dia: x.getUTCDate(), semana: x.getUTCDay(), tipo: TIPOS_CAL[v >> 8], retorno: !!(f & 128), medida: !!(f & 1), hoje: !!(f & 2), futuro: !!(f & 4), feriado: !!(f & 8), fimDoPrazo: !!(f & 16), naFolha: !!(f & 32), atestado: !!(f & 64) });
     d = somaDias(d, 1);
   });
   return out;
