@@ -49,7 +49,7 @@ test("em aberto: só os da folha. Os abertos de antes ficam à parte e não entr
   assert.deepEqual(R.abertos.map(c => c.re).sort(), [1, 2, 3, 6]);
   assert.deepEqual(R.anteriores.map(c => c.re).sort(), [7, 9], "começaram antes de 26/09 e seguem sem medida");
   assert.deepEqual(R.concluidas.map(c => c.re).sort(), [4, 5], "a tratada da folha anterior fica na folha dela");
-  assert.deepEqual(R.n, { da: 1, hj: 1, np: 1, gr: 1, vi: 0 }, "os números da folha não incluem coordenação nem atraso de antes");
+  assert.deepEqual(R.n, { da: 1, hj: 1, np: 2, gr: 0, vi: 0 }, "(quem ainda não voltou também tem prazo: o próximo plantão) os números da folha não incluem coordenação nem atraso de antes");
   assert.deepEqual(R.nAnt, { da: 1, hj: 0, np: 0, gr: 0, vi: 1 }, "os de antes têm a contagem deles");
 });
 

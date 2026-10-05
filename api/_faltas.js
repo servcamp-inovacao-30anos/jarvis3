@@ -16,12 +16,17 @@
 
 const R = require("./_faltas_regras");
 const ponto = require("./_ponto");
+const _auth = require("./_auth");
+const XL = require("./_faltas_excel");
 
 const ACAO_ABONO_TARDIO = "FALTA_ABONADA_DEPOIS";
 const ACAO_ATESTADO = "ATESTADO_REGISTRADO";
 const ACAO_ATESTADO_FIM = "ATESTADO_REMOVIDO";
 const ACAO_ATESTADO_LANCADO = "ATESTADO_LANCADO_SAR2G"; // o usuário marcou que já lançou no SAR2G
 const ACAO_HISTORICO = "HISTORICO_IMPORTADO";
+const ACAO_XL_CHAVE = "XL_CHAVE";       // alguém gerou um Excel conectado
+const ACAO_XL_REVOGAR = "XL_REVOGAR";   // cancelou todas as chaves do Excel emitidas até aquele momento
+const DIAS_CHAVE_XL = 90;
 const MAX_HISTORICO = 5000; // linhas por envio
 const JANELA_DIAS = 150; // o que a tela carrega: casos mais antigos já se encerraram
 const DIAS_ACOMPANHADOS = 45; // quem faltou nesse período ainda tem os dias da ficha guardados
@@ -147,6 +152,10 @@ async function anotarAbonosTardios(db, faltas, codigoAntes) {
 
 // ── leituras ────────────────────────────────────────────────────────────────
 
+// Quem não está num posto efetivo é da reserva técnica de algum supervisor: o posto mostra isso, nunca "—".
+const semPosto = p => { const t = String(p == null ? "" : p).trim(); return !t || t === "—" || t === "-"; };
+const postoOuReserva = (posto, sup) => (semPosto(posto) ? (sup ? "Reserva técnica · " + sup : "Reserva técnica") : posto);
+
 async function verCasos({ res, db, ator }) {
   const hoje = hojeSP(), desde = R.somaDias(hoje, -JANELA_DIAS);
   const [faltas, dias, medidasLidas, adm, feriados, trocas, eventosAtestado, horarios] = await Promise.all([
@@ -189,6 +198,8 @@ async function verCasos({ res, db, ator }) {
   });
   r.casos.forEach(c => { c.turno = R.turnoDoSupervisor(c.supervisor); });
   r.abonadas.forEach(a => { a.turno = R.turnoDoSupervisor(a.supervisor); });
+  r.casos.forEach(c => { c.posto = postoOuReserva(c.posto, c.supervisor); });
+  r.abonadas.forEach(a => { a.posto = postoOuReserva(a.posto, a.supervisor); });
   const resumo = {};
   r.casos.forEach(c => { resumo[c.situacao] = (resumo[c.situacao] || 0) + 1; });
   const abonadasPorRE = {};
@@ -205,6 +216,7 @@ async function verCasos({ res, db, ator }) {
   const abonos = R.periodosDeAbono(r.abonadas, fichaDias, lancadas, atestados);
   abonos.forEach(p => {
     p.turno = R.turnoDoSupervisor(p.supervisor);
+    p.posto = postoOuReserva(p.posto, p.supervisor);
     p.primeiraFalta = p.inicio;
     p.folha = R.competenciaDe(p.inicio);
     // o calendário mostra as faltas abonadas e, marcados, os dias que o atestado cobriu
@@ -232,15 +244,29 @@ async function verHistorico({ res, db }) {
   const [lidas, ult, recentes] = await Promise.all([
     db.listar(`fm_medidas?select=chave,re,data,tipo,grau,dias,fase,motivo_sar2g,nome,local&data=gte.${desde}&order=re.asc,data.asc,chave.asc`),
     db.obter(`fm_auditoria?select=ator,depois,criado_em&acao=eq.${ACAO_HISTORICO}&order=criado_em.desc,id.desc&limit=1`),
-    db.listar(`fm_faltas?select=re,posto,supervisor&data=gte.${R.somaDias(hoje, -JANELA_DIAS)}&order=data.asc,re.asc`)
+    db.listar(`fm_faltas?select=re,data,posto,supervisor&data=gte.${R.somaDias(hoje, -JANELA_DIAS)}&order=data.asc,re.asc`)
   ]);
   // Quem cuida da área hoje: pelo RE (quem faltou há pouco) ou, na falta disso, pelo posto da medida.
   const supDoRE = {}, supDoPosto = {};
   recentes.forEach(f => { if (f.supervisor) { supDoRE[f.re] = f.supervisor; if (f.posto) supDoPosto[f.posto] = f.supervisor; } });
-  const medidas = R.dedupMedidas(lidas).map(m => ({
-    re: m.re, data: iso10(m.data), tipo: m.tipo, grau: m.grau, dias: Number(m.dias) || 0, fase: m.fase || "",
-    motivo: m.motivo_sar2g || "", nome: m.nome || "", local: m.local || "", supervisor: supDoRE[m.re] || supDoPosto[m.local] || "", origem: String(m.chave).startsWith("HIST|") ? "historico" : "planilha"
-  }));
+  // Posto da época da medida: a medida da planilha diária não traz o posto; vale o da falta mais próxima (até o dia da medida).
+  const faltasDoRE = {};
+  recentes.forEach(f => { (faltasDoRE[f.re] = faltasDoRE[f.re] || []).push(f); });
+  const daEpoca = (re, dia) => {
+    const l = faltasDoRE[re] || [];
+    let f = null;
+    l.forEach(x => { if (iso10(x.data) <= dia) f = x; });
+    return f || l[0] || null;
+  };
+  const medidas = R.dedupMedidas(lidas).map(m => {
+    const dia = iso10(m.data), f = semPosto(m.local) ? daEpoca(m.re, dia) : null;
+    const sup = (f && f.supervisor) || supDoRE[m.re] || supDoPosto[m.local] || "";
+    const local = semPosto(m.local) ? postoOuReserva(f && f.posto, sup) : m.local;
+    return {
+      re: m.re, data: dia, tipo: m.tipo, grau: m.grau, dias: Number(m.dias) || 0, fase: m.fase || "",
+      motivo: m.motivo_sar2g || "", nome: m.nome || "", local, supervisor: sup, origem: String(m.chave).startsWith("HIST|") ? "historico" : "planilha"
+    };
+  });
   const u = (ult || [])[0];
   return res.status(200).json({ ok: true, hoje, desde, medidas, importacao: u ? { por: u.ator, em: u.criado_em, linhas: (u.depois || {}).gravadas || 0 } : null });
 }
@@ -267,6 +293,53 @@ async function salvarHistorico({ res, db, ator, body }) {
 
 async function verFeriados({ res, db }) {
   return res.status(200).json({ ok: true, feriados: await db.listar("fm_feriados?select=data,descricao&order=data.asc") });
+}
+
+// ── Excel conectado ─────────────────────────────────────────────────────────
+// Chama uma leitura do módulo e devolve o JSON dela (as mesmas contas da tela, sem repetir regra).
+async function capturar(fn, ctx) {
+  const cap = { codigo: 200, corpo: null, status(c) { this.codigo = c; return this; }, json(o) { this.corpo = o; return this; } };
+  await fn(Object.assign({}, ctx, { res: cap }));
+  if (cap.codigo !== 200 || !cap.corpo) throw new Error("leitura interna falhou (" + cap.codigo + ")");
+  return cap.corpo;
+}
+// A chave do Excel vale por ${DIAS_CHAVE_XL} dias e deixa de valer se alguém cancelar as chaves (corte de data).
+async function chaveXlValida(req, db) {
+  const secret = process.env.AUTH_SECRET;
+  if (!secret) return true; // sem login por token não há como saber quem pede (modo graça)
+  const tok = _auth.tokenFrom(req) || String((req.query && req.query.k) || "");
+  const p = _auth.verify(tok, secret);
+  if (!p) return false;
+  if (!p.s) return true; // sessão normal (a tela do relatório)
+  if (p.s !== "xl") return false;
+  const [corte] = await db.obter(`fm_auditoria?select=criado_em&acao=eq.${ACAO_XL_REVOGAR}&order=criado_em.desc,id.desc&limit=1`);
+  return !(corte && Date.parse(corte.criado_em) > Number(p.i || 0));
+}
+async function verPlanilha({ req, res, db }) {
+  if (!(await chaveXlValida(req, db))) return erro(res, 401, "Chave do Excel inválida, vencida ou cancelada. Gere o arquivo de novo no JARVIS.", "CHAVE_INVALIDA");
+  const [cj, hj] = await Promise.all([capturar(verCasos, { db, ator: null }), capturar(verHistorico, { db })]);
+  const d = XL.montar(cj, hj);
+  const q = req.query || {};
+  if (String(q.formato || "").toLowerCase() === "json") return res.status(200).json(Object.assign({ ok: true }, d));
+  const nome = String(q.tabela || "casos");
+  const t = d.tabelas[nome];
+  if (!t) return erro(res, 400, "Tabela desconhecida: " + nome, "TABELA_DESCONHECIDA");
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.setHeader("Cache-Control", "private, no-store");
+  return res.status(200).send(XL.html(t, "Faltas x Medidas — " + nome));
+}
+async function criarChaveExcel({ res, db, ator }) {
+  const secret = process.env.AUTH_SECRET;
+  if (!secret) return erro(res, 400, "O login por token não está ativo; não há como emitir a chave do Excel.", "SEM_SEGREDO");
+  const agora = Date.now(), jti = require("crypto").randomBytes(6).toString("hex");
+  const chave = _auth.sign(ator, secret, DIAS_CHAVE_XL * 24, { s: "xl", i: agora, j: jti });
+  const validaAte = new Date(agora + DIAS_CHAVE_XL * 86400000).toISOString();
+  await db.inserir("fm_auditoria", [{ ator, acao: ACAO_XL_CHAVE, entidade: "fm_xl", chave: jti, antes: null, depois: { validaAte } }]);
+  return res.status(200).json({ ok: true, chave, validaAte, dias: DIAS_CHAVE_XL });
+}
+async function revogarChavesExcel({ res, db, ator }) {
+  await db.inserir("fm_auditoria", [{ ator, acao: ACAO_XL_REVOGAR, entidade: "fm_xl", chave: "todas", antes: null, depois: null }]);
+  return res.status(200).json({ ok: true });
 }
 
 // ── escritas (só aprovadores) ───────────────────────────────────────────────
@@ -373,7 +446,10 @@ const ROTAS = {
   "POST historico": { aprovador: true, fn: salvarHistorico },
   "PATCH motivo": { aprovador: true, fn: editarMotivo },
   "POST feriados": { aprovador: true, fn: salvarFeriado },
-  "POST atestado": { aprovador: true, fn: salvarAtestado }
+  "POST atestado": { aprovador: true, fn: salvarAtestado },
+  "GET planilha": { fn: verPlanilha },
+  "POST chave_excel": { aprovador: true, fn: criarChaveExcel },
+  "POST revogar_excel": { aprovador: true, fn: revogarChavesExcel }
 };
 
 module.exports = async function faltas(req, res) {

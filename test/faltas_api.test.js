@@ -66,7 +66,7 @@ const hoje = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
 const dia = n => { const x = new Date(hoje + "T12:00:00Z"); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
 function tabelasComCaso() {
   const t = tabelasVazias();
-  // 12x36: faltou há 10 dias, voltou há 8; prazo nos plantões de há 8 e há 6 dias → vencido
+  // 12x36: faltou há 10 dias, voltou há 8; o prazo era até o próximo plantão (há 8 dias) → vencido
   t.fm_faltas.push({ re: 521, data: dia(-10), codigo: "I", nome: "MARIA", cargo: "PORTEIRO (A)", posto: "POSTO A", supervisor: "FRANK", escala: "12X36", tipo: "CONTRATO" });
   t.fm_dias.push({ re: 521, data: dia(-10), situacao: "FALTA" }, { re: 521, data: dia(-8), situacao: "TRABALHANDO" }, { re: 521, data: dia(-6), situacao: "TRABALHANDO" });
   t.fm_medidas.push({ chave: "P-9", re: 521, data: dia(-40), tipo: "ADVERTÊNCIA", grau: "VERBAL", dias: 0, fase: "CONCLUIDO" });
@@ -82,7 +82,7 @@ test("GET casos: calcula a situação e diz quem pode editar", async t => {
     assert.equal(r.body.casos.length, 1);
     const c = r.body.casos[0];
     assert.equal(c.situacao, "PRAZO_VENCIDO");
-    assert.deepEqual(c.prazo, [dia(-8), dia(-6)]);
+    assert.deepEqual(c.prazo, [dia(-8)]);
     assert.equal(c.medida, null, "a advertência de 40 dias atrás é anterior à falta");
     assert.deepEqual(r.body.resumo, { PRAZO_VENCIDO: 1 });
     assert.ok(r.body.dias["521"], "manda os dias da ficha para o card");
