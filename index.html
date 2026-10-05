@@ -2786,6 +2786,12 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       #pg-faltasmed .qd-n{font-size:1.55rem;font-weight:800;color:var(--qc);line-height:1}
       #pg-faltasmed .qd-ch{display:flex;flex-wrap:wrap;gap:5px;padding:0 12px 10px;border-bottom:1px solid var(--fm-line2);min-height:28px}
       #pg-faltasmed .qd-c{display:inline-flex;align-items:center;gap:5px;font-size:.66rem;font-weight:700;color:var(--fm-text2);background:var(--fm-subtle);border:1px solid var(--fm-line);border-radius:999px;padding:2px 8px}
+      #pg-faltasmed .qd-c{appearance:none;font-family:inherit;cursor:pointer;transition:background .12s,border-color .12s}
+      #pg-faltasmed .qd-c:hover{border-color:var(--g300);background:var(--fm-surface)}
+      #pg-faltasmed .qd-c.on{background:var(--cc);border-color:var(--cc);color:var(--ct)}
+      #pg-faltasmed .qd-c.on i{background:var(--ct)}
+      #pg-faltasmed .qd-bs{padding:8px 12px 0}
+      #pg-faltasmed .qd-bs .fm-in{width:100%;height:30px;font-size:.74rem}
       #pg-faltasmed .qd-c i{width:7px;height:7px;border-radius:50%;background:var(--cc)}
       #pg-faltasmed .qd-list{flex:1;min-height:0;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:8px;background:var(--fm-subtle);border-radius:0 0 11px 11px}
       #pg-faltasmed .qd-card{appearance:none;text-align:left;display:flex;flex-direction:column;gap:3px;width:100%;padding:10px 12px 10px 15px;position:relative;border:1px solid var(--fm-line);border-radius:10px;background:var(--fm-surface);font:inherit;color:var(--fm-text);cursor:pointer;box-shadow:var(--fm-sh);transition:border-color .12s,box-shadow .12s}
@@ -11931,8 +11937,8 @@ function fmHistTela(){
     brMulti("hspos","Postos",fmHistPostosOpc(noPer),()=>FM.hs.postos,()=>{FM.hs.lim=60;fmRenderCorpo();brMultiAbre("hspos");})+
     sel("Mostrar","mostrar",[["","Todos"],["rein","Só reincidentes ("+rein.length+")"],["ab","Com falta em aberto agora ("+comAb.length+")"],["reinab","Reincidentes com falta agora ("+reinAb.length+")"]])+
     (st.vis==="rank"?"":sel("Ordenar","ordem",[["mais","Mais medidas"],["recente","Mais recentes"],["nome","Nome"]]))+
-    `<div class="fm-selb dt${st.de?" on":""}"><label><span class="t">De:</span><input type="date" aria-label="Medidas a partir de" value="${_esc(st.de)}" min="${H.desde}" onchange="FM.hs.de=this.value;FM.hs.lim=60;fmRenderCorpo()"></label></div>`+
-    `<div class="fm-selb dt${st.ate?" on":""}"><label><span class="t">até:</span><input type="date" aria-label="Medidas até" value="${_esc(st.ate)}" min="${H.desde}" onchange="FM.hs.ate=this.value;FM.hs.lim=60;fmRenderCorpo()"></label></div>`+
+    `<div class="fm-selb dt${st.de?" on":""}"><label><span class="t">De:</span><input type="date" aria-label="Medidas a partir de" value="${_esc(st.de)}" min="${H.desde}" onchange="if(!fmDataOk(this.value))return;FM.hs.de=this.value;FM.hs.lim=60;fmRenderCorpo()"></label></div>`+
+    `<div class="fm-selb dt${st.ate?" on":""}"><label><span class="t">até:</span><input type="date" aria-label="Medidas até" value="${_esc(st.ate)}" min="${H.desde}" onchange="if(!fmDataOk(this.value))return;FM.hs.ate=this.value;FM.hs.lim=60;fmRenderCorpo()"></label></div>`+
     (st.busca||st.mostrar||comPer||posSel.length?`<button type="button" class="fm-lnk" onclick="Object.assign(FM.hs,{busca:'',mostrar:'',de:'',ate:'',lim:60});FM.hs.postos.length=0;fmRenderCorpo()">Limpar</button>`:"")+`</div>`;
   if(st.de&&st.ate&&st.de>st.ate)return h+fmVazio("A data inicial está depois da data final",`Você pediu medidas de ${fmDd(st.de)} até ${fmDd(st.ate)}. Troque as datas.`);
   h+=alto;
@@ -14987,6 +14993,8 @@ function fmPerModo(modo){FM.per=fmPerPadrao(modo);FM.perAuto=true;FM.animar=true
 FM_IC.filtro=_fmSvg('<path d="M22 3H2l8 9.5V19l4 2v-8.5z"/>');
 FM_IC.info=_fmSvg('<circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/>');
 FM_IC.seta=_fmSvg('<path d="M5 12h14M13 6l6 6-6 6"/>');
+/* Campo de data: enquanto a pessoa digita o ano, o navegador avisa a cada dígito (0002, 0020…). Só vale data vazia ou com ano completo. */
+function fmDataOk(v){return !v||/^\d{4}-\d{2}-\d{2}$/.test(v)&&Number(v.slice(0,4))>=2000;}
 function fmFam(esc){const t=String(esc||"").toUpperCase().replace(/\s+/g,"");return t.indexOf("12X36")>=0?"12X36":t.indexOf("6X1")===0?"6X1":t.indexOf("5X2")===0?"5X2":"";}
 function fmSupsLista(){return [...new Set(FM.dados.casos.map(c=>c.supervisor).concat(fmAbonos().map(a=>a.supervisor)).filter(Boolean))].sort();}
 function fmPostosLista(){return [...new Set(FM.dados.casos.map(c=>c.posto).concat(fmAbonos().map(a=>a.posto)).filter(Boolean))].sort();}
@@ -15035,6 +15043,7 @@ function fmQdCasos(){
     if(FM_ABERTAS.indexOf(c.situacao)<0)return false;
     if(q.turno&&(c.turno||"DIURNO")!==q.turno)return false;
     if(q.sups.length&&q.sups.indexOf(c.supervisor||"Sem supervisor")<0)return false;
+    if((q.de||q.ate)&&!(c.faltas||[]).some(d=>(!q.de||d>=q.de)&&(!q.ate||d<=q.ate)))return false; // data da falta
     return !bus||brNorm([c.nome,c.re,c.posto].join(" ")).indexOf(bus)>=0;
   });
 }
@@ -15042,11 +15051,11 @@ function fmQdColunas(){
   const q=fmQd(),ver=FM_QD_VER.find(v=>v.id===q.ver)||FM_QD_VER[0],por={};
   fmQdCasos().forEach(c=>{
     const nome=c.supervisor||"Sem supervisor";
-    const x=por[nome]||(por[nome]={nome,itens:[],n:{da:0,hj:0,np:0,gr:0,vi:0},postos:new Set(),turno:c.turno||"DIURNO"});
-    x.n[fmCatDe(c)]++;
+    const x=por[nome]||(por[nome]={nome,itens:[],todos:[],n:{da:0,hj:0,np:0,gr:0,vi:0},postos:new Set(),turno:c.turno||"DIURNO"});
+    x.n[fmCatDe(c)]++;x.todos.push(c);
     if(ver.sit.indexOf(c.situacao)>=0){x.itens.push(c);if(c.posto)x.postos.add(c.posto);}
   });
-  return Object.values(por).map(x=>{x.itens.sort((a,b)=>(FM_QD_ORD[a.situacao](a)).localeCompare(FM_QD_ORD[b.situacao](b)));return x;})
+  return Object.values(por).map(x=>{const o=(a,b)=>(FM_QD_ORD[a.situacao](a)).localeCompare(FM_QD_ORD[b.situacao](b));x.itens.sort(o);x.todos.sort(o);return x;})
     .sort((a,b)=>b.itens.length-a.itens.length||b.n.da-a.n.da||a.nome.localeCompare(b.nome));
 }
 function fmQdOpcoesSup(){
@@ -15059,9 +15068,31 @@ function fmQdBarra(){
   const abas=FM_QD_VER.map(v=>`<button type="button" role="tab" aria-selected="${q.ver===v.id}" class="fm-tab${q.ver===v.id?" on":""}" data-v="${v.id}" onclick="fmQdVer('${v.id}')">${_esc(v.rot)}<span class="n"></span></button>`).join("");
   return `<div class="fm-tabs" role="tablist">${abas}</div><div class="fm-tool"><label class="fm-search">${FM_IC.busca}<input class="fm-in" placeholder="Buscar por nome, RE ou posto" value="${_esc(q.busca)}" oninput="const v=this.value;fmDeb(()=>{fmQd().busca=v;fmQdPinta();})"></label>`+
     fmFSel("Turno","fmQd().turno=this.value;fmQdPinta()",q.turno,[["","Todos"],["DIURNO","Diurno"],["NOTURNO","Noturno"]])+
-    brMulti("qdsup","Supervisores",fmQdOpcoesSup(),()=>fmQd().sups,()=>fmQdPinta())+`<span class="fm-count" id="qd-count"></span></div>`;
+    brMulti("qdsup","Supervisores",fmQdOpcoesSup(),()=>fmQd().sups,()=>fmQdPinta())+
+    `<label class="fm-fl">Falta de<input type="date" class="fm-in" id="qd-de" value="${_esc(q.de||"")}" onchange="if(!fmDataOk(this.value))return;fmQd().de=this.value;fmQdPinta()"></label><label class="fm-fl">até<input type="date" class="fm-in" id="qd-ate" value="${_esc(q.ate||"")}" onchange="if(!fmDataOk(this.value))return;fmQd().ate=this.value;fmQdPinta()"></label>`+
+    `<button type="button" class="fm-btn sm" id="qd-limpa"${q.de||q.ate?"":" hidden"} onclick="const q=fmQd();q.de=q.ate='';document.getElementById('qd-de').value='';document.getElementById('qd-ate').value='';fmQdPinta()">Limpar datas</button><span class="fm-count" id="qd-count"></span></div>`;
 }
 function fmQdVer(v){const q=fmQd();if(q.ver===v)return;q.ver=v;document.querySelectorAll("#fm-sec .fm-tab[data-v]").forEach(b=>{const on=b.dataset.v===v;b.classList.toggle("on",on);b.setAttribute("aria-selected",on);});fmQdPinta();}
+/* Filtro de cada coluna: a bolinha de situação (clicável) e a busca por nome ou RE. Com uma situação escolhida, a coluna mostra
+   todos os casos dela daquele supervisor, em qualquer aba. */
+function fmQdColSel(nome){const q=fmQd();return(q.col||(q.col={}))[nome]||{cat:"",busca:""};}
+function fmQdItens(x){
+  const s=fmQdColSel(x.nome),bus=brNorm((s.busca||"").trim());
+  let l=s.cat?x.todos.filter(c=>fmCatDe(c)===s.cat):x.itens;
+  if(bus)l=l.filter(c=>brNorm([c.nome,c.re].join(" ")).indexOf(bus)>=0);
+  return l;
+}
+function fmQdChip(b){
+  const q=fmQd(),n=b.dataset.n,k=b.dataset.k,s=q.col[n]||(q.col[n]={cat:"",busca:""});
+  s.cat=s.cat===k?"":k;fmQdPinta();
+}
+function fmQdColBusca(i){
+  const n=i.dataset.n,s=fmQdColSel(n),q=fmQd();(q.col||(q.col={}))[n]=s;s.busca=i.value;
+  const x=(FM._qdCols||[]).find(z=>z.nome===n),sec=i.closest(".qd-col");if(!x||!sec)return;
+  const l=fmQdItens(x);
+  sec.querySelector(".qd-list").innerHTML=l.length?l.map(fmQdCard).join(""):'<p class="qd-vz">Nenhum caso neste filtro.</p>';
+  sec.querySelector(".qd-n").textContent=l.length;
+}
 function fmQdCard(c){
   const q=fmQd(),a=fmAcao(c),k=fmChave(c),tags=[];
   if(c.primeiraFalta<fmIniFolhaAtual())tags.push('<span class="fm-tg ant">Folha anterior</span>');
@@ -15069,9 +15100,10 @@ function fmQdCard(c){
   return `<button type="button" class="qd-card k-${a.tom}${q.aberto===k?" on":""}" data-k="${_esc(k)}" onclick="fmQdAbrir(this.dataset.k)"><span class="qd-ac">${_esc(a.t)}</span><b class="qd-nm">${_esc(fmNomeCard(c.nome))}</b><span class="qd-sb" title="${_esc(c.posto||"")}">${_esc(c.posto||"Sem posto")}</span><span class="qd-ft"><em>Faltas</em> ${_esc(fmFaltasTxt(c.faltas))}</span>${tags.length?`<span class="qd-tg">${tags.join("")}</span>`:""}</button>`;
 }
 function fmQdColuna(x){
-  const chips=FM_CATS_ABERTAS.filter(k=>x.n[k]).map(k=>`<span class="qd-c cat-${k}"><i></i>${x.n[k]} ${_esc(x.n[k]===1?FM_CAT[k].rot:FM_CAT[k].rotP).toLowerCase()}</span>`).join("");
+  const sel=fmQdColSel(x.nome),itens=fmQdItens(x);
+  const chips=FM_CATS_ABERTAS.filter(k=>x.n[k]).map(k=>`<button type="button" class="qd-c cat-${k}${sel.cat===k?" on":""}" data-n="${_esc(x.nome)}" data-k="${k}" aria-pressed="${sel.cat===k}" title="${sel.cat===k?"Clique para ver todos de novo":"Ver só: "+_esc(FM_CAT[k].rotP.toLowerCase())}" onclick="fmQdChip(this)"><i></i>${x.n[k]} ${_esc(x.n[k]===1?FM_CAT[k].rot:FM_CAT[k].rotP).toLowerCase()}</button>`).join("");
   const np=x.postos.size,sub=(x.turno==="NOTURNO"?"Noturno":"Diurno")+(np?" · "+np+(np===1?" posto":" postos"):"");
-  return `<section class="qd-col" style="--qh:${fmQdMatiz(x.nome)}" aria-label="${_esc(x.nome)}"><header class="qd-h"><span class="qd-av" aria-hidden="true">${_esc(x.nome.charAt(0).toUpperCase())}</span><div class="qd-ht"><b title="${_esc(x.nome)}">${_esc(fmNomeCard(x.nome))}</b><small>${sub}</small></div><span class="qd-n">${x.itens.length}</span></header><div class="qd-ch">${chips}</div><div class="qd-list">${x.itens.length?x.itens.map(fmQdCard).join(""):'<p class="qd-vz">Nenhum caso neste grupo.</p>'}</div></section>`;
+  return `<section class="qd-col" style="--qh:${fmQdMatiz(x.nome)}" aria-label="${_esc(x.nome)}"><header class="qd-h"><span class="qd-av" aria-hidden="true">${_esc(x.nome.charAt(0).toUpperCase())}</span><div class="qd-ht"><b title="${_esc(x.nome)}">${_esc(fmNomeCard(x.nome))}</b><small>${sub}</small></div><span class="qd-n">${itens.length}</span></header><div class="qd-ch">${chips}</div><div class="qd-bs"><input type="search" class="fm-in" placeholder="Nome ou RE" aria-label="Buscar nesta coluna por nome ou RE" data-n="${_esc(x.nome)}" value="${_esc(sel.busca)}" oninput="fmQdColBusca(this)"></div><div class="qd-list">${itens.length?itens.map(fmQdCard).join(""):'<p class="qd-vz">Nenhum caso ${sel.cat||sel.busca?"neste filtro":"neste grupo"}.</p>'}</div></section>`;
 }
 function fmQdGaveta(){
   const q=fmQd();if(!q.aberto)return"";
@@ -15085,10 +15117,11 @@ function fmQdPinta(){
   fmFixaIni();
   const q=fmQd(),bd=el.querySelector(".qd-board"),gb=el.querySelector(".qd-gb");
   const sl=bd?bd.scrollLeft:0,st=[...el.querySelectorAll(".qd-list")].map(x=>x.scrollTop),gt=gb?gb.scrollTop:0;
-  const cols=fmQdColunas(),total=cols.reduce((n,x)=>n+x.itens.length,0);
+  const cols=fmQdColunas(),total=cols.reduce((n,x)=>n+x.itens.length,0);FM._qdCols=cols;
   // números das abas: quantos casos cada grupo tem com os filtros de agora
   const todos=fmQdCasos();
   document.querySelectorAll("#fm-sec .fm-tab[data-v] .n").forEach(n=>{const v=FM_QD_VER.find(z=>z.id===n.parentNode.dataset.v);n.textContent=todos.filter(c=>v.sit.indexOf(c.situacao)>=0).length;});
+  const lp=document.getElementById("qd-limpa");if(lp)lp.hidden=!(q.de||q.ate);
   const cnt=document.getElementById("qd-count");if(cnt)cnt.textContent=total+(total===1?" ocorrência":" ocorrências")+" em "+cols.length+(cols.length===1?" supervisor":" supervisores");
   el.innerHTML=(cols.length?`<div class="qd-board">${cols.map(fmQdColuna).join("")}</div>`:fmVazio("Nada encontrado com esse filtro","Tire um filtro para ver os casos em aberto."))+fmQdGaveta();
   const nb=el.querySelector(".qd-board");if(nb)nb.scrollLeft=sl;
