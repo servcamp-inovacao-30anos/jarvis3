@@ -12746,7 +12746,7 @@ function brMontar(){
   if(!brPermitido()){el.innerHTML=`<div class="br-vazio"><b>Relatório restrito</b><span>Este relatório é da diretoria e da coordenação.</span></div>`;return;}
   el.innerHTML=`<div class="br-prog" id="brProg"></div>`+
     `<header class="br-top"><div class="tt"><h3>Coberturas do supervisor</h3><p>Chegada do supervisor ao posto comparada com o início da vaga de quem faltou</p></div>`+
-    `<div class="br-ac"><button type="button" class="br-btn" onclick="brExcel()">${BR_IC.xls}Excel</button><button type="button" class="br-btn pri" onclick="brPrevia()">${BR_IC.imp}Imprimir</button></div></header>`+
+    `<div class="br-ac"><button type="button" class="br-btn" onclick="brExcel()">${BR_IC.xls}Excel</button><button type="button" class="br-btn" onclick="brConectadoAbrir()" title="Arquivo que se atualiza sozinho com o JARVIS">${BR_IC.xls}Excel conectado</button><button type="button" class="br-btn pri" onclick="brPrevia()">${BR_IC.imp}Imprimir</button></div></header>`+
     `<div class="br-fil" id="brPer"></div><div class="br-fil" id="brFil"></div><div class="br-chips" id="brChips"></div>`+
     `<div id="brCont" class="br-cont"></div>`;
 }
@@ -14321,7 +14321,7 @@ function frConectadoTecla(e){if(e.key==="Escape")frConectadoFechar();}
 function frConectadoFechar(){const o=document.getElementById("frCon");if(o)o.remove();document.removeEventListener("keydown",frConectadoTecla);}
 
 /* Injeta no .xlsx gerado as conexões "Da Web" (uma por tabela), as consultas e os nomes dos intervalos. */
-async function frInjetaConexoes(buf,defs){
+async function frInjetaConexoes(buf,defs,prefixo){
   const JSZip=await frCarregaJSZip();
   const zip=await JSZip.loadAsync(buf);
   const le=async n=>{const f=zip.file(n);if(!f)throw new Error("parte do arquivo não encontrada: "+n);return f.async("string");};
@@ -14334,8 +14334,8 @@ async function frInjetaConexoes(buf,defs){
   for(let i=0;i<defs.length;i++){
     const d=defs[i],n=i+1,idx=sheets.findIndex(s=>s.nome===d.aba);
     if(idx<0)throw new Error("aba não encontrada: "+d.aba);
-    con+=`<connection id="${n}" name="${xe("Faltas x Medidas - "+d.titulo)}" type="4" refreshedVersion="6" refreshOnLoad="1" saveData="1"><webPr xl2000="1" url="${xe(d.url)}"/></connection>`;
-    zip.file(`xl/queryTables/queryTable${n}.xml`,`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<queryTable xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" name="${d.nome}" backgroundRefresh="0" refreshOnLoad="1" adjustColumnWidth="0" connectionId="${n}" autoFormatId="16" applyNumberFormats="0" applyBorderFormats="0" applyFontFormats="0" applyPatternFormats="0" applyAlignmentFormats="0" applyWidthHeightFormats="0"/>`);
+    con+=`<connection id="${n}" name="${xe((prefixo||"Faltas x Medidas")+" - "+d.titulo)}" type="4" refreshedVersion="6" refreshOnLoad="1" saveData="1"><webPr xl2000="1" url="${xe(d.url)}"/></connection>`;
+    zip.file(`xl/queryTables/queryTable${n}.xml`,`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<queryTable xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" name="${d.nome}" growShrinkType="overwriteClear" backgroundRefresh="0" refreshOnLoad="1" adjustColumnWidth="0" connectionId="${n}" autoFormatId="16" applyNumberFormats="0" applyBorderFormats="0" applyFontFormats="0" applyPatternFormats="0" applyAlignmentFormats="0" applyWidthHeightFormats="0"/>`);
     ctX=ctX.replace("</Types>",`<Override PartName="/xl/queryTables/queryTable${n}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.queryTable+xml"/></Types>`);
     const arq=alvoDe(sheets[idx].rid),relArq=arq.replace(/worksheets\/([^/]+)$/,"worksheets/_rels/$1.rels"),rel=`<Relationship Id="rIdFMqt${n}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/queryTable" Target="../queryTables/queryTable${n}.xml"/>`;
     const ja=zip.file(relArq);
@@ -14960,6 +14960,394 @@ async function frXlsxConectado(Ex,logo,j,k){
       const y=ws.getCell(r,3);y.value={richText:[{text:a+": ",font:fonte({bold:true})},{text:b,font:fonte()}]};y.alignment={vertical:"middle",wrapText:true};ws.getRow(r).height=22;r++;
     });
     r++;ws.mergeCells(r,2,r,3);const z=ws.getCell(r,2);z.value=`Arquivo gerado em ${brDd(hoje)}. A chave de acesso dele vale até ${brDd(String(k.validaAte).slice(0,10))}; depois disso, gere outro arquivo no JARVIS (Relatório de Faltas x Medidas > Excel conectado).`;z.font=fonte({size:9,italic:true,color:{argb:BRX.mudo}});z.alignment={wrapText:true,indent:1};ws.getRow(r).height=30;
+    pagina(ws);
+  }
+  wb.views=[{x:0,y:0,width:20000,height:12000,firstSheet:0,activeTab:0,visibility:"visible"}];
+  return wb;
+}
+
+/* ═════════ EXCEL CONECTADO DO RELATÓRIO DE COBERTURAS ═════════
+   Mesmo modelo do Excel conectado do Faltas x Medidas: um arquivo que se atualiza sozinho com o JARVIS.
+   As abas Dados e Listas são preenchidas por consultas "Da Web" gravadas dentro do arquivo (o Excel as refaz
+   ao abrir); o Painel, "Por supervisor", "Por posto" e "Cada cobertura" são fórmulas em cima delas. A chave
+   (escopo "xlb", 90 dias, cancelável) só serve para ler a tabela de coberturas. */
+const BRC_PASSOS=[
+  ["Abra o arquivo no Excel do computador.","Funciona no Excel para Windows. No Excel pelo navegador ou no celular ele mostra os números da hora em que foi gerado, mas não atualiza."],
+  ["Se aparecer uma barra amarela escrita \"Modo de Exibição Protegido\", clique em Habilitar Edição.","É um aviso normal do Excel para arquivos baixados da internet."],
+  ["Se aparecer outra barra, \"As conexões de dados externos foram desabilitadas\", clique em Habilitar Conteúdo.","É isso que deixa o arquivo buscar os dados no JARVIS. Em poucos segundos as abas se atualizam sozinhas."],
+  ["Escolha a Folha, o Supervisor, o Posto e o Motivo na aba Painel.","Todos os números, listas e abas mudam na hora. A aba Cada cobertura mostra, uma por linha, as idas do que você escolheu."],
+  ["Para atualizar com o arquivo aberto: no menu Dados do Excel (no alto da tela), clique em Atualizar Tudo (ou aperte Ctrl + Alt + F5).","Ao abrir o arquivo de novo, ele já atualiza sozinho. A cada abertura você vê a situação mais recente."],
+  ["Se não atualizar:","Confira a internet. Se o aviso falar de acesso negado, a chave venceu (dura 90 dias) ou foi cancelada: gere o arquivo de novo no JARVIS."],
+  ["Cuide do arquivo como um relatório interno.","Ele guarda uma chave que só serve para ler estes dados. Não envie por e-mail ou grupo aberto. Se perder o arquivo, peça para cancelar as chaves no JARVIS."]
+];
+function brConectadoPedir(metodo,t,extra){
+  return fetch("/api/rh?modulo=bdv&t="+t+(extra?"&"+extra:""),{method:metodo}).then(r=>r.json().catch(()=>({})).then(j=>{if(!r.ok)throw new Error(j.error||("Falha HTTP "+r.status));return j;}));
+}
+async function brConectadoBuffer(){
+  const k=await brConectadoPedir("POST","chave_excel");
+  const j=await brConectadoPedir("GET","planilha","formato=json");
+  const [Ex,logo]=await Promise.all([brCarregaExcelJS(),brLogoPng()]);
+  const base=location.origin+"/api/rh?modulo=bdv&t=planilha&k="+encodeURIComponent(k.chave)+"&tabela=";
+  const wb=await brXlsxConectado(Ex,logo,j,k);
+  const buf=await wb.xlsx.writeBuffer();
+  const fimBuf=await frInjetaConexoes(buf,[
+    {aba:"Dados",nome:"BDV_Idas",ref:"$A$5:$O$"+(5+Math.max(1,j.tabelas.idas.linhas.length)),url:base+"idas",titulo:"coberturas"},
+    {aba:"Listas",nome:"BDV_Listas",ref:"$A$1:$F$"+(1+Math.max(1,j.tabelas.listas.linhas.length)),url:base+"listas",titulo:"listas"}
+  ],"Coberturas do supervisor");
+  return {fimBuf,j,k};
+}
+async function brConectadoGerar(btn){
+  if(btn){btn.disabled=true;btn.dataset.t=btn.textContent;btn.textContent="Gerando…";}
+  const fim=()=>{if(btn){btn.disabled=false;btn.textContent=btn.dataset.t;}};
+  try{
+    if(typeof ptToast==="function")ptToast("Gerando o Excel conectado…");
+    const {fimBuf,j,k}=await brConectadoBuffer();
+    const url=URL.createObjectURL(new Blob([fimBuf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}));
+    const a=document.createElement("a");a.href=url;a.download=`Coberturas do supervisor CONECTADO ${j.hoje}.xlsx`;document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),4000);
+    if(typeof ptToast==="function")ptToast("Excel conectado pronto");
+    const av=document.getElementById("frConAviso");if(av)av.textContent="Arquivo gerado. A chave dele vale até "+brDd(String(k.validaAte).slice(0,10))+".";
+  }catch(e){alert("Não foi possível gerar o Excel conectado: "+(e&&e.message||e));}
+  finally{fim();}
+}
+function brConectadoCancelar(btn){
+  if(!confirm("Cancelar TODAS as chaves do Excel de Coberturas já geradas?\n\nOs arquivos conectados que existem hoje deixam de atualizar (você gera outro quando precisar). Isso não apaga nada no JARVIS."))return;
+  if(btn)btn.disabled=true;
+  brConectadoPedir("POST","revogar_excel").then(()=>{if(typeof ptToast==="function")ptToast("Chaves canceladas");const av=document.getElementById("frConAviso");if(av)av.textContent="Chaves anteriores canceladas.";})
+    .catch(e=>alert("Não foi possível cancelar: "+e.message)).finally(()=>{if(btn)btn.disabled=false;});
+}
+function brConectadoAbrir(){
+  frConectadoFechar();
+  const o=document.createElement("div");o.id="frCon";o.setAttribute("role","dialog");o.setAttribute("aria-modal","true");o.setAttribute("aria-label","Excel conectado");
+  o.style.cssText="position:fixed;inset:0;z-index:100000;background:rgba(13,31,53,.6);display:flex;align-items:center;justify-content:center;padding:16px";
+  o.onclick=e=>{if(e.target===o)frConectadoFechar();};
+  o.innerHTML=`<div id="frConCx"><div class="fc-h"><div><h3>Excel conectado · Coberturas do supervisor</h3><p>Um arquivo que se atualiza sozinho com o que está no JARVIS.</p></div><button type="button" class="fc-x" onclick="frConectadoFechar()" aria-label="Fechar">${FM_IC.x}</button></div>`+
+    `<div class="fc-c"><div class="fc-fluxo"><span>JARVIS</span><i>→</i><span>internet</span><i>→</i><span>seu Excel</span></div>`+
+    `<p class="fc-p">Cada vez que você abre o arquivo, o Excel busca as coberturas no JARVIS e refaz todas as contas. Você não digita nada: a Folha, o Supervisor, o Posto e o Motivo se escolhem no Painel.</p>`+
+    `<h4>Como usar, passo a passo</h4><ol class="fc-ol">${BRC_PASSOS.map(([t,d])=>`<li><b>${_esc(t)}</b><span>${_esc(d)}</span></li>`).join("")}</ol>`+
+    `<div class="fc-av"><b>De onde vem cada coisa:</b> as idas, os horários e as situações vêm sempre do JARVIS (BDV do SAR2G cruzado com as faltas), então nunca divergem da tela do relatório. O arquivo traz as coberturas dos últimos 13 meses guardados.</div>`+
+    `<p class="fc-s" id="frConAviso">A chave gerada vale 90 dias e só serve para ler estas tabelas.</p></div>`+
+    `<div class="fc-f"><button type="button" class="br-btn" onclick="brConectadoCancelar(this)">Cancelar chaves antigas</button><span style="flex:1"></span><button type="button" class="br-btn" onclick="frConectadoFechar()">Fechar</button><button type="button" class="br-btn pri" onclick="brConectadoGerar(this)">${BR_IC.xls}Gerar arquivo conectado</button></div></div>`;
+  document.body.appendChild(o);
+  document.addEventListener("keydown",frConectadoTecla);
+}
+
+/* O arquivo em si. j = resposta de "planilha&formato=json"; k = chave gerada. */
+async function brXlsxConectado(Ex,logo,j,k){
+  const T=j.tabelas,hoje=j.hoje,NAV=BRX.navy;
+  const idas=T.idas.linhas,listas=T.listas.linhas;
+  const LIN0=6,LINN=4005,MAXS=60,MAXP=600; // linhas da aba Dados (cabeçalho na 5): folga para 4000 idas
+  const dr=c=>`Dados!$${c}$${LIN0}:$${c}$${LINN}`;
+  const DAT=dr("A"),SUPc=dr("C"),POSc=dr("D"),MOTc=dr("E"),SITc=dr("K"),FOLc=dr("M"),KMc=dr("N"),TMc=dr("O"),FIL=dr("P"),ORD=dr("Q"),PAR=dr("R"),DIA=dr("S"),KMF=dr("T"),TMF=dr("U");
+  const CF="Painel!$M$6",CS="Painel!$M$7",CP="Painel!$M$8",CM="Painel!$M$9";
+  const SN={A:"Antes do início da vaga",N:"Até 1h de atraso",T:"1 a 3h de atraso",G:"Mais de 3h de atraso",S:"Sem horário"};
+  const SITS=[["A",BRX.an],["N",BRX.ok],["T",BRX.am],["G",BRX.da]];
+  const ZERO='0;-0;"–"',CINZA="FFB4BCC8";
+  const nulo=v=>(v===""||v==null?null:v);
+  const wb=new Ex.Workbook();
+  wb.creator="JARVIS · Grupo ServCamp";wb.title="Coberturas do supervisor (conectado)";wb.created=new Date();
+  wb.calcProperties={fullCalcOnLoad:true};
+  const fonte=o=>Object.assign({name:"Segoe UI",size:10,color:{argb:BRX.texto}},o||{});
+  const preenche=c=>({type:"pattern",pattern:"solid",fgColor:{argb:c}});
+  const dxf=c=>({type:"pattern",pattern:"solid",bgColor:{argb:c}});
+  const fio=c=>({style:"thin",color:{argb:c||BRX.linha}});
+  const fm=(formula,result)=>({formula,result});
+  const pagina=(ws,titulos,paisagem)=>{
+    ws.pageSetup={paperSize:9,orientation:paisagem?"landscape":"portrait",fitToPage:true,fitToWidth:1,fitToHeight:0,margins:{left:.4,right:.4,top:.5,bottom:.6,header:.25,footer:.3},horizontalCentered:true,printTitlesRow:titulos||undefined};
+    ws.headerFooter={oddFooter:'&L&"Segoe UI,Regular"&8JARVIS · Grupo ServCamp&R&"Segoe UI,Regular"&8Página &P de &N'};
+  };
+  const topo=(ws,tit,sub,col0,col1)=>{
+    ws.getRow(1).height=30;ws.getRow(2).height=18;ws.getRow(3).height=8;
+    ws.mergeCells(1,col0,1,col1);const t=ws.getCell(1,col0);t.value=tit;t.font=fonte({size:18,bold:true,color:{argb:NAV}});t.alignment={vertical:"middle",horizontal:"right"};
+    ws.mergeCells(2,col0,2,col1);const u=ws.getCell(2,col0);u.value=sub;u.font=fonte({size:9,color:{argb:BRX.mudo}});u.alignment={vertical:"top",horizontal:"right"};
+    for(let c=1;c<=col1;c++)ws.getCell(3,c).border={top:{style:"medium",color:{argb:NAV}}};
+    if(logo){const id=wb.addImage({base64:logo,extension:"png"});ws.addImage(id,{tl:{col:0.1,row:0.15},ext:{width:150,height:44}});}
+  };
+  const cabeca=(ws,row,cols,col0)=>{
+    ws.getRow(row).height=38;
+    cols.forEach((c,i)=>{const ce=ws.getCell(row,(col0||1)+i);ce.value=c.t;ce.font=fonte({size:9,bold:true,color:{argb:"FFFFFFFF"}});ce.fill=preenche(NAV);ce.alignment={vertical:"middle",horizontal:c.n?"right":"left",wrapText:true,indent:c.n?0:1};ce.border={bottom:fio(NAV)};});
+  };
+  const zeroCinza=(ws,ref)=>ws.addConditionalFormatting({ref,rules:[{type:"cellIs",operator:"equal",formulae:["0"],style:{font:{color:{argb:CINZA},bold:false}}}]});
+  const pctFmt=(ws,ref,c0)=>ws.addConditionalFormatting({ref,rules:[
+    {type:"expression",formulae:[`AND(ISNUMBER(${c0}),${c0}<0.6)`],style:{fill:dxf(BRX.da[1]),font:{bold:true,color:{argb:BRX.da[0]}}}},
+    {type:"expression",formulae:[`AND(ISNUMBER(${c0}),${c0}>=0.6,${c0}<0.8)`],style:{fill:dxf(BRX.am[1]),font:{bold:true,color:{argb:BRX.am[0]}}}},
+    {type:"expression",formulae:[`AND(ISNUMBER(${c0}),${c0}>=0.8)`],style:{fill:dxf(BRX.ok[1]),font:{bold:true,color:{argb:BRX.ok[0]}}}}]});
+  const letra=n=>{let t="";while(n>0){const m=(n-1)%26;t=String.fromCharCode(65+m)+t;n=Math.floor((n-1)/26);}return t;};
+
+  /* ═══ contas em JS, só para o valor que o arquivo já traz guardado (o Excel recalcula tudo ao abrir) ═══ */
+  const R0=idas.map(l=>({dat:l[0],dia:l[1],sup:l[2],pos:l[3],mot:l[4],falta:l[5],re:l[6],ini:l[7],che:l[8],min:l[9]===""?null:Number(l[9]),sit:l[10],ref:l[11],folha:l[12],km:l[13]===""?null:Number(l[13]),tm:l[14]===""?null:Number(l[14])}));
+  const selF=listas[1]&&listas[1][0]?listas[1][0]:"Todas as folhas",selS="Todos",selP="Todos",selM="Todos os motivos";
+  const passa=(o,sf,ss,sp,sm)=>(sf==="Todas as folhas"||o.folha===sf)&&(ss==="Todos"||o.sup===ss)&&(sp==="Todos"||o.pos===sp)&&(sm==="Todos os motivos"||(sm==="Só faltas"?o.mot==="Falta":o.mot!=="Falta"));
+  R0.forEach(o=>{o.filtro=passa(o,selF,selS,selP,selM)?1:0;});
+  let acc=0;R0.forEach(o=>{acc+=o.filtro;o.ord=acc;});
+  const par=new Set(),dd=new Set(),mx={};R0.forEach(o=>{if(!o.filtro)return;const k2=o.sup+"|"+o.dat,m=mx[k2]||(mx[k2]={km:0,tm:0});if(o.km!=null)m.km=Math.max(m.km,o.km);if(o.tm!=null)m.tm=Math.max(m.tm,o.tm);});
+  R0.forEach(o=>{const k=o.sup+"|"+o.pos;o.par=(o.filtro&&!par.has(k))?1:0;if(o.filtro)par.add(k);const k2=o.sup+"|"+o.dat;o.dia1=(o.filtro&&!dd.has(k2))?1:0;if(o.filtro)dd.add(k2);o.kmd=o.dia1?mx[k2].km:0;o.tmd=o.dia1?mx[k2].tm:0;});
+  const L0=R0.filter(o=>o.filtro===1);
+  const nSit=(L,s)=>L.filter(o=>o.sit===s).length;
+  const conta=L=>{const L1=L.filter(o=>o.dia1===1);const a=nSit(L,SN.A),n=nSit(L,SN.N),t=nSit(L,SN.T),g=nSit(L,SN.G),s=nSit(L,SN.S),tot=L.length;return{tot,a,n,t,g,s,den:tot-s,pct:(tot-s)?(a+n)/(tot-s):"",km:L1.reduce((x,o)=>x+o.kmd,0)/1000,tm:L1.reduce((x,o)=>x+o.tmd,0)};};
+  const C0=conta(L0);
+  const ordena=(nomes,campo)=>{const m={};R0.forEach(o=>{if(o.filtro===1)m[o[campo]]=(m[o[campo]]||0)+1;});return nomes.map((nm,i)=>({nm,i,c:m[nm]||0})).filter(x=>x.c>0).sort((a,b)=>b.c-a.c||a.i-b.i);};
+  const supsN=listas.slice(1).map(l=>l[3]).filter(Boolean),postosN=listas.slice(1).map(l=>l[4]).filter(Boolean);
+  const supOrd=ordena(supsN,"sup"),posOrd=ordena(postosN,"pos");
+  const contaDe=campo=>{const m={};R0.forEach(o=>{if(o.filtro===1)m[o[campo]]=(m[o[campo]]||0)+1;});return m;};
+  const cSup=contaDe("sup"),cPos=contaDe("pos");
+
+  const wsA=wb.addWorksheet("Comece aqui",{properties:{tabColor:{argb:"FFF5B000"}},views:[{showGridLines:false}]});
+  const wsP=wb.addWorksheet("Painel",{properties:{tabColor:{argb:NAV}},views:[{showGridLines:false}]});
+  const wsS=wb.addWorksheet("Por supervisor",{properties:{tabColor:{argb:BRX.ok[0]}}});
+  const wsO=wb.addWorksheet("Por posto",{properties:{tabColor:{argb:"FF1D6FC4"}}});
+  const wsC=wb.addWorksheet("Cada cobertura",{properties:{tabColor:{argb:BRX.am[0]}}});
+  const wsM=wb.addWorksheet("Como é calculado",{properties:{tabColor:{argb:BRX.gr[0]}},views:[{showGridLines:false}]});
+  const wsD=wb.addWorksheet("Dados",{properties:{tabColor:{argb:"FF98A2B3"}},views:[{showGridLines:false,state:"frozen",ySplit:5,xSplit:3}]});
+  const wsL=wb.addWorksheet("Listas",{state:"hidden"});
+
+  /* ═══ Listas (preenchida pelo JARVIS) ═══ */
+  T.listas.cab.forEach((t,i)=>{wsL.getCell(1,1+i).value=t;});
+  listas.forEach((l,r)=>l.forEach((v,c)=>{const x=wsL.getCell(2+r,1+c);x.value=nulo(v);if((c===1||c===2)&&v!=="")x.numFmt="dd/mm/yyyy";}));
+
+  /* ═══ Dados (preenchida pelo JARVIS; as colunas verdes são fórmulas que dão o filtro do Painel e a ordem das listas) ═══ */
+  {
+    const ws=wsD;
+    const cols=[{t:"Data",w:11,n:1},{t:"Dia",w:6},{t:"Supervisor",w:22},{t:"Posto",w:30},{t:"Motivo",w:14},{t:"Quem faltou",w:28},{t:"RE",w:8,n:1},{t:"Início da vaga",w:9},{t:"Chegada",w:9},{t:"Minutos",w:9,n:1},{t:"Situação",w:22},{t:"Referência do início",w:28},{t:"Folha",w:23},{t:"Metros do dia",w:10,n:1},{t:"Tempo do dia (min)",w:10,n:1},
+      {t:"No filtro",w:9,n:1},{t:"Ordem",w:9,n:1},{t:"Par sup. + posto",w:10,n:1},{t:"1ª do dia",w:9,n:1},{t:"Metros (dia)",w:10,n:1},{t:"Tempo (dia)",w:10,n:1}];
+    ws.columns=cols.map(c=>({width:c.w}));
+    topo(ws,"Dados das coberturas","Esta aba é preenchida sozinha pelo JARVIS quando o arquivo abre · não digite aqui",4,21);
+    ws.mergeCells(4,2,4,12);const n=ws.getCell(4,2);n.value=`Idas do supervisor até ${brDd(j.dataBase||hoje)} (BDV do SAR2G) · arquivo gerado em ${brDd(hoje)} · metros e tempo do dia vêm em cada ida e as colunas verdes contam uma vez por supervisor e dia`;n.font=fonte({size:9,italic:true,color:{argb:BRX.mudo}});n.alignment={vertical:"middle",indent:1};ws.getRow(4).height=22;
+    cabeca(ws,5,cols,1);
+    for(let q=16;q<=21;q++)ws.getCell(5,q).fill=preenche("FF067647");
+    ws.getColumn(1).numFmt="dd/mm/yyyy";ws.getColumn(8).numFmt="hh:mm";ws.getColumn(9).numFmt="hh:mm";
+    idas.forEach((l,i)=>{
+      const r=LIN0+i;
+      l.forEach((v,q)=>{const x=ws.getCell(r,1+q);x.value=nulo(v);x.font=fonte({size:9.5,bold:q===2});x.alignment={vertical:"middle",horizontal:[0,6,9,13,14].indexOf(q)>=0?"right":"left"};if(q===0)x.numFmt="dd/mm/yyyy";if(q===7||q===8)x.numFmt="hh:mm";});
+    });
+    for(let r=LIN0;r<=LINN;r++){
+      const o=R0[r-LIN0];
+      const put=(col,formula,result)=>{const x=ws.getCell(r,col);x.value=fm(formula,result);x.font=fonte({size:9.5});x.alignment={vertical:"middle",horizontal:"right"};};
+      put(16,`IF($A${r}="","",IF(AND(OR(${CF}="*",$M${r}=${CF}),OR(${CS}="*",$C${r}=${CS}),OR(${CP}="*",$D${r}=${CP}),IF(${CM}="*",TRUE,IF(${CM}="F",$E${r}="Falta",$E${r}<>"Falta"))),1,0))`,o?o.filtro:"");
+      put(17,`IF($P${r}="","",N($Q${r-1})+$P${r})`,o?o.ord:"");
+      put(18,`IF($P${r}="","",IF($P${r}=0,0,IF(COUNTIFS($C$${LIN0}:$C${r},$C${r},$D$${LIN0}:$D${r},$D${r},$P$${LIN0}:$P${r},1)=1,1,0)))`,o?o.par:"");
+      put(19,`IF($P${r}="","",IF($P${r}=0,0,IF(COUNTIFS($C$${LIN0}:$C${r},$C${r},$A$${LIN0}:$A${r},$A${r},$P$${LIN0}:$P${r},1)=1,1,0)))`,o?o.dia1:"");
+      put(20,`IF($S${r}=1,_xlfn.MAXIFS($N$${LIN0}:$N$${LINN},$C$${LIN0}:$C$${LINN},$C${r},$A$${LIN0}:$A$${LINN},$A${r},$P$${LIN0}:$P$${LINN},1),IF($S${r}="","",0))`,o?o.kmd:"");
+      put(21,`IF($S${r}=1,_xlfn.MAXIFS($O$${LIN0}:$O$${LINN},$C$${LIN0}:$C$${LINN},$C${r},$A$${LIN0}:$A$${LINN},$A${r},$P$${LIN0}:$P$${LINN},1),IF($S${r}="","",0))`,o?o.tmd:"");
+    }
+    ws.addConditionalFormatting({ref:`K${LIN0}:K${LINN}`,rules:[
+      {type:"cellIs",operator:"equal",formulae:['"'+SN.A+'"'],style:{fill:dxf(BRX.an[1]),font:{bold:true,color:{argb:BRX.an[0]}}}},
+      {type:"cellIs",operator:"equal",formulae:['"'+SN.N+'"'],style:{fill:dxf(BRX.ok[1]),font:{bold:true,color:{argb:BRX.ok[0]}}}},
+      {type:"cellIs",operator:"equal",formulae:['"'+SN.T+'"'],style:{fill:dxf(BRX.am[1]),font:{bold:true,color:{argb:BRX.am[0]}}}},
+      {type:"cellIs",operator:"equal",formulae:['"'+SN.G+'"'],style:{fill:dxf(BRX.da[1]),font:{bold:true,color:{argb:BRX.da[0]}}}}]});
+    ws.autoFilter={from:{row:5,column:1},to:{row:LINN,column:21}};
+    pagina(ws,"5:5",true);
+  }
+
+  /* ═══ Painel ═══ */
+  {
+    const ws=wsP;ws.columns=[{width:2},...Array.from({length:10},()=>({width:14})),{width:2},{width:16,hidden:true}];
+    topo(ws,"Coberturas do supervisor","Atualizado sozinho com o JARVIS · chegada do supervisor ao posto comparada com o início da vaga",5,11);
+    ws.mergeCells("B4:K4");const P=ws.getCell("B4");P.value=`Idas do supervisor até ${brDd(j.dataBase||hoje)} (BDV do SAR2G)  ·  arquivo gerado em ${brDd(hoje)}`;P.font=fonte({size:10.5,bold:true,color:{argb:NAV}});P.alignment={vertical:"middle"};ws.getRow(4).height=26;
+    ws.getRow(5).height=6;
+    const caixaFundo="FFEEF4FF",entrada={style:"thin",color:{argb:"FF2E90FA"}};
+    [6,7,8,9].forEach(r=>{ws.getRow(r).height=24;for(let k=2;k<=11;k++)ws.getCell(r,k).fill=preenche(caixaFundo);});
+    const rotulo=(r,t)=>{ws.mergeCells(r,2,r,3);const x=ws.getCell(r,2);x.value=t;x.font=fonte({size:10,bold:true,color:{argb:NAV}});x.alignment={vertical:"middle",indent:1};};
+    const entrar=(r,val)=>{ws.mergeCells(r,4,r,6);const x=ws.getCell(r,4);x.value=val;x.font=fonte({size:11,bold:true,color:{argb:NAV}});x.alignment={vertical:"middle",horizontal:"left",indent:1};for(let k=4;k<=6;k++){ws.getCell(r,k).fill=preenche("FFFFFFFF");ws.getCell(r,k).border={top:entrada,bottom:entrada,left:k===4?entrada:undefined,right:k===6?entrada:undefined};}return x;};
+    const lista=(col,n,tit)=>({type:"list",allowBlank:false,formulae:[`OFFSET(Listas!$${col}$2,0,0,COUNTA(Listas!$${col}$2:$${col}$${n}),1)`],showErrorMessage:true,errorTitle:tit,error:"Escolha um item da lista."});
+    rotulo(6,"Folha");entrar(6,selF).dataValidation=lista("A",60,"Folha");
+    rotulo(7,"Supervisor");entrar(7,selS).dataValidation=lista("D",200,"Supervisor");
+    rotulo(8,"Posto");entrar(8,selP).dataValidation=lista("E",1000,"Posto");
+    rotulo(9,"Motivo");entrar(9,selM).dataValidation=lista("F",10,"Motivo");
+    ws.mergeCells("H6:K9");const nota=ws.getCell("H6");nota.value="Escolha a Folha, o Supervisor, o Posto ou o Motivo nas caixas brancas e tudo muda na hora, em todas as abas. Os dados vêm do JARVIS sozinhos: ao abrir, clique em Habilitar Conteúdo se o Excel pedir. Para atualizar aberto: menu Dados > Atualizar Tudo.";nota.font=fonte({size:8.5,italic:true,color:{argb:BRX.mudo}});nota.alignment={vertical:"middle",wrapText:true,indent:1};
+    ws.getCell("M6").value=fm('IF($D$6="Todas as folhas","*",$D$6)',selF==="Todas as folhas"?"*":selF);
+    ws.getCell("M7").value=fm('IF($D$7="Todos","*",$D$7)',"*");
+    ws.getCell("M8").value=fm('IF($D$8="Todos","*",$D$8)',"*");
+    ws.getCell("M9").value=fm('IF($D$9="Só faltas","F",IF($D$9="Outros motivos","O","*"))',"*");
+    ws.getRow(10).height=8;
+    const T0=18,E=q=>`$E$${T0+q}`,SOMA=`SUM($E$${T0}:$E$${T0+3})`;
+    const nSups=`COUNTIF('Por supervisor'!$O$7:$O$${6+MAXS},">0")`,nPos=`COUNTIF('Por posto'!$P$7:$P$${6+MAXP},">0")`;
+    const hm=m=>m/1440;
+    const cards=[
+      ["COBERTURAS DO SUPERVISOR",fm(`COUNTIFS(${FIL},1)`,C0.tot),"0",fm(`${nSups}&IF(${nSups}=1," supervisor"," supervisores")&" · "&${nPos}&IF(${nPos}=1," posto"," postos")`,`${supOrd.length} ${supOrd.length===1?"supervisor":"supervisores"} · ${posOrd.length} ${posOrd.length===1?"posto":"postos"}`),BRX.navy],
+      ["CHEGOU EM ATÉ 1H",fm(`IFERROR((${E(0)}+${E(1)})/${SOMA},"—")`,C0.den?(C0.a+C0.n)/C0.den:"—"),"0%",fm(`"do início da vaga · "&(${E(0)}+${E(1)})&" de "&${SOMA}`,`do início da vaga · ${C0.a+C0.n} de ${C0.den}`),BRX.ok[0]],
+      ["1 A 3H DE ATRASO",fm(`${E(2)}`,C0.t),"0",fm(`IFERROR(TEXT(${E(2)}/${SOMA},"0%")&" das coberturas","")`,C0.den?Math.round(C0.t/C0.den*100)+"% das coberturas":""),BRX.am[0]],
+      ["MAIS DE 3H DE ATRASO",fm(`${E(3)}`,C0.g),"0",fm(`IFERROR(TEXT(${E(3)}/${SOMA},"0%")&" das coberturas","")`,C0.den?Math.round(C0.g/C0.den*100)+"% das coberturas":""),BRX.da[0]],
+      ["HORAS EM CAMPO",fm(`SUMIFS(${TMF},${FIL},1)/1440`,hm(C0.tm)),'[h]"h"mm',fm(`FIXED(SUMIFS(${KMF},${FIL},1)/1000,0)&" km nos dias com cobertura"`,`${Math.round(C0.km).toLocaleString("pt-BR")} km nos dias com cobertura`),BRX.navy]
+    ];
+    ws.getRow(11).height=6;ws.getRow(12).height=20;ws.getRow(13).height=40;ws.getRow(14).height=30;ws.getRow(15).height=6;
+    cards.forEach((cd,i)=>{
+      const c0=2+i*2,c1=c0+1;[12,13,14].forEach(r=>ws.mergeCells(r,c0,r,c1));
+      const rot=ws.getCell(12,c0),val=ws.getCell(13,c0),sub=ws.getCell(14,c0);
+      rot.value=cd[0];rot.font=fonte({size:8,bold:true,color:{argb:BRX.mudo}});rot.alignment={vertical:"bottom",horizontal:"left",indent:1};
+      val.value=cd[1];val.numFmt=cd[2];val.font=fonte({size:26,bold:true,color:{argb:cd[4]}});val.alignment={vertical:"middle",horizontal:"left",indent:1};
+      sub.value=cd[3];sub.font=fonte({size:8.5,color:{argb:BRX.texto}});sub.alignment={vertical:"top",horizontal:"left",indent:1,wrapText:true};
+      for(let r=12;r<=14;r++)for(let q=c0;q<=c1;q++){const ce=ws.getCell(r,q);ce.fill=preenche(BRX.faixa);ce.border={left:q===c0?fio():undefined,right:q===c1?fio():undefined,top:r===12?{style:"medium",color:{argb:cd[4]}}:undefined,bottom:r===14?fio():undefined};}
+    });
+    let r=16;
+    const titulo=txt=>{ws.mergeCells(r,2,r,11);const ce=ws.getCell(r,2);ce.value=txt;ce.font=fonte({size:11,bold:true,color:{argb:NAV}});ce.alignment={vertical:"middle"};ws.getRow(r).height=24;for(let q=2;q<=11;q++)ws.getCell(r,q).border={bottom:fio()};r++;};
+    titulo("Como o supervisor chegou");ws.getRow(T0-1).height=4;
+    const cnt={A:C0.a,N:C0.n,T:C0.t,G:C0.g};
+    SITS.forEach(([k,cor],i)=>{
+      const rr=T0+i,n=cnt[k],p=C0.den?n/C0.den:0;ws.getRow(rr).height=20;
+      ws.mergeCells(rr,2,rr,4);const a=ws.getCell(rr,2);a.value=SN[k];a.font=fonte({size:10,bold:true,color:{argb:cor[0]}});a.alignment={vertical:"middle",indent:1};
+      const b=ws.getCell(rr,5);b.value=fm(`COUNTIFS(${FIL},1,${SITc},"${SN[k]}")`,n);b.font=fonte({size:10,bold:true});b.alignment={vertical:"middle",horizontal:"right"};
+      const pc=ws.getCell(rr,6);pc.value=fm(`IFERROR(E${rr}/${SOMA},0)`,p);pc.numFmt="0%";pc.font=fonte({size:10,color:{argb:BRX.mudo}});pc.alignment={vertical:"middle",horizontal:"right"};
+      ws.mergeCells(rr,7,rr,11);const bar=ws.getCell(rr,7);bar.value=fm(`IF(F${rr}=0,"▏",REPT("█",ROUND(F${rr}*34,0)))`,"█".repeat(Math.round(p*34))||"▏");bar.font=fonte({size:10,color:{argb:cor[0]}});bar.alignment={vertical:"middle",indent:1};
+    });
+    r=T0+4;
+    ws.mergeCells(r,2,r,11);{const ce=ws.getCell(r,2);ce.value=fm(`IF(COUNTIFS(${FIL},1,${SITc},"${SN.S}")=0,"",COUNTIFS(${FIL},1,${SITc},"${SN.S}")&" sem horário da vaga nem do posto (não entram nos percentuais).")`,C0.s?`${C0.s} sem horário da vaga nem do posto (não entram nos percentuais).`:"");ce.font=fonte({size:8.5,italic:true,color:{argb:BRX.mudo}});ce.alignment={indent:1};}
+    r=T0+6;titulo("Leitura rápida");
+    const escopo=fm(`IF($D$6="Todas as folhas","todas as folhas","folha "&$D$6)&IF($D$7="Todos","",", supervisor "&$D$7)&IF($D$8="Todos","",", posto "&$D$8)&IF($D$9="Todos os motivos","",", "&LOWER($D$9))`,"");
+    const esc0=(selF==="Todas as folhas"?"todas as folhas":"folha "+selF);
+    const sentencas=[
+      fm(`"Coberturas do supervisor ("&${escopo.formula}&"): "&COUNTIFS(${FIL},1)&" em "&${nSups}&IF(${nSups}=1," supervisor"," supervisores")&" e "&${nPos}&IF(${nPos}=1," posto."," postos.")`,`Coberturas do supervisor (${esc0}): ${C0.tot} em ${supOrd.length} ${supOrd.length===1?"supervisor":"supervisores"} e ${posOrd.length} ${posOrd.length===1?"posto.":"postos."}`),
+      fm(`IF(${SOMA}=0,"Nenhuma cobertura com horário neste filtro.","Chegou antes ou até 1h depois do início da vaga: "&(${E(0)}+${E(1)})&" de "&${SOMA}&" ("&TEXT((${E(0)}+${E(1)})/${SOMA},"0%")&"). Com atraso de 1 a 3h: "&${E(2)}&". Com mais de 3h: "&${E(3)}&".")`,C0.den?`Chegou antes ou até 1h depois do início da vaga: ${C0.a+C0.n} de ${C0.den} (${Math.round((C0.a+C0.n)/C0.den*100)}%). Com atraso de 1 a 3h: ${C0.t}. Com mais de 3h: ${C0.g}.`:"Nenhuma cobertura com horário neste filtro.")
+    ];
+    sentencas.forEach(v=>{ws.mergeCells(r,2,r,11);const ce=ws.getCell(r,2);ce.value=v;ce.font=fonte({size:10});ce.alignment={vertical:"top",wrapText:true,indent:1};ws.getRow(r).height=32;r++;});
+    r++;ws.mergeCells(r,2,r,11);const rod=ws.getCell(r,2);rod.value=`Arquivo conectado, gerado em ${new Date().toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"})}${sessionStorage.getItem("userNome")?" por "+sessionStorage.getItem("userNome"):""}. A chave dele vale até ${brDd(String(k.validaAte).slice(0,10))}. Veja a aba "Comece aqui".`;rod.font=fonte({size:8.5,italic:true,color:{argb:BRX.mudo}});rod.alignment={indent:1};
+    pagina(ws);
+  }
+
+  /* ═══ Por supervisor e Por posto: linhas que acompanham as listas do JARVIS ═══ */
+  const grupo=(ws,cfg)=>{
+    const {titulo,porPosto,maxLin,colLista,keyRng,nomes,ordem}=cfg,N0=7,ULT=N0+maxLin-1;
+    const cols=[{t:"#",w:5,n:1},{t:porPosto?"Posto":"Supervisor",w:porPosto?38:28},{t:"Coberturas",w:13,n:1},{t:"Chegou em até 1h",w:13,n:1},{t:"Antes do início",w:13,n:1},{t:"Até 1h de atraso",w:13,n:1},{t:"1 a 3h de atraso",w:13,n:1},{t:"Mais de 3h de atraso",w:14,n:1},{t:"Sem horário",w:11,n:1},{t:porPosto?"Supervisores":"Postos",w:13,n:1}].concat(porPosto?[{t:"Por falta",w:11,n:1},{t:"Outros motivos",w:12,n:1},{t:"3 ou mais",w:11,n:1}]:[{t:"Horas em campo",w:14,n:1},{t:"Km",w:11,n:1}]);
+    const nCol=cols.length;
+    ws.columns=cols.map(c=>({width:c.w})).concat([{width:3},{width:30,hidden:true},{width:9,hidden:true},{width:9,hidden:true},{width:9,hidden:true}]);
+    ws.views=[{showGridLines:false,state:"frozen",ySplit:6,xSplit:2}];
+    topo(ws,titulo,"Segue o Painel: folha, supervisor, posto e motivo escolhidos lá",3,nCol);
+    ws.getRow(4).height=24;ws.mergeCells(4,2,4,nCol);
+    const m=ws.getCell(4,2);m.value=fm(`"Mostrando: "&IF(Painel!$D$6="Todas as folhas","todas as folhas","folha "&Painel!$D$6)&IF(Painel!$D$7="Todos","",", supervisor "&Painel!$D$7)&IF(Painel!$D$8="Todos","",", posto "&Painel!$D$8)&IF(Painel!$D$9="Todos os motivos","",", "&LOWER(Painel!$D$9))`,"Mostrando: "+(selF==="Todas as folhas"?"todas as folhas":"folha "+selF));
+    m.font=fonte({size:10.5,bold:true,color:{argb:NAV}});m.alignment={vertical:"middle"};
+    cabeca(ws,5,cols,1);
+    const HC=nCol+2; // coluna dos nomes (escondida): HC, HC+1 contagem, HC+2 posição, HC+3 linha da lista
+    const hN=letra(HC),hC=letra(HC+1),hR=letra(HC+2),hM=letra(HC+3);
+    // linha de totais (linha 6)
+    ws.getRow(6).height=24;
+    const TOTf=c=>fm(`SUM(${c}${N0}:${c}${ULT})`,0);
+    // linhas
+    const L=ordem;
+    for(let i=0;i<maxLin;i++){
+      const r=N0+i,x=L[i],srcN=`Listas!$${colLista}$${3+i}`;
+      ws.getRow(r).height=22;
+      ws.getCell(r,HC).value=fm(`IF(${srcN}="","",${srcN})`,nomes[i]||"");
+      const cn=nomes[i]?(cfg.cmap[nomes[i]]||0):"";
+      ws.getCell(r,HC+1).value=fm(`IF(${hN}${r}="","",COUNTIFS(${keyRng},${hN}${r},${FIL},1))`,cn);
+      const rank=cn===""||cn===0?"":ordem.findIndex(z=>z.nm===nomes[i])+1;
+      ws.getCell(r,HC+2).value=fm(`IF(OR(${hC}${r}="",${hC}${r}=0),"",COUNTIF($${hC}$${N0}:$${hC}$${ULT},">"&${hC}${r})+COUNTIF($${hC}$${N0}:${hC}${r},${hC}${r}))`,rank);
+      ws.getCell(r,HC+3).value=fm(`IFERROR(MATCH(ROW()-${N0-1},$${hR}$${N0}:$${hR}$${ULT},0),"")`,x?nomes.indexOf(x.nm)+1:"");
+      const vis=ws.getCell(r,1);vis.value=fm(`IF(ISNUMBER($${hM}${r}),ROW()-${N0-1},"")`,x?i+1:"");
+      const NM=`$B${r}`,cnt=sit=>sit?`COUNTIFS(${keyRng},${NM},${FIL},1,${SITc},"${sit}")`:`COUNTIFS(${keyRng},${NM},${FIL},1)`;
+      const Lg=x?(cfg.grp[x.nm]||[]):[],Cg=conta(Lg);
+      const dif=x?new Set(Lg.map(o=>porPosto?o.sup:o.pos)).size:"";
+      const cel=(c,formula,result,fmt)=>{const ce=ws.getCell(r,c);ce.value=fm(formula,result);if(fmt)ce.numFmt=fmt;};
+      cel(2,`IF($${hM}${r}="","",INDEX($${hN}$${N0}:$${hN}$${ULT},$${hM}${r}))`,x?x.nm:"");
+      cel(3,`IF($${hM}${r}="","",INDEX($${hC}$${N0}:$${hC}$${ULT},$${hM}${r}))`,x?x.c:"");
+      cel(4,`IF($${hM}${r}="","",IFERROR((E${r}+F${r})/(C${r}-I${r}),""))`,x?Cg.pct:"","0%");
+      cel(5,`IF($${hM}${r}="","",${cnt(SN.A)})`,x?Cg.a:"");cel(6,`IF($${hM}${r}="","",${cnt(SN.N)})`,x?Cg.n:"");
+      cel(7,`IF($${hM}${r}="","",${cnt(SN.T)})`,x?Cg.t:"");cel(8,`IF($${hM}${r}="","",${cnt(SN.G)})`,x?Cg.g:"");cel(9,`IF($${hM}${r}="","",${cnt(SN.S)})`,x?Cg.s:"");
+      cel(10,`IF($${hM}${r}="","",COUNTIFS(${keyRng},${NM},${PAR},1))`,x?dif:"");
+      if(porPosto){
+        const fa=x?Lg.filter(o=>o.mot==="Falta").length:"";
+        cel(11,`IF($${hM}${r}="","",COUNTIFS(${keyRng},${NM},${FIL},1,${MOTc},"Falta"))`,fa);
+        cel(12,`IF($${hM}${r}="","",C${r}-K${r})`,x?x.c-fa:"");
+        cel(13,`IF($${hM}${r}="","",IF(C${r}>=3,"Sim",""))`,x?(x.c>=3?"Sim":""):"");
+      }else{
+        cel(11,`IF($${hM}${r}="","",SUMIFS(${TMF},${keyRng},${NM},${FIL},1)/1440)`,x?Cg.tm/1440:"",'[h]"h"mm');
+        cel(12,`IF($${hM}${r}="","",SUMIFS(${KMF},${keyRng},${NM},${FIL},1)/1000)`,x?Cg.km:"","#,##0");
+      }
+      for(let c=1;c<=nCol;c++){const ce=ws.getCell(r,c);ce.font=fonte({size:10,bold:c===2||c===3});ce.alignment={vertical:"middle",horizontal:c===2?"left":"right",indent:c===2?1:0};ce.border={bottom:fio()};}
+    }
+    // totais (linha 6)
+    const rt=6;
+    ws.getCell(rt,2).value="Total";
+    [[3,Ctot0.tot],[5,Ctot0.a],[6,Ctot0.n],[7,Ctot0.t],[8,Ctot0.g],[9,Ctot0.s]].forEach(([c,v])=>{ws.getCell(rt,c).value=fm(`SUM(${letra(c)}${N0}:${letra(c)}${ULT})`,v);});
+    ws.getCell(rt,4).value=fm(`IFERROR((E${rt}+F${rt})/(C${rt}-I${rt}),"")`,Ctot0.pct);ws.getCell(rt,4).numFmt="0%";
+    ws.getCell(rt,10).value=porPosto?fm(`COUNTIF('Por supervisor'!$O$7:$O$${6+MAXS},">0")`,supOrd.length):fm(`COUNTIF('Por posto'!$P$7:$P$${6+MAXP},">0")`,posOrd.length);
+    if(porPosto){const fa=L0.filter(o=>o.mot==="Falta").length;ws.getCell(rt,11).value=fm(`SUM(K${N0}:K${ULT})`,fa);ws.getCell(rt,12).value=fm(`SUM(L${N0}:L${ULT})`,Ctot0.tot-fa);}
+    else{ws.getCell(rt,11).value=fm(`SUM(K${N0}:K${ULT})`,Ctot0.tm/1440);ws.getCell(rt,11).numFmt='[h]"h"mm';ws.getCell(rt,12).value=fm(`SUM(L${N0}:L${ULT})`,Ctot0.km);ws.getCell(rt,12).numFmt="#,##0";}
+    for(let c=1;c<=nCol;c++){const ce=ws.getCell(rt,c);ce.font=fonte({size:10,bold:true,color:{argb:NAV}});ce.fill=preenche("FFEEF0F8");ce.border={top:{style:"medium",color:{argb:NAV}},bottom:fio()};ce.alignment={vertical:"middle",horizontal:c===2?"left":"right",indent:c===2?1:0};}
+    pctFmt(ws,`D${N0}:D${ULT}`,`D${N0}`);
+    ws.addConditionalFormatting({ref:`H${N0}:H${ULT}`,rules:[{type:"expression",formulae:[`AND(ISNUMBER(H${N0}),H${N0}>0)`],style:{fill:dxf(BRX.da[1]),font:{bold:true,color:{argb:BRX.da[0]}}}}]});
+    zeroCinza(ws,`C${N0}:C${ULT}`);zeroCinza(ws,`E${N0}:G${ULT}`);zeroCinza(ws,`I${N0}:I${ULT}`);
+    pagina(ws,"5:5",true);
+  };
+  const Ctot0=C0;
+  const grpDe=campo=>{const m={};R0.forEach(o=>{if(o.filtro===1)(m[o[campo]]||(m[o[campo]]=[])).push(o);});return m;};
+  grupo(wsS,{titulo:"Por supervisor",porPosto:false,maxLin:MAXS,colLista:"D",keyRng:SUPc,nomes:supsN,ordem:supOrd,cmap:cSup,grp:grpDe("sup")});
+  grupo(wsO,{titulo:"Por posto",porPosto:true,maxLin:MAXP,colLista:"E",keyRng:POSc,nomes:postosN,ordem:posOrd,cmap:cPos,grp:grpDe("pos")});
+
+  /* ═══ Cada cobertura: as idas do que o Painel mostra, uma por linha, da mais antiga para a mais nova ═══ */
+  {
+    const ws=wsC,N0=6,ULT=N0+4000-1;
+    const cols=[{t:"Data",w:12,n:0},{t:"Dia",w:7},{t:"Supervisor",w:22},{t:"Posto",w:30},{t:"Motivo",w:14},{t:"Quem faltou",w:28},{t:"RE",w:9,n:1},{t:"Início da vaga",w:11,n:1},{t:"Chegada",w:10,n:1},{t:"Atraso",w:22},{t:"Minutos",w:10,n:1},{t:"Situação",w:23},{t:"Referência do início",w:28}];
+    ws.columns=cols.map(c=>({width:c.w})).concat([{width:3},{width:8,hidden:true}]);
+    ws.views=[{showGridLines:false,state:"frozen",ySplit:5,xSplit:1}];
+    topo(ws,"Cada cobertura","Uma ida do supervisor por linha · segue o Painel (folha, supervisor, posto e motivo)",3,cols.length);
+    ws.getRow(4).height=6;
+    cabeca(ws,5,cols,1);
+    const HM=cols.length+2,hm=letra(HM);
+    const lf=L0;
+    for(let i=0;i<4000;i++){
+      const r=N0+i,o=lf[i];
+      ws.getCell(r,HM).value=fm(`IFERROR(MATCH(ROW()-${N0-1},${ORD},0),"")`,o?R0.indexOf(o)+1:"");
+      const ix=c=>`IF($${hm}${r}="","",IF(INDEX(Dados!$${c}$${LIN0}:$${c}$${LINN},$${hm}${r})="","",INDEX(Dados!$${c}$${LIN0}:$${c}$${LINN},$${hm}${r})))`;
+      const K=`K${r}`;
+      const atraso=o?(o.min==null?"—":o.min<0?brHM(-o.min)+" antes do início":o.min===0?"no horário":brHM(o.min)+" de atraso"):"";
+      const vals=[
+        [ix("A"),o?o.dat:"","dd/mm/yyyy"],[ix("B"),o?o.dia:""],[ix("C"),o?o.sup:""],[ix("D"),o?o.pos:""],[ix("E"),o?o.mot:""],[ix("F"),o?o.falta:""],[ix("G"),o?o.re:""],[ix("H"),o?o.ini:"","hh:mm"],[ix("I"),o?o.che:"","hh:mm"],
+        [`IF($${hm}${r}="","",IF(${K}="","—",IF(${K}<0,IF(-${K}>=60,INT(-${K}/60)&"h"&RIGHT("0"&MOD(-${K},60),2),-${K}&" min")&" antes do início",IF(${K}=0,"no horário",IF(${K}>=60,INT(${K}/60)&"h"&RIGHT("0"&MOD(${K},60),2),${K}&" min")&" de atraso"))))`,atraso],
+        [ix("J"),o?(o.min==null?"":o.min):"","0"],[ix("K"),o?o.sit:""],[ix("L"),o?o.ref:""]
+      ];
+      vals.forEach(([f,res,nf],c)=>{const ce=ws.getCell(r,c+1);ce.value=fm(f,res);if(nf)ce.numFmt=nf;ce.font=fonte({size:10,bold:c===8||c===9||c===11,color:c===12?{argb:BRX.mudo}:undefined});ce.alignment={vertical:"middle",horizontal:[0,1,6,7,8,10].indexOf(c)>=0?"center":"left",indent:c===2?1:0};ce.border={bottom:fio()};});
+      ws.getRow(r).height=20;
+    }
+    const regra=(txt,cor,p)=>({type:"expression",priority:p,formulae:[`$L${N0}="${txt}"`],style:{fill:dxf(cor[1]),font:{bold:true,color:{argb:cor[0]}}}});
+    ws.addConditionalFormatting({ref:`L${N0}:L${ULT}`,rules:[regra(SN.A,BRX.an,1),regra(SN.N,BRX.ok,2),regra(SN.T,BRX.am,3),regra(SN.G,BRX.da,4),regra(SN.S,BRX.gr,5)]});
+    const txtCor=(txt,cor,p)=>({type:"expression",priority:p,formulae:[`$L${N0}="${txt}"`],style:{font:{bold:true,color:{argb:cor[0]}}}});
+    ws.addConditionalFormatting({ref:`J${N0}:J${ULT}`,rules:[txtCor(SN.A,BRX.an,6),txtCor(SN.N,BRX.ok,7),txtCor(SN.T,BRX.am,8),txtCor(SN.G,BRX.da,9)]});
+    ws.autoFilter={from:{row:5,column:1},to:{row:ULT,column:cols.length}};
+    pagina(ws,"5:5",true);
+  }
+
+  /* ═══ Como é calculado ═══ */
+  {
+    const ws=wsM;ws.columns=[{width:3},{width:30},{width:90}];
+    ws.getRow(1).height=30;ws.mergeCells("B1:C1");const mt=ws.getCell("B1");mt.value="Como é calculado";mt.font=fonte({size:18,bold:true,color:{argb:NAV}});mt.alignment={vertical:"middle"};
+    if(logo){const id=wb.addImage({base64:logo,extension:"png"});ws.addImage(id,{tl:{col:2.55,row:0.1},ext:{width:130,height:38}});}
+    [["Atraso","Chegada do supervisor ao posto menos o início da vaga de quem faltou. Quando o supervisor chegou antes do início, aparece como “antes do início”. Minutos = (Chegada − Início da vaga) em minutos: positivo = depois do início; negativo = antes."],
+     ["Situação","Antes do início da vaga (minutos negativos); até 1h de atraso (0 a 60); 1 a 3h de atraso (61 a 180); mais de 3h de atraso (acima de 180). Sem início ou sem chegada: “Sem horário”."],
+     ["Início da vaga","1º: horário da vaga de quem faltou (planilha de faltas). 2º: jornada da pessoa naquele posto. Nas idas sem falta (férias, agenda, posto vago…): o turno do posto que já tinha começado; se o supervisor chegou antes de todos, o primeiro turno."],
+     ["Chegou em até 1h","Percentual das coberturas com horário em que o supervisor chegou antes do início da vaga ou até 1 hora depois. Fórmula: (antes do início + até 1h) ÷ (coberturas − sem horário)."],
+     ["Duas faltas no mesmo posto","São duas coberturas, cada uma com o horário da sua vaga."],
+     ["Horas e km em campo","São do dia inteiro do supervisor e contam uma vez por supervisor e dia (a planilha repete esses valores em todas as idas do dia). Na aba Dados, as colunas verdes escolhem o valor do dia e contam só uma vez."],
+     ["Fora das contas","Idas à sede e destinos escritos em texto livre (por exemplo, “deixar colaborador em casa”) não são posto e não vêm para este arquivo. Coberturas sem horário da vaga nem do posto não entram nos percentuais."],
+     ["Folha","Vai do dia 26 de um mês ao dia 25 do seguinte."],
+     ["Fórmulas","Painel, “Por supervisor”, “Por posto” e “Cada cobertura” são fórmulas em cima da aba Dados, que o JARVIS preenche sozinho. As colunas verdes da aba Dados dizem o que entra no filtro do Painel."],
+     ["Fonte","Aba BDV do SAR2G, cruzada com a planilha de faltas e a jornada dos funcionários. É a mesma conta da tela do relatório no JARVIS."]].forEach(([a,b],i)=>{
+      const r2=3+i;ws.getRow(r2).height=Math.max(24,Math.ceil(b.length/95)*16+8);
+      const x=ws.getCell(r2,2),y=ws.getCell(r2,3);x.value=a;x.font=fonte({size:10,bold:true,color:{argb:NAV}});x.alignment={vertical:"top",indent:1,wrapText:true};
+      y.value=b;y.font=fonte({size:10});y.alignment={vertical:"top",wrapText:true};
+      [x,y].forEach(ce=>{ce.border={bottom:fio()};if(i%2)ce.fill=preenche(BRX.faixa);});
+    });
+    pagina(ws,null,false);
+  }
+
+  /* ═══ Comece aqui ═══ */
+  {
+    const ws=wsA;ws.columns=[{width:2},{width:6},{width:104}];
+    topo(ws,"Comece aqui","Como este Excel funciona, em passos simples",2,3);
+    ws.mergeCells("B4:C4");const l1=ws.getCell("B4");l1.value="Este arquivo busca sozinho no JARVIS as coberturas do supervisor. Você só escolhe a Folha, o Supervisor, o Posto e o Motivo na aba Painel.";l1.font=fonte({size:11,bold:true,color:{argb:NAV}});l1.alignment={vertical:"middle",wrapText:true,indent:1};ws.getRow(4).height=34;
+    ws.mergeCells("B5:C5");const l2=ws.getCell("B5");l2.value="JARVIS   →   internet   →   este arquivo (Dados)   →   Painel e abas";l2.font=fonte({size:10,bold:true,color:{argb:"FF2E90FA"}});l2.alignment={vertical:"middle",horizontal:"center"};l2.fill=preenche("FFEEF4FF");ws.getRow(5).height=30;
+    BRC_PASSOS.forEach((p,i)=>{
+      const r=7+i;ws.getRow(r).height=52;
+      const a=ws.getCell(r,2);a.value=i+1;a.font=fonte({size:16,bold:true,color:{argb:NAV}});a.alignment={vertical:"middle",horizontal:"center"};
+      const b=ws.getCell(r,3);b.value={richText:[{text:p[0]+"\n",font:fonte({size:10.5,bold:true,color:{argb:NAV}})},{text:p[1],font:fonte({size:10})}]};b.alignment={vertical:"middle",wrapText:true};
+      for(let q=2;q<=3;q++)ws.getCell(r,q).border={bottom:fio()};
+    });
+    let r=7+BRC_PASSOS.length+1;
+    ws.mergeCells(r,2,r,3);const t=ws.getCell(r,2);t.value="O que cada aba mostra";t.font=fonte({size:11,bold:true,color:{argb:NAV}});ws.getRow(r).height=24;r++;
+    [["Painel","Os números principais e como o supervisor chegou. É aqui que você escolhe a Folha, o Supervisor, o Posto e o Motivo: todas as abas seguem essa escolha."],["Por supervisor","Quantas coberturas cada supervisor fez, como chegou em cada uma, postos, horas e km em campo."],["Por posto","Os postos que mais precisaram de cobertura, com quantas foram por falta e quantos supervisores foram lá."],["Cada cobertura","Cada ida do supervisor, com início da vaga, chegada e atraso, da mais antiga para a mais nova. Tem filtros em cada coluna."],["Como é calculado","As regras usadas nas contas."],["Dados","A base de tudo, preenchida pelo JARVIS. Não digite nada aqui."]].forEach(([a,b])=>{
+      const x=ws.getCell(r,2);x.value="•";x.alignment={horizontal:"center",vertical:"middle"};x.font=fonte({bold:true,color:{argb:NAV}});
+      const y=ws.getCell(r,3);y.value={richText:[{text:a+": ",font:fonte({bold:true})},{text:b,font:fonte()}]};y.alignment={vertical:"middle",wrapText:true};ws.getRow(r).height=Math.max(22,Math.ceil((a.length+b.length)/105)*16+6);r++;
+    });
+    r++;ws.mergeCells(r,2,r,3);const z=ws.getCell(r,2);z.value=`Arquivo gerado em ${brDd(hoje)}. A chave de acesso dele vale até ${brDd(String(k.validaAte).slice(0,10))}; depois disso, gere outro arquivo no JARVIS (Relatório de Coberturas > Excel conectado).`;z.font=fonte({size:9,italic:true,color:{argb:BRX.mudo}});z.alignment={wrapText:true,indent:1};ws.getRow(r).height=30;
     pagina(ws);
   }
   wb.views=[{x:0,y:0,width:20000,height:12000,firstSheet:0,activeTab:0,visibility:"visible"}];

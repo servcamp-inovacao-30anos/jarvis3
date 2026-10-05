@@ -13,6 +13,8 @@
 
 const R = require("./_bdv_regras");
 const ponto = require("./_ponto");
+const XL = require("./_bdv_excel");
+const _auth = require("./_auth");
 
 // Quem lê o relatório: os mesmos do painel Faltas x Medidas. A checagem é no
 // servidor sempre que o login emite token (AUTH_SECRET definida).
@@ -86,8 +88,70 @@ async function verCoberturas({ req, res, db }) {
   return res.status(200).json({ ok: true, de, ate, limites: R.BDV_LIMITES, disponivel: { primeiro: r.primeiro, ultimo: r.ultimo, desde }, planilhas_lidas: r.lidas, coberturas });
 }
 
+// ── Excel conectado ─────────────────────────────────────────────────────────
+// O arquivo busca estas tabelas sozinho. A chave dele (escopo "xlb") só serve para ler a rota "planilha",
+// vale 90 dias e deixa de valer se alguém cancelar as chaves (corte de data). Fica no log de auditoria
+// que já existe (fm_auditoria): nenhuma tabela nova.
+const DIAS_CHAVE_XL = 90;
+const ACAO_XL_CHAVE = "BDV_XL_CHAVE", ACAO_XL_REVOGAR = "BDV_XL_REVOGAR";
+const DIAS_PLANILHA = 398; // até onde o arquivo volta (o relatório aceita no máximo 400 dias)
+let _plan = { chave: "", em: 0, valor: null };
+// As duas tabelas do arquivo saem do mesmo cálculo: guarda por um minuto para não ler as planilhas duas vezes.
+async function dadosDaPlanilha(db) {
+  const hoje = diaSP(new Date().toISOString());
+  if (_plan.valor && _plan.chave === hoje && Date.now() - _plan.em < 60000) return _plan.valor;
+  const desde = await dadosDesde(db);
+  const piso = new Date(Date.parse(hoje + "T12:00:00Z") - DIAS_PLANILHA * 864e5).toISOString().slice(0, 10);
+  const de = desde && desde > piso ? desde : piso;
+  const r = await idasDoPeriodo(db, de, hoje);
+  // O arquivo tem espaço para MAX_IDAS_XL idas: se passar, fica com as mais recentes (e o "desde" acompanha).
+  const linhas = r.linhas.length > XL.MAX_IDAS ? r.linhas.slice(r.linhas.length - XL.MAX_IDAS) : r.linhas;
+  const valor = XL.montar(linhas, hoje, { primeiro: linhas.length < r.linhas.length ? linhas[0].data : (r.primeiro || desde), ultimo: r.ultimo });
+  _plan = { chave: hoje, em: Date.now(), valor };
+  return valor;
+}
+async function chaveXlValida(req, db) {
+  const secret = process.env.AUTH_SECRET;
+  if (!secret) return true; // sem login por token não há como saber quem pede (modo graça)
+  const tok = _auth.tokenFrom(req) || String((req.query && req.query.k) || "");
+  const p = _auth.verify(tok, secret);
+  if (!p || !p.u || !LEITORES.has(String(p.u))) return false;
+  if (!p.s) return true; // sessão normal de quem pode ler o relatório
+  if (p.s !== "xlb") return false;
+  const [corte] = await db.obter(`fm_auditoria?select=criado_em&acao=eq.${ACAO_XL_REVOGAR}&order=criado_em.desc,id.desc&limit=1`);
+  return !(corte && Date.parse(corte.criado_em) > Number(p.i || 0));
+}
+async function verPlanilha({ req, res, db }) {
+  if (!(await chaveXlValida(req, db))) return erro(res, 401, "Chave do Excel inválida, vencida ou cancelada. Gere o arquivo de novo no JARVIS.", "CHAVE_INVALIDA");
+  const d = await dadosDaPlanilha(db);
+  const q = req.query || {};
+  if (String(q.formato || "").toLowerCase() === "json") return res.status(200).json(Object.assign({ ok: true }, d));
+  const nome = String(q.tabela || "idas");
+  const t = d.tabelas[nome];
+  if (!t) return erro(res, 400, "Tabela desconhecida: " + nome, "TABELA_DESCONHECIDA");
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.setHeader("Cache-Control", "private, no-store");
+  return res.status(200).send(XL.html(t, "Coberturas do supervisor — " + nome));
+}
+async function criarChaveExcel({ res, db, ator }) {
+  const secret = process.env.AUTH_SECRET;
+  if (!secret) return erro(res, 400, "O login por token não está ativo; não há como emitir a chave do Excel.", "SEM_SEGREDO");
+  const agora = Date.now(), jti = require("crypto").randomBytes(6).toString("hex");
+  const chave = _auth.sign(ator, secret, DIAS_CHAVE_XL * 24, { s: "xlb", i: agora, j: jti });
+  const validaAte = new Date(agora + DIAS_CHAVE_XL * 86400000).toISOString();
+  await db.inserir("fm_auditoria", [{ ator, acao: ACAO_XL_CHAVE, entidade: "bdv_xl", chave: jti, antes: null, depois: { validaAte } }]);
+  return res.status(200).json({ ok: true, chave, validaAte, dias: DIAS_CHAVE_XL });
+}
+async function revogarChavesExcel({ res, db, ator }) {
+  await db.inserir("fm_auditoria", [{ ator, acao: ACAO_XL_REVOGAR, entidade: "bdv_xl", chave: "todas", antes: null, depois: null }]);
+  return res.status(200).json({ ok: true });
+}
+
 const ROTAS = {
-  "GET coberturas": { leitor: true, fn: verCoberturas }
+  "GET coberturas": { leitor: true, fn: verCoberturas },
+  "GET planilha": { fn: verPlanilha },                           // a própria rota confere a chave do Excel ou a sessão de quem lê
+  "POST chave_excel": { leitor: true, fn: criarChaveExcel },
+  "POST revogar_excel": { leitor: true, fn: revogarChavesExcel }
 };
 
 module.exports = async function bdv(req, res) {
@@ -108,5 +172,5 @@ module.exports = async function bdv(req, res) {
 };
 
 module.exports.idasDoPeriodo = idasDoPeriodo;
-module.exports._zerarCache = () => { _desde = { valor: undefined, em: 0 }; };
+module.exports._zerarCache = () => { _desde = { valor: undefined, em: 0 }; _plan = { chave: "", em: 0, valor: null }; };
 module.exports.LEITORES = LEITORES;

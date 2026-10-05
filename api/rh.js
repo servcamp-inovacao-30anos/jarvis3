@@ -44,8 +44,9 @@ module.exports = async function handler(req, res) {
   // Excel conectado do Faltas x Medidas: aceita a chave de escopo "xl" (no cabeçalho ou em ?k=);
   // as demais rotas recusam essa chave. A validade e o cancelamento da chave são conferidos em api/_faltas.js.
   const _q = req.query || {};
-  const _planilha = _q.modulo === "faltas" && _q.t === "planilha";
-  const _ga = _planilha ? _auth.requireAuth(req, "xl", true) : _auth.requireAuth(req);
+  // O do Relatório de Coberturas (modulo=bdv) usa o escopo "xlb": a chave de um não abre o outro.
+  const _planilha = (_q.modulo === "faltas" || _q.modulo === "bdv") && _q.t === "planilha";
+  const _ga = _planilha ? _auth.requireAuth(req, _q.modulo === "bdv" ? "xlb" : "xl", true) : _auth.requireAuth(req);
   if (!_ga.ok) return res.status(401).json({ error: "Não autenticado." });
   // Monitoramento de ponto: o código vive em api/_ponto.js e só passa por aqui
   // pelo mesmo motivo das metas — o plano Hobby já está nas 12 funções.
