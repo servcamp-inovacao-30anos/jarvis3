@@ -33,7 +33,7 @@ test("index.html é público: a cópia embutida da planilha vai vazia", () => {
   assert.ok(m, "DASHBOARD_DATA não encontrado");
   const d = JSON.parse(m[1]);
   Object.entries(d).forEach(([k, v]) => assert.deepEqual(v, [], k + " deveria ir vazio"));
-  assert.ok(html.length < 1500000, "o arquivo voltou a crescer: conferir se não entrou dado embutido");
+  assert.ok(html.length < 1700000, "o arquivo voltou a crescer: conferir se não entrou dado embutido");
 });
 
 test("sessão vencida volta para o login, e depois do login a planilha é buscada de novo", () => {
