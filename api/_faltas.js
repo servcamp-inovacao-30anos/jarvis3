@@ -113,7 +113,7 @@ async function materializar(data, opcoes) {
   await anotarAbonosTardios(db, faltas, codigoAntes);
   if (dias.length) await db.upsert("fm_dias", dias, "re,data");
 
-  // Medidas: o motivo editado no JARVIS não vai no upsert, então nunca é sobrescrito.
+  // Medidas: o motivo editado no Painel ServCamp não vai no upsert, então nunca é sobrescrito.
   const medidas = [];
   (data.disciplina || []).forEach(m => {
     const re = reNum(m.RE), dia = String(m.DATA || "").slice(0, 10);
@@ -316,7 +316,7 @@ async function chaveXlValida(req, db) {
   return !(corte && Date.parse(corte.criado_em) > Number(p.i || 0));
 }
 async function verPlanilha({ req, res, db }) {
-  if (!(await chaveXlValida(req, db))) return erro(res, 401, "Chave do Excel inválida, vencida ou cancelada. Gere o arquivo de novo no JARVIS.", "CHAVE_INVALIDA");
+  if (!(await chaveXlValida(req, db))) return erro(res, 401, "Chave do Excel inválida, vencida ou cancelada. Gere o arquivo de novo no Painel ServCamp.", "CHAVE_INVALIDA");
   const [cj, hj] = await Promise.all([capturar(verCasos, { db, ator: null }), capturar(verHistorico, { db })]);
   const d = XL.montar(cj, hj);
   const q = req.query || {};

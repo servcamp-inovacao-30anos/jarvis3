@@ -491,7 +491,7 @@ module.exports = async function handler(req, res) {
       const enviou = await enviarEmail(t, para,
         `[TESTE] Cadência comercial — mensagem ${etapa}`,
         '<p style="background:#fffbeb;border-left:4px solid #f59e0b;padding:10px 14px;margin:0 0 16px;'
-        + 'font-family:sans-serif;color:#92400e"><b>Este é um envio de teste do JARVIS.</b><br>'
+        + 'font-family:sans-serif;color:#92400e"><b>Este é um envio de teste do Painel ServCamp.</b><br>'
         + 'Nenhum cliente recebeu esta mensagem e nenhuma proposta foi alterada.</p>'
         + corpoEmail(etapa, "Fulano de Tal"));
       const arquivo = enviarEmail.ultimoArquivo || { ok: false, motivo: "não tentou" };

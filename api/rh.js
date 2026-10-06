@@ -185,7 +185,7 @@ module.exports = async function handler(req, res) {
       <p>Olá,</p>
       ${corpoMiolo}
       ${observacao ? `<p style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 14px">${observacao}</p>` : ""}
-      <p style="color:#64748b;font-size:12px;margin-top:20px">Relatório gerado automaticamente pelo JARVIS — Grupo ServCamp.</p>
+      <p style="color:#64748b;font-size:12px;margin-top:20px">Relatório gerado automaticamente pelo Painel ServCamp — Grupo ServCamp.</p>
     </div>`;
 
     try {

@@ -16,7 +16,7 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: "Pergunta não informada." });
   }
 
-  const systemPrompt = `Você é o Jarvis, assistente inteligente do Dashboard Operacional do Grupo ServCamp — uma empresa de terceirização de serviços (portaria, limpeza, facilities).
+  const systemPrompt = `Você é o Painel ServCamp, assistente inteligente do Dashboard Operacional do Grupo ServCamp — uma empresa de terceirização de serviços (portaria, limpeza, facilities).
 
 Responda sempre em português brasileiro, de forma objetiva e profissional.
 
