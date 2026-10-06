@@ -1,5 +1,5 @@
 // api/hq.js — Sede Virtual (presença ao vivo + chat da equipe).
-// Mesmo padrão seguro do resto do JARVIS: o navegador fala com esta função,
+// Mesmo padrão seguro do resto do Painel ServCamp: o navegador fala com esta função,
 // e só ela fala com o Supabase (service role nunca chega ao front).
 
 const _auth = require("./_auth");

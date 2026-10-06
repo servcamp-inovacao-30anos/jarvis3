@@ -1,4 +1,4 @@
-// sw.js — service worker do JARVIS.
+// sw.js — service worker do Painel ServCamp.
 //
 // Existe por dois motivos: permitir instalar o sistema como aplicativo (o
 // Android só oferece "Instalar" quando há um service worker ativo) e não deixar

@@ -179,7 +179,7 @@ async function chaveXlValida(req, db) {
   return !(corte && Date.parse(corte.criado_em) > Number(p.i || 0));
 }
 async function verPlanilha({ req, res, db }) {
-  if (!(await chaveXlValida(req, db))) return erro(res, 401, "Chave do Excel inválida, vencida ou cancelada. Gere o arquivo de novo no JARVIS.", "CHAVE_INVALIDA");
+  if (!(await chaveXlValida(req, db))) return erro(res, 401, "Chave do Excel inválida, vencida ou cancelada. Gere o arquivo de novo no Painel ServCamp.", "CHAVE_INVALIDA");
   const d = await dadosDaPlanilha(db);
   const q = req.query || {};
   if (String(q.formato || "").toLowerCase() === "json") return res.status(200).json(Object.assign({ ok: true }, d));

@@ -741,7 +741,7 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
   <div class="chat-hdr">
     <button class="chat-back" id="chatBack" onclick="gcVoltar()">‹</button>
     <div class="chat-hdr-av" id="chatHdrAv" style="background:#7c3aed">🤖</div>
-    <div style="min-width:0"><div class="chat-hdr-t" id="chatHdrT">Conversas</div><div class="chat-hdr-s" id="chatHdrS">JARVIS · Grupo ServCamp</div></div>
+    <div style="min-width:0"><div class="chat-hdr-t" id="chatHdrT">Conversas</div><div class="chat-hdr-s" id="chatHdrS">Painel ServCamp · Grupo ServCamp</div></div>
     <input class="chat-search" id="chatSearch" type="text" placeholder="Buscar…" oninput="gcRenderList()">
   </div>
   <div class="chat-list" id="chatList"></div>
@@ -1911,7 +1911,7 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
     <div id="cfg-content"><div style="padding:40px;text-align:center;color:#94a3b8;font-size:.85rem">Carregando…</div></div>
   </div>
   <div class="page" id="pg-sede">
-    <div class="sec-hdr"><span class="sec-hdr-ic">🏢</span><div><div class="sec-hdr-t">Base Virtual — Grupo ServCamp</div><div class="sec-hdr-sub">Cada sala é um módulo do JARVIS: seu personagem anda até onde você está trabalhando</div></div></div>
+    <div class="sec-hdr"><span class="sec-hdr-ic">🏢</span><div><div class="sec-hdr-t">Base Virtual — Grupo ServCamp</div><div class="sec-hdr-sub">Cada sala é um módulo do Painel ServCamp: seu personagem anda até onde você está trabalhando</div></div></div>
     <div id="hq-content"><div style="padding:40px;text-align:center;color:#94a3b8;font-size:.85rem">Abrindo a base…</div></div>
     <style>
     #chk-panel{position:fixed;top:60px;right:0;bottom:0;width:340px;max-width:88vw;background:#fff;border-left:1px solid #e5e9f0;box-shadow:-10px 0 30px rgba(13,31,53,.12);z-index:60;transform:translateX(102%);transition:transform .25s ease;overflow-y:auto;padding:14px 16px 30px}
@@ -1953,7 +1953,7 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
     <button id="chk-toggle" onclick="chkToggle()" title="Checklist diário" style="display:none">📝</button>
   </div>
   <div class="page" id="pg-prj">
-    <div class="sec-hdr"><span class="sec-hdr-ic">🚀</span><div><div class="sec-hdr-t">Projetos — Evolução &amp; Inovação</div><div class="sec-hdr-sub">Da ideia à implantação: pipeline, kanban, checklist e insights do JARVIS</div></div></div>
+    <div class="sec-hdr"><span class="sec-hdr-ic">🚀</span><div><div class="sec-hdr-t">Projetos — Evolução &amp; Inovação</div><div class="sec-hdr-sub">Da ideia à implantação: pipeline, kanban, checklist e insights do Painel ServCamp</div></div></div>
     <div id="prj-content"><div style="padding:40px;text-align:center;color:#94a3b8;font-size:.85rem">Carregando projetos…</div></div>
   </div>
   <div class="page" id="pg-audqual">
@@ -3969,9 +3969,9 @@ function _chatContext(){
   }catch(e){r="Erro ao ler dados: "+e.message;}
   return r;
 }
-/* ═════════ CHAT GLOBAL estilo WhatsApp — Jarvis IA + DMs entre pessoas ═════════
-   Reaproveita /api/chat (Jarvis, Claude) e /api/hq (mensagens diretas). A bolinha
-   mostra o total de DMs de pessoas ainda não lidas; o Jarvis nunca notifica. */
+/* ═════════ CHAT GLOBAL estilo WhatsApp — Assistente IA + DMs entre pessoas ═════════
+   Reaproveita /api/chat (Painel ServCamp, Claude) e /api/hq (mensagens diretas). A bolinha
+   mostra o total de DMs de pessoas ainda não lidas; o Painel ServCamp nunca notifica. */
 var GC={conv:null,ia:[],msgs:[],pres:{},seen:{},timer:null,aberto:false};
 function gcMe(){return sessionStorage.getItem("userKey")||"";}
 function gcSeenLoad(){try{GC.seen=JSON.parse(localStorage.getItem("gcSeen_"+gcMe())||"{}");}catch(e){GC.seen={};}}
@@ -4065,7 +4065,7 @@ function gcVoltar(){
   document.getElementById("chatMsgs").style.display="none";
   document.getElementById("chatInputWrap").style.display="none";
   document.getElementById("chatHdrT").textContent="Conversas";
-  document.getElementById("chatHdrS").textContent="JARVIS · Grupo ServCamp";
+  document.getElementById("chatHdrS").textContent="Painel ServCamp · Grupo ServCamp";
   document.getElementById("chatHdrAv").style.background="#7c3aed";
   document.getElementById("chatHdrAv").textContent="🤖";
   document.getElementById("chatSearch").style.display="";
@@ -4088,10 +4088,10 @@ function gcBadge(){
 function gcRenderList(){
   var el=document.getElementById("chatList");if(!el)return;
   var me=gcMe(),q=(document.getElementById("chatSearch").value||"").toLowerCase();
-  // Jarvis IA fixo no topo
+  // Assistente IA fixo no topo
   var h='<div class="chat-conv" onclick="gcAbrir(\'ia\')" style="background:var(--b1,#eef6ff)">'
     +'<div class="chat-conv-av"><div style="background:#7c3aed">🤖</div></div>'
-    +'<div class="chat-conv-main"><div class="chat-conv-top"><span class="chat-conv-nome">Jarvis IA</span><span class="chat-conv-hora">agora</span></div>'
+    +'<div class="chat-conv-main"><div class="chat-conv-top"><span class="chat-conv-nome">Assistente IA</span><span class="chat-conv-hora">agora</span></div>'
     +'<div class="chat-conv-prev">Pergunte sobre faltas, coberturas…</div></div></div>';
   // pessoas ordenadas por última mensagem
   var pessoas=Object.keys(USERS).filter(function(k){return k!==me;}).map(function(k){
@@ -4118,7 +4118,7 @@ function gcAbrir(conv){
   document.getElementById("chatSearch").style.display="none";
   var av=document.getElementById("chatHdrAv");
   if(conv==="ia"){
-    document.getElementById("chatHdrT").textContent="Jarvis IA";
+    document.getElementById("chatHdrT").textContent="Assistente IA";
     document.getElementById("chatHdrS").textContent="Assistente do sistema";
     av.style.background="#7c3aed";av.textContent="🤖";
     gcRenderIA();
@@ -4137,7 +4137,7 @@ function gcBolha(texto,mine,cls){
 }
 function gcRenderIA(){
   var el=document.getElementById("chatMsgs");
-  if(!GC.ia.length)GC.ia=[{bot:true,t:"Olá! Sou o Jarvis. Pergunte sobre faltas, coberturas, horas extras, check list ou qualquer dado operacional carregado."}];
+  if(!GC.ia.length)GC.ia=[{bot:true,t:"Olá! Sou o assistente do Painel ServCamp. Pergunte sobre faltas, coberturas, horas extras, check list ou qualquer dado operacional carregado."}];
   el.innerHTML=GC.ia.map(function(m){return gcBolha(m.t,!m.bot,m.bot?(m.typing?"bot typing":"bot"):"user");}).join("");
   el.scrollTop=el.scrollHeight;
 }
@@ -4159,7 +4159,7 @@ async function gcSendIA(q){
     var resp=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question:q,context:ctx})});
     var data=await resp.json();
     GC.ia[GC.ia.length-1]={bot:true,t:data.answer||data.error||"Sem resposta."};
-  }catch(e){GC.ia[GC.ia.length-1]={bot:true,t:"Erro de conexão com o Jarvis."};}
+  }catch(e){GC.ia[GC.ia.length-1]={bot:true,t:"Erro de conexão com o assistente."};}
   document.getElementById("chatSend").disabled=false;gcRenderIA();
 }
 function gcSendDM(txt){
@@ -5864,17 +5864,17 @@ function heReportAbrirOutlook(){
     ? "Ola,\r\n\r\n"+
       "Nao tivemos situacao de hora extra (entrada ou saida) registrada em "+diaFmt+" na area de "+area+".\r\n"+
       (obs?"\r\n"+obs+"\r\n":"")+
-      "\r\nRelatorio gerado pelo JARVIS \u2014 Grupo ServCamp."
+      "\r\nRelatorio gerado pelo Painel ServCamp \u2014 Grupo ServCamp."
     : "Ola,\r\n\r\n"+
       "Segue o relatorio de hora extra registrada em "+diaFmt+" na area de "+area+".\r\n\r\n"+
       itens.map(x=>"- "+x.nome+" | "+x.tipo+" | "+x.cliente+" | "+x.motivo+" | "+x.duracao).join("\r\n")+"\r\n\r\n"+
       "Total do dia: "+total+" em "+itens.length+" marcacao(oes).\r\n"+
       (obs?"\r\n"+obs+"\r\n":"")+
-      "\r\nRelatorio gerado pelo JARVIS \u2014 Grupo ServCamp.";
+      "\r\nRelatorio gerado pelo Painel ServCamp \u2014 Grupo ServCamp.";
 
   const assunto="Hora extra - "+area+" - "+diaFmt+(semOcorrencia?" (sem ocorrencia)":"");
   const link="mailto:"+encodeURIComponent(email)+"?subject="+encodeURIComponent(assunto)+"&body="+encodeURIComponent(corpo);
-  // troca de aba/app pelo protocolo mailto: nao navega a pagina do JARVIS
+  // troca de aba/app pelo protocolo mailto: nao navega a pagina do Painel ServCamp
   window.location.href=link;
 }
 function heReportEnviar(){
@@ -9972,7 +9972,7 @@ function comPDF(){
       ${li("Visitas realizadas",p.visitas||0)}${li("Cadência automática",(p.cadencia_etapa||0)+"/5 mensagens enviadas"+(p.respondido_em?" · cliente respondeu":""))}
       ${li("Observações",p.observacao)}
     </table>
-    <div style="margin-top:26px;font-size:11px;color:#94a3b8">JARVIS · Módulo Comercial · Grupo ServCamp — documento interno</div>
+    <div style="margin-top:26px;font-size:11px;color:#94a3b8">Painel ServCamp · Módulo Comercial · Grupo ServCamp — documento interno</div>
     <script>window.print();<\/script></body></html>`);
   w.document.close();
   comLogEvento(p.id,"Ficha PDF gerada");
@@ -10280,7 +10280,7 @@ function cfgRender(){
   el.innerHTML=h;
 }
 /* ═════════ BASE VIRTUAL — escritório isométrico animado + chat ═════════
-   Cada sala = um módulo do JARVIS. O personagem ANDA até a sala da guia
+   Cada sala = um módulo do Painel ServCamp. O personagem ANDA até a sala da guia
    que a pessoa está usando; offline descansa no sofá. Clique = DM. */
 /* Coordenadas mapeadas sobre a ILUSTRAÇÃO base-fundo.png (1024×572) */
 const HQ_SALAS=[
@@ -10290,7 +10290,7 @@ const HQ_SALAS=[
   {k:"dir",lbl:"Diretoria",ic:"📊",cor:"#0d9488",cx:882,cy:270,desc:"Painéis executivos"},
   {k:"lounge",lbl:"Lounge & Café",ic:"☕",cor:"#a16207",cx:330,cy:415,desc:"Café, papo e descanso"},
   {k:"reuniao",lbl:"Reunião",ic:"🤝",cor:"#64748b",cx:876,cy:466,desc:"Sala de reunião com mesa oval"},
-  {k:"recep",lbl:"Recepção",ic:"🛎️",cor:"#b45309",cx:560,cy:478,desc:"Boas-vindas — o JARVIS atende aqui"}
+  {k:"recep",lbl:"Recepção",ic:"🛎️",cor:"#b45309",cx:560,cy:478,desc:"Boas-vindas — o Painel ServCamp atende aqui"}
 ];
 /* assentos reais (frente das mesas da ilustração) por sala */
 const HQ_MESAS={
@@ -10512,7 +10512,7 @@ function hqShell(){
   const tag=(x,y,txt)=>{const w=txt.length*5.6+20;return `<g opacity=".92"><rect x="${x-w/2}" y="${y-9}" width="${w}" height="17" rx="8.5" fill="#0d1f35"/><text x="${x}" y="${y+3.5}" text-anchor="middle" font-size="8.5" font-weight="800" fill="#fff" style="letter-spacing:.5px">${txt}</text></g>`;};
   /* telão HUD ao vivo */
   const hud=(x,id)=>`<rect x="${x-88}" y="10" width="176" height="36" rx="10" fill="#0d1f35" opacity=".9" stroke="#38bdf8" stroke-opacity=".4"/><text id="${id}" x="${x}" y="25" text-anchor="middle" font-size="9.5" font-weight="800" fill="#7dd3fc"></text><text id="${id}b" x="${x}" y="38" text-anchor="middle" font-size="7.8" font-weight="700" fill="#94a3b8"></text>`;
-  /* JARVIS, o recepcionista-robô (atrás do balcão da ilustração) */
+  /* Painel ServCamp, o recepcionista-robô (atrás do balcão da ilustração) */
   const jarvis=`<g id="hq-jarvis" transform="translate(560,452)"><ellipse cx="0" cy="2" rx="9" ry="3.5" fill="rgba(0,0,0,.25)"/><rect x="-8" y="-20" width="16" height="17" rx="6" fill="#94a3b8"/><circle cx="0" cy="-26" r="7" fill="#cbd5e1"/><circle cx="-2.5" cy="-27" r="1.6" fill="#0ea5e9"/><circle cx="2.5" cy="-27" r="1.6" fill="#0ea5e9"/><line x1="0" y1="-33" x2="0" y2="-38" stroke="#64748b" stroke-width="1.5"/><circle cx="0" cy="-39" r="2" fill="#22d3ee"><animate attributeName="opacity" values="1;.3;1" dur="2s" repeatCount="indefinite"/></circle></g>`;
   const bubble=`<g id="hq-bubble" style="display:none"><rect id="hq-bubble-r" x="430" y="386" width="260" height="26" rx="9" fill="#0d1f35" opacity=".94"/><polygon points="552,412 560,424 568,412" fill="#0d1f35" opacity=".94"/><text id="hq-bubble-t" x="560" y="403" text-anchor="middle" font-size="10" font-weight="700" fill="#e0f2fe"></text></g>`;
   el.innerHTML=`<style>
@@ -10679,7 +10679,7 @@ function hqSync(first){
   const t1=document.getElementById("hq-tv1"),t1b=document.getElementById("hq-tv1b");
   if(t1){t1.textContent="🟢 "+on.length+" ONLINE NA BASE";t1b.textContent=(HQ_STATE.mensagens||[]).length+" mensagens no chat";}
   const t2=document.getElementById("hq-tv2"),t2b=document.getElementById("hq-tv2b");
-  if(t2){t2.textContent=agoraD.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})+" · "+agoraD.toLocaleDateString("pt-BR",{weekday:"short"}).toUpperCase();t2b.textContent=(typeof COM_P!=="undefined"&&COM_P.length?COM_P.length+" propostas no CRM":"JARVIS · Grupo ServCamp");}
+  if(t2){t2.textContent=agoraD.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})+" · "+agoraD.toLocaleDateString("pt-BR",{weekday:"short"}).toUpperCase();t2b.textContent=(typeof COM_P!=="undefined"&&COM_P.length?COM_P.length+" propostas no CRM":"Painel ServCamp · Grupo ServCamp");}
 }
 /* ── loop de animação (setInterval: funciona mesmo com a aba em segundo
       plano, onde requestAnimationFrame congela): anda até o destino ── */
@@ -10855,7 +10855,7 @@ function hqPanMov(e){
   hqVBApply();
 }
 function hqPanFim(){HQ_PAN=null;}
-/* ── JARVIS: fala, boas-vindas do 1º acesso e dicas ── */
+/* ── Painel ServCamp: fala, boas-vindas do 1º acesso e dicas ── */
 function hqFala(txt,ms){
   const b=document.getElementById("hq-bubble"),t=document.getElementById("hq-bubble-t"),r=document.getElementById("hq-bubble-r");
   if(!b||!t)return;
@@ -10876,11 +10876,11 @@ function hqIntroCheck(){
     return;
   }
   localStorage.setItem("hq_intro_v2","1");
-  /* recém-chegado: começa na recepção, JARVIS dá as boas-vindas e o leva à mesa */
+  /* recém-chegado: começa na recepção, Painel ServCamp dá as boas-vindas e o leva à mesa */
   const alvo={x:c.tx||HQ_HALL.x,y:c.ty||HQ_HALL.y};
   c.path=[];c.x=560;c.y=512;c.el&&c.el.setAttribute("transform","translate(560,512)");
   hqSt(c.el,"");c.el&&c.el.classList.remove("hq-sit");
-  hqFala("Bem-vindo à Base Virtual! 👋 Eu sou o JARVIS.",3000);
+  hqFala("Bem-vindo à Base Virtual! 👋 Eu sou o assistente.",3000);
   setTimeout(()=>hqFala("Cada sala é um setor do sistema — seu personagem anda sozinho até onde você estiver trabalhando.",4200),3200);
   setTimeout(()=>hqFala("Vou te levar à sua mesa. Bom trabalho! 🚀",2800),7700);
   setTimeout(()=>{c.path=[{x:HQ_HALL.x,y:HQ_HALL.y},alvo];hqAndando(c);},8200);
@@ -10899,7 +10899,7 @@ function hqEnviar(e){
 }
 /* ═════════ PROJETOS — Evolução & Inovação ═════════
    Da ideia à implantação: pipeline de ideias, kanban DnD, checklist com
-   progresso automático, tarefas, histórico e insights do JARVIS. */
+   progresso automático, tarefas, histórico e insights do Painel ServCamp. */
 const PRJ_ST=[
   {k:"PLANEJAMENTO",lbl:"💡 Planejamento",cor:"#2e8fef"},
   {k:"ANÁLISE",lbl:"📋 Em Análise",cor:"#eab308"},
@@ -10969,13 +10969,13 @@ function prjRenderAll(){
   h+=kpi("🚨","Críticos",crit.length,crit.length?"prioridade máxima":"sob controle",crit.length?"#dc2626":"#16a34a","");
   h+=kpi("📅","Vencem em 7 dias",prox7.length,prox7.length?prox7.slice(0,2).map(p=>p.nome).join(", ").slice(0,34):"nada vencendo","#b45309","");
   h+=`</div>`;
-  /* insights JARVIS */
+  /* insights Painel ServCamp */
   const ins=prjInsights(P,atras,crit,conc,prox7);
   h+=`<div style="display:grid;grid-template-columns:1.35fr 1fr;gap:12px;margin-bottom:12px">
-    <div style="background:#fff;border:1px solid #e5e9f0;border-radius:14px;padding:14px 18px"><div style="font-size:.78rem;font-weight:800;color:#0d1f35;margin-bottom:8px">🤖 JARVIS observa <span style="font-size:.58rem;color:#94a3b8;font-weight:700">análise automática dos projetos</span></div>
+    <div style="background:#fff;border:1px solid #e5e9f0;border-radius:14px;padding:14px 18px"><div style="font-size:.78rem;font-weight:800;color:#0d1f35;margin-bottom:8px">🤖 Painel ServCamp observa <span style="font-size:.58rem;color:#94a3b8;font-weight:700">análise automática dos projetos</span></div>
       ${ins.map((i,ix)=>`<div class="cv-ins" style="animation-delay:${ix*50}ms;padding:8px 12px"><div style="font-size:.95rem">${i.ic}</div><div style="font-size:.72rem;color:#334155;line-height:1.45">${i.t}</div></div>`).join("")}</div>
     <div style="background:linear-gradient(135deg,#0d1f35,#1e4d8c);border-radius:14px;padding:14px 18px;color:#fff"><div style="font-size:.78rem;font-weight:800;margin-bottom:6px">✨ Resumo Executivo por IA</div>
-      <div style="font-size:.66rem;color:#c7d6ec;margin-bottom:10px">O JARVIS analisa a carteira de projetos e gera destaques, riscos e recomendações.</div>
+      <div style="font-size:.66rem;color:#c7d6ec;margin-bottom:10px">O Painel ServCamp analisa a carteira de projetos e gera destaques, riscos e recomendações.</div>
       <button class="rh-btn" style="background:#fff;color:#1e4d8c" id="prj-ia-btn" onclick="prjResumoIA()">✨ Gerar análise</button>
       <div id="prj-ia-out" style="margin-top:10px;font-size:.72rem;line-height:1.5;white-space:pre-wrap"></div></div>
   </div>`;
@@ -11010,7 +11010,7 @@ function prjInsights(P,atras,crit,conc,prox7){
   if(prox7.length)ins.push({ic:"📅",t:`<b>${prox7.length} entrega(s) nos próximos 7 dias</b>: ${prox7.slice(0,3).map(p=>_esc(p.nome)).join(", ")}.`});
   const tPend=PRJ_T.filter(t=>t.status!=="CONCLUÍDA").length;
   if(tPend)ins.push({ic:"📝",t:`<b>${tPend} tarefa(s)</b> em aberto no total dos projetos.`});
-  if(!ins.length)ins.push({ic:"✅",t:P.length?"Carteira saudável: nenhum atraso, nada crítico e nenhuma entrega apertada.":"Cadastre o primeiro projeto (ou uma 💡 Ideia) para o JARVIS começar a analisar."});
+  if(!ins.length)ins.push({ic:"✅",t:P.length?"Carteira saudável: nenhum atraso, nada crítico e nenhuma entrega apertada.":"Cadastre o primeiro projeto (ou uma 💡 Ideia) para o Painel ServCamp começar a analisar."});
   return ins;
 }
 function prjRenderVista(){
@@ -11322,7 +11322,7 @@ function prjResumoIA(){
   btn.disabled=true;btn.textContent="🧠 Analisando…";out.textContent="";
   const dados=PRJ_P.filter(p=>p.status!=="CANCELADO").map(p=>`${p.codigo||""} ${p.nome} | ${p.area||"?"} | resp: ${p.responsavel||"?"} | ${p.status} | ${prjPct(p)}% | prioridade ${p.prioridade}${prjAtrasado(p)?" | ATRASADO (prazo "+p.data_prevista+")":p.data_prevista?" | prazo "+p.data_prevista:""}`).join("\n");
   const ideias=PRJ_I.filter(i=>i.status!=="PROMOVIDA"&&i.status!=="ARQUIVADA").map(i=>`${i.titulo} (${i.status}, impacto ${i.impacto})`).join("; ");
-  fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question:"Você é o JARVIS, gestor de portfólio de projetos do Grupo ServCamp. Gere uma análise executiva em até 9 linhas: 1) panorama, 2) riscos e atrasos, 3) recomendações práticas de priorização. Direto e específico.",context:"PROJETOS:\n"+dados+"\n\nIDEIAS NO PIPELINE: "+(ideias||"nenhuma")})})
+  fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question:"Você é o Painel ServCamp, gestor de portfólio de projetos do Grupo ServCamp. Gere uma análise executiva em até 9 linhas: 1) panorama, 2) riscos e atrasos, 3) recomendações práticas de priorização. Direto e específico.",context:"PROJETOS:\n"+dados+"\n\nIDEIAS NO PIPELINE: "+(ideias||"nenhuma")})})
     .then(r=>r.json()).then(j=>{out.textContent=j.answer||j.error||"Sem resposta.";})
     .catch(()=>{out.textContent="Erro ao gerar análise.";})
     .finally(()=>{btn.disabled=false;btn.textContent="✨ Gerar análise";});
@@ -11437,7 +11437,7 @@ function audRender(){
   h+=kpi("⚠️","Com Pendência",pend,pend?"exigem retorno":"tudo certo",pend?"#dc2626":"#16a34a","audSetSt('PENDENTE')");
   h+=kpi("🕳️","Nunca Auditados",semAud,semAud?"prioridade de visita":"todos visitados",semAud?"#b45309":"#16a34a","audSetSt('SEM')");
   h+=`</div>`;
-  /* insights JARVIS */
+  /* insights Painel ServCamp */
   const semList=postos.filter(p=>!audUltima(p.posto));
   const pendList=postos.filter(p=>{const u=audUltima(p.posto);return u&&audTotalNC(u)>0&&!u.pendencias_resolvidas;});
   const porSup={};postos.forEach(p=>{if(!p.supervisor)return;porSup[p.supervisor]=porSup[p.supervisor]||{tot:0,aud:0};porSup[p.supervisor].tot++;if(postosAuditadosPer.has(p.posto))porSup[p.supervisor].aud++;});
@@ -11447,8 +11447,8 @@ function audRender(){
   if(semList.length)ins.push(`🕳️ <b>${semList.length} posto(s)</b> nunca auditados${perTxt} — priorize: ${semList.slice(0,3).map(p=>_esc(p.posto)).join(", ")}.`);
   if(pendList.length)ins.push(`⚠️ <b>${pendList.length} posto(s)</b> com pendência aberta na última vistoria.`);
   if(supPior&&supPior.d.tot>=2)ins.push(`🧭 Supervisor com menor cobertura: <b>${_esc(supPior.s)}</b> (${supPior.d.aud}/${supPior.d.tot} postos auditados).`);
-  if(!AUD_A.length)ins.push("🚀 Registre a primeira vistoria para o JARVIS começar a medir cobertura e conformidade.");
-  h+=`<div style="background:#fff;border:1px solid #e5e9f0;border-radius:14px;padding:14px 18px;margin-bottom:12px"><div style="font-size:.78rem;font-weight:800;color:#0d1f35;margin-bottom:8px">🤖 JARVIS observa <span style="font-size:.58rem;color:#94a3b8;font-weight:700">cobertura e conformidade</span></div>
+  if(!AUD_A.length)ins.push("🚀 Registre a primeira vistoria para o Painel ServCamp começar a medir cobertura e conformidade.");
+  h+=`<div style="background:#fff;border:1px solid #e5e9f0;border-radius:14px;padding:14px 18px;margin-bottom:12px"><div style="font-size:.78rem;font-weight:800;color:#0d1f35;margin-bottom:8px">🤖 Painel ServCamp observa <span style="font-size:.58rem;color:#94a3b8;font-weight:700">cobertura e conformidade</span></div>
     ${ins.map((t,i)=>`<div class="cv-ins" style="animation-delay:${i*50}ms;padding:8px 12px"><div style="font-size:.72rem;color:#334155;line-height:1.45">${t}</div></div>`).join("")}</div>`;
   /* toolbar */
   h+=`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
@@ -11927,7 +11927,7 @@ function fmDetalhe(c){
   if(c.medida){
     const m=c.medida,ch=_esc(m.chave);
     const motivo=j.pode_editar
-      ?`<textarea class="fm-ta" id="fm-mt-${ch}" placeholder="Escreva aqui o motivo da medida">${_esc(m.motivo||"")}</textarea><div class="fm-md-f"><span class="fm-edit">${m.motivo_editado_por?`Editado por ${_esc(m.motivo_editado_por)} em ${fmDd(m.motivo_editado_em)}`:"Fica salvo no JARVIS"}</span><button class="fm-btn fm-pri sm" data-ch="${ch}" onclick="fmSalvarMotivo(this.dataset.ch,this)">Salvar motivo</button></div>`
+      ?`<textarea class="fm-ta" id="fm-mt-${ch}" placeholder="Escreva aqui o motivo da medida">${_esc(m.motivo||"")}</textarea><div class="fm-md-f"><span class="fm-edit">${m.motivo_editado_por?`Editado por ${_esc(m.motivo_editado_por)} em ${fmDd(m.motivo_editado_em)}`:"Fica salvo no Painel ServCamp"}</span><button class="fm-btn fm-pri sm" data-ch="${ch}" onclick="fmSalvarMotivo(this.dataset.ch,this)">Salvar motivo</button></div>`
       :`<div class="fm-ro">${m.motivo?_esc(m.motivo):'<span class="fm-edit">Sem motivo registrado</span>'}</div>`;
     med=`<div class="fm-md"><div class="fm-md-h"><b>Motivo da medida</b><span class="fm-tag k-ok">${fmMedidaTxt(m)}</span>${m.MOTIVO?`<span class="s">SAR2G: ${_esc(m.MOTIVO)}</span>`:""}</div>${motivo}</div>`;
   }
@@ -12077,7 +12077,7 @@ function fmHistEnviar(){
       const txt=`Encontrei ${ms.length} medidas de ${new Set(ms.map(m=>m.re)).size} pessoas, de ${fmDd(datas[0])} a ${fmDdA(datas[datas.length-1])}:\n`+
         `• ${n(m=>m.grau==="ESCRITA")} advertências escritas\n• ${n(m=>m.grau==="VERBAL")} advertências verbais\n• ${n(m=>m.tipo==="SUSPENSÃO")} suspensões\n`+
         (n(fmMedCancelada)?`(${n(fmMedCancelada)} com cancelamento: ficam no histórico, mas não contam como reincidência)\n`:"")+
-        (r.semData?`${r.semData} linha(s) sem data ficaram de fora.\n`:"")+"\nEnviar para o JARVIS?";
+        (r.semData?`${r.semData} linha(s) sem data ficaram de fora.\n`:"")+"\nEnviar para o Painel ServCamp?";
       if(!confirm(txt))return;
       fmPedir("POST","historico",{medidas:ms}).then(j=>{
         const rec=Object.entries(j.recusadas||{}).map(([k,v])=>v+" "+k).join(", ");
@@ -12935,7 +12935,7 @@ function brMontar(){
   if(!brPermitido()){el.innerHTML=`<div class="br-vazio"><b>Relatório restrito</b><span>Este relatório é da diretoria e da coordenação.</span></div>`;return;}
   el.innerHTML=`<div class="br-prog" id="brProg"></div>`+
     `<header class="br-top"><div class="tt"><h3>Coberturas do supervisor</h3><p>Chegada do supervisor ao posto comparada com o início da vaga de quem faltou</p></div>`+
-    `<div class="br-ac"><button type="button" class="br-btn" onclick="brExcel()">${BR_IC.xls}Excel</button><button type="button" class="br-btn" onclick="brConectadoAbrir()" title="Arquivo que se atualiza sozinho com o JARVIS">${BR_IC.xls}Excel conectado</button><button type="button" class="br-btn pri" onclick="brPrevia()">${BR_IC.imp}Imprimir</button></div></header>`+
+    `<div class="br-ac"><button type="button" class="br-btn" onclick="brExcel()">${BR_IC.xls}Excel</button><button type="button" class="br-btn" onclick="brConectadoAbrir()" title="Arquivo que se atualiza sozinho com o Painel ServCamp">${BR_IC.xls}Excel conectado</button><button type="button" class="br-btn pri" onclick="brPrevia()">${BR_IC.imp}Imprimir</button></div></header>`+
     `${brAbasHtml()}<div class="br-fil" id="brPer"></div><div class="br-fil" id="brFil"></div><div class="br-chips" id="brChips"></div>`+
     `<div id="brCont" class="br-cont"></div>`;
 }
@@ -13518,7 +13518,7 @@ async function brXlsxMontar(Ex,logo,ctx){
   const f=brFiltroTela(),L=brLinhas(f),R=brConta(L),A=brCompOk()?brConta(brLinhas(f,true)):null,ateE=brAteEfetivo();
   const idas=L.filter(x=>x.situacao!=="NAO_E_POSTO").sort((a,b)=>a.data.localeCompare(b.data)||String(a.chegada).localeCompare(String(b.chegada)));
   const wb=new Ex.Workbook();
-  wb.creator="JARVIS · Grupo ServCamp";wb.title="Coberturas do supervisor";wb.created=new Date();
+  wb.creator="Painel ServCamp · Grupo ServCamp";wb.title="Coberturas do supervisor";wb.created=new Date();
   wb.calcProperties={fullCalcOnLoad:true}; // o Excel recalcula tudo ao abrir
   const quem=sessionStorage.getItem("userNome")||"";
   const fonte=(o)=>Object.assign({name:"Segoe UI",size:10,color:{argb:BRX.texto}},o||{});
@@ -13527,7 +13527,7 @@ async function brXlsxMontar(Ex,logo,ctx){
   const fio=c=>({style:"thin",color:{argb:c||BRX.linha}});
   const pagina=(ws,titulos,paisagem)=>{
     ws.pageSetup={paperSize:9,orientation:paisagem?"landscape":"portrait",fitToPage:true,fitToWidth:1,fitToHeight:0,margins:{left:.4,right:.4,top:.5,bottom:.6,header:.25,footer:.3},horizontalCentered:true,printTitlesRow:titulos||undefined};
-    ws.headerFooter={oddFooter:'&L&"Segoe UI,Regular"&8JARVIS · Grupo ServCamp&R&"Segoe UI,Regular"&8Página &P de &N'};
+    ws.headerFooter={oddFooter:'&L&"Segoe UI,Regular"&8Painel ServCamp · Grupo ServCamp&R&"Segoe UI,Regular"&8Página &P de &N'};
   };
   const topo=(ws,tit,sub,ate)=>{
     ws.getRow(1).height=30;ws.getRow(2).height=18;ws.getRow(3).height=8;
@@ -13614,7 +13614,7 @@ async function brXlsxMontar(Ex,logo,ctx){
   r++;ws.mergeCells(r,2,r,11);ws.getRow(r).height=44;
   const fx=ws.getCell(r,2);fx.value="Os números desta capa e das abas “Por supervisor” e “Por posto” são fórmulas ligadas à aba “Cada cobertura”. Se você corrigir um horário de chegada, apagar uma linha ou mudar um nome nela, os atrasos, as situações e todos os totais se recalculam sozinhos. O texto do resumo e as horas e km em campo são fixos, da data em que o arquivo foi gerado.";
   fx.font=fonte({size:9,italic:true,color:{argb:BRX.mudo}});fx.alignment={wrapText:true,vertical:"top",indent:1};fx.fill=preenche(BRX.faixa);
-  r+=2;ws.mergeCells(r,2,r,11);const g=ws.getCell(r,2);g.value=`Gerado em ${new Date().toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"})}${quem?" por "+quem:""}  ·  Fonte: BDV do SAR2G  ·  JARVIS · Grupo ServCamp`;g.font=fonte({size:8,color:{argb:BRX.mudo}});
+  r+=2;ws.mergeCells(r,2,r,11);const g=ws.getCell(r,2);g.value=`Gerado em ${new Date().toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"})}${quem?" por "+quem:""}  ·  Fonte: BDV do SAR2G  ·  Painel ServCamp · Grupo ServCamp`;g.font=fonte({size:8,color:{argb:BRX.mudo}});
   pagina(ws,null,false);
 
   /* regras de cor que acompanham os valores (se o número mudar, a cor muda) */
@@ -13903,7 +13903,7 @@ function brPapelHtmlCtx(){
   }
   if(!P.kpi&&!P.res&&!P.sup&&!P.posto&&!P.idas)h+=`<p class="pp-n">Escolha ao lado o que entra na impressão.</p>`;
   h+=`<p class="pp-n">Atraso = chegada do supervisor ao posto menos o início da vaga de quem faltou (nas idas sem falta, o turno do posto). "Chegou em até 1h" inclui quem chegou antes do início. Fonte: BDV do SAR2G.</p>`+
-    `<div class="pp-f"><span>JARVIS · Grupo ServCamp</span><span>Gerado em ${new Date().toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"})} por ${_esc(sessionStorage.getItem("userNome")||"—")}</span></div></div>`;
+    `<div class="pp-f"><span>Painel ServCamp · Grupo ServCamp</span><span>Gerado em ${new Date().toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"})} por ${_esc(sessionStorage.getItem("userNome")||"—")}</span></div></div>`;
   return h;
 }
 function brPrevia(){
@@ -14139,7 +14139,7 @@ function frMontar(){
   el.dataset.mod="fr";
   el.innerHTML=`<div class="br-prog" id="brProg"></div>`+
     `<header class="br-top"><div class="tt"><h3>Faltas x Medidas</h3><p>Casos de falta injustificada e a medida disciplinar: prazo, aplicação e reincidência</p></div>`+
-    `<div class="br-ac"><button type="button" class="br-btn" onclick="navTo('faltasmed')">Voltar ao módulo</button><button type="button" class="br-btn" onclick="frExcel()" title="Foto do dia, com colunas para anotar">${BR_IC.xls}Excel</button><button type="button" class="br-btn" onclick="frConectadoAbrir()" title="Arquivo que se atualiza sozinho com o JARVIS">${BR_IC.xls}Excel conectado</button><button type="button" class="br-btn pri" onclick="frPrevia()">${BR_IC.imp}Imprimir</button></div></header>`+
+    `<div class="br-ac"><button type="button" class="br-btn" onclick="navTo('faltasmed')">Voltar ao módulo</button><button type="button" class="br-btn" onclick="frExcel()" title="Foto do dia, com colunas para anotar">${BR_IC.xls}Excel</button><button type="button" class="br-btn" onclick="frConectadoAbrir()" title="Arquivo que se atualiza sozinho com o Painel ServCamp">${BR_IC.xls}Excel conectado</button><button type="button" class="br-btn pri" onclick="frPrevia()">${BR_IC.imp}Imprimir</button></div></header>`+
     `<div class="br-fil" id="brPer"></div><div class="br-fil" id="brFil"></div><div class="br-chips" id="brChips"></div>`+
     `<div id="brCont" class="br-cont"></div>`;
 }
@@ -14441,7 +14441,7 @@ function frPapelHtml(){
   }
   if(!P.kpi&&!P.res&&!P.sup&&!P.posto&&!P.sit&&!P.casos)h+=`<p class="pp-n">Escolha ao lado o que entra na impressão.</p>`;
   h+=`<p class="pp-n">Cada caso pertence à folha (dia 26 ao dia 25) da primeira falta. Atrasada = caso sem medida cujo prazo para aplicá-la já terminou. Faltas abonadas não geram caso nem medida. Fonte: planilha do SAR2G enviada ao módulo Faltas x Medidas.</p>`+
-    `<div class="pp-f"><span>JARVIS · Grupo ServCamp</span><span>Gerado em ${new Date().toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"})} por ${_esc(sessionStorage.getItem("userNome")||"—")}</span></div></div>`;
+    `<div class="pp-f"><span>Painel ServCamp · Grupo ServCamp</span><span>Gerado em ${new Date().toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"})} por ${_esc(sessionStorage.getItem("userNome")||"—")}</span></div></div>`;
   return h;
 }
 /* ── Excel: painel com caixas de escolha, base de acompanhamento e abas calculadas por fórmula ──
@@ -14483,7 +14483,7 @@ async function frXlsxMontar(Ex,logo){
   const selS="Todos";
 
   const wb=new Ex.Workbook();
-  wb.creator="JARVIS · Grupo ServCamp";wb.title="Faltas x Medidas";wb.created=new Date();
+  wb.creator="Painel ServCamp · Grupo ServCamp";wb.title="Faltas x Medidas";wb.created=new Date();
   wb.calcProperties={fullCalcOnLoad:true};
   const quem=sessionStorage.getItem("userNome")||"";
   const fonte=o=>Object.assign({name:"Segoe UI",size:10,color:{argb:BRX.texto}},o||{});
@@ -14495,7 +14495,7 @@ async function frXlsxMontar(Ex,logo){
   const fm=(formula,result)=>({formula,result});
   const pagina=(ws,titulos,paisagem)=>{
     ws.pageSetup={paperSize:9,orientation:paisagem?"landscape":"portrait",fitToPage:true,fitToWidth:1,fitToHeight:0,margins:{left:.4,right:.4,top:.5,bottom:.6,header:.25,footer:.3},horizontalCentered:true,printTitlesRow:titulos||undefined};
-    ws.headerFooter={oddFooter:'&L&"Segoe UI,Regular"&8JARVIS · Grupo ServCamp&R&"Segoe UI,Regular"&8Página &P de &N'};
+    ws.headerFooter={oddFooter:'&L&"Segoe UI,Regular"&8Painel ServCamp · Grupo ServCamp&R&"Segoe UI,Regular"&8Página &P de &N'};
   };
   const topo=(ws,tit,sub,col0,col1)=>{
     ws.getRow(1).height=30;ws.getRow(2).height=18;ws.getRow(3).height=8;
@@ -14844,7 +14844,7 @@ async function frXlsxMontar(Ex,logo){
       ["5","Por supervisor e Por posto","Comparam todos lado a lado, para a folha escolhida no Painel. Clique na seta do cabeçalho para ordenar (por exemplo, mais atrasadas primeiro)."],
       ["6","Evolução","Mostra folha por folha (dia 26 ao dia 25) se os casos e os atrasos aumentam ou diminuem, para o supervisor escolhido."],
       ["7","Reincidência","Lista quem tem 2 ou mais medidas disciplinares no ano e quantos casos em aberto essa pessoa tem agora."],
-      ["8","Atualizar os dados","Este arquivo é uma foto dos dados do JARVIS no dia em que foi gerado. Para ter os números novos, gere o Excel de novo no relatório. As anotações feitas aqui ficam só neste arquivo."]
+      ["8","Atualizar os dados","Este arquivo é uma foto dos dados do Painel ServCamp no dia em que foi gerado. Para ter os números novos, gere o Excel de novo no relatório. As anotações feitas aqui ficam só neste arquivo."]
     ];
     itens.forEach((it,i)=>{
       const r=5+i;ws.getRow(r).height=48;
@@ -14858,7 +14858,7 @@ async function frXlsxMontar(Ex,logo){
 }
 
 /* ═════════ EXCEL CONECTADO ═════════
-   Um arquivo que se atualiza sozinho com o que está no JARVIS. As abas Dados, Reincidência e Listas são
+   Um arquivo que se atualiza sozinho com o que está no Painel ServCamp. As abas Dados, Reincidência e Listas são
    preenchidas por consultas "Da Web" gravadas DENTRO do arquivo (o Excel as refaz ao abrir); todas as outras
    abas são fórmulas em cima delas. A chave de acesso vai no endereço da consulta e só serve para ler estas
    tabelas (escopo "xl", 90 dias, cancelável). O arquivo é gerado aqui no navegador e depois recebe as conexões
@@ -14876,12 +14876,12 @@ function frCarregaJSZip(){
 const FRC_PASSOS=[
   ["Abra o arquivo no Excel do computador.","Funciona no Excel para Windows. No Excel pelo navegador ou no celular ele mostra os números da hora em que foi gerado, mas não atualiza."],
   ["Se aparecer uma barra amarela escrita \"Modo de Exibição Protegido\", clique em Habilitar Edição.","É um aviso normal do Excel para arquivos baixados da internet."],
-  ["Se aparecer outra barra, \"As conexões de dados externos foram desabilitadas\", clique em Habilitar Conteúdo.","É isso que deixa o arquivo buscar os dados no JARVIS. Em poucos segundos as abas se atualizam sozinhas."],
+  ["Se aparecer outra barra, \"As conexões de dados externos foram desabilitadas\", clique em Habilitar Conteúdo.","É isso que deixa o arquivo buscar os dados no Painel ServCamp. Em poucos segundos as abas se atualizam sozinhas."],
   ["Escolha a Folha e o Supervisor na aba Painel.","Todos os números, listas e abas mudam na hora. Para ver o que fazer agora, abra a aba Casos em aberto: ela mostra os casos do mais urgente para o menos urgente."],
   ["Para anotar o que foi feito em um caso, use a aba Anotações.","Escolha o caso na lista, a providência e escreva a observação. O que você anota aparece ao lado do caso nas abas Casos em aberto e Medidas aplicadas."],
   ["Para atualizar com o arquivo aberto: no menu Dados do Excel (no alto da tela), clique em Atualizar Tudo (ou aperte Ctrl + Alt + F5).","Ao abrir o arquivo de novo, ele já atualiza sozinho. A cada abertura você vê a situação mais recente."],
-  ["Se não atualizar:","Confira a internet. Se o aviso falar de acesso negado, a chave venceu (dura 90 dias) ou foi cancelada: gere o arquivo de novo no JARVIS."],
-  ["Cuide do arquivo como um relatório de RH.","Ele guarda uma chave que só serve para ler estes dados. Não envie por e-mail ou grupo aberto. Se perder o arquivo, peça para cancelar as chaves no JARVIS."]
+  ["Se não atualizar:","Confira a internet. Se o aviso falar de acesso negado, a chave venceu (dura 90 dias) ou foi cancelada: gere o arquivo de novo no Painel ServCamp."],
+  ["Cuide do arquivo como um relatório de RH.","Ele guarda uma chave que só serve para ler estes dados. Não envie por e-mail ou grupo aberto. Se perder o arquivo, peça para cancelar as chaves no Painel ServCamp."]
 ];
 /* Monta o arquivo conectado inteiro (chave nova + dados de agora + conexões) e devolve os bytes. */
 async function frConectadoBuffer(){
@@ -14914,7 +14914,7 @@ async function frConectadoGerar(btn){
   finally{fim();}
 }
 function frConectadoCancelar(btn){
-  if(!confirm("Cancelar TODAS as chaves do Excel já geradas?\n\nOs arquivos conectados que existem hoje deixam de atualizar (você gera outro quando precisar). Isso não apaga nada no JARVIS."))return;
+  if(!confirm("Cancelar TODAS as chaves do Excel já geradas?\n\nOs arquivos conectados que existem hoje deixam de atualizar (você gera outro quando precisar). Isso não apaga nada no Painel ServCamp."))return;
   if(btn)btn.disabled=true;
   fmPedir("POST","revogar_excel",{}).then(()=>{if(typeof ptToast==="function")ptToast("Chaves canceladas");const av=document.getElementById("frConAviso");if(av)av.textContent="Chaves anteriores canceladas.";})
     .catch(e=>alert("Não foi possível cancelar: "+e.message)).finally(()=>{if(btn)btn.disabled=false;});
@@ -14924,11 +14924,11 @@ function frConectadoAbrir(){
   const o=document.createElement("div");o.id="frCon";o.setAttribute("role","dialog");o.setAttribute("aria-modal","true");o.setAttribute("aria-label","Excel conectado");
   o.style.cssText="position:fixed;inset:0;z-index:100000;background:rgba(13,31,53,.6);display:flex;align-items:center;justify-content:center;padding:16px";
   o.onclick=e=>{if(e.target===o)frConectadoFechar();};
-  o.innerHTML=`<div id="frConCx"><div class="fc-h"><div><h3>Excel conectado</h3><p>Um arquivo que se atualiza sozinho com o que está acontecendo no JARVIS.</p></div><button type="button" class="fc-x" onclick="frConectadoFechar()" aria-label="Fechar">${FM_IC.x}</button></div>`+
-    `<div class="fc-c"><div class="fc-fluxo"><span>JARVIS</span><i>→</i><span>internet</span><i>→</i><span>seu Excel</span></div>`+
-    `<p class="fc-p">Cada vez que você abre o arquivo, o Excel busca os casos de hoje no JARVIS e refaz todas as contas. Você não digita nada: a Folha e o Supervisor se escolhem no Painel.</p>`+
+  o.innerHTML=`<div id="frConCx"><div class="fc-h"><div><h3>Excel conectado</h3><p>Um arquivo que se atualiza sozinho com o que está acontecendo no Painel ServCamp.</p></div><button type="button" class="fc-x" onclick="frConectadoFechar()" aria-label="Fechar">${FM_IC.x}</button></div>`+
+    `<div class="fc-c"><div class="fc-fluxo"><span>Painel ServCamp</span><i>→</i><span>internet</span><i>→</i><span>seu Excel</span></div>`+
+    `<p class="fc-p">Cada vez que você abre o arquivo, o Excel busca os casos de hoje no Painel ServCamp e refaz todas as contas. Você não digita nada: a Folha e o Supervisor se escolhem no Painel.</p>`+
     `<h4>Como usar, passo a passo</h4><ol class="fc-ol">${FRC_PASSOS.map(([t,d])=>`<li><b>${_esc(t)}</b><span>${_esc(d)}</span></li>`).join("")}</ol>`+
-    `<div class="fc-av"><b>De onde vem cada coisa:</b> casos, prazos, medidas e históricos vêm sempre do JARVIS (planilha do SAR2G), então nunca divergem do painel. Só as anotações da aba Anotações ficam apenas neste arquivo e não voltam para o JARVIS. Uma medida só aparece como aplicada depois que o RH lança no SAR2G e a planilha nova é enviada.</div>`+
+    `<div class="fc-av"><b>De onde vem cada coisa:</b> casos, prazos, medidas e históricos vêm sempre do Painel ServCamp (planilha do SAR2G), então nunca divergem do painel. Só as anotações da aba Anotações ficam apenas neste arquivo e não voltam para o Painel ServCamp. Uma medida só aparece como aplicada depois que o RH lança no SAR2G e a planilha nova é enviada.</div>`+
     `<p class="fc-s" id="frConAviso">A chave gerada vale 90 dias e só serve para ler estas tabelas.</p></div>`+
     `<div class="fc-f"><button type="button" class="br-btn" onclick="frConectadoCancelar(this)">Cancelar chaves antigas</button><span style="flex:1"></span><button type="button" class="br-btn" onclick="frConectadoFechar()">Fechar</button><button type="button" class="br-btn pri" onclick="frConectadoGerar(this)">${BR_IC.xls}Gerar arquivo conectado</button></div></div>`;
   document.body.appendChild(o);
@@ -14983,7 +14983,7 @@ async function frXlsxConectado(Ex,logo,j,k){
   const serialJS=d=>Date.UTC(Number(d.slice(0,4)),Number(d.slice(5,7))-1,Number(d.slice(8,10)))/86400000+25569;
   const refS=serialJS(hoje);
   const wb=new Ex.Workbook();
-  wb.creator="JARVIS · Grupo ServCamp";wb.title="Faltas x Medidas (conectado)";wb.created=new Date();
+  wb.creator="Painel ServCamp · Grupo ServCamp";wb.title="Faltas x Medidas (conectado)";wb.created=new Date();
   wb.calcProperties={fullCalcOnLoad:true};
   const fonte=o=>Object.assign({name:"Segoe UI",size:10,color:{argb:BRX.texto}},o||{});
   const preenche=c=>({type:"pattern",pattern:"solid",fgColor:{argb:c}});
@@ -14992,7 +14992,7 @@ async function frXlsxConectado(Ex,logo,j,k){
   const fm=(formula,result)=>({formula,result});
   const pagina=(ws,titulos,paisagem)=>{
     ws.pageSetup={paperSize:9,orientation:paisagem?"landscape":"portrait",fitToPage:true,fitToWidth:1,fitToHeight:0,margins:{left:.4,right:.4,top:.5,bottom:.6,header:.25,footer:.3},horizontalCentered:true,printTitlesRow:titulos||undefined};
-    ws.headerFooter={oddFooter:'&L&"Segoe UI,Regular"&8JARVIS · Grupo ServCamp&R&"Segoe UI,Regular"&8Página &P de &N'};
+    ws.headerFooter={oddFooter:'&L&"Segoe UI,Regular"&8Painel ServCamp · Grupo ServCamp&R&"Segoe UI,Regular"&8Página &P de &N'};
   };
   const topo=(ws,tit,sub,col0,col1)=>{
     ws.getRow(1).height=30;ws.getRow(2).height=18;ws.getRow(3).height=8;
@@ -15043,7 +15043,7 @@ async function frXlsxConectado(Ex,logo,j,k){
   const wsD=wb.addWorksheet("Dados",{properties:{tabColor:{argb:"FF98A2B3"}},views:[{showGridLines:false,state:"frozen",ySplit:5,xSplit:2}]});
   const wsL=wb.addWorksheet("Listas",{state:"hidden"});
 
-  /* ═══ Listas (preenchida pelo JARVIS) ═══ */
+  /* ═══ Listas (preenchida pelo Painel ServCamp) ═══ */
   T.listas.cab.forEach((t,i)=>{wsL.getCell(1,1+i).value=t;});
   listas.forEach((l,r)=>l.forEach((v,c)=>{const x=wsL.getCell(2+r,1+c);x.value=nulo(v);if(r>=0&&(c===1||c===2)&&v!=="")x.numFmt="dd/mm/yyyy";}));
 
@@ -15068,13 +15068,13 @@ async function frXlsxConectado(Ex,logo,j,k){
     o.ordR=o.keyR===""?"":R0.filter(x=>x.keyR!==""&&x.keyR>o.keyR).length+R0.slice(0,i+1).filter(x=>x.keyR!==""&&x.keyR===o.keyR).length;
   });
 
-/* ═══ Dados (preenchida pelo JARVIS; as colunas verdes são fórmulas que dão a situação e a ordem das listas) ═══ */
+/* ═══ Dados (preenchida pelo Painel ServCamp; as colunas verdes são fórmulas que dão a situação e a ordem das listas) ═══ */
   {
     const ws=wsD;
     const cols=[{t:"RE",w:8},{t:"Colaborador",w:30},{t:"Cargo",w:22},{t:"Posto",w:28},{t:"Supervisor",w:20},{t:"Turno",w:9},{t:"Escala",w:10},{t:"Vínculo",w:15},{t:"Folha",w:14},{t:"1ª falta",w:11,n:1},{t:"Faltas (nº)",w:8,n:1},{t:"Datas das faltas",w:30},{t:"Retorno",w:11,n:1},{t:"Prazo até",w:11,n:1},{t:"Medida aplicada",w:22},{t:"Data da medida",w:11,n:1},{t:"Medidas no ano",w:9,n:1},{t:"Regra",w:11},{t:"Motivo",w:30},
       {t:"Situação",w:23},{t:"Dias de atraso",w:9,n:1},{t:"No filtro do Painel",w:9,n:1},{t:"Chave (em aberto)",w:10,n:1},{t:"Ordem (em aberto)",w:9,n:1},{t:"Chave (medidas)",w:10,n:1},{t:"Ordem (medidas)",w:9,n:1},{t:"Rótulo do caso",w:34}];
     ws.columns=cols.map(c=>({width:c.w}));
-    topo(ws,"Dados dos casos","Esta aba é preenchida sozinha pelo JARVIS quando o arquivo abre · não digite aqui",5,27);
+    topo(ws,"Dados dos casos","Esta aba é preenchida sozinha pelo Painel ServCamp quando o arquivo abre · não digite aqui",5,27);
     ws.mergeCells(4,2,4,12);const n=ws.getCell(4,2);n.value=`Dados de ${brDd(j.dataBase||hoje)} (planilha do SAR2G) · arquivo gerado em ${brDd(hoje)} · Situação e dias de atraso são calculados com a data de hoje`;n.font=fonte({size:9,italic:true,color:{argb:BRX.mudo}});n.alignment={vertical:"middle",indent:1};ws.getRow(4).height=22;
     cabeca(ws,5,cols,1);
     for(let q=20;q<=27;q++)ws.getCell(5,q).fill=preenche("FF067647");
@@ -15102,12 +15102,12 @@ async function frXlsxConectado(Ex,logo,j,k){
     pagina(ws,"5:5",true);
   }
 
-/* ═══ Reincidência (preenchida pelo JARVIS) ═══ */
+/* ═══ Reincidência (preenchida pelo Painel ServCamp) ═══ */
   {
     const ws=wsR;
     const cols=[{t:"Colaborador",w:32},{t:"RE",w:9},{t:"Posto",w:28},{t:"Supervisor",w:20},{t:"Medidas no ano",w:14,n:1},{t:"Última medida",w:26},{t:"Data da última",w:14,n:1},{t:"Casos em aberto",w:14,n:1}];
     ws.columns=cols.map(c=>({width:c.w}));
-    topo(ws,"Reincidência","Colaboradores com 2 ou mais medidas disciplinares no ano · preenchida sozinha pelo JARVIS",4,8);
+    topo(ws,"Reincidência","Colaboradores com 2 ou mais medidas disciplinares no ano · preenchida sozinha pelo Painel ServCamp",4,8);
     cabeca(ws,5,cols,1);ws.getCell(5,8).fill=preenche("FF067647");
     ws.getColumn(7).numFmt="dd/mm/yyyy";
     reinc.forEach((l,i)=>{const r=LIN0+i;l.forEach((v,k)=>{const x=ws.getCell(r,1+k);x.value=nulo(v);x.font=fonte({size:9.5,bold:k===0});x.alignment={vertical:"middle",horizontal:k===4||k===6?"right":"left"};if(k===6)x.numFmt="dd/mm/yyyy";});});
@@ -15126,7 +15126,7 @@ async function frXlsxConectado(Ex,logo,j,k){
   /* ═══ Painel ═══ */
   {
     const ws=wsP;ws.columns=[{width:2},...Array.from({length:10},()=>({width:14})),{width:2},{width:16,hidden:true}];
-    topo(ws,"Acompanhamento de Faltas x Medidas","Atualizado sozinho com o JARVIS · casos de falta injustificada e a medida disciplinar",5,11);
+    topo(ws,"Acompanhamento de Faltas x Medidas","Atualizado sozinho com o Painel ServCamp · casos de falta injustificada e a medida disciplinar",5,11);
     ws.mergeCells("B4:K4");const P=ws.getCell("B4");P.value=`Dados de ${brDd(j.dataBase||hoje)} (planilha do SAR2G)  ·  situação calculada com a data de hoje`;P.font=fonte({size:10.5,bold:true,color:{argb:NAV}});P.alignment={vertical:"middle"};ws.getRow(4).height=26;
     ws.getRow(5).height=6;
     const caixaFundo="FFEEF4FF",entrada={style:"thin",color:{argb:"FF2E90FA"}};
@@ -15136,7 +15136,7 @@ async function frXlsxConectado(Ex,logo,j,k){
     rotulo(6,"Data de referência");entrar(6,fm("TODAY()",refS),"dd/mm/yyyy");
     rotulo(7,"Folha");const dF=entrar(7,selF);dF.dataValidation={type:"list",allowBlank:false,formulae:["OFFSET(Listas!$A$2,0,0,COUNTA(Listas!$A$2:$A$40),1)"],showErrorMessage:true,errorTitle:"Folha",error:"Escolha uma folha da lista."};
     rotulo(8,"Supervisor");const dS=entrar(8,selS);dS.dataValidation={type:"list",allowBlank:false,formulae:["OFFSET(Listas!$D$2,0,0,COUNTA(Listas!$D$2:$D$200),1)"],showErrorMessage:true,errorTitle:"Supervisor",error:"Escolha um supervisor da lista."};
-    ws.mergeCells("H6:K8");const nota=ws.getCell("H6");nota.value="Escolha a Folha ou o Supervisor nas caixas brancas e tudo muda na hora. Os dados vêm do JARVIS sozinhos: ao abrir, clique em Habilitar Conteúdo se o Excel pedir. Para atualizar aberto: menu Dados > Atualizar Tudo.";nota.font=fonte({size:8.5,italic:true,color:{argb:BRX.mudo}});nota.alignment={vertical:"middle",wrapText:true,indent:1};
+    ws.mergeCells("H6:K8");const nota=ws.getCell("H6");nota.value="Escolha a Folha ou o Supervisor nas caixas brancas e tudo muda na hora. Os dados vêm do Painel ServCamp sozinhos: ao abrir, clique em Habilitar Conteúdo se o Excel pedir. Para atualizar aberto: menu Dados > Atualizar Tudo.";nota.font=fonte({size:8.5,italic:true,color:{argb:BRX.mudo}});nota.alignment={vertical:"middle",wrapText:true,indent:1};
     ws.getCell("M7").value=fm('IF($D$7="Todas as folhas","*",$D$7)',selF==="Todas as folhas"?"*":selF);
     ws.getCell("M8").value=fm('IF($D$8="Todos","*",$D$8)',"*");
     ws.getRow(9).height=8;
@@ -15182,7 +15182,7 @@ async function frXlsxConectado(Ex,logo,j,k){
     pagina(ws);
   }
 
-  /* ═══ Por supervisor e Por posto: linhas que acompanham as listas do JARVIS ═══ */
+  /* ═══ Por supervisor e Por posto: linhas que acompanham as listas do Painel ServCamp ═══ */
   const grupoDin=(ws,cfg)=>{
     const {titulo,sub,chave,rotulo,porPosto,maxLin,colLista}=cfg,N0=9,TOTR=8,ULT0=N0+maxLin-1;
     const cols=porPosto?[
@@ -15208,7 +15208,7 @@ async function frXlsxConectado(Ex,logo,j,k){
     const faixa=(c0,c1,txt,c)=>{if(c1>c0)ws.mergeCells(6,c0,6,c1);const x=ws.getCell(6,c0);x.value=txt;x.font=fonte({size:8.5,bold:true,color:{argb:c[0]}});x.alignment={vertical:"middle",horizontal:"center"};for(let q=c0;q<=c1;q++){const y=ws.getCell(6,q);y.fill=preenche(c[1]);y.border={top:{style:"medium",color:{argb:c[0]}}};}};
     faixa(pos[gAc[0].k],pos[gAc[gAc.length-1].k],"PRECISAM DE AÇÃO",BRX.am);faixa(pos[gRe[0].k],pos[gRe[gRe.length-1].k],"JÁ RESOLVIDOS",BRX.ok);
     cabeca(ws,7,cols.map(c=>({t:c.t,n:c.n})),2);ws.getRow(7).height=46;
-    // contas por linha (a linha 8 é o total; as demais seguem a lista do JARVIS)
+    // contas por linha (a linha 8 é o total; as demais seguem a lista do Painel ServCamp)
     const critTot=`${FOL},${CF}`,critL=r=>`${FOL},${CF},${chave},$C${r}`;
     const sitF=(cr,s)=>`COUNTIFS(${cr},${SIT},"${s}")`;
     const abrF=cr=>`SUM(COUNTIFS(${cr},${SIT},${ABERTA_LST}))`;
@@ -15262,8 +15262,8 @@ async function frXlsxConectado(Ex,logo,j,k){
     cols.filter(c=>c.n&&c.k!=="pct"&&c.k!=="fAnt"&&c.k!=="pAnt"&&c.k!=="dAnt").forEach(c=>zeroCinza(ws,`${C(c.k)}${TOTR}:${C(c.k)}${ULT0}`));
     pagina(ws,"7:7",true);
   };
-  grupoDin(wsS,{titulo:"Por supervisor",sub:"Quem tem o que fazer agora e quem já resolveu · atualizado sozinho com o JARVIS",chave:SUP,rotulo:"Supervisor",porPosto:false,maxLin:60,colLista:"D"});
-  grupoDin(wsO,{titulo:"Por posto",sub:"Onde as faltas se concentram · atualizado sozinho com o JARVIS",chave:POS,rotulo:"Posto",porPosto:true,maxLin:150,colLista:"E"});
+  grupoDin(wsS,{titulo:"Por supervisor",sub:"Quem tem o que fazer agora e quem já resolveu · atualizado sozinho com o Painel ServCamp",chave:SUP,rotulo:"Supervisor",porPosto:false,maxLin:60,colLista:"D"});
+  grupoDin(wsO,{titulo:"Por posto",sub:"Onde as faltas se concentram · atualizado sozinho com o Painel ServCamp",chave:POS,rotulo:"Posto",porPosto:true,maxLin:150,colLista:"E"});
 
   /* ═══ Evolução por folha ═══ */
   {
@@ -15308,7 +15308,7 @@ async function frXlsxConectado(Ex,logo,j,k){
     pagina(ws,"6:6",true);
   }
 
-  /* ═══ Casos em aberto: a mesma lista do JARVIS (Tratar, Coordenação e Esperando voltar), na ordem de urgência ═══ */
+  /* ═══ Casos em aberto: a mesma lista do Painel ServCamp (Tratar, Coordenação e Esperando voltar), na ordem de urgência ═══ */
   const NR=500,PROV=["Pendente","Em análise","Aguardando documento","Medida aplicada","Encaminhado ao RH","Sem medida"];
   const dd_=c=>`Dados!$${c}$${LIN0}:$${c}$${LINN}`;
   const ANOT="'Anotações'",A0=6,A1=505; // linhas da aba Anotações
@@ -15433,7 +15433,7 @@ async function frXlsxConectado(Ex,logo,j,k){
     wsMA.addConditionalFormatting({ref:rg("atraso"),rules:[{type:"expression",formulae:[`AND(ISNUMBER(${L("atraso")}${N0}),${L("atraso")}${N0}>0)`],style:{fill:dxf(BRX.am[1]),font:{bold:true,color:{argb:BRX.am[0]}}}}]});
   }
 
-  /* ═══ Histórico: todas as medidas do ano, de todos (preenchida pelo JARVIS) ═══ */
+  /* ═══ Histórico: todas as medidas do ano, de todos (preenchida pelo Painel ServCamp) ═══ */
   const HQ=`'Histórico'`,hh=c=>`${HQ}!$${c}$${LIN0}:$${c}$${LINN}`;
   const MED=T.medidas.linhas.map(l=>({re:l[0],nome:l[1],posto:l[2],sup:l[3],data:l[4],tipo:l[5],dias:Number(l[6])||0,sit:l[8],conta:l[8]==="Cancelada"?0:1}));
   MED.forEach((m,i)=>{
@@ -15448,7 +15448,7 @@ async function frXlsxConectado(Ex,logo,j,k){
     const ws=wsH;
     const cols=[{t:"RE",w:8},{t:"Colaborador",w:30},{t:"Posto",w:30},{t:"Supervisor",w:22},{t:"Data",w:12,n:1},{t:"Medida",w:20},{t:"Dias",w:7,n:1},{t:"Motivo no SAR2G",w:30},{t:"Situação",w:15},{t:"Origem",w:18},{t:"Conta",w:8,n:1},{t:"1ª da pessoa no posto",w:11,n:1},{t:"1ª da pessoa no supervisor",w:11,n:1},{t:"Medidas da pessoa no ano",w:11,n:1},{t:"1ª do posto no supervisor",w:11,n:1}];
     ws.columns=cols.map(c=>({width:c.w}));
-    topo(ws,"Histórico de medidas","Todas as advertências e suspensões do ano · preenchida sozinha pelo JARVIS · filtre por nome, RE, posto ou supervisor",5,15);
+    topo(ws,"Histórico de medidas","Todas as advertências e suspensões do ano · preenchida sozinha pelo Painel ServCamp · filtre por nome, RE, posto ou supervisor",5,15);
     ws.mergeCells(4,2,4,10);const n=ws.getCell(4,2);n.value=`Posto de cada medida = o posto onde a pessoa estava na época; quem não está em posto efetivo aparece como Reserva técnica do supervisor. Medida cancelada não conta nos rankings (fica cinza).`;n.font=fonte({size:9,italic:true,color:{argb:BRX.mudo}});n.alignment={vertical:"middle",indent:1};ws.getRow(4).height=22;
     cabeca(ws,5,cols,1);ws.getRow(5).height=44;
     for(let q=11;q<=15;q++)ws.getCell(5,q).fill=preenche("FF067647");
@@ -15482,7 +15482,7 @@ async function frXlsxConectado(Ex,logo,j,k){
     const pos={};cols.forEach((c,i)=>{pos[c.k]=i+2;});const L=k=>letra(pos[k]);
     ws.columns=[{width:2},...cols.map(c=>({width:c.w}))];
     ws.views=[{showGridLines:false,state:"frozen",ySplit:H,xSplit:2}];
-    topo(ws,"Rankings","Onde estão as medidas disciplinares do ano · mesmas contas do Histórico do JARVIS",4,cols.length+1);
+    topo(ws,"Rankings","Onde estão as medidas disciplinares do ano · mesmas contas do Histórico do Painel ServCamp",4,cols.length+1);
     ws.getRow(4).height=8;ws.getRow(5).height=26;ws.getRow(6).height=6;ws.getRow(7).height=18;
     const caixaFundo="FFEEF4FF",entrada={style:"thin",color:{argb:"FF2E90FA"}};
     for(let q=2;q<=6;q++)ws.getCell(5,q).fill=preenche(caixaFundo);
@@ -15562,8 +15562,8 @@ async function frXlsxConectado(Ex,logo,j,k){
   {
     const ws=wsA;ws.columns=[{width:2},{width:6},{width:104}];
     topo(ws,"Comece aqui","Como este Excel funciona, em passos simples",2,3);
-    ws.mergeCells("B4:C4");const l1=ws.getCell("B4");l1.value="Este arquivo busca sozinho no JARVIS os casos de falta e as medidas. Você só escolhe a Folha e o Supervisor na aba Painel.";l1.font=fonte({size:11,bold:true,color:{argb:NAV}});l1.alignment={vertical:"middle",wrapText:true,indent:1};ws.getRow(4).height=34;
-    ws.mergeCells("B5:C5");const l2=ws.getCell("B5");l2.value="JARVIS   →   internet   →   este arquivo (Dados)   →   Painel e abas";l2.font=fonte({size:10,bold:true,color:{argb:"FF2E90FA"}});l2.alignment={vertical:"middle",horizontal:"center"};l2.fill=preenche("FFEEF4FF");ws.getRow(5).height=30;
+    ws.mergeCells("B4:C4");const l1=ws.getCell("B4");l1.value="Este arquivo busca sozinho no Painel ServCamp os casos de falta e as medidas. Você só escolhe a Folha e o Supervisor na aba Painel.";l1.font=fonte({size:11,bold:true,color:{argb:NAV}});l1.alignment={vertical:"middle",wrapText:true,indent:1};ws.getRow(4).height=34;
+    ws.mergeCells("B5:C5");const l2=ws.getCell("B5");l2.value="Painel ServCamp   →   internet   →   este arquivo (Dados)   →   Painel e abas";l2.font=fonte({size:10,bold:true,color:{argb:"FF2E90FA"}});l2.alignment={vertical:"middle",horizontal:"center"};l2.fill=preenche("FFEEF4FF");ws.getRow(5).height=30;
     FRC_PASSOS.forEach((p,i)=>{
       const r=7+i;ws.getRow(r).height=52;
       const a=ws.getCell(r,2);a.value=i+1;a.font=fonte({size:16,bold:true,color:{argb:NAV}});a.alignment={vertical:"middle",horizontal:"center"};
@@ -15572,11 +15572,11 @@ async function frXlsxConectado(Ex,logo,j,k){
     });
     let r=7+FRC_PASSOS.length+1;
     ws.mergeCells(r,2,r,3);const t=ws.getCell(r,2);t.value="O que cada aba mostra";t.font=fonte({size:11,bold:true,color:{argb:NAV}});ws.getRow(r).height=24;r++;
-    [["Painel","Os números principais e a situação dos casos. É aqui que você escolhe a Folha e o Supervisor: todas as abas seguem essa escolha."],["Casos em aberto","O que precisa de ação agora, do mais urgente para o menos urgente: quem é, onde está, quando faltou, até quando vale aplicar a medida e o que fazer. É a mesma lista do JARVIS (Tratar, Coordenação e Esperando voltar)."],["Por supervisor e Por posto","Quem tem o que fazer agora e quem já resolveu, com a falta mais antiga atrasada e o prazo que era."],["Evolução","Se os casos e os atrasos estão aumentando ou diminuindo, folha por folha."],["Medidas aplicadas","O que já foi resolvido, dentro e fora do prazo, da mais recente para a mais antiga."],["Histórico","Todas as advertências e suspensões do ano, de todos. Filtre por nome, RE, posto ou supervisor."],["Rankings","Os postos ou supervisores com mais medidas, com tendência (aumentando, estável ou diminuindo)."],["Reincidência","Quem tem 2 ou mais medidas no ano e quantos casos em aberto tem agora."],["Anotações","Onde a coordenação registra o que fez em cada caso. Aparece ao lado do caso nas listas."],["Dados","A base de tudo, preenchida pelo JARVIS. Não digite nada aqui."]].forEach(([a,b])=>{
+    [["Painel","Os números principais e a situação dos casos. É aqui que você escolhe a Folha e o Supervisor: todas as abas seguem essa escolha."],["Casos em aberto","O que precisa de ação agora, do mais urgente para o menos urgente: quem é, onde está, quando faltou, até quando vale aplicar a medida e o que fazer. É a mesma lista do Painel ServCamp (Tratar, Coordenação e Esperando voltar)."],["Por supervisor e Por posto","Quem tem o que fazer agora e quem já resolveu, com a falta mais antiga atrasada e o prazo que era."],["Evolução","Se os casos e os atrasos estão aumentando ou diminuindo, folha por folha."],["Medidas aplicadas","O que já foi resolvido, dentro e fora do prazo, da mais recente para a mais antiga."],["Histórico","Todas as advertências e suspensões do ano, de todos. Filtre por nome, RE, posto ou supervisor."],["Rankings","Os postos ou supervisores com mais medidas, com tendência (aumentando, estável ou diminuindo)."],["Reincidência","Quem tem 2 ou mais medidas no ano e quantos casos em aberto tem agora."],["Anotações","Onde a coordenação registra o que fez em cada caso. Aparece ao lado do caso nas listas."],["Dados","A base de tudo, preenchida pelo Painel ServCamp. Não digite nada aqui."]].forEach(([a,b])=>{
       const x=ws.getCell(r,2);x.value="•";x.alignment={horizontal:"center",vertical:"middle"};x.font=fonte({bold:true,color:{argb:NAV}});
       const y=ws.getCell(r,3);y.value={richText:[{text:a+": ",font:fonte({bold:true})},{text:b,font:fonte()}]};y.alignment={vertical:"middle",wrapText:true};ws.getRow(r).height=22;r++;
     });
-    r++;ws.mergeCells(r,2,r,3);const z=ws.getCell(r,2);z.value=`Arquivo gerado em ${brDd(hoje)}. A chave de acesso dele vale até ${brDd(String(k.validaAte).slice(0,10))}; depois disso, gere outro arquivo no JARVIS (Relatório de Faltas x Medidas > Excel conectado).`;z.font=fonte({size:9,italic:true,color:{argb:BRX.mudo}});z.alignment={wrapText:true,indent:1};ws.getRow(r).height=30;
+    r++;ws.mergeCells(r,2,r,3);const z=ws.getCell(r,2);z.value=`Arquivo gerado em ${brDd(hoje)}. A chave de acesso dele vale até ${brDd(String(k.validaAte).slice(0,10))}; depois disso, gere outro arquivo no Painel ServCamp (Relatório de Faltas x Medidas > Excel conectado).`;z.font=fonte({size:9,italic:true,color:{argb:BRX.mudo}});z.alignment={wrapText:true,indent:1};ws.getRow(r).height=30;
     pagina(ws);
   }
   wb.views=[{x:0,y:0,width:20000,height:12000,firstSheet:0,activeTab:0,visibility:"visible"}];
@@ -15584,18 +15584,18 @@ async function frXlsxConectado(Ex,logo,j,k){
 }
 
 /* ═════════ EXCEL CONECTADO DO RELATÓRIO DE COBERTURAS ═════════
-   Mesmo modelo do Excel conectado do Faltas x Medidas: um arquivo que se atualiza sozinho com o JARVIS.
+   Mesmo modelo do Excel conectado do Faltas x Medidas: um arquivo que se atualiza sozinho com o Painel ServCamp.
    As abas Dados e Listas são preenchidas por consultas "Da Web" gravadas dentro do arquivo (o Excel as refaz
    ao abrir); o Painel, "Por supervisor", "Por posto" e "Cada cobertura" são fórmulas em cima delas. A chave
    (escopo "xlb", 90 dias, cancelável) só serve para ler a tabela de coberturas. */
 const BRC_PASSOS=[
   ["Abra o arquivo no Excel do computador.","Funciona no Excel para Windows. No Excel pelo navegador ou no celular ele mostra os números da hora em que foi gerado, mas não atualiza."],
   ["Se aparecer uma barra amarela escrita \"Modo de Exibição Protegido\", clique em Habilitar Edição.","É um aviso normal do Excel para arquivos baixados da internet."],
-  ["Se aparecer outra barra, \"As conexões de dados externos foram desabilitadas\", clique em Habilitar Conteúdo.","É isso que deixa o arquivo buscar os dados no JARVIS. Em poucos segundos as abas se atualizam sozinhas."],
+  ["Se aparecer outra barra, \"As conexões de dados externos foram desabilitadas\", clique em Habilitar Conteúdo.","É isso que deixa o arquivo buscar os dados no Painel ServCamp. Em poucos segundos as abas se atualizam sozinhas."],
   ["Escolha a Folha, o Supervisor, o Posto e o Motivo na aba Painel.","Todos os números, listas e abas mudam na hora. A aba Cada cobertura mostra, uma por linha, as idas do que você escolheu."],
   ["Para atualizar com o arquivo aberto: no menu Dados do Excel (no alto da tela), clique em Atualizar Tudo (ou aperte Ctrl + Alt + F5).","Ao abrir o arquivo de novo, ele já atualiza sozinho. A cada abertura você vê a situação mais recente."],
-  ["Se não atualizar:","Confira a internet. Se o aviso falar de acesso negado, a chave venceu (dura 90 dias) ou foi cancelada: gere o arquivo de novo no JARVIS."],
-  ["Cuide do arquivo como um relatório interno.","Ele guarda uma chave que só serve para ler estes dados. Não envie por e-mail ou grupo aberto. Se perder o arquivo, peça para cancelar as chaves no JARVIS."]
+  ["Se não atualizar:","Confira a internet. Se o aviso falar de acesso negado, a chave venceu (dura 90 dias) ou foi cancelada: gere o arquivo de novo no Painel ServCamp."],
+  ["Cuide do arquivo como um relatório interno.","Ele guarda uma chave que só serve para ler estes dados. Não envie por e-mail ou grupo aberto. Se perder o arquivo, peça para cancelar as chaves no Painel ServCamp."]
 ];
 function brConectadoPedir(metodo,t,extra){
   return fetch("/api/rh?modulo=bdv&t="+t+(extra?"&"+extra:""),{method:metodo}).then(r=>r.json().catch(()=>({})).then(j=>{if(!r.ok)throw new Error(j.error||("Falha HTTP "+r.status));return j;}));
@@ -15628,7 +15628,7 @@ async function brConectadoGerar(btn){
   finally{fim();}
 }
 function brConectadoCancelar(btn){
-  if(!confirm("Cancelar TODAS as chaves do Excel de Coberturas já geradas?\n\nOs arquivos conectados que existem hoje deixam de atualizar (você gera outro quando precisar). Isso não apaga nada no JARVIS."))return;
+  if(!confirm("Cancelar TODAS as chaves do Excel de Coberturas já geradas?\n\nOs arquivos conectados que existem hoje deixam de atualizar (você gera outro quando precisar). Isso não apaga nada no Painel ServCamp."))return;
   if(btn)btn.disabled=true;
   brConectadoPedir("POST","revogar_excel").then(()=>{if(typeof ptToast==="function")ptToast("Chaves canceladas");const av=document.getElementById("frConAviso");if(av)av.textContent="Chaves anteriores canceladas.";})
     .catch(e=>alert("Não foi possível cancelar: "+e.message)).finally(()=>{if(btn)btn.disabled=false;});
@@ -15638,11 +15638,11 @@ function brConectadoAbrir(){
   const o=document.createElement("div");o.id="frCon";o.setAttribute("role","dialog");o.setAttribute("aria-modal","true");o.setAttribute("aria-label","Excel conectado");
   o.style.cssText="position:fixed;inset:0;z-index:100000;background:rgba(13,31,53,.6);display:flex;align-items:center;justify-content:center;padding:16px";
   o.onclick=e=>{if(e.target===o)frConectadoFechar();};
-  o.innerHTML=`<div id="frConCx"><div class="fc-h"><div><h3>Excel conectado · Coberturas do supervisor</h3><p>Um arquivo que se atualiza sozinho com o que está no JARVIS.</p></div><button type="button" class="fc-x" onclick="frConectadoFechar()" aria-label="Fechar">${FM_IC.x}</button></div>`+
-    `<div class="fc-c"><div class="fc-fluxo"><span>JARVIS</span><i>→</i><span>internet</span><i>→</i><span>seu Excel</span></div>`+
-    `<p class="fc-p">Cada vez que você abre o arquivo, o Excel busca as coberturas no JARVIS e refaz todas as contas. Você não digita nada: a Folha, o Supervisor, o Posto e o Motivo se escolhem no Painel.</p>`+
+  o.innerHTML=`<div id="frConCx"><div class="fc-h"><div><h3>Excel conectado · Coberturas do supervisor</h3><p>Um arquivo que se atualiza sozinho com o que está no Painel ServCamp.</p></div><button type="button" class="fc-x" onclick="frConectadoFechar()" aria-label="Fechar">${FM_IC.x}</button></div>`+
+    `<div class="fc-c"><div class="fc-fluxo"><span>Painel ServCamp</span><i>→</i><span>internet</span><i>→</i><span>seu Excel</span></div>`+
+    `<p class="fc-p">Cada vez que você abre o arquivo, o Excel busca as coberturas no Painel ServCamp e refaz todas as contas. Você não digita nada: a Folha, o Supervisor, o Posto e o Motivo se escolhem no Painel.</p>`+
     `<h4>Como usar, passo a passo</h4><ol class="fc-ol">${BRC_PASSOS.map(([t,d])=>`<li><b>${_esc(t)}</b><span>${_esc(d)}</span></li>`).join("")}</ol>`+
-    `<div class="fc-av"><b>De onde vem cada coisa:</b> as idas, os horários e as situações vêm sempre do JARVIS (BDV do SAR2G cruzado com as faltas), então nunca divergem da tela do relatório. O arquivo traz as coberturas dos últimos 13 meses guardados.</div>`+
+    `<div class="fc-av"><b>De onde vem cada coisa:</b> as idas, os horários e as situações vêm sempre do Painel ServCamp (BDV do SAR2G cruzado com as faltas), então nunca divergem da tela do relatório. O arquivo traz as coberturas dos últimos 13 meses guardados.</div>`+
     `<p class="fc-s" id="frConAviso">A chave gerada vale 90 dias e só serve para ler estas tabelas.</p></div>`+
     `<div class="fc-f"><button type="button" class="br-btn" onclick="brConectadoCancelar(this)">Cancelar chaves antigas</button><span style="flex:1"></span><button type="button" class="br-btn" onclick="frConectadoFechar()">Fechar</button><button type="button" class="br-btn pri" onclick="brConectadoGerar(this)">${BR_IC.xls}Gerar arquivo conectado</button></div></div>`;
   document.body.appendChild(o);
@@ -15662,7 +15662,7 @@ async function brXlsxConectado(Ex,logo,j,k){
   const ZERO='0;-0;"–"',CINZA="FFB4BCC8";
   const nulo=v=>(v===""||v==null?null:v);
   const wb=new Ex.Workbook();
-  wb.creator="JARVIS · Grupo ServCamp";wb.title="Coberturas do supervisor (conectado)";wb.created=new Date();
+  wb.creator="Painel ServCamp · Grupo ServCamp";wb.title="Coberturas do supervisor (conectado)";wb.created=new Date();
   wb.calcProperties={fullCalcOnLoad:true};
   const fonte=o=>Object.assign({name:"Segoe UI",size:10,color:{argb:BRX.texto}},o||{});
   const preenche=c=>({type:"pattern",pattern:"solid",fgColor:{argb:c}});
@@ -15671,7 +15671,7 @@ async function brXlsxConectado(Ex,logo,j,k){
   const fm=(formula,result)=>({formula,result});
   const pagina=(ws,titulos,paisagem)=>{
     ws.pageSetup={paperSize:9,orientation:paisagem?"landscape":"portrait",fitToPage:true,fitToWidth:1,fitToHeight:0,margins:{left:.4,right:.4,top:.5,bottom:.6,header:.25,footer:.3},horizontalCentered:true,printTitlesRow:titulos||undefined};
-    ws.headerFooter={oddFooter:'&L&"Segoe UI,Regular"&8JARVIS · Grupo ServCamp&R&"Segoe UI,Regular"&8Página &P de &N'};
+    ws.headerFooter={oddFooter:'&L&"Segoe UI,Regular"&8Painel ServCamp · Grupo ServCamp&R&"Segoe UI,Regular"&8Página &P de &N'};
   };
   const topo=(ws,tit,sub,col0,col1)=>{
     ws.getRow(1).height=30;ws.getRow(2).height=18;ws.getRow(3).height=8;
@@ -15720,17 +15720,17 @@ async function brXlsxConectado(Ex,logo,j,k){
   const wsD=wb.addWorksheet("Dados",{properties:{tabColor:{argb:"FF98A2B3"}},views:[{showGridLines:false,state:"frozen",ySplit:5,xSplit:3}]});
   const wsL=wb.addWorksheet("Listas",{state:"hidden"});
 
-  /* ═══ Listas (preenchida pelo JARVIS) ═══ */
+  /* ═══ Listas (preenchida pelo Painel ServCamp) ═══ */
   T.listas.cab.forEach((t,i)=>{wsL.getCell(1,1+i).value=t;});
   listas.forEach((l,r)=>l.forEach((v,c)=>{const x=wsL.getCell(2+r,1+c);x.value=nulo(v);if((c===1||c===2)&&v!=="")x.numFmt="dd/mm/yyyy";}));
 
-  /* ═══ Dados (preenchida pelo JARVIS; as colunas verdes são fórmulas que dão o filtro do Painel e a ordem das listas) ═══ */
+  /* ═══ Dados (preenchida pelo Painel ServCamp; as colunas verdes são fórmulas que dão o filtro do Painel e a ordem das listas) ═══ */
   {
     const ws=wsD;
     const cols=[{t:"Data",w:11,n:1},{t:"Dia",w:6},{t:"Supervisor",w:22},{t:"Posto",w:30},{t:"Motivo",w:14},{t:"Quem faltou",w:28},{t:"RE",w:8,n:1},{t:"Início da vaga",w:9},{t:"Chegada",w:9},{t:"Minutos",w:9,n:1},{t:"Situação",w:22},{t:"Referência do início",w:28},{t:"Folha",w:23},{t:"Metros do dia",w:10,n:1},{t:"Tempo do dia (min)",w:10,n:1},
       {t:"No filtro",w:9,n:1},{t:"Ordem",w:9,n:1},{t:"Par sup. + posto",w:10,n:1},{t:"1ª do dia",w:9,n:1},{t:"Metros (dia)",w:10,n:1},{t:"Tempo (dia)",w:10,n:1},{t:"Chave detalhe sup.",w:10,n:1},{t:"Chave detalhe posto",w:10,n:1}];
     ws.columns=cols.map(c=>({width:c.w}));
-    topo(ws,"Dados das coberturas","Esta aba é preenchida sozinha pelo JARVIS quando o arquivo abre · não digite aqui",4,23);
+    topo(ws,"Dados das coberturas","Esta aba é preenchida sozinha pelo Painel ServCamp quando o arquivo abre · não digite aqui",4,23);
     ws.mergeCells(4,2,4,12);const n=ws.getCell(4,2);n.value=`Idas do supervisor até ${brDd(j.dataBase||hoje)} (BDV do SAR2G) · arquivo gerado em ${brDd(hoje)} · metros e tempo do dia vêm em cada ida e as colunas verdes contam uma vez por supervisor e dia`;n.font=fonte({size:9,italic:true,color:{argb:BRX.mudo}});n.alignment={vertical:"middle",indent:1};ws.getRow(4).height=22;
     cabeca(ws,5,cols,1);
     for(let q=16;q<=23;q++)ws.getCell(5,q).fill=preenche("FF067647");
@@ -15764,7 +15764,7 @@ async function brXlsxConectado(Ex,logo,j,k){
   /* ═══ Painel ═══ */
   {
     const ws=wsP;ws.columns=[{width:2},...Array.from({length:10},()=>({width:14})),{width:2},{width:16,hidden:true}];
-    topo(ws,"Coberturas do supervisor","Atualizado sozinho com o JARVIS · chegada do supervisor ao posto comparada com o início da vaga",5,11);
+    topo(ws,"Coberturas do supervisor","Atualizado sozinho com o Painel ServCamp · chegada do supervisor ao posto comparada com o início da vaga",5,11);
     ws.mergeCells("B4:K4");const P=ws.getCell("B4");P.value=`Idas do supervisor até ${brDd(j.dataBase||hoje)} (BDV do SAR2G)  ·  arquivo gerado em ${brDd(hoje)}`;P.font=fonte({size:10.5,bold:true,color:{argb:NAV}});P.alignment={vertical:"middle"};ws.getRow(4).height=26;
     ws.getRow(5).height=6;
     const caixaFundo="FFEEF4FF",entrada={style:"thin",color:{argb:"FF2E90FA"}};
@@ -15776,7 +15776,7 @@ async function brXlsxConectado(Ex,logo,j,k){
     rotulo(7,"Supervisor");entrar(7,selS).dataValidation=lista("D",200,"Supervisor");
     rotulo(8,"Posto");entrar(8,selP).dataValidation=lista("E",1000,"Posto");
     rotulo(9,"Motivo");entrar(9,selM).dataValidation=lista("F",10,"Motivo");
-    ws.mergeCells("H6:K9");const nota=ws.getCell("H6");nota.value="Escolha a Folha, o Supervisor, o Posto ou o Motivo nas caixas brancas e tudo muda na hora, em todas as abas. Os dados vêm do JARVIS sozinhos: ao abrir, clique em Habilitar Conteúdo se o Excel pedir. Para atualizar aberto: menu Dados > Atualizar Tudo.";nota.font=fonte({size:8.5,italic:true,color:{argb:BRX.mudo}});nota.alignment={vertical:"middle",wrapText:true,indent:1};
+    ws.mergeCells("H6:K9");const nota=ws.getCell("H6");nota.value="Escolha a Folha, o Supervisor, o Posto ou o Motivo nas caixas brancas e tudo muda na hora, em todas as abas. Os dados vêm do Painel ServCamp sozinhos: ao abrir, clique em Habilitar Conteúdo se o Excel pedir. Para atualizar aberto: menu Dados > Atualizar Tudo.";nota.font=fonte({size:8.5,italic:true,color:{argb:BRX.mudo}});nota.alignment={vertical:"middle",wrapText:true,indent:1};
     ws.getCell("M6").value=fm('IF($D$6="Todas as folhas","*",$D$6)',selF==="Todas as folhas"?"*":selF);
     ws.getCell("M7").value=fm('IF($D$7="Todos","*",$D$7)',"*");
     ws.getCell("M8").value=fm('IF($D$8="Todos","*",$D$8)',"*");
@@ -15826,7 +15826,7 @@ async function brXlsxConectado(Ex,logo,j,k){
     pagina(ws);
   }
 
-  /* ═══ Por supervisor e Por posto: linhas que acompanham as listas do JARVIS ═══ */
+  /* ═══ Por supervisor e Por posto: linhas que acompanham as listas do Painel ServCamp ═══ */
   const grupo=(ws,cfg)=>{
     const {titulo,porPosto,maxLin,colLista,keyRng,nomes,ordem}=cfg,N0=7,ULT=N0+maxLin-1;
     const cols=[{t:"#",w:5,n:1},{t:porPosto?"Posto":"Supervisor",w:porPosto?38:28},{t:"Coberturas",w:13,n:1},{t:"Chegou em até 1h",w:13,n:1},{t:"Antes do início",w:13,n:1},{t:"Até 1h de atraso",w:13,n:1},{t:"1 a 3h de atraso",w:13,n:1},{t:"Mais de 3h de atraso",w:14,n:1},{t:"Sem horário",w:11,n:1},{t:porPosto?"Supervisores":"Postos",w:13,n:1}].concat(porPosto?[{t:"Por falta",w:11,n:1},{t:"Outros motivos",w:12,n:1},{t:"3 ou mais",w:11,n:1}]:[{t:"Horas em campo",w:14,n:1},{t:"Km",w:11,n:1}]);
@@ -15985,8 +15985,8 @@ async function brXlsxConectado(Ex,logo,j,k){
      ["Horas e km em campo","São do dia inteiro do supervisor e contam uma vez por supervisor e dia (a planilha repete esses valores em todas as idas do dia). Na aba Dados, as colunas verdes escolhem o valor do dia e contam só uma vez."],
      ["Fora das contas","Idas à sede e destinos escritos em texto livre (por exemplo, “deixar colaborador em casa”) não são posto e não vêm para este arquivo. Coberturas sem horário da vaga nem do posto não entram nos percentuais."],
      ["Folha","Vai do dia 26 de um mês ao dia 25 do seguinte."],
-     ["Fórmulas","Painel, “Por supervisor”, “Por posto” e “Cada cobertura” são fórmulas em cima da aba Dados, que o JARVIS preenche sozinho. As colunas verdes da aba Dados dizem o que entra no filtro do Painel."],
-     ["Detalhe por supervisor e por posto","Mostram cada cobertura, uma abaixo da outra, agrupadas por supervisor (ou por posto) na mesma ordem das abas “Por supervisor” e “Por posto”. Seguem o Painel e se atualizam sozinhas com a aba Dados. Classificação: “Treinamento” quando o motivo da cobertura é treinamento; senão, “Cobertura”. O excedente e o treinamento das OS avulsas aparecem no Excel comum, gerado pela Visão Diretoria."],["Fonte","Aba BDV do SAR2G, cruzada com a planilha de faltas e a jornada dos funcionários. É a mesma conta da tela do relatório no JARVIS."]].forEach(([a,b],i)=>{
+     ["Fórmulas","Painel, “Por supervisor”, “Por posto” e “Cada cobertura” são fórmulas em cima da aba Dados, que o Painel ServCamp preenche sozinho. As colunas verdes da aba Dados dizem o que entra no filtro do Painel."],
+     ["Detalhe por supervisor e por posto","Mostram cada cobertura, uma abaixo da outra, agrupadas por supervisor (ou por posto) na mesma ordem das abas “Por supervisor” e “Por posto”. Seguem o Painel e se atualizam sozinhas com a aba Dados. Classificação: “Treinamento” quando o motivo da cobertura é treinamento; senão, “Cobertura”. O excedente e o treinamento das OS avulsas aparecem no Excel comum, gerado pela Visão Diretoria."],["Fonte","Aba BDV do SAR2G, cruzada com a planilha de faltas e a jornada dos funcionários. É a mesma conta da tela do relatório no Painel ServCamp."]].forEach(([a,b],i)=>{
       const r2=3+i;ws.getRow(r2).height=Math.max(24,Math.ceil(b.length/95)*16+8);
       const x=ws.getCell(r2,2),y=ws.getCell(r2,3);x.value=a;x.font=fonte({size:10,bold:true,color:{argb:NAV}});x.alignment={vertical:"top",indent:1,wrapText:true};
       y.value=b;y.font=fonte({size:10});y.alignment={vertical:"top",wrapText:true};
@@ -15999,8 +15999,8 @@ async function brXlsxConectado(Ex,logo,j,k){
   {
     const ws=wsA;ws.columns=[{width:2},{width:6},{width:104}];
     topo(ws,"Comece aqui","Como este Excel funciona, em passos simples",2,3);
-    ws.mergeCells("B4:C4");const l1=ws.getCell("B4");l1.value="Este arquivo busca sozinho no JARVIS as coberturas do supervisor. Você só escolhe a Folha, o Supervisor, o Posto e o Motivo na aba Painel.";l1.font=fonte({size:11,bold:true,color:{argb:NAV}});l1.alignment={vertical:"middle",wrapText:true,indent:1};ws.getRow(4).height=34;
-    ws.mergeCells("B5:C5");const l2=ws.getCell("B5");l2.value="JARVIS   →   internet   →   este arquivo (Dados)   →   Painel e abas";l2.font=fonte({size:10,bold:true,color:{argb:"FF2E90FA"}});l2.alignment={vertical:"middle",horizontal:"center"};l2.fill=preenche("FFEEF4FF");ws.getRow(5).height=30;
+    ws.mergeCells("B4:C4");const l1=ws.getCell("B4");l1.value="Este arquivo busca sozinho no Painel ServCamp as coberturas do supervisor. Você só escolhe a Folha, o Supervisor, o Posto e o Motivo na aba Painel.";l1.font=fonte({size:11,bold:true,color:{argb:NAV}});l1.alignment={vertical:"middle",wrapText:true,indent:1};ws.getRow(4).height=34;
+    ws.mergeCells("B5:C5");const l2=ws.getCell("B5");l2.value="Painel ServCamp   →   internet   →   este arquivo (Dados)   →   Painel e abas";l2.font=fonte({size:10,bold:true,color:{argb:"FF2E90FA"}});l2.alignment={vertical:"middle",horizontal:"center"};l2.fill=preenche("FFEEF4FF");ws.getRow(5).height=30;
     BRC_PASSOS.forEach((p,i)=>{
       const r=7+i;ws.getRow(r).height=52;
       const a=ws.getCell(r,2);a.value=i+1;a.font=fonte({size:16,bold:true,color:{argb:NAV}});a.alignment={vertical:"middle",horizontal:"center"};
@@ -16009,11 +16009,11 @@ async function brXlsxConectado(Ex,logo,j,k){
     });
     let r=7+BRC_PASSOS.length+1;
     ws.mergeCells(r,2,r,3);const t=ws.getCell(r,2);t.value="O que cada aba mostra";t.font=fonte({size:11,bold:true,color:{argb:NAV}});ws.getRow(r).height=24;r++;
-    [["Painel","Os números principais e como o supervisor chegou. É aqui que você escolhe a Folha, o Supervisor, o Posto e o Motivo: todas as abas seguem essa escolha."],["Por supervisor","Quantas coberturas cada supervisor fez, como chegou em cada uma, postos, horas e km em campo."],["Por posto","Os postos que mais precisaram de cobertura, com quantas foram por falta e quantos supervisores foram lá."],["Detalhe por supervisor","Cada cobertura de cada supervisor, em grupos: posto, quem faltou, motivo, horários, situação e classificação (cobertura ou treinamento)."],["Detalhe por posto","Cada cobertura de cada posto, em grupos: quem cobriu, quem faltou, motivo, horários, situação e classificação."],["Cada cobertura","Cada ida do supervisor, com início da vaga, chegada e atraso, da mais antiga para a mais nova. Tem filtros em cada coluna."],["Como é calculado","As regras usadas nas contas."],["Dados","A base de tudo, preenchida pelo JARVIS. Não digite nada aqui."]].forEach(([a,b])=>{
+    [["Painel","Os números principais e como o supervisor chegou. É aqui que você escolhe a Folha, o Supervisor, o Posto e o Motivo: todas as abas seguem essa escolha."],["Por supervisor","Quantas coberturas cada supervisor fez, como chegou em cada uma, postos, horas e km em campo."],["Por posto","Os postos que mais precisaram de cobertura, com quantas foram por falta e quantos supervisores foram lá."],["Detalhe por supervisor","Cada cobertura de cada supervisor, em grupos: posto, quem faltou, motivo, horários, situação e classificação (cobertura ou treinamento)."],["Detalhe por posto","Cada cobertura de cada posto, em grupos: quem cobriu, quem faltou, motivo, horários, situação e classificação."],["Cada cobertura","Cada ida do supervisor, com início da vaga, chegada e atraso, da mais antiga para a mais nova. Tem filtros em cada coluna."],["Como é calculado","As regras usadas nas contas."],["Dados","A base de tudo, preenchida pelo Painel ServCamp. Não digite nada aqui."]].forEach(([a,b])=>{
       const x=ws.getCell(r,2);x.value="•";x.alignment={horizontal:"center",vertical:"middle"};x.font=fonte({bold:true,color:{argb:NAV}});
       const y=ws.getCell(r,3);y.value={richText:[{text:a+": ",font:fonte({bold:true})},{text:b,font:fonte()}]};y.alignment={vertical:"middle",wrapText:true};ws.getRow(r).height=Math.max(22,Math.ceil((a.length+b.length)/105)*16+6);r++;
     });
-    r++;ws.mergeCells(r,2,r,3);const z=ws.getCell(r,2);z.value=`Arquivo gerado em ${brDd(hoje)}. A chave de acesso dele vale até ${brDd(String(k.validaAte).slice(0,10))}; depois disso, gere outro arquivo no JARVIS (Relatório de Coberturas > Excel conectado).`;z.font=fonte({size:9,italic:true,color:{argb:BRX.mudo}});z.alignment={wrapText:true,indent:1};ws.getRow(r).height=30;
+    r++;ws.mergeCells(r,2,r,3);const z=ws.getCell(r,2);z.value=`Arquivo gerado em ${brDd(hoje)}. A chave de acesso dele vale até ${brDd(String(k.validaAte).slice(0,10))}; depois disso, gere outro arquivo no Painel ServCamp (Relatório de Coberturas > Excel conectado).`;z.font=fonte({size:9,italic:true,color:{argb:BRX.mudo}});z.alignment={wrapText:true,indent:1};ws.getRow(r).height=30;
     pagina(ws);
   }
   wb.views=[{x:0,y:0,width:20000,height:12000,firstSheet:0,activeTab:0,visibility:"visible"}];
@@ -17582,7 +17582,7 @@ function comDashRender(){
   if(COM_VALORES&&ticket)insights.push({ic:"💎",cor:"#2e8fef",t:`Ticket médio de <b>${fmtBRL0(ticket)}</b> por contrato fechado.`});
   if(COM_VALORES&&probMeta!==null)insights.push({ic:"🎯",cor:probMeta>=70?"#16a34a":probMeta>=40?"#f97316":"#dc2626",t:`Mantendo o ritmo atual, a probabilidade de bater a meta do mês é de <b>${probMeta}%</b> (previsão: ${fmtBRL0(Math.max(runRate,previstaR$))}).`});
   if(!COM_VALORES&&meta.meta_fechamentos&&fecMes.length)insights.push({ic:"🎯",cor:fecMes.length>=Number(meta.meta_fechamentos)?"#16a34a":"#f97316",t:`Fechamentos do mês: <b>${fecMes.length}</b> de <b>${meta.meta_fechamentos}</b> da meta (${Math.round(fecMes.length/Number(meta.meta_fechamentos)*100)}%).`});
-  if(!insights.length)insights.push({ic:"🚀",cor:"#2e8fef",t:"Cadastre propostas com cidade e origem para o JARVIS gerar insights automáticos."});
+  if(!insights.length)insights.push({ic:"🚀",cor:"#2e8fef",t:"Cadastre propostas com cidade e origem para o Painel ServCamp gerar insights automáticos."});
   /* alertas */
   const alertas=[];
   criticas.forEach(p=>alertas.push({cor:"#dc2626",bg:"#fef2f2",t:`🚨 <b>${p.nome}</b> — negociação crítica: ${comDiasParado(p)}d sem movimento${COM_VALORES?` (${fmtBRL0(p.valor)})`:""}`}));

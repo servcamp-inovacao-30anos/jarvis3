@@ -1,4 +1,4 @@
-// api/import.js — a única porta de entrada de dados do JARVIS.
+// api/import.js — a única porta de entrada de dados do Painel ServCamp.
 //
 // Aceita a planilha por DOIS caminhos, que terminam no mesmo lugar:
 //

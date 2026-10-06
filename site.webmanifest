@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "JARVIS — Grupo ServCamp",
-  "short_name": "JARVIS",
+  "name": "Painel ServCamp",
+  "short_name": "Painel ServCamp",
   "description": "Painel de gestão operacional do Grupo ServCamp: faltas, coberturas, checklist, RH e comercial.",
   "start_url": "/",
   "scope": "/",
