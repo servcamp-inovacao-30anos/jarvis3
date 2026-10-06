@@ -24,7 +24,6 @@ const LEITORES = new Set(["joaoygor", "raphaelvictor", "ingridycampana", "pauloc
 const DIRETORIA = new Set(["raphaelvictor", "joaoygor", "ingridycampana", "paulocampana"]);
 const MAX_DIAS = 400;
 const MAX_PLANILHAS = 15; // planilhas lidas por pedido, no máximo (uma por mês do período)
-const CAMPOS_OS = "os:data->os,ativos:data->ativos";
 const CAMPOS_PLANILHA = "bdvCobertura:data->bdvCobertura,faltas:data->faltas,ativos:data->ativos,cobertura:data->cobertura";
 
 function erro(res, status, mensagem, codigo) { return res.status(status).json({ error: mensagem, codigo }); }
@@ -59,59 +58,6 @@ async function idasDoPeriodo(db, de, ate) {
   }
   linhas.sort((a, b) => a.data.localeCompare(b.data) || String(a.chegada).localeCompare(String(b.chegada)));
   return { linhas, primeiro, ultimo, lidas, recente: todos.length ? todos[0].created_at : null };
-}
-
-/* Excedentes e treinamentos (OS avulsas) do período, das mesmas planilhas guardadas e com a mesma regra das idas:
-   cada dia vem da planilha mais nova que o tem. Excedente = colaborador que não tinha para onde ir (OS avulsa do tipo
-   EXCEDENTE); treinamento = OS avulsa do tipo TREINAMENTO. As contas são as da guia OS Avulsos (uma linha = um registro). */
-const tipoOs = t => { const u = String(t || "").toUpperCase(); return u.includes("EXCEDENTE") ? "EXCEDENTE" : u.includes("TREINAMENTO") ? "TREINAMENTO" : null; };
-async function osDoPeriodo(db, de, ate) {
-  const todos = await db.listar("dashboard_snapshots?select=id,created_at&order=created_at.desc");
-  const meses = new Set(), envios = [];
-  todos.forEach(e => { const m = diaSP(e.created_at).slice(0, 7); if (!envios.length || !meses.has(m)) envios.push(e); meses.add(m); });
-  const linhas = [];
-  const supDoPosto = {}; // posto (normalizado) -> supervisor mais comum entre os ativos, da planilha mais nova que o tem
-  const reDoNome = {};   // nome (normalizado) -> RE no cadastro de ativos (a OS traz só o nome)
-  let limite = null, primeiro = null, ultimo = null, lidas = 0;
-  for (const e of envios) {
-    if (lidas >= MAX_PLANILHAS || (limite && limite <= de)) break;
-    const criado = diaSP(e.created_at);
-    if (criado < de) break;
-    const [p] = await db.obter(`dashboard_snapshots?select=${CAMPOS_OS}&id=eq.${e.id}`);
-    lidas++;
-    if (p && Array.isArray(p.ativos)) {
-      const cont = {};
-      p.ativos.forEach(a => {
-        const n = R.bdvNorm(a.NOME), re = String(a.RE == null ? "" : a.RE).trim();
-        if (n && re && !reDoNome[n]) reDoNome[n] = re;
-        const k = R.bdvNorm(a.LOCAL), sup = String(a.AREA || "").trim(); if (!k || !sup || sup === "—") return; (cont[k] = cont[k] || {})[sup] = (cont[k][sup] || 0) + 1;
-      });
-      Object.keys(cont).forEach(k => { if (supDoPosto[k]) return; supDoPosto[k] = Object.entries(cont[k]).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0][0]; });
-    }
-    const os = (p && Array.isArray(p.os)) ? p.os : [];
-    const datas = os.map(x => String(x.DATA || "").slice(0, 10)).filter(ehData).sort();
-    if (!datas.length) { if (!limite) limite = criado; continue; }
-    if (!ultimo) ultimo = datas[datas.length - 1];
-    os.forEach(x => {
-      const data = String(x.DATA || "").slice(0, 10), tipo = tipoOs(x.TIPO);
-      if (!tipo || !ehData(data) || data < de || data > ate || (limite && data >= limite)) return;
-      linhas.push({ data, tipo, local: String(x.LOCAL || "").trim(), nome: String(x.NOME || "").trim(), cargo: String(x.CARGO || "").trim(), turno: String(x.TURNO || "").trim() });
-    });
-    primeiro = datas[0];
-    limite = datas[0];
-  }
-  // o supervisor do posto: quem cuida dos funcionários ativos naquele posto (não é quem foi lá fazer a cobertura)
-  linhas.forEach(x => { x.supervisor = supDoPosto[R.bdvNorm(x.local)] || ""; x.re = reDoNome[R.bdvNorm(x.nome)] || ""; });
-  linhas.sort((a, b) => a.data.localeCompare(b.data) || a.nome.localeCompare(b.nome));
-  return { linhas, primeiro, ultimo, lidas, recente: todos.length ? todos[0].created_at : null };
-}
-async function verOs({ req, res, db }) {
-  const q = req.query || {};
-  const de = String(q.de || ""), ate = String(q.ate || "");
-  if (!ehData(de) || !ehData(ate) || de > ate) return erro(res, 400, "Informe o período (de e até).", "PERIODO_INVALIDO");
-  if ((Date.parse(ate) - Date.parse(de)) / 864e5 > MAX_DIAS) return erro(res, 400, `Período de no máximo ${MAX_DIAS} dias.`, "PERIODO_LONGO");
-  const r = await osDoPeriodo(db, de, ate);
-  return res.status(200).json({ ok: true, de, ate, disponivel: { primeiro: r.primeiro, ultimo: r.ultimo }, atualizado_em: r.recente || null, os: r.linhas });
 }
 
 /* Desde quando há BDV guardado: o primeiro dia da planilha guardada mais antiga
@@ -207,7 +153,6 @@ async function revogarChavesExcel({ res, db, ator }) {
 const ROTAS = {
   "GET coberturas": { leitor: true, fn: verCoberturas },
   "GET diretoria": { diretoria: true, fn: verCoberturas },
-  "GET diretoria_os": { diretoria: true, fn: verOs },             // excedentes e treinamentos (OS avulsas), só para a Visão Diretoria       // os mesmos dados e contas, só para a Visão Diretoria
   "GET planilha": { fn: verPlanilha },                           // a própria rota confere a chave do Excel ou a sessão de quem lê
   "POST chave_excel": { leitor: true, fn: criarChaveExcel },
   "POST revogar_excel": { leitor: true, fn: revogarChavesExcel }
@@ -232,7 +177,6 @@ module.exports = async function bdv(req, res) {
 };
 
 module.exports.idasDoPeriodo = idasDoPeriodo;
-module.exports.osDoPeriodo = osDoPeriodo;
 module.exports._zerarCache = () => { _desde = { valor: undefined, em: 0 }; _plan = { chave: "", em: 0, valor: null }; };
 module.exports.LEITORES = LEITORES;
 module.exports.DIRETORIA = DIRETORIA;

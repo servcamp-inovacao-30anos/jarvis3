@@ -2848,6 +2848,15 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       #pg-bdvrel :is(.vd-rs,.vd-gl) i{display:inline-block;font-style:normal;font-size:.56rem;font-weight:800;letter-spacing:.03em;text-transform:uppercase;border-radius:5px;padding:1px 6px;margin-right:4px;vertical-align:1px}
       #pg-bdvrel :is(.vd-rs,.vd-gl) i.t-e{background:color-mix(in srgb,var(--ac-la) 15%,transparent);color:var(--ac-la)}
       #pg-bdvrel :is(.vd-rs,.vd-gl) i.t-t{background:var(--fm-brand-soft);color:var(--fm-brand-tx)}
+      #pg-bdvrel :is(.vd-rs,.vd-gl) i{display:inline-block;font-style:normal;font-size:.56rem;font-weight:800;letter-spacing:.03em;text-transform:uppercase;border-radius:5px;padding:1px 6px;margin-right:4px;vertical-align:1px}
+      #pg-bdvrel :is(.vd-rs,.vd-gl) i.t-e{background:color-mix(in srgb,var(--ac-la) 15%,transparent);color:var(--ac-la)}
+      #pg-bdvrel :is(.vd-rs,.vd-gl) i.t-t{background:var(--fm-brand-soft);color:var(--fm-brand-tx)}
+      #pg-bdvrel :is(.vd-rs,.vd-gl) i{display:inline-block;font-style:normal;font-size:.56rem;font-weight:800;letter-spacing:.03em;text-transform:uppercase;border-radius:5px;padding:1px 6px;margin-right:4px;vertical-align:1px}
+      #pg-bdvrel :is(.vd-rs,.vd-gl) i.t-e{background:color-mix(in srgb,var(--ac-la) 15%,transparent);color:var(--ac-la)}
+      #pg-bdvrel :is(.vd-rs,.vd-gl) i.t-t{background:var(--fm-brand-soft);color:var(--fm-brand-tx)}
+      #pg-bdvrel :is(.vd-rs,.vd-gl) i{display:inline-block;font-style:normal;font-size:.56rem;font-weight:800;letter-spacing:.03em;text-transform:uppercase;border-radius:5px;padding:1px 6px;margin-right:4px;vertical-align:1px}
+      #pg-bdvrel :is(.vd-rs,.vd-gl) i.t-e{background:color-mix(in srgb,var(--ac-la) 15%,transparent);color:var(--ac-la)}
+      #pg-bdvrel :is(.vd-rs,.vd-gl) i.t-t{background:var(--fm-brand-soft);color:var(--fm-brand-tx)}
       /* Visão Diretoria: tudo com prefixo vd- e dentro de #pg-bdvrel, para não mexer no painel operacional nem em outros módulos. Uma só cor de destaque (o azul do sistema); o âmbar só marca excedente. Escala: espaços 4/8/12/16/24, cantos 8/10/14. */
       #pg-bdvrel .vd-abas{display:flex;gap:24px;margin:0 0 16px;border-bottom:1px solid var(--fm-line)}
       #pg-bdvrel .vd-abas button{appearance:none;font:inherit;font-weight:600;font-size:.88rem;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;background:transparent;color:var(--fm-text2);padding:10px 4px;cursor:pointer;transition:color .15s,border-color .15s}
@@ -2864,7 +2873,7 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       #pg-bdvrel .vd-top small{color:var(--fm-muted)}
       #pg-bdvrel .vd-top .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#12b76a;margin-left:6px;vertical-align:1px}
       #pg-bdvrel .vd-top .dot.vel{background:#f79009}
-      #pg-bdvrel .vd-g{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:stretch}
+      #pg-bdvrel .vd-g{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:stretch}
       #pg-bdvrel .vd-c{border:1px solid var(--fm-line);border-radius:14px;background:var(--fm-surface);box-shadow:var(--fm-sh);padding:20px 20px 12px;min-width:0}
       #pg-bdvrel .vd-col{display:flex;flex-direction:column}
       #pg-bdvrel .vd-ch{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:4px 16px;margin:0 0 12px}
@@ -3018,7 +3027,7 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       #pg-bdvrel .vd-esq{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
       #pg-bdvrel .vd-esq i{height:320px;border-radius:14px;background:var(--fm-subtle);animation:vdPisca 1.2s ease-in-out infinite alternate}
       @keyframes vdPisca{from{opacity:.5}to{opacity:1}}
-      @media (max-width:1280px){#pg-bdvrel .vd-g{grid-template-columns:repeat(2,minmax(0,1fr))}#pg-bdvrel .vd-g>.vd-c:last-child{grid-column:1/-1}#pg-bdvrel .vd-db{grid-template-columns:minmax(0,1fr)}}
+      @media (max-width:1280px){#pg-bdvrel .vd-db{grid-template-columns:minmax(0,1fr)}}
       @media (max-width:760px){#pg-bdvrel .vd-g,#pg-bdvrel .vd-esq,#pg-bdvrel .vd-mg{grid-template-columns:minmax(0,1fr)}#pg-bdvrel .vd-dc .fm-c{min-height:54px}#pg-bdvrel .vd-dc .vd-cc .f{display:none}#pg-bdvrel .vd-gl{grid-template-columns:1fr;gap:2px}#pg-bdvrel .vd-ms{gap:4px;padding:12px 4px 4px}#pg-bdvrel .vd-mc .t{height:100px}#pg-bdvrel .vd-mc .v{font-size:1rem}#pg-bdvrel .vd-det{padding:16px}#pg-bdvrel .vd-dh{grid-template-columns:44px minmax(0,1fr) auto}#pg-bdvrel .vd-dh .vd-fa{grid-column:1/-1;order:3}#pg-bdvrel .vd-lgd .dica{margin-left:0;width:100%}#pg-bdvrel .vd-ch.ico{grid-template-columns:40px minmax(0,1fr)}#pg-bdvrel .vd-ch.ico .ex{grid-column:1/-1}}
       #pg-bdvrel .br-top{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:18px}
       #pg-bdvrel .br-top .tt{flex:1;min-width:240px}
@@ -13147,38 +13156,33 @@ function brRender(){brPintaTudo();} // nome antigo, chamado por outras partes
 
 /* ═════════ VISÃO DIRETORIA (aba do Relatório de Coberturas) ═════════
    Estrutura (lista → detalhe → dia):
-     1. três listas lado a lado, da mesma altura: os 5 postos que mais precisaram de cobertura, os supervisores que mais
-        fizeram coberturas e os excedentes / treinamentos (um botão troca);
+     1. duas listas lado a lado, da mesma altura: todos os postos, do que mais precisou de cobertura ao que menos, e os
+        supervisores que mais fizeram coberturas;
      2. clicar num item abre, logo abaixo e na largura toda, o detalhe dele: o calendário do mês (o mesmo do Faltas x Medidas)
-        com as ocorrências nos dias em que aconteceram e, ao lado, o resumo ligado (quem foi, motivos, o que foi deixado);
+        com as ocorrências nos dias em que aconteceram e, ao lado, o resumo ligado (quem foi, motivos, chegada);
      3. clicar num dia do calendário abre a tela ao lado com cada ocorrência daquele dia, ligada: supervisor que fez, quem
-        faltou, motivo, horário da vaga, chegada e o que foi deixado no posto;
+        faltou, motivo, horário da vaga e chegada;
      4. embaixo, as coberturas mês a mês ou folha a folha.
    Mesmo período e mesmos filtros do relatório operacional, e as mesmas funções de conta (brLinhas, brConta, brAgrupa):
    os números de coberturas batem com a aba Operacional.
-   Excedente = colaborador que não tinha para onde ir (OS avulsa do tipo EXCEDENTE); treinamento = OS avulsa do tipo TREINAMENTO
-   (as mesmas da guia OS Avulsos). O supervisor de um excedente ou treinamento é o do POSTO onde ele foi (o mais comum entre os
-   funcionários ativos daquele posto), vindo do servidor. Uma cobertura e uma OS se ligam pelo posto e pelo dia.
-   Quem barra o acesso é o servidor: as rotas "diretoria" e "diretoria_os" de api/_bdv.js só respondem para
+   Quem barra o acesso é o servidor: a rota "diretoria" de api/_bdv.js só responde para
    Raphael, João, Ingridy e Paulo Campana. A lista abaixo só decide se a aba aparece; esconder a aba não protege nada. */
 const BR_DIR=["raphaelvictor","joaoygor","ingridycampana","paulocampana"];
 function brDirPermitido(){return BR_DIR.indexOf(sessionStorage.getItem("userKey")||"")>=0;}
-const VD={dir:null,carregando:false,erro:null,pedido:0,os:"exc",todos:false,osSup:"",sel:"",mes:"",gm:"mes",dia:null,calMes:{},qp:"",qs:"",qo:""};
+const VD={dir:null,carregando:false,erro:null,pedido:0,sel:"",mes:"",gm:"mes",dia:null,calMes:{},qp:"",qs:""};
 const vdN=n=>Number(n).toLocaleString("pt-BR");
 const vdUn=(n,s,p)=>n===1?s:p;
 const VD_MESES=["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
 const VD_SEMANA=["domingo","segunda-feira","terça-feira","quarta-feira","quinta-feira","sexta-feira","sábado"];
-const VD_SEM_LIVRE="Sem supervisor vinculado";
 const VD_IC={
   posto:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v16"/><path d="M14 9h5a1 1 0 0 1 1 1v11"/><path d="M3 21h18"/><path d="M8 8h2M8 12h2M8 16h2"/></svg>',
   sup:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
-  os:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M17 8h5M19.5 5.5v5"/></svg>',
   mes:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
   dir:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>',
   lupa:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/></svg>',
   mao:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11V5.5a1.5 1.5 0 0 1 3 0V11"/><path d="M12 10.5V4a1.5 1.5 0 0 1 3 0v6.5"/><path d="M15 10.5V6a1.5 1.5 0 0 1 3 0v8a7 7 0 0 1-7 7h-.5a6 6 0 0 1-5.2-3l-2.2-3.8a1.5 1.5 0 0 1 2.5-1.6L7 14V8a1.5 1.5 0 0 1 3 0"/></svg>'
 };
-const VD_TIPO={p:{cor:"c-az",ic:"posto",rot:"Posto"},s:{cor:"c-vd",ic:"sup",rot:"Supervisor"},o:{cor:"c-la",ic:"os",rot:""}};
+const VD_TIPO={p:{cor:"c-az",ic:"posto",rot:"Posto"},s:{cor:"c-vd",ic:"sup",rot:"Supervisor"}};
 function brAba(a){
   if(a==="dir"&&!brDirPermitido())return;
   if(BR.aba===a)return;
@@ -13207,14 +13211,13 @@ function vdPerGraf(modo){
   }
   return out;
 }
-/* Pede os dados pelas rotas exclusivas: coberturas dos 6 meses/folhas (e do período, se for mais antigo) e as OS do período. */
+/* Pede os dados pela rota exclusiva: coberturas dos 6 meses/folhas (e do período, se for mais antigo). */
 function vdCarrega(chave){
   VD.carregando=true;VD.erro=null;VD.chaveP=chave;const meu=++VD.pedido;
   const ini=[vdPerGraf("mes")[0].ini,vdPerGraf("folha")[0].ini].sort()[0],de=ini<BR.de?ini:BR.de,h=brHoje(),ate=h>BR.ate?h:BR.ate;
-  Promise.all([brPedir("GET","diretoria",{de,ate}),brPedir("GET","diretoria_os",{de:BR.de,ate:BR.ate}).catch(e=>({erro:e.message}))]).then(([j,o])=>{
+  brPedir("GET","diretoria",{de,ate}).then(j=>{
     if(meu!==VD.pedido)return;
-    VD.dir={chave,dados:{pedeDe:de,ate,compara:false,linhas:j.coberturas||[],limites:j.limites||{noPrazo:60,grave:180},disponivel:j.disponivel||{}},atualizado:j.atualizado_em||null,
-      os:o.erro?null:(o.os||[]),osErro:o.erro||null,osDisp:o.disponivel||{}};
+    VD.dir={chave,dados:{pedeDe:de,ate,compara:false,linhas:j.coberturas||[],limites:j.limites||{noPrazo:60,grave:180},disponivel:j.disponivel||{}},atualizado:j.atualizado_em||null};
     VD.carregando=false;if((BR.aba||"op")==="dir")vdPinta();
   }).catch(e=>{if(meu!==VD.pedido)return;VD.carregando=false;VD.erro=e.message;if((BR.aba||"op")==="dir")vdPinta();});
 }
@@ -13231,9 +13234,6 @@ function vdPinta(){
   el.innerHTML=brComCtx({de:BR.de,ate:BR.ate,dados:VD.dir.dados},vdHtml);
   if(y)y.scrollTop=top;
 }
-function vdOs(k){VD.os=k;VD.todos=false;VD.osSup="";if(VD.sel.charAt(0)==="o"){VD.sel="";VD.dia=null;}vdPinta();}
-function vdTodos(){VD.todos=!VD.todos;vdPinta();}
-function vdSupOs(v){VD.osSup=VD.osSup===v?"":v;VD.todos=false;vdPinta();}
 function vdMes(k){VD.mes=VD.mes===k?"":k;vdPinta();}
 function vdModo(m){VD.gm=m;VD.mes="";vdPinta();}
 /* Escolher um item abre o detalhe dele logo abaixo das listas; se o detalhe ficar fora da tela, desce só o necessário para mostrá-lo. */
@@ -13246,7 +13246,7 @@ function vdSel(k){
 function vdDia(b){const k=b.dataset.k,d=b.dataset.d;VD.dia=(VD.dia&&VD.dia.k===k&&VD.dia.d===d)?null:{k,d};vdPinta();}
 function vdCalIr(b){VD.calMes[b.dataset.k]=b.dataset.m;vdPinta();}
 function vdFecha(){VD.dia=null;vdPinta();}
-/* Busca de cada coluna (p = postos, s = supervisores, o = excedentes/treinamentos): nome ou RE, sem acento e sem ligar para maiúsculas.
+/* Busca de cada coluna (p = postos, s = supervisores): nome ou RE, sem acento e sem ligar para maiúsculas.
    Todas as palavras digitadas precisam aparecer; número (RE ou número do posto) casa com o começo de uma palavra. */
 function vdBuscaFn(q){
   const t=bdvNorm(q||"").split(" ").filter(Boolean);
@@ -13255,7 +13255,6 @@ function vdBuscaFn(q){
   return s=>{const h=bdvNorm(s);return t.every((x,i)=>rx[i]?rx[i].test(h):h.indexOf(x)>=0);};
 }
 const vdTxtCob=x=>[vdPosto(x),x.supervisor,x.falta_nome,x.falta_re].join(" ");
-const vdTxtOs=r=>[r.nome,r.re,r.local,r.supervisor].join(" ");
 let vdTm=0;
 function vdFoca(c,pos){const n=document.getElementById("vdQ"+c);if(n){n.focus();try{n.setSelectionRange(pos,pos);}catch(e){}}}
 function vdBusca(el){
@@ -13270,12 +13269,8 @@ function vdBuscaHtml(c,ph,info){
 }
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&VD.dia&&(BR.aba||"op")==="dir"&&document.getElementById("vdGav"))vdFecha();});
 const vdKey=(t,v)=>t+"|"+v;
-/* Ligações: a chave de um posto num dia (posto normalizado + data) liga a cobertura às OS (excedente/treinamento) daquele posto e dia. */
-const vdLig=(posto,data)=>bdvNorm(posto)+"|"+data;
-const vdTipoTxt=t=>t==="EXCEDENTE"?"Excedente":"Treinamento";
 const vdPosto=x=>x.posto||x.destino||"—";
 const vdMotivo=x=>x.motivo==="FALTA"?"Falta":_esc(brMotivoTxt(x.motivo));
-const vdSupPosto=r=>r.supervisor?_esc(brNomeCurto(r.supervisor)):VD_SEM_LIVRE;
 const vdPrim=n=>_esc(String(brNomeCurto(n||"")).split(" ")[0]);
 const vdDias=l=>new Set(l.map(x=>x.data)).size;
 const vdConta=(l,fn)=>{const m={};l.forEach(x=>{const k=fn(x);m[k]=(m[k]||0)+1;});return Object.entries(m).sort((a,b)=>b[1]-a[1]||String(a[0]).localeCompare(String(b[0])));};
@@ -13318,17 +13313,16 @@ function vdLista(titulo,itens,vazio){
 }
 function vdDetalhe(ctx){
   const k=VD.sel;
-  if(!k)return`<div class="vd-det vd-det0" id="vdDet"><span class="ic">${VD_IC.mao}</span><div><b>Escolha um posto, um supervisor ou um colaborador nas listas acima</b><span>O calendário dele abre aqui, com cada ocorrência no dia em que aconteceu. Clique num dia para ver os detalhes ao lado.</span></div></div>`;
+  if(!k)return`<div class="vd-det vd-det0" id="vdDet"><span class="ic">${VD_IC.mao}</span><div><b>Escolha um posto ou um supervisor nas listas acima</b><span>O calendário dele abre aqui, com cada ocorrência no dia em que aconteceu. Clique num dia para ver os detalhes ao lado.</span></div></div>`;
   const it=ctx.map[k];if(!it){VD.sel="";return vdDetalhe(ctx);}
   const t=VD_TIPO[it.tipo],ateE=ctx.ateE,un=n=>vdUn(n,"cobertura","coberturas");
   let kicker,titulo,fatos,cal,lado;
   if(it.tipo==="p"){
-    const l=it.linhas,oo=ctx.osR.filter(r=>bdvNorm(r.local)===bdvNorm(it.nome)),sups=vdConta(l,x=>x.supervisor),mot=vdConta(l,x=>x.motivo||"—");
+    const l=it.linhas,sups=vdConta(l,x=>x.supervisor),mot=vdConta(l,x=>x.motivo||"—");
     kicker="Posto";titulo=_esc(it.nome);
-    fatos=[[l.length,un(l.length)],[vdDias(l),vdUn(vdDias(l),"dia","dias")],[sups.length,vdUn(sups.length,"supervisor","supervisores")],[oo.filter(r=>r.tipo==="EXCEDENTE").length,"excedentes"],[oo.filter(r=>r.tipo==="TREINAMENTO").length,"treinamentos"]];
+    fatos=[[l.length,un(l.length)],[vdDias(l),vdUn(vdDias(l),"dia","dias")],[sups.length,vdUn(sups.length,"supervisor","supervisores")]];
     cal=vdCalItem(k,l,un,ls=>[...new Set(ls.map(x=>vdPrim(x.supervisor)))].join(", "),ateE);
-    lado=vdLista("Supervisores que foram",sups.map(([s,n])=>[_esc(brNomeCurto(s)),n]))+vdLista("Motivos",mot.map(([m,n])=>[m==="FALTA"?"Falta":_esc(brMotivoTxt(m)),n]))+
-      vdLista("Deixados no posto",oo.slice().sort((a,b)=>a.data.localeCompare(b.data)).map(r=>[`<i class="t-${r.tipo==="EXCEDENTE"?"e":"t"}">${vdTipoTxt(r.tipo)}</i> ${_esc(brNomeCurto(r.nome||"Não informado"))}`,brDdC(r.data),"supervisor do posto: "+vdSupPosto(r)]),"Ninguém foi deixado neste posto no período.");
+    lado=vdLista("Supervisores que foram",sups.map(([s,n])=>[_esc(brNomeCurto(s)),n]))+vdLista("Motivos",mot.map(([m,n])=>[m==="FALTA"?"Falta":_esc(brMotivoTxt(m)),n]));
   }else if(it.tipo==="s"){
     const l=it.linhas,ps=vdConta(l,vdPosto),mot=vdConta(l,x=>x.motivo||"—"),R=brConta(l);
     kicker="Supervisor";titulo=_esc(brNomeCurto(it.nome));
@@ -13336,14 +13330,6 @@ function vdDetalhe(ctx){
     cal=vdCalItem(k,l,un,ls=>{const p=[...new Set(ls.map(vdPosto))];return _esc(p[0])+(p.length>1?" +"+(p.length-1):"");},ateE);
     lado=vdLista("Postos atendidos",ps.map(([p,n])=>[_esc(p),n]))+vdLista("Motivos",mot.map(([m,n])=>[m==="FALTA"?"Falta":_esc(brMotivoTxt(m)),n]))+
       vdLista("Chegada em relação ao início da vaga",[["Antes ou até 1h",R.sit.ANTES+R.sit.NO_PRAZO],["1 a 3h depois",R.sit.ATRASO],["Mais de 3h depois",R.sit.GRAVE]].concat(R.sit.SEM_HORARIO?[["Sem horário de referência",R.sit.SEM_HORARIO]]:[]));
-  }else{
-    const rs=it.rs,nm=it.tipoOs==="EXCEDENTE"?"excedente":"treinamento",unO=n=>vdUn(n,nm,nm+"s");
-    const ps=vdConta(rs,r=>r.local||"—"),cob=rs.map(r=>ctx.cobIdx[vdLig(r.local,r.data)]||[]),feitas=vdConta([].concat(...cob),x=>x.supervisor),sem=cob.filter(c=>!c.length).length;
-    kicker=vdTipoTxt(it.tipoOs);titulo=_esc(it.nome);
-    fatos=[[rs.length,unO(rs.length)],[vdDias(rs),vdUn(vdDias(rs),"dia","dias")],[ps.length,vdUn(ps.length,"posto","postos")],[rs.length-sem,"com cobertura no dia"]];
-    cal=vdCalItem(k,rs,unO,ls=>_esc(ls[0].local||"—"),ateE);
-    lado=vdLista("Onde foi",ps.map(([p,n])=>{const r=rs.find(x=>(x.local||"—")===p);return[_esc(p),n,"supervisor do posto: "+vdSupPosto(r)];}))+
-      vdLista("Cobertura feita por (mesmo posto e dia)",feitas.map(([s,n])=>[_esc(brNomeCurto(s)),n]).concat(sem?[[`<span class="nd">Sem cobertura registrada no dia</span>`,sem]]:[]));
   }
   return`<section class="vd-det ${t.cor}" id="vdDet"><header class="vd-dh"><span class="ic">${VD_IC[t.ic]}</span><div class="tx"><span class="kk">${kicker}</span><h3>${titulo}</h3></div><div class="vd-fa">${fatos.map(([n,u])=>`<span><b>${vdN(n)}</b> ${u}</span>`).join("")}</div><button type="button" class="vd-x" aria-label="Fechar o detalhe" data-k="${_esc(k)}" onclick="vdSel(this.dataset.k)">${FM_IC.x}</button></header>`+
     `<div class="vd-db"><div class="vd-dc">${cal}</div><aside class="vd-da">${lado}</aside></div></section>`;
@@ -13356,25 +13342,16 @@ function vdGaveta(ctx){
   const d=dv.d,sem=VD_SEMANA[new Date(d+"T12:00:00Z").getUTCDay()],tit=sem.charAt(0).toUpperCase()+sem.slice(1)+", "+brDd(d);
   const lin=(k,v)=>`<div class="vd-gl"><span class="k">${k}</span><span>${v}</span></div>`;
   const chegada=x=>{const st=BR_SIT[x.situacao]||["—","gr"];return x.chegada?`<b>${x.chegada}</b> · vaga às ${x.inicio||"—"} <span class="br-pill s-${st[1]}">${_esc(brDifTxt(x))}</span>${x.fonte_inicio&&BR_FONTE[x.fonte_inicio]?`<br><small>Horário de referência: ${_esc(BR_FONTE[x.fonte_inicio])}</small>`:""}`:"—";};
-  const deixado=(p,data)=>{const oo=ctx.osIdx[vdLig(p,data)]||[];return oo.length?oo.map(r=>`<i class="t-${r.tipo==="EXCEDENTE"?"e":"t"}">${vdTipoTxt(r.tipo)}</i> <b>${_esc(brNomeCurto(r.nome||"Não informado"))}</b> <small>supervisor do posto: ${vdSupPosto(r)}</small>`).join("<br>"):'<span class="nd">Ninguém</span>';};
   const cartaoCob=(x,cab)=>`<section class="vd-gg"><header><b>${cab}</b><em>${_esc(x.chegada||"—")}</em></header>`+
     (it.tipo==="s"?"":lin("Supervisor que fez",`<b>${_esc(brNomeCurto(x.supervisor))}</b>`))+(it.tipo==="p"?"":lin("Posto",`<b>${_esc(vdPosto(x))}</b>`))+
     lin("Motivo",vdMotivo(x))+(x.falta_nome?lin("Quem faltou",`<b>${_esc(x.falta_nome)}</b>${x.falta_re?` <small>RE ${_esc(x.falta_re)}</small>`:""}`):"")+
-    lin("Chegada",chegada(x))+lin("Deixado no posto",deixado(vdPosto(x),x.data))+`</section>`;
+    lin("Chegada",chegada(x))+`</section>`;
   let corpo="",resumo=[],titulo="";
   if(it.tipo==="p"||it.tipo==="s"){
     const cs=it.linhas.filter(x=>x.data===d).sort((a,b)=>String(a.chegada).localeCompare(String(b.chegada)));
     titulo=it.tipo==="p"?"Posto · "+_esc(it.nome):"Supervisor · "+_esc(brNomeCurto(it.nome));
     resumo=[[cs.length,vdUn(cs.length,"cobertura","coberturas")]];
     corpo=cs.map(x=>cartaoCob(x,it.tipo==="p"?_esc(brNomeCurto(x.supervisor)):_esc(vdPosto(x)))).join("");
-  }else{
-    const rs=it.rs.filter(r=>r.data===d);
-    titulo=vdTipoTxt(it.tipoOs)+" · "+_esc(brNomeCurto(it.nome));
-    resumo=[[rs.length,vdUn(rs.length,it.tipoOs==="EXCEDENTE"?"excedente":"treinamento",it.tipoOs==="EXCEDENTE"?"excedentes":"treinamentos")]];
-    corpo=rs.map(r=>{const cs=ctx.cobIdx[vdLig(r.local,r.data)]||[];
-      return`<section class="vd-gg"><header><b>${_esc(r.local||"—")}</b><em>${vdTipoTxt(r.tipo)}</em><small>Supervisor do posto: ${vdSupPosto(r)}</small></header>`+
-        lin("Colaborador",`<b>${_esc(r.nome||"Não informado")}</b>${r.cargo||r.turno?` <small>${_esc([r.cargo,r.turno].filter(Boolean).join(" · "))}</small>`:""}`)+
-        (cs.length?cs.map(x=>lin("Cobertura feita por",`<b>${_esc(brNomeCurto(x.supervisor))}</b> · ${vdMotivo(x)}${x.falta_nome?` (faltou ${_esc(x.falta_nome)})`:""}<br>${chegada(x)}`)).join(""):lin("Cobertura feita por",'<span class="nd">Sem cobertura registrada no dia</span>'))+`</section>`;}).join("");
   }
   return`<div class="vd-ov" onclick="vdFecha()"></div><aside class="vd-gav" id="vdGav" role="dialog" aria-modal="true" aria-label="Detalhes do dia"><div class="vd-gh ${VD_TIPO[it.tipo].cor}"><div><span>${titulo}</span><h4>${tit}</h4></div><button type="button" class="vd-x" aria-label="Fechar" onclick="vdFecha()">${FM_IC.x}</button></div><div class="vd-fa">${resumo.map(([n,t])=>`<span><b>${n}</b> ${t}</span>`).join("")}</div><div class="vd-gb">${corpo||'<p class="vd-vz">Nada neste dia.</p>'}</div></aside>`;
 }
@@ -13415,51 +13392,24 @@ function vdHtml(){
   const aviso=disp.primeiro>BR.de?`<p class="br-aviso">Não há dado de coberturas antes de <b>${brDd(disp.primeiro)}</b>: as planilhas guardadas começam aí.</p>`:"";
   const idas=L.filter(x=>x.situacao!=="NAO_E_POSTO");
   const ord=g=>g.slice().sort((a,b)=>b.n-a.n||a.nome.localeCompare(b.nome));
-  const fP=vdBuscaFn(VD.qp),fS=vdBuscaFn(VD.qs),fO=vdBuscaFn(VD.qo);
+  const fP=vdBuscaFn(VD.qp),fS=vdBuscaFn(VD.qs);
   const gPos=ord(brAgrupa(fP?L.filter(x=>fP(vdTxtCob(x))):L,x=>x.posto||x.destino)),gSup=ord(brAgrupa(fS?L.filter(x=>fS(vdTxtCob(x))):L,x=>x.supervisor));
   const nada=q=>`<p class="vd-vz">Nada encontrado para “${_esc(q)}”. Confira o nome ou o RE.</p>`;
-  const osR=X.os?X.os.filter(r=>r.data>=BR.de&&r.data<=ateE):[];
-  const osIdx={},cobIdx={};
-  osR.forEach(r=>{(osIdx[vdLig(r.local,r.data)]=osIdx[vdLig(r.local,r.data)]||[]).push(r);});
-  D.linhas.forEach(x=>{if(x.situacao==="NAO_E_POSTO")return;const k=vdLig(vdPosto(x),x.data);(cobIdx[k]=cobIdx[k]||[]).push(x);});
-  const top5=fP?gPos:gPos.slice(0,5),maxP=top5.length?top5[0].n:0,maxS=gSup.length?gSup[0].n:0,unC=n=>vdUn(n,"cobertura","coberturas");
+  const top5=gPos,maxP=top5.length?top5[0].n:0,maxS=gSup.length?gSup[0].n:0,unC=n=>vdUn(n,"cobertura","coberturas");
   const mapa={};
   top5.forEach(g=>{mapa[vdKey("p",g.nome)]={tipo:"p",nome:g.nome,linhas:g.linhas};});
   gSup.forEach(g=>{mapa[vdKey("s",g.nome)]={tipo:"s",nome:g.nome,linhas:g.linhas};});
   /* coluna 1: postos */
   const somaTop=top5.reduce((s,g)=>s+g.n,0);
-  const col1=`<section class="vd-c vd-col">${vdCab(null,"c-az","Postos que mais precisaram de cobertura",(fP?"Resultado da busca":"Os 5 primeiros")+" · clique para ver o calendário",[somaTop,`de ${vdN(idas.length)} ${unC(idas.length)}`])}`+
+  const col1=`<section class="vd-c vd-col">${vdCab(null,"c-az","Postos que mais precisaram de cobertura",(fP?"Resultado da busca":"Todos os postos, do que mais precisou ao que menos")+" · clique para ver o calendário",[somaTop,`de ${vdN(idas.length)} ${unC(idas.length)}`])}`+
     vdBuscaHtml("p","Buscar posto, supervisor ou colaborador (nome ou RE)",`${top5.length} ${vdUn(top5.length,"posto","postos")}`)+
     (top5.length?`<ol class="vd-ls">${top5.map((g,i)=>{const s=new Set(g.linhas.map(x=>x.supervisor)).size;return vdLinha(vdKey("p",g.nome),i+1,g.nome,`${s} ${vdUn(s,"supervisor foi","supervisores foram")} · ${vdDias(g.linhas)} ${vdUn(vdDias(g.linhas),"dia","dias")}`,g.n,unC(g.n),maxP);}).join("")}</ol>`:(fP?nada(VD.qp):`<p class="vd-vz">Nenhuma cobertura neste período.</p>`))+`</section>`;
   /* coluna 2: supervisores */
   const col2=`<section class="vd-c vd-col">${vdCab(null,"c-vd","Supervisores que mais fizeram coberturas",(fS?"Resultado da busca":"Quantas coberturas cada um fez")+" · clique para ver o calendário",[idas.length,unC(idas.length)])}`+
     vdBuscaHtml("s","Buscar supervisor, posto ou colaborador (nome ou RE)",`${gSup.length} ${vdUn(gSup.length,"supervisor","supervisores")}`)+
     (gSup.length?`<ol class="vd-ls">${gSup.map((g,i)=>vdLinha(vdKey("s",g.nome),i+1,brNomeCurto(g.nome),`${g.postos.size} ${vdUn(g.postos.size,"posto","postos")} · ${vdDias(g.linhas)} ${vdUn(vdDias(g.linhas),"dia","dias")} em campo`,g.n,unC(g.n),maxS)).join("")}</ol>`:(fS?nada(VD.qs):`<p class="vd-vz">Nenhuma cobertura neste período.</p>`))+`</section>`;
-  /* coluna 3: excedentes e treinamentos (um botão troca; botões por supervisor do posto filtram) */
-  let col3;
-  if(X.osErro)col3=`<section class="vd-c vd-col">${vdCab(null,"c-la","Excedentes e treinamentos","",null)}<p class="vd-vz">Não foi possível carregar: ${_esc(X.osErro)}</p></section>`;
-  else{
-    const exc=osR.filter(r=>r.tipo==="EXCEDENTE"),tre=osR.filter(r=>r.tipo==="TREINAMENTO");
-    const tipo=VD.os,todas=(tipo==="exc"?exc:tre).filter(r=>!fO||fO(vdTxtOs(r))),nm=tipo==="exc"?"excedente":"treinamento",unO=n=>vdUn(n,nm,nm+"s");
-    const porSup={};todas.forEach(r=>{const s=r.supervisor||VD_SEM_LIVRE;porSup[s]=(porSup[s]||0)+1;});
-    if(VD.osSup&&!porSup[VD.osSup])VD.osSup="";
-    const rows=VD.osSup?todas.filter(r=>(r.supervisor||VD_SEM_LIVRE)===VD.osSup):todas;
-    const g={};rows.forEach(r=>{const k=r.nome||"Não informado";(g[k]=g[k]||[]).push(r);});
-    const pessoas=Object.keys(g).map(n=>({nome:n,rs:g[n].slice().sort((a,b)=>a.data.localeCompare(b.data)),n:g[n].length})).sort((a,b)=>b.n-a.n||a.nome.localeCompare(b.nome));
-    pessoas.forEach(p=>{mapa[vdKey("o"+tipo,p.nome)]={tipo:"o",nome:p.nome,rs:p.rs,tipoOs:tipo==="exc"?"EXCEDENTE":"TREINAMENTO"};});
-    const semOs=!X.osDisp.primeiro,maxO=pessoas.length?pessoas[0].n:0,vis=VD.todos||fO?pessoas:pessoas.slice(0,6);
-    const sg=`<div class="vd-tabs" role="group" aria-label="Trocar a lista"><button type="button" class="${tipo==="exc"?"on":""}" aria-pressed="${tipo==="exc"}" onclick="vdOs('exc')">Excedentes <b>${exc.length}</b></button><button type="button" class="${tipo==="tre"?"on":""}" aria-pressed="${tipo==="tre"}" onclick="vdOs('tre')">Treinamentos <b>${tre.length}</b></button></div>`;
-    const chips=Object.keys(porSup).sort((a,b)=>porSup[b]-porSup[a]||a.localeCompare(b));
-    const filtro=chips.length>1||VD.osSup?`<div class="vd-chs"><span class="lb">Supervisor do posto</span>${chips.map(s=>`<button type="button" class="${VD.osSup===s?"on":""}" aria-pressed="${VD.osSup===s}" data-v="${_esc(s)}" onclick="vdSupOs(this.dataset.v)">${_esc(s===VD_SEM_LIVRE?s:brNomeCurto(s))} <b>${porSup[s]}</b></button>`).join("")}</div>`:"";
-    const sub=tipo==="exc"?"Colaborador que não tinha para onde ir · clique para ver o calendário":"Treinamentos feitos no período · clique para ver o calendário";
-    const corpo=semOs?`<p class="vd-vz">Nenhuma planilha guardada traz OS avulsas para essas datas (sem dados, e não zero).</p>`:
-      vdBuscaHtml("o","Buscar colaborador (nome ou RE), posto ou supervisor",`${pessoas.length} ${vdUn(pessoas.length,"colaborador","colaboradores")}`)+filtro+(pessoas.length?`<ol class="vd-ls">${vis.map((p,i)=>{const ps=[...new Set(p.rs.map(r=>r.local||"—"))],ss=[...new Set(p.rs.map(r=>r.supervisor?brNomeCurto(r.supervisor):VD_SEM_LIVRE))];return vdLinha(vdKey("o"+tipo,p.nome),i+1,brNomeCurto(p.nome),`${p.rs[0].re?"RE "+_esc(p.rs[0].re)+" · ":""}${_esc(ps.join("; "))} · supervisor do posto: ${_esc(ss.join("; "))}`,p.n,unO(p.n),maxO);}).join("")}</ol>`+
-        (pessoas.length>6&&!fO?`<button type="button" class="vd-lk" onclick="vdTodos()">${VD.todos?"Mostrar menos":`Ver todos (${pessoas.length} colaboradores)`}</button>`:""):(fO?nada(VD.qo):`<p class="vd-vz">Nenhum ${nm} neste período.</p>`))+
-      (!semOs&&X.osDisp.primeiro>BR.de?`<p class="vd-rf">Há dados de OS só a partir de ${brDd(X.osDisp.primeiro)}.</p>`:"");
-    col3=`<section class="vd-c vd-col">${vdCab(null,"c-la",tipo==="exc"?"Excedentes":"Treinamentos",sub,semOs?null:[rows.length,unO(rows.length)],sg)}${corpo}</section>`;
-  }
-  const ctx={map:mapa,osR,osIdx,cobIdx,ateE};
-  return`<div class="vd">${topo}${aviso}<div class="vd-g">${col1}${col2}${col3}</div>${vdDetalhe(ctx)}${vdGrafico(f,disp)}${vdGaveta(ctx)}</div>`;
+  const ctx={map:mapa,ateE};
+  return`<div class="vd">${topo}${aviso}<div class="vd-g">${col1}${col2}</div>${vdDetalhe(ctx)}${vdGrafico(f,disp)}${vdGaveta(ctx)}</div>`;
 }
 
 /* ── Excel da diretoria: capa com os números, tabelas formatadas, filtros, logo e impressão pronta ──
@@ -13492,19 +13442,12 @@ const BRX={navy:"FF2D2D6B",texto:"FF0F172A",mudo:"FF64748B",linha:"FFE2E8F0",fai
   ok:["FF067647","FFD1FADF"],am:["FFB54708","FFFEF0C7"],da:["FFB42318","FFFEE4E2"],an:["FF0E7C70","FFCCFBEF"],gr:["FF475467","FFF2F4F7"]};
 function brXTom(p){return p==null?BRX.gr:p>=80?BRX.ok:p>=60?BRX.am:BRX.da;}
 function brXSit(s){return{ANTES:BRX.an,NO_PRAZO:BRX.ok,ATRASO:BRX.am,GRAVE:BRX.da}[s]||BRX.gr;}
-let BR_OSX=null;
-/* As OS (excedente e treinamento) só existem na rota exclusiva da Visão Diretoria: para as outras contas o Excel sai sem a classificação. */
-async function brOsParaExcel(){
-  if(!brDirPermitido())return null;
-  try{const j=await brPedir("GET","diretoria_os",{de:BR.de,ate:brAteEfetivo()});return Array.isArray(j.os)?j.os:null;}catch(e){return null;}
-}
 async function brExcel(){
   if(!BR.dados){alert("Carregue o relatório primeiro.");return;}
   const btn=document.querySelector(".br-ac .br-btn"),rot=btn?btn.innerHTML:"";
   if(typeof ptToast==="function")ptToast("Gerando o Excel…");
   try{
     const [Ex,logo]=await Promise.all([brCarregaExcelJS(),brLogoPng()]);
-    BR_OSX=await brOsParaExcel();
     const wb=await brXlsxMontar(Ex,logo);
     const buf=await wb.xlsx.writeBuffer();
     const url=URL.createObjectURL(new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}));
@@ -13545,17 +13488,6 @@ async function brXlsxMontar(Ex,logo,ctx){
   const distintos=(a,b)=>`IFERROR(ROUND(SUMPRODUCT((${a}<>"")/COUNTIFS(${a},${a}&"",${b},${b}&"")),0),0)`;
   const n1=(k)=>R.sit[k]||0,den=n1("ANTES")+n1("NO_PRAZO")+n1("ATRASO")+n1("GRAVE");
 
-  /* Excedente e treinamento (OS avulsas) ligados à cobertura pelo posto e pelo dia. Só chegam quando quem exporta é da Visão Diretoria
-     (rota exclusiva); sem elas, o detalhamento sai sem a classificação. */
-  const OSX=Array.isArray(BR_OSX)?BR_OSX:null,osIdx={},cobDia={};
-  if(OSX)OSX.forEach(r=>{const k=vdLig(r.local,r.data);(osIdx[k]=osIdx[k]||[]).push(r);});
-  (BR.dados.linhas||[]).forEach(x=>{if(x.situacao==="NAO_E_POSTO"||x.data<BR.de||x.data>ateE)return;const k=vdLig(x.posto||x.destino,x.data);(cobDia[k]=cobDia[k]||[]).push(x);});
-  const osDe=x=>osIdx[vdLig(x.posto||x.destino,x.data)]||[];
-  const classe=x=>{const o=osDe(x),e=o.some(r=>r.tipo==="EXCEDENTE"),t=o.some(r=>r.tipo==="TREINAMENTO")||String(x.motivo||"").toUpperCase()==="TREINAMENTO";return e&&t?"Excedente e treinamento":e?"Excedente":t?"Treinamento":"Cobertura";};
-  const deixado=x=>osDe(x).map(r=>(r.tipo==="EXCEDENTE"?"Excedente: ":"Treinamento: ")+brNomeCurto(r.nome||"Não informado")+(r.re?" (RE "+r.re+")":"")+(r.supervisor?" · supervisor do posto "+brNomeCurto(r.supervisor):"")).join("  |  ");
-  const horaX=h=>{const m=bdvHoraMin(h);return m==null?null:m/1440;};
-  const dataX=s=>{const d=s.split("-");return new Date(Date.UTC(+d[0],+d[1]-1,+d[2]));};
-  const CLS={"Cobertura":[BRX.mudo,"FFFFFFFF"],"Excedente":BRX.am,"Treinamento":["FF1E4D8C","FFE8F1FC"],"Excedente e treinamento":BRX.am};
 
   /* ═══ 1. Resumo (capa) ═══ */
   const ws=wb.addWorksheet("Resumo",{properties:{tabColor:{argb:BRX.navy}},views:[{showGridLines:false}]});
@@ -13607,7 +13539,7 @@ async function brXlsxMontar(Ex,logo,ctx){
     ws.getRow(r).height=Math.max(20,Math.ceil(txt.length/118)*16+6);r++;
   });
   r++;titulo("Neste arquivo");
-  [["Por supervisor","Coberturas, percentual e atrasos de cada supervisor e, abaixo, cada cobertura dele: posto, quem faltou, horários e situação"],["Por posto","Postos que mais precisaram de cobertura e, abaixo, cada cobertura do posto: quem cobriu, quem faltou, horários e situação"],["Cada cobertura","A BASE: cada ida do supervisor, com início da vaga, chegada e atraso (com filtros)"],["Por situação","Coberturas agrupadas: antes do início, até 1h, 1 a 3h e mais de 3h de atraso"]].concat(OSX?[["Excedentes e treinamentos","Cada excedente e treinamento: quem, onde, supervisor do posto e quem fez a cobertura no dia"]]:[]).concat([["Como é calculado","Regras usadas nas contas"]]).forEach(([a,b])=>{
+  [["Por supervisor","Coberturas, percentual e atrasos de cada supervisor e, abaixo, cada cobertura dele: posto, quem faltou, horários e situação"],["Por posto","Postos que mais precisaram de cobertura e, abaixo, cada cobertura do posto: quem cobriu, quem faltou, horários e situação"],["Cada cobertura","A BASE: cada ida do supervisor, com início da vaga, chegada e atraso (com filtros)"],["Por situação","Coberturas agrupadas: antes do início, até 1h, 1 a 3h e mais de 3h de atraso"],["Como é calculado","Regras usadas nas contas"]].forEach(([a,b])=>{
     ws.getRow(r).height=18;ws.mergeCells(r,2,r,3);const x=ws.getCell(r,2);x.value={text:a,hyperlink:"#'"+a+"'!A1"};x.font=fonte({size:10,bold:true,color:{argb:"FF1D6FC4"},underline:true});x.alignment={indent:1,vertical:"middle"};
     ws.mergeCells(r,4,r,11);const y=ws.getCell(r,4);y.value=b;y.font=fonte({size:9.5,color:{argb:BRX.mudo}});y.alignment={vertical:"middle"};r++;
   });
@@ -13623,10 +13555,12 @@ async function brXlsxMontar(Ex,logo,ctx){
     {type:"expression",priority:2,formulae:[`AND(ISNUMBER(${c0}),${c0}>=0.6,${c0}<0.8)`],style:{fill:dxf(BRX.am[1]),font:{bold:true,color:{argb:BRX.am[0]}}}},
     {type:"expression",priority:3,formulae:[`AND(ISNUMBER(${c0}),${c0}<0.6)`],style:{fill:dxf(BRX.da[1]),font:{bold:true,color:{argb:BRX.da[0]}}}}]});
 
-  /* ═══ Detalhamento embaixo de "Por supervisor" e "Por posto": cada cobertura de cada um, uma a uma, na mesma aba ═══
-     Supervisor com 16 coberturas = bloco com as 16 linhas (posto, quem faltou, horário, chegada, atraso, situação e, para a diretoria,
-     se naquele posto e dia houve excedente ou treinamento). As linhas de cada bloco recolhem com os botões 1 e 2 do canto da aba. */
-  const NCX=OSX?14:13;
+  /* ═══ Detalhamento embaixo de "Por supervisor" e "Por posto": uma tabela com cada cobertura, na mesma aba ═══
+     Supervisor com 16 coberturas = 16 linhas seguidas (posto, quem faltou, motivo, horário, chegada, atraso e situação). É uma tabela do Excel,
+     com filtro em cada coluna (supervisor, posto, data, motivo, situação…); o filtro da tabela de cima continua valendo para ela. */
+  const horaX=h=>{const m=bdvHoraMin(h);return m==null?null:m/1440;};
+  const dataX=s=>{const d=s.split("-");return new Date(Date.UTC(+d[0],+d[1]-1,+d[2]));};
+  const NCX=12;
   const detalhe=(w,dim,gr,r0)=>{
     let r=r0;
     w.getRow(r).height=28;w.mergeCells(r,1,r,NCX);
@@ -13634,53 +13568,45 @@ async function brXlsxMontar(Ex,logo,ctx){
     for(let c=1;c<=NCX;c++)w.getCell(r,c).border={bottom:{style:"medium",color:{argb:BRX.navy}}};
     r++;
     w.mergeCells(r,1,r,NCX);const n=w.getCell(r,1);
-    n.value=(dim==="sup"?"Cada supervisor com todas as coberturas que fez no período: o posto, quem faltou (quem foi coberto), o horário da vaga, a chegada e o atraso.":"Cada posto com todas as coberturas que recebeu no período: quem cobriu (supervisor), quem faltou, o horário da vaga, a chegada e o atraso.")+
-      " A classificação diz se a cobertura foi um treinamento (motivo da cobertura)"+(OSX?" ou se, naquele posto e naquele dia, houve excedente ou treinamento nas OS avulsas, com quem ficou e o supervisor do posto.":".")+
-      " Use os botões 1 e 2 no canto superior esquerdo para recolher ou abrir os detalhes. Valores fixos, da data em que o arquivo foi gerado.";
-    n.font=fonte({size:9,italic:true,color:{argb:BRX.mudo}});n.alignment={wrapText:true,vertical:"top",indent:1};w.getRow(r).height=42;r+=2;
-    const cab=[[dim==="sup"?"Posto":"Quem cobriu (supervisor)",1,1],["Data",2,1],["Dia",3,1],["Quem faltou",4,2],["RE",6,1],["Motivo",7,1],["Início da vaga",8,1],["Chegada",9,1],["Atraso",10,1],["Minutos",11,1],["Situação",12,1],["Classificação",13,1]].concat(OSX?[["Deixado no posto",14,1]]:[]);
-    const centro=c=>c===2||c===3||c===6||(c>=8&&c<=11);
-    gr.forEach(x=>{
-      const ls=x.linhas.filter(i=>i.situacao!=="NAO_E_POSTO").slice().sort((a,b)=>a.data.localeCompare(b.data)||String(a.chegada).localeCompare(String(b.chegada)));
-      if(!ls.length)return;
-      const cl=ls.map(classe),nm=dim==="sup"?brNomeCurto(x.nome):x.nome,tom=brXTom(x.pct);
-      const den2=x.n-x.sit.SEM_HORARIO,ate1=x.sit.ANTES+x.sit.NO_PRAZO;
-      let txt=`${nm}   ·   ${ls.length} ${ls.length===1?"cobertura":"coberturas"}   ·   ${dim==="sup"?x.postos.size+(x.postos.size===1?" posto":" postos"):x.sups.size+(x.sups.size===1?" supervisor":" supervisores")}`;
-      if(den2)txt+=`   ·   chegou em até 1h: ${ate1} de ${den2} (${Math.round(ate1/den2*100)}%)   ·   1 a 3h de atraso: ${x.sit.ATRASO}   ·   mais de 3h: ${x.sit.GRAVE}`;
-      txt+=(OSX?`   ·   excedente: ${cl.filter(c=>/Excedente/.test(c)).length}`:"")+`   ·   treinamento: ${cl.filter(c=>/Treinamento/.test(c)).length}`;
-      w.getRow(r).height=28;w.mergeCells(r,1,r,NCX);
-      const b=w.getCell(r,1);b.value=txt;b.font=fonte({size:11,bold:true,color:{argb:tom[0]}});b.fill=preenche(tom[1]);b.alignment={vertical:"middle",indent:1,wrapText:true};
-      for(let c=1;c<=NCX;c++)w.getCell(r,c).border={left:c===1?{style:"thick",color:{argb:tom[0]}}:undefined,bottom:{style:"thin",color:{argb:tom[0]}}};
-      r++;
-      w.getRow(r).height=22;w.getRow(r).outlineLevel=1;
-      cab.forEach(([tt,c,sp])=>{if(sp>1)w.mergeCells(r,c,r,c+sp-1);const ce=w.getCell(r,c);ce.value=tt;ce.font=fonte({size:9,bold:true,color:{argb:"FFFFFFFF"}});ce.fill=preenche(BRX.navy);ce.alignment={vertical:"middle",horizontal:centro(c)?"center":"left",indent:c===1?1:0,wrapText:true};});
-      r++;
-      ls.forEach((i,k)=>{
-        const cor=brXSit(i.situacao),sit=(BR_SIT[i.situacao]||["Sem horário"])[0],dx=OSX?deixado(i):"";
-        const vals=[[dim==="sup"?(i.posto||i.destino):brNomeCurto(i.supervisor),1,1],[dataX(i.data),2,1],[brSemana(i.data),3,1],[i.falta_nome||"—",4,2],[i.falta_re||"",6,1],[brMotivoTxt(i.motivo),7,1],[horaX(i.inicio),8,1],[horaX(i.chegada),9,1],[brDifTxt(i),10,1],[i.diferenca_min==null?"":i.diferenca_min,11,1],[sit,12,1],[cl[k],13,1]].concat(OSX?[[dx,14,1]]:[]);
-        for(let c=1;c<=NCX;c++){const ce=w.getCell(r,c);ce.border={bottom:{style:"thin",color:{argb:BRX.linha}}};if(k%2)ce.fill=preenche(BRX.faixa);}
-        vals.forEach(([v,c,sp])=>{
-          if(sp>1)w.mergeCells(r,c,r,c+sp-1);
-          const ce=w.getCell(r,c);ce.value=v;ce.font=fonte({size:10,bold:c===1||c===9});
-          ce.alignment={vertical:"middle",horizontal:centro(c)?"center":"left",indent:c===1?1:0,shrinkToFit:c===7||c===10,wrapText:c===14};
-          if(c===2)ce.numFmt="dd/mm/yyyy";if(c===8||c===9)ce.numFmt="hh:mm";
-          if(c===10)ce.font=fonte({size:10,bold:true,color:{argb:cor[0]}});
-          if(c===12){ce.font=fonte({size:10,bold:true,color:{argb:cor[0]}});ce.fill=preenche(cor[1]);}
-          if(c===13){const q=CLS[cl[k]]||CLS.Cobertura;ce.font=fonte({size:10,bold:cl[k]!=="Cobertura",color:{argb:q[0]}});if(cl[k]!=="Cobertura")ce.fill=preenche(q[1]);}
-          if(c===14)ce.font=fonte({size:9,color:{argb:BRX.texto}});
-        });
-        w.getRow(r).height=dx.length>55?Math.max(20,Math.ceil(dx.length/55)*13+6):20;w.getRow(r).outlineLevel=1;r++;
-      });
-      w.getRow(r).height=10;r++;
+    n.value=(dim==="sup"?"Cada supervisor com todas as coberturas que fez no período, uma por linha, na mesma ordem da tabela de cima: o posto, quem faltou, o motivo, o horário da vaga, a chegada e o atraso.":"Cada posto com todas as coberturas que recebeu no período, uma por linha, na mesma ordem da tabela de cima: quem cobriu (supervisor), quem faltou, o motivo, o horário da vaga, a chegada e o atraso.")+
+      " Use as setas dos títulos para filtrar por supervisor, posto, data, motivo ou situação. Valores fixos, da data em que o arquivo foi gerado.";
+    n.font=fonte({size:9,italic:true,color:{argb:BRX.mudo}});n.alignment={wrapText:true,vertical:"top",indent:1};w.getRow(r).height=30;r+=2;
+    const cab=[dim==="sup"?"Supervisor":"Posto",dim==="sup"?"Posto":"Supervisor (quem cobriu)","Data","Dia","Quem faltou","RE","Motivo","Início da vaga","Chegada","Atraso","Minutos","Situação"];
+    const lin=[];
+    gr.forEach((x,gi)=>{
+      x.linhas.filter(i=>i.situacao!=="NAO_E_POSTO").slice().sort((a,b)=>a.data.localeCompare(b.data)||String(a.chegada).localeCompare(String(b.chegada))).forEach((i,k)=>lin.push({i,gi,ini:k===0}));
     });
-    return r;
+    if(!lin.length)return r;
+    const centro=c=>c===3||c===4||c===6||c>=8&&c<=11;
+    const hdr=r;
+    w.addTable({name:dim==="sup"?"DetalheSupervisor":"DetalhePosto",ref:"A"+hdr,headerRow:true,totalsRow:false,style:{theme:"TableStyleLight1",showRowStripes:false},
+      columns:cab.map(c=>({name:c,filterButton:true})),
+      rows:lin.map(({i})=>[dim==="sup"?brNomeCurto(i.supervisor):(i.posto||i.destino),dim==="sup"?(i.posto||i.destino):brNomeCurto(i.supervisor),dataX(i.data),brSemana(i.data),i.falta_nome||"—",i.falta_re||"",brMotivoTxt(i.motivo),horaX(i.inicio),horaX(i.chegada),brDifTxt(i),i.diferenca_min==null?"":i.diferenca_min,(BR_SIT[i.situacao]||["Sem horário"])[0]])});
+    w.getRow(hdr).height=24;
+    cab.forEach((c,j)=>{const ce=w.getCell(hdr,j+1);ce.font=fonte({size:9,bold:true,color:{argb:"FFFFFFFF"}});ce.fill=preenche(BRX.navy);ce.alignment={vertical:"middle",horizontal:centro(j+1)?"center":"left",indent:j===0?1:0,wrapText:true};});
+    lin.forEach(({i,gi,ini},k)=>{
+      const rr=hdr+1+k,cor=brXSit(i.situacao);
+      for(let c=1;c<=NCX;c++){
+        const ce=w.getCell(rr,c);
+        ce.font=fonte({size:10,bold:(c===1&&ini)||c===9,color:c===1&&ini?{argb:BRX.navy}:(c===1&&!ini?{argb:"FF98A2B3"}:undefined)});
+        ce.alignment={vertical:"middle",horizontal:centro(c)?"center":"left",indent:c===1?1:0,shrinkToFit:c===7||c===10};
+        ce.border={top:ini?{style:"thin",color:{argb:BRX.navy}}:undefined,bottom:{style:"thin",color:{argb:BRX.linha}}};
+        if(gi%2)ce.fill=preenche(BRX.faixa);
+        if(c===3)ce.numFmt="dd/mm/yyyy";
+        if(c===8||c===9)ce.numFmt="hh:mm";
+        if(c===10||c===11)ce.font=fonte({size:10,bold:true,color:{argb:cor[0]}});
+        if(c===12){ce.font=fonte({size:10,bold:true,color:{argb:cor[0]}});ce.fill=preenche(cor[1]);}
+      }
+      w.getRow(rr).height=20;
+    });
+    return hdr+lin.length+1;
   };
 
   /* ═══ 2 e 3. Por supervisor / Por posto (contas por fórmula) ═══ */
   const tabela=(nome,dim,cor)=>{
-    const w=wb.addWorksheet(nome,{properties:{tabColor:{argb:cor},outlineLevelRow:1,outlineProperties:{summaryBelow:false}},views:[{showGridLines:false,state:"frozen",xSplit:1}]});
+    const w=wb.addWorksheet(nome,{properties:{tabColor:{argb:cor}},views:[{showGridLines:false,state:"frozen",xSplit:1}]});
     const cab=[dim==="sup"?"Supervisor":"Posto","Coberturas","Chegou em até 1h","Antes do início","Até 1h de atraso","1 a 3h de atraso","Mais de 3h de atraso","Sem horário",dim==="sup"?"Postos":"Supervisores",dim==="sup"?"Horas em campo":"Motivo mais comum",dim==="sup"?"Km":"3 ou mais"];
-    w.columns=[{width:dim==="sup"?26:36},{width:14},{width:15},{width:14},{width:14},{width:14},{width:15},{width:13},{width:15},{width:dim==="sup"?17:22},{width:dim==="sup"?11:13},{width:22},{width:18},{width:46}];
+    w.columns=[{width:dim==="sup"?30:36},{width:dim==="sup"?32:26},{width:14},{width:12},{width:28},{width:13},{width:22},{width:13},{width:13},{width:22},{width:dim==="sup"?17:22},{width:24}];
     topo(w,dim==="sup"?"Por supervisor":"Por posto",subTxt,Math.max(cab.length,NCX));
     w.getRow(4).height=6;w.getRow(5).height=34;
     cab.forEach((c,i)=>{const ce=w.getCell(5,i+1);ce.value=c;ce.font=fonte({size:9,bold:true,color:{argb:"FFFFFFFF"}});ce.fill=preenche(BRX.navy);ce.alignment={vertical:"middle",horizontal:i?"center":"left",wrapText:true,indent:i?0:1};ce.border={bottom:{style:"medium",color:{argb:BRX.navy}}};});
@@ -13713,11 +13639,7 @@ async function brXlsxMontar(Ex,logo,ctx){
     }
     w.getCell(tl+2,1).value=dim==="sup"?"Coberturas, situações, percentuais e totais são fórmulas ligadas à aba “Cada cobertura”. Horas e km são do dia inteiro do supervisor e contam uma vez por dia (valores fixos).":"Coberturas, situações, percentuais e totais são fórmulas ligadas à aba “Cada cobertura”. “3 ou mais”: posto que precisou de 3 ou mais coberturas.";
     w.getCell(tl+2,1).font=fonte({size:8.5,italic:true,color:{argb:BRX.mudo}});
-    if(gr.length){
-      detalhe(w,dim,gr,tl+4);
-      /* escala fixa: com linhas que recolhem, o ExcelJS escreve "ajustar à largura" na ordem errada e o Excel recusaria o arquivo */
-      pagina(w,null,true);w.pageSetup.fitToPage=false;delete w.pageSetup.fitToWidth;delete w.pageSetup.fitToHeight;w.pageSetup.scale=OSX?50:58;
-    }else pagina(w,"5:5",true);
+    if(gr.length){detalhe(w,dim,gr,tl+4);pagina(w,null,true);}else pagina(w,"5:5",true);
   };
   tabela("Por supervisor","sup",BRX.ok[0]);
   tabela("Por posto","posto","FF1D6FC4");
@@ -13788,40 +13710,6 @@ async function brXlsxMontar(Ex,logo,ctx){
   /* escala fixa (e não "ajustar à largura"): o ExcelJS escreve as duas marcações na ordem errada e o Excel recusaria o arquivo */
   pagina(wg,null,true);wg.pageSetup.fitToPage=false;delete wg.pageSetup.fitToWidth;delete wg.pageSetup.fitToHeight;wg.pageSetup.scale=66;
 
-  /* ═══ Excedentes e treinamentos (só com as OS da Visão Diretoria): cada um, o posto, o supervisor do posto e quem fez a cobertura no dia ═══ */
-  if(OSX){
-    const wo=wb.addWorksheet("Excedentes e treinamentos",{properties:{tabColor:{argb:"FFC2410C"}},views:[{showGridLines:false,state:"frozen",xSplit:1,ySplit:5}]});
-    const cabO=["Data","Dia","Tipo","Colaborador","RE","Cargo","Turno","Posto","Supervisor do posto","Cobertura feita por (mesmo posto e dia)"];
-    wo.columns=[{width:13},{width:8},{width:15},{width:30},{width:10},{width:18},{width:11},{width:30},{width:24},{width:48}];
-    topo(wo,"Excedentes e treinamentos",subTxt,cabO.length);
-    wo.getRow(4).height=6;wo.getRow(5).height=30;
-    cabO.forEach((c,i)=>{const ce=wo.getCell(5,i+1);ce.value=c;ce.font=fonte({size:9,bold:true,color:{argb:"FFFFFFFF"}});ce.fill=preenche(BRX.navy);ce.alignment={vertical:"middle",horizontal:i===0||i===1||i===4?"center":"left",wrapText:true,indent:i===0?1:0};ce.border={bottom:{style:"medium",color:{argb:BRX.navy}}};});
-    const linhasO=OSX.filter(r=>r.data>=BR.de&&r.data<=ateE).slice().sort((a,b)=>a.data.localeCompare(b.data)||String(a.nome).localeCompare(String(b.nome)));
-    linhasO.forEach((r,i)=>{
-      const lin=6+i,cs=cobDia[vdLig(r.local,r.data)]||[],exc=r.tipo==="EXCEDENTE";
-      const por=cs.length?cs.map(x=>brNomeCurto(x.supervisor)+(x.chegada?" (chegou "+x.chegada+")":"")).join("  |  "):"Sem cobertura registrada no dia";
-      const v=[dataX(r.data),brSemana(r.data),exc?"Excedente":"Treinamento",brNomeCurto(r.nome||"Não informado"),r.re||"",r.cargo||"",r.turno||"",r.local||"—",r.supervisor?brNomeCurto(r.supervisor):"Sem supervisor vinculado",por];
-      v.forEach((val,j)=>{
-        const ce=wo.getCell(lin,j+1);ce.value=val;ce.font=fonte({size:10,bold:j===3||j===2,color:j===2?{argb:exc?BRX.am[0]:"FF1E4D8C"}:(j===9&&!cs.length?{argb:BRX.mudo}:undefined),italic:j===9&&!cs.length});
-        ce.alignment={vertical:"middle",horizontal:j<2||j===4?"center":"left",indent:j===0?0:0,wrapText:j===9};
-        ce.border={bottom:{style:"thin",color:{argb:BRX.linha}}};if(i%2)ce.fill=preenche(BRX.faixa);
-        if(j===0)ce.numFmt="dd/mm/yyyy";
-        if(j===2)ce.fill=preenche(exc?BRX.am[1]:"FFE8F1FC");
-      });
-      wo.getRow(lin).height=por.length>60?Math.max(20,Math.ceil(por.length/60)*13+6):20;
-    });
-    const uo=5+Math.max(1,linhasO.length),nE=linhasO.filter(r=>r.tipo==="EXCEDENTE").length,nT=linhasO.length-nE;
-    if(linhasO.length){wo.autoFilter={from:{row:5,column:1},to:{row:uo,column:cabO.length}};}
-    else{wo.mergeCells(6,1,6,cabO.length);const e=wo.getCell(6,1);e.value="Nenhum excedente nem treinamento no período.";e.font=fonte({size:10,italic:true,color:{argb:BRX.mudo}});e.alignment={indent:1};}
-    const tl=uo+2;
-    wo.getCell(tl,4).value="Excedentes";wo.getCell(tl,4).font=fonte({size:10,bold:true,color:{argb:BRX.am[0]}});wo.getCell(tl,5).value=fm(`COUNTIF(C6:C${uo},"Excedente")`,nE);
-    wo.getCell(tl+1,4).value="Treinamentos";wo.getCell(tl+1,4).font=fonte({size:10,bold:true,color:{argb:"FF1E4D8C"}});wo.getCell(tl+1,5).value=fm(`COUNTIF(C6:C${uo},"Treinamento")`,nT);
-    [wo.getCell(tl,5),wo.getCell(tl+1,5)].forEach(c=>{c.font=fonte({size:10,bold:true});c.alignment={horizontal:"center"};});
-    wo.getCell(tl+3,1).value="Excedente: colaborador que não tinha para onde ir (OS avulsa do tipo excedente). Treinamento: OS avulsa do tipo treinamento. O supervisor do posto é o que cuida dos funcionários ativos daquele posto (o mais comum entre eles), não quem foi fazer a cobertura. O RE vem do cadastro de ativos pelo nome. Valores fixos, da data em que o arquivo foi gerado.";
-    wo.getCell(tl+3,1).font=fonte({size:8.5,italic:true,color:{argb:BRX.mudo}});
-    pagina(wo,"5:5",true);
-  }
-
   /* ═══ 6. Como é calculado ═══ */
   const wm=wb.addWorksheet("Como é calculado",{properties:{tabColor:{argb:BRX.gr[0]}},views:[{showGridLines:false}]});
   wm.columns=[{width:3},{width:30},{width:90}];
@@ -13835,7 +13723,7 @@ async function brXlsxMontar(Ex,logo,ctx){
    ["Horas e km em campo","São do dia inteiro do supervisor e contam uma vez por supervisor e dia (a planilha repete esses valores em todas as idas do dia). Valores fixos."],
    ["Fora das contas","Idas à sede e destinos escritos em texto livre (por exemplo, “deixar colaborador em casa”) não são posto. Coberturas sem horário da vaga nem do posto não entram nos percentuais."],
    ["Fórmulas","Capa, “Por supervisor”, “Por posto” e os totais de “Por situação” são calculados a partir da aba “Cada cobertura”. Corrigir um horário ou apagar uma linha lá recalcula tudo."],
-   ["Detalhamento","Embaixo de “Por supervisor” e “Por posto” há um bloco para cada um com todas as coberturas, uma a uma (valores fixos, da data em que o arquivo foi gerado). A classificação em excedente ou treinamento, quando existe, liga a cobertura às OS avulsas do mesmo posto e dia; sem OS naquele posto e dia, é “Cobertura”."],["Fonte","Aba BDV do SAR2G, cruzada com a planilha de faltas e a jornada dos funcionários."]].forEach(([a,b],i)=>{
+   ["Detalhamento","Embaixo de “Por supervisor” e “Por posto” há um bloco para cada um com todas as coberturas, uma a uma (valores fixos, da data em que o arquivo foi gerado)."],["Fonte","Aba BDV do SAR2G, cruzada com a planilha de faltas e a jornada dos funcionários."]].forEach(([a,b],i)=>{
     const r2=3+i;wm.getRow(r2).height=Math.max(24,Math.ceil(b.length/95)*16+8);
     const x=wm.getCell(r2,2),y=wm.getCell(r2,3);x.value=a;x.font=fonte({size:10,bold:true,color:{argb:BRX.navy}});x.alignment={vertical:"top",indent:1,wrapText:true};
     y.value=b;y.font=fonte({size:10});y.alignment={vertical:"top",wrapText:true};
@@ -15900,7 +15788,7 @@ async function brXlsxConectado(Ex,logo,j,k){
      n-ésima menor chave, então as coberturas de cada supervisor (ou posto) saem juntas, na ordem da lista, e dentro dele da mais antiga à mais nova. */
   const detalhe=(ws,porPosto)=>{
     const N0=6,NN=4000,ULT=N0+NN-1,KEY=dr(porPosto?"W":"V"),campo=porPosto?"pos":"sup";
-    const cols=[{t:porPosto?"Posto":"Supervisor",w:porPosto?34:24},{t:porPosto?"Supervisor (quem cobriu)":"Posto",w:porPosto?24:34},{t:"Data",w:12},{t:"Dia",w:7},{t:"Quem faltou",w:28},{t:"RE",w:9,n:1},{t:"Motivo",w:21},{t:"Início da vaga",w:11,n:1},{t:"Chegada",w:10,n:1},{t:"Atraso",w:22},{t:"Minutos",w:10,n:1},{t:"Situação",w:23},{t:"Classificação",w:14}];
+    const cols=[{t:porPosto?"Posto":"Supervisor",w:porPosto?34:24},{t:porPosto?"Supervisor (quem cobriu)":"Posto",w:porPosto?24:34},{t:"Data",w:12},{t:"Dia",w:7},{t:"Quem faltou",w:28},{t:"RE",w:9,n:1},{t:"Motivo",w:21},{t:"Início da vaga",w:11,n:1},{t:"Chegada",w:10,n:1},{t:"Atraso",w:22},{t:"Minutos",w:10,n:1},{t:"Situação",w:23}];
     ws.columns=cols.map(c=>({width:c.w})).concat([{width:3},{width:8,hidden:true}]);
     ws.views=[{showGridLines:false,state:"frozen",ySplit:5,xSplit:1}];
     topo(ws,porPosto?"Detalhe por posto":"Detalhe por supervisor","Cada cobertura de cada "+(porPosto?"posto":"supervisor")+", em grupos · segue o Painel (folha, supervisor, posto e motivo)",3,cols.length);
@@ -15918,8 +15806,7 @@ async function brXlsxConectado(Ex,logo,j,k){
       const vals=[
         [ix(porPosto?"D":"C"),o?(porPosto?o.pos:o.sup):""],[ix(porPosto?"C":"D"),o?(porPosto?o.sup:o.pos):""],[ix("A"),o?o.dat:"","dd/mm/yyyy"],[ix("B"),o?o.dia:""],[ix("F"),o?o.falta:""],[ix("G"),o?o.re:""],[ix("E"),o?o.mot:""],[ix("H"),o?o.ini:"","hh:mm"],[ix("I"),o?o.che:"","hh:mm"],
         [`IF($${hm}${r}="","",IF(${K}="","—",IF(${K}<0,IF(-${K}>=60,INT(-${K}/60)&"h"&RIGHT("0"&MOD(-${K},60),2),-${K}&" min")&" antes do início",IF(${K}=0,"no horário",IF(${K}>=60,INT(${K}/60)&"h"&RIGHT("0"&MOD(${K},60),2),${K}&" min")&" de atraso"))))`,atraso],
-        [ix("J"),o?(o.min==null?"":o.min):"","0"],[ix("K"),o?o.sit:""],
-        [`IF($${hm}${r}="","",IF($G${r}="Treinamento","Treinamento","Cobertura"))`,o?(o.mot==="Treinamento"?"Treinamento":"Cobertura"):""]
+        [ix("J"),o?(o.min==null?"":o.min):"","0"],[ix("K"),o?o.sit:""]
       ];
       vals.forEach(([f,res,nf],c)=>{const ce=ws.getCell(r,c+1);ce.value=fm(f,res);if(nf)ce.numFmt=nf;ce.font=fonte({size:10,bold:c===8||c===9||c===11});ce.alignment={vertical:"middle",horizontal:[2,3,5,7,8,10].indexOf(c)>=0?"center":"left",indent:c===0?1:0};ce.border={bottom:fio()};});
       ws.getRow(r).height=20;
@@ -15928,7 +15815,6 @@ async function brXlsxConectado(Ex,logo,j,k){
     ws.addConditionalFormatting({ref:`L${N0}:L${ULT}`,rules:[regra(SN.A,BRX.an,1),regra(SN.N,BRX.ok,2),regra(SN.T,BRX.am,3),regra(SN.G,BRX.da,4),regra(SN.S,BRX.gr,5)]});
     const txtCor=(txt,cor,p)=>({type:"expression",priority:p,formulae:[`$L${N0}="${txt}"`],style:{font:{bold:true,color:{argb:cor[0]}}}});
     ws.addConditionalFormatting({ref:`J${N0}:J${ULT}`,rules:[txtCor(SN.A,BRX.an,6),txtCor(SN.N,BRX.ok,7),txtCor(SN.T,BRX.am,8),txtCor(SN.G,BRX.da,9)]});
-    ws.addConditionalFormatting({ref:`M${N0}:M${ULT}`,rules:[{type:"expression",priority:10,formulae:[`$M${N0}="Treinamento"`],style:{fill:dxf("FFE8F1FC"),font:{bold:true,color:{argb:"FF1E4D8C"}}}}]});
     /* o primeiro de cada grupo ganha destaque e linha de cima; os seguintes mostram o nome do grupo mais apagado */
     ws.addConditionalFormatting({ref:`A${N0}:K${ULT}`,rules:[
       {type:"expression",priority:11,formulae:[`AND($A${N0}<>"",$A${N0}<>$A${N0-1})`],style:{fill:dxf("FFEEF0F8"),font:{bold:true,color:{argb:BRX.navy}},border:{top:{style:"thin",color:{argb:BRX.navy}}}}},
@@ -15986,7 +15872,7 @@ async function brXlsxConectado(Ex,logo,j,k){
      ["Fora das contas","Idas à sede e destinos escritos em texto livre (por exemplo, “deixar colaborador em casa”) não são posto e não vêm para este arquivo. Coberturas sem horário da vaga nem do posto não entram nos percentuais."],
      ["Folha","Vai do dia 26 de um mês ao dia 25 do seguinte."],
      ["Fórmulas","Painel, “Por supervisor”, “Por posto” e “Cada cobertura” são fórmulas em cima da aba Dados, que o Painel ServCamp preenche sozinho. As colunas verdes da aba Dados dizem o que entra no filtro do Painel."],
-     ["Detalhe por supervisor e por posto","Mostram cada cobertura, uma abaixo da outra, agrupadas por supervisor (ou por posto) na mesma ordem das abas “Por supervisor” e “Por posto”. Seguem o Painel e se atualizam sozinhas com a aba Dados. Classificação: “Treinamento” quando o motivo da cobertura é treinamento; senão, “Cobertura”. O excedente e o treinamento das OS avulsas aparecem no Excel comum, gerado pela Visão Diretoria."],["Fonte","Aba BDV do SAR2G, cruzada com a planilha de faltas e a jornada dos funcionários. É a mesma conta da tela do relatório no Painel ServCamp."]].forEach(([a,b],i)=>{
+     ["Detalhe por supervisor e por posto","Mostram cada cobertura, uma abaixo da outra, agrupadas por supervisor (ou por posto) na mesma ordem das abas “Por supervisor” e “Por posto”. Seguem o Painel e se atualizam sozinhas com a aba Dados."],["Fonte","Aba BDV do SAR2G, cruzada com a planilha de faltas e a jornada dos funcionários. É a mesma conta da tela do relatório no Painel ServCamp."]].forEach(([a,b],i)=>{
       const r2=3+i;ws.getRow(r2).height=Math.max(24,Math.ceil(b.length/95)*16+8);
       const x=ws.getCell(r2,2),y=ws.getCell(r2,3);x.value=a;x.font=fonte({size:10,bold:true,color:{argb:NAV}});x.alignment={vertical:"top",indent:1,wrapText:true};
       y.value=b;y.font=fonte({size:10});y.alignment={vertical:"top",wrapText:true};
@@ -16009,7 +15895,7 @@ async function brXlsxConectado(Ex,logo,j,k){
     });
     let r=7+BRC_PASSOS.length+1;
     ws.mergeCells(r,2,r,3);const t=ws.getCell(r,2);t.value="O que cada aba mostra";t.font=fonte({size:11,bold:true,color:{argb:NAV}});ws.getRow(r).height=24;r++;
-    [["Painel","Os números principais e como o supervisor chegou. É aqui que você escolhe a Folha, o Supervisor, o Posto e o Motivo: todas as abas seguem essa escolha."],["Por supervisor","Quantas coberturas cada supervisor fez, como chegou em cada uma, postos, horas e km em campo."],["Por posto","Os postos que mais precisaram de cobertura, com quantas foram por falta e quantos supervisores foram lá."],["Detalhe por supervisor","Cada cobertura de cada supervisor, em grupos: posto, quem faltou, motivo, horários, situação e classificação (cobertura ou treinamento)."],["Detalhe por posto","Cada cobertura de cada posto, em grupos: quem cobriu, quem faltou, motivo, horários, situação e classificação."],["Cada cobertura","Cada ida do supervisor, com início da vaga, chegada e atraso, da mais antiga para a mais nova. Tem filtros em cada coluna."],["Como é calculado","As regras usadas nas contas."],["Dados","A base de tudo, preenchida pelo Painel ServCamp. Não digite nada aqui."]].forEach(([a,b])=>{
+    [["Painel","Os números principais e como o supervisor chegou. É aqui que você escolhe a Folha, o Supervisor, o Posto e o Motivo: todas as abas seguem essa escolha."],["Por supervisor","Quantas coberturas cada supervisor fez, como chegou em cada uma, postos, horas e km em campo."],["Por posto","Os postos que mais precisaram de cobertura, com quantas foram por falta e quantos supervisores foram lá."],["Detalhe por supervisor","Cada cobertura de cada supervisor, em grupos: posto, quem faltou, motivo, horários e situação."],["Detalhe por posto","Cada cobertura de cada posto, em grupos: quem cobriu, quem faltou, motivo, horários e situação."],["Cada cobertura","Cada ida do supervisor, com início da vaga, chegada e atraso, da mais antiga para a mais nova. Tem filtros em cada coluna."],["Como é calculado","As regras usadas nas contas."],["Dados","A base de tudo, preenchida pelo Painel ServCamp. Não digite nada aqui."]].forEach(([a,b])=>{
       const x=ws.getCell(r,2);x.value="•";x.alignment={horizontal:"center",vertical:"middle"};x.font=fonte({bold:true,color:{argb:NAV}});
       const y=ws.getCell(r,3);y.value={richText:[{text:a+": ",font:fonte({bold:true})},{text:b,font:fonte()}]};y.alignment={vertical:"middle",wrapText:true};ws.getRow(r).height=Math.max(22,Math.ceil((a.length+b.length)/105)*16+6);r++;
     });
