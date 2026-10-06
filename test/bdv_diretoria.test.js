@@ -104,61 +104,22 @@ test("a resposta informa quando os dados foram atualizados (a Visão Diretoria m
   assert.equal((await pedir("diretoria", "raphaelvictor")).body.atualizado_em, null, "sem planilha guardada: nulo, nunca uma data inventada");
 });
 
-const os = (data, tipo, nome, local) => ({ DATA: data, TIPO: tipo, NOME: nome, LOCAL: local, CARGO: "PORTEIRO (A)", TURNO: "DIURNO", STATUS: "OK", RESPONSAVEL: "X" });
-const snapOs = (id, criado, linhas) => ({ id, created_at: criado + "T15:00:00Z", data: { os: linhas } });
-const pedirOs = (usuario, extra) => chamar(rh, { method: "GET", query: { modulo: "bdv", t: "diretoria_os", de: dia(-10), ate: dia(0) }, usuario, ...(extra || {}) });
-
-test("excedentes e treinamentos: só as quatro contas; só os tipos EXCEDENTE e TREINAMENTO; com quem, onde e o dia", async () => {
-  bdvApi._zerarCache();
-  supabaseFalso({ dashboard_snapshots: [snapOs(1, dia(0), [os(dia(-2), "EXCEDENTE", "MARCOS", "POSTO A"), os(dia(-1), "TREINAMENTO", "JULIA", "POSTO B"), os(dia(-1), "EXTRA", "OUTRO", "POSTO C"), os(dia(-30), "EXCEDENTE", "ANTIGO", "POSTO A")])], fm_auditoria: [] });
-  for (const u of QUATRO) {
-    const r = await pedirOs(u);
-    assert.equal(r.statusCode, 200, u);
-    assert.deepEqual(r.body.os.map(x => [x.data, x.tipo, x.nome, x.local]), [[dia(-2), "EXCEDENTE", "MARCOS", "POSTO A"], [dia(-1), "TREINAMENTO", "JULIA", "POSTO B"]], "fora do período e de outro tipo não vêm");
-    assert.equal(r.body.atualizado_em, dia(0) + "T15:00:00Z");
-  }
-  for (const u of ["eduardocipriano", "jussilenealmeida", "adrianomacedo"]) {
-    const r = await pedirOs(u);
-    assert.equal(r.statusCode, 403, u);
-    assert.equal(r.body.os, undefined);
-  }
-  assert.equal((await pedirOs()).statusCode, 401);
-  assert.equal((await pedirOs(undefined, { token: _auth.sign("raphaelvictor", process.env.AUTH_SECRET, 24, { s: "xlb", i: Date.now() }) })).statusCode, 401, "chave do Excel não vale");
+test("excedentes e treinamentos saíram: a rota diretoria_os não existe mais e a Visão Diretoria não pede OS", async () => {
+  bdvApi._zerarCache(); supabaseFalso({ dashboard_snapshots: [], fm_auditoria: [] });
+  const r = await chamar(rh, { method: "GET", query: { modulo: "bdv", t: "diretoria_os", de: dia(-10), ate: dia(0) }, usuario: "raphaelvictor" });
+  assert.ok(r.statusCode >= 400, "rota removida (status " + r.statusCode + ")");
+  assert.equal(r.body.os, undefined, "nenhum dado de OS sai");
+  const h = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8").replace(/\r\n/g, "\n");
+  const vd = h.slice(h.indexOf("VISÃO DIRETORIA (aba do Relatório de Coberturas)"), h.indexOf("/* ── Excel da diretoria: capa com os números"));
+  ["diretoria_os", "xcedente", "reinamento", "Deixado no posto", "vdLig", "osIdx", "cobIdx"].forEach(x => assert.ok(!vd.includes(x), "ainda aparece na tela: " + x));
+  assert.ok(!h.includes("brOsParaExcel") && !h.includes("OSX"), "o Excel não busca nem classifica OS");
 });
 
-test("excedentes: cada dia vem da planilha mais nova que o tem; sem planilha com OS, é 'sem dados' e não zero", async () => {
-  bdvApi._zerarCache();
-  supabaseFalso({ dashboard_snapshots: [
-    snapOs(1, dia(-20), [os(dia(-25), "EXCEDENTE", "VELHO", "POSTO A"), os(dia(-9), "EXCEDENTE", "ANTES", "POSTO A")]),
-    snapOs(2, dia(0), [os(dia(-9), "EXCEDENTE", "CORRIGIDO", "POSTO B"), os(dia(-1), "EXCEDENTE", "RECENTE", "POSTO C")])
-  ], fm_auditoria: [] });
-  const r = await chamar(rh, { method: "GET", query: { modulo: "bdv", t: "diretoria_os", de: dia(-30), ate: dia(0) }, usuario: "raphaelvictor" });
-  assert.deepEqual(r.body.os.map(x => [x.data, x.nome]), [[dia(-25), "VELHO"], [dia(-9), "CORRIGIDO"], [dia(-1), "RECENTE"]], "o dia -9 vale o da planilha nova");
-  assert.equal(r.body.disponivel.primeiro, dia(-25));
-  bdvApi._zerarCache(); supabaseFalso({ dashboard_snapshots: [{ id: 1, created_at: dia(0) + "T15:00:00Z", data: { bdvCobertura: [] } }], fm_auditoria: [] });
-  const v = await pedirOs("raphaelvictor");
-  assert.deepEqual(v.body.os, []); assert.equal(v.body.disponivel.primeiro, null, "primeiro nulo = sem dados (a tela diz isso)");
-});
-
-test("excedente e treinamento vêm ligados ao supervisor do POSTO (o mais comum entre os ativos do posto), nunca a quem foi fazer a cobertura", async () => {
-  bdvApi._zerarCache();
-  const at = (re, posto, area) => ({ RE: re, NOME: "P" + re, LOCAL: posto, AREA: area });
-  supabaseFalso({ dashboard_snapshots: [{ id: 1, created_at: dia(0) + "T15:00:00Z", data: {
-    ativos: [at(1, "Posto A", "CARLOS NOGUEIRA"), at(2, "POSTO A", "CARLOS NOGUEIRA"), at(3, "POSTO A", "FRANK PIMENTEL"), at(4, "POSTO B", "ADRIANO MACEDO"), at(5, "POSTO C", "—"), { RE: 777, NOME: "Marcos", LOCAL: "POSTO Z", AREA: "—" }],
-    os: [os(dia(-2), "EXCEDENTE", "MARCOS", "POSTO A"), os(dia(-1), "TREINAMENTO", "JULIA", "posto b"), os(dia(-1), "EXCEDENTE", "ANA", "POSTO C"), os(dia(-1), "EXCEDENTE", "LUIZ", "POSTO SEM CADASTRO")] } }], fm_auditoria: [] });
-  const r = await pedirOs("raphaelvictor");
-  const sup = Object.fromEntries(r.body.os.map(x => [x.nome, x.supervisor]));
-  assert.deepEqual(sup, { MARCOS: "CARLOS NOGUEIRA", JULIA: "ADRIANO MACEDO", ANA: "", LUIZ: "" }, "o mais comum vence; sem posto cadastrado ou sem área fica vazio (a tela diz 'Sem supervisor vinculado')");
-  const re = Object.fromEntries(r.body.os.map(x => [x.nome, x.re]));
-  assert.deepEqual(re, { MARCOS: "777", JULIA: "", ANA: "", LUIZ: "" }, "o RE vem do cadastro de ativos pelo nome (a OS traz só o nome); sem cadastro fica vazio");
-});
-
-test("Excel: Por supervisor e Por posto trazem o detalhamento (cada cobertura) na mesma aba, com classificação; OS só pela rota da Diretoria", () => {
+test("Excel: Por supervisor e Por posto trazem o detalhamento (cada cobertura) na mesma aba", () => {
   const h = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8").replace(/\r\n/g, "\n");
   const a = h.indexOf("async function brXlsxMontar("), b = h.indexOf("/* ── Imprimir: prévia em folha A4");
   const x = h.slice(a, b);
-  ["const detalhe=(w,dim,gr,r0)", "detalhe(w,dim,gr,tl+4)", "Detalhamento: cada cobertura de cada supervisor", "Detalhamento: cada cobertura de cada posto", "Quem cobriu (supervisor)", "Classificação", "Deixado no posto", "Excedentes e treinamentos", "outlineLevelRow:1", "w.pageSetup.scale="].forEach(t => assert.ok(x.includes(t), "falta no Excel: " + t));
-  assert.ok(h.includes('brPedir("GET","diretoria_os"') && h.includes("async function brOsParaExcel(){\n  if(!brDirPermitido())return null;"), "as OS só são pedidas por quem é da Diretoria (rota exclusiva)");
+  ["const detalhe=(w,dim,gr,r0)", "detalhe(w,dim,gr,tl+4)", "Detalhamento: cada cobertura de cada supervisor", "Detalhamento: cada cobertura de cada posto", "Supervisor (quem cobriu)", "w.addTable({name:dim===\"sup\"?\"DetalheSupervisor\":\"DetalhePosto\"", "filterButton:true"].forEach(t => assert.ok(x.includes(t), "falta no Excel: " + t));
   assert.ok(!/ysplit/i.test(x.slice(x.indexOf("const tabela="), x.indexOf("const tabela=") + 400)), "o cabeçalho do resumo não fica congelado em cima do detalhamento");
 });
 
@@ -180,20 +141,14 @@ test("tela: busca em cada coluna (nome ou RE, sem acento); número casa com o co
   assert.ok(m("CARLOS NOGUEIRA JOSÉ DA SILVA") && !m("CARLOS NOGUEIRA"), "todas as palavras, sem acento");
   const re = f("110");
   assert.ok(re("JULIANA 110 POSTO 01") && re("X 1100") && !re("X 2110") && !re("POSTO 01"), "número: começo de palavra");
-  ["vdBusca(", "vdLimpa(", "vdBuscaHtml(", 'id="vdQ${c}"', 'vdBuscaHtml("p"', 'vdBuscaHtml("s"', 'vdBuscaHtml("o"', "vdTxtOs"].forEach(x => assert.ok(h.includes(x), "falta: " + x));
-});
-
-test("tela: cada cobertura mostra o que foi deixado no posto no dia, e cada excedente/treinamento mostra quem fez a cobertura (mesmo posto e dia)", () => {
-  const h = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8").replace(/\r\n/g, "\n");
-  const vd = h.slice(h.indexOf("VISÃO DIRETORIA (aba do Relatório de Coberturas)"), h.indexOf("/* ── Excel da diretoria: capa com os números"));
-  ["Deixado no posto", "Cobertura feita por", "Supervisor do posto", "Sem cobertura registrada no dia", "vdLig(", "osIdx", "cobIdx"].forEach(x => assert.ok(vd.includes(x), "falta: " + x));
+  ["vdBusca(", "vdLimpa(", "vdBuscaHtml(", 'id="vdQ${c}"', 'vdBuscaHtml("p"', 'vdBuscaHtml("s"'].forEach(x => assert.ok(h.includes(x), "falta: " + x));
 });
 
 test("tela da Visão Diretoria: só o que foi pedido (sem comparações com período anterior); dados pelas rotas exclusivas", () => {
   const h = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8").replace(/\r\n/g, "\n");
   const vd = h.slice(h.indexOf("VISÃO DIRETORIA (aba do Relatório de Coberturas)"), h.indexOf("/* ── Excel da diretoria: capa com os números")).replace(/\/\*[\s\S]*?\*\//g, "");
-  assert.ok(vd.includes('brPedir("GET","diretoria_os"') && vd.includes('brPedir("GET","diretoria"'), "as duas rotas exclusivas");
-  ["Postos que mais precisaram de cobertura", "Supervisores que mais fizeram coberturas", "Colaborador que não tinha para onde ir", "Treinamentos", "Coberturas mês a mês"].forEach(t => assert.ok(vd.includes(t), "falta: " + t));
+  assert.ok(vd.includes('brPedir("GET","diretoria"'), "a rota exclusiva");
+  ["Postos que mais precisaram de cobertura", "Supervisores que mais fizeram coberturas", "Coberturas mês a mês"].forEach(t => assert.ok(vd.includes(t), "falta: " + t));
   assert.ok(vd.includes("slice(0,5)"), "só os 5 primeiros postos");
   assert.ok(!/canvas|Período anterior|Comparado com/.test(vd), "sem comparações com período anterior");
 });
@@ -202,13 +157,13 @@ test("tela: lista → detalhe → dia. Clicar num item abre o calendário dele (
   const h = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8").replace(/\r\n/g, "\n");
   const vd = h.slice(h.indexOf("VISÃO DIRETORIA (aba do Relatório de Coberturas)"), h.indexOf("/* ── Excel da diretoria: capa com os números"));
   ["vdSel(", "vdDetalhe(", "vdCalItem(", "vdGaveta(", "vdDia(", "vdFecha", "fm-mg", "fm-mes-h", "vdModo('folha')", "vdModo('mes')", "Folha a folha", "Mês a mês", "3 ou mais"].forEach(x => assert.ok(vd.includes(x), "falta: " + x));
-  ["Supervisor que fez", "Quem faltou", "Chegada", "Deixado no posto", "Cobertura feita por", "vaga às"].forEach(x => assert.ok(vd.includes(x), "o dia mostra: " + x));
+  ["Supervisor que fez", "Quem faltou", "Chegada", "vaga às"].forEach(x => assert.ok(vd.includes(x), "o dia mostra: " + x));
   assert.ok(!vd.includes("vdCalHtml("), "sem calendário solto na coluna: só ao clicar no item");
 });
 
 test("períodos do gráfico: meses vão do dia 1 ao último; folhas vão do dia 26 ao dia 25 e levam o nome do mês em que fecham", () => {
   const h = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8").replace(/\r\n/g, "\n");
-  const a = h.indexOf("function vdPerGraf(modo){"), b = h.indexOf("/* Pede os dados pelas rotas exclusivas");
+  const a = h.indexOf("function vdPerGraf(modo){"), b = h.indexOf("/* Pede os dados pela rota exclusiva");
   assert.ok(a > 0 && b > a);
   const mk = hoje => new Function("brHoje", "VD_MESES", h.slice(a, b) + "; return vdPerGraf;")(() => hoje, ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]);
   let f = mk("2026-10-06")("folha");
