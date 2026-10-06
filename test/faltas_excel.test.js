@@ -42,8 +42,8 @@ test("a tabela de casos traz o que o Excel precisa, em número e texto certos", 
   assert.equal(carla[10], 3, "3 faltas");
   assert.match(carla[11], /^(dom|seg|ter|qua|qui|sex|sáb) \d\d\/\d\d( · |$)/, "datas com dia da semana, para não virar data no Excel");
   assert.equal(carla[16], 2, "duas medidas no ano");
-  assert.equal(carla[17], "", "caso em aberto não tem regra especial");
-  assert.equal(carla[18], "", "só o caso que a coordenação decide traz motivo");
+  assert.ok(["", "COORD"].includes(carla[17]), "sem medida: ou segue em aberto (sem regra especial) ou, se a falta continuou, vai para a coordenação (depende do dia da semana de hoje)");
+  assert.equal(carla[18] !== "", carla[17] === "COORD", "só o caso que a coordenação decide traz motivo");
 });
 
 test("listas e reincidência: caixas de escolha começam com 'Todos' e a reincidente aparece", async () => {
