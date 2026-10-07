@@ -872,7 +872,7 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       -->
       <div class="ni" data-pg="ligacoes" data-perm="lig" onclick="navTo('ligacoes',this)"><span class="ni-ic">📞</span><span>Feedback de Faltas</span><span class="nib nib-novo">NOVO</span></div>
       <div class="ni" data-pg="faltasmed" data-perm="fm" onclick="navTo('faltasmed',this)"><span class="ni-ic">⚖️</span><span>Faltas x Medidas</span><span class="nib nib-novo">NOVO</span></div>
-      <div class="ni" data-pg="faltassup" data-perm="sup" onclick="navTo('faltassup',this)"><span class="ni-ic">👥</span><span>Faltas da Supervisão</span><span class="nib nib-novo">NOVO</span></div>
+      <div class="ni" data-pg="faltassup" data-perm="sup" onclick="navTo('faltassup',this)"><span class="ni-ic">👥</span><span>Acompanhamento de Medidas (Supervisão)</span><span class="nib nib-novo">NOVO</span></div>
     </div>
   </div>
   <div class="nav-cat" data-cat="rh">
@@ -3423,9 +3423,226 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
         #vgFmDir .dr-p{grid-template-columns:1fr;gap:2px;padding:10px 0}
         #vgFmDir .dr-ls{padding:6px 12px 12px 18px}
       }
+      /* ── Modo TV (Acompanhamento de Medidas): tela cheia, tema escuro ou claro, letras em proporção à tela para ler de longe ── */
+      body.ftv-on{overflow:hidden}
+      #ftv{position:fixed;inset:0;z-index:100500;display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;gap:.7em;padding:.9em 1.1em .9em;
+        font-family:"Segoe UI",system-ui,sans-serif;font-size:clamp(12px,.98vw,28px);line-height:1.25;color:var(--tx);background:var(--fundo)}
+      #ftv[data-tema="escuro"]{--fundo:radial-gradient(120% 90% at 0% 0%,#15274a 0%,#0b1426 50%,#070d19 100%);
+        --sf:#0f1a2f;--sf2:#15223b;--sf3:rgba(255,255,255,.045);--ln:rgba(255,255,255,.07);--ln2:rgba(255,255,255,.13);
+        --tx:#eef3fb;--tx2:#c3cee0;--mut:#8e9cb4;--marca:#7cc1ff;--marca2:rgba(124,193,255,.14);--sombra:0 .5em 1.6em rgba(0,0,0,.42);--brilho:inset 0 1px 0 rgba(255,255,255,.05);
+        --da:#ff5f56;--hj:#ff9d2a;--np:#f2c544;--gr:#9eabbe;--vi:#b69cff;--ok:#4ade80;--s1:78%;--l1:64%;--l2:22%}
+      #ftv[data-tema="claro"]{--fundo:linear-gradient(160deg,#f3f6fb 0%,#e8eef7 100%);
+        --sf:#ffffff;--sf2:#f5f7fb;--sf3:#f1f4f9;--ln:#e3e9f2;--ln2:#d3dce9;
+        --tx:#14213a;--tx2:#3a4a66;--mut:#68778f;--marca:#1f5fbf;--marca2:rgba(31,95,191,.09);--sombra:0 .35em 1.2em rgba(20,40,80,.09);--brilho:none;
+        --da:#d42f24;--hj:#d96a00;--np:#a87b00;--gr:#5f6f86;--vi:#6d45d0;--ok:#16a34a;--s1:66%;--l1:44%;--l2:95%}
+      #ftv.sem-cursor,#ftv.sem-cursor *{cursor:none!important}
+      #ftv b{font-weight:800}
+      #ftv svg{width:1em;height:1em;display:block;flex:none}
+      #ftv .k-da{--c:var(--da)}#ftv .k-hj{--c:var(--hj)}#ftv .k-np{--c:var(--np)}#ftv .k-gr{--c:var(--gr)}#ftv .k-vi{--c:var(--vi)}
+      /* topo: logo, título, indicadores, relógio */
+      #ftv .ftv-top{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto;align-items:center;gap:1.1em}
+      #ftv .ftv-logo{background:#fff;border-radius:.8em;padding:.35em .8em;display:flex;align-items:center;box-shadow:var(--sombra);border:1px solid var(--ln)}
+      #ftv .ftv-logo svg{width:auto;height:2.6em}
+      #ftv .ftv-ti{display:flex;align-items:center;gap:.7em;padding-left:1.1em;border-left:1px solid var(--ln2)}
+      #ftv .ftv-lg{width:2.5em;height:2.5em;border-radius:.7em;display:flex;align-items:center;justify-content:center;background:var(--marca2);color:var(--marca)}
+      #ftv .ftv-lg svg{width:1.35em;height:1.35em}
+      #ftv .ftv-ti b{display:block;font-size:1.42em;letter-spacing:-.015em;line-height:1.08}
+      #ftv .ftv-ti span{display:block;font-size:.76em;color:var(--mut);margin-top:.2em}
+      #ftv .ftv-kp{display:flex;justify-content:center;gap:.5em;flex-wrap:nowrap;min-width:0}
+      #ftv .ftv-k{display:flex;align-items:center;gap:.55em;padding:.42em .8em .42em .45em;white-space:nowrap;border-radius:.8em;background:var(--sf);border:1px solid var(--ln2);box-shadow:var(--brilho),var(--sombra)}
+      #ftv .ftv-k .ic{width:2.1em;height:2.1em;border-radius:.6em;display:flex;align-items:center;justify-content:center;background:var(--marca2);color:var(--marca)}
+      #ftv .ftv-k .ic svg{width:1.15em;height:1.15em}
+      #ftv .ftv-k b{display:block;font-size:1.55em;line-height:1;font-variant-numeric:tabular-nums}
+      #ftv .ftv-k span:not(.ic){display:block;font-size:.66em;color:var(--mut);margin-top:.2em;text-transform:uppercase;letter-spacing:.04em;font-weight:700}
+      #ftv .ftv-k.fo b{font-size:1.15em}
+      #ftv .ftv-k.k-da,#ftv .ftv-k.k-hj{border-color:color-mix(in srgb,var(--c) 50%,transparent);background:color-mix(in srgb,var(--c) 10%,var(--sf))}
+      #ftv .ftv-k.k-da .ic,#ftv .ftv-k.k-hj .ic{background:color-mix(in srgb,var(--c) 18%,transparent);color:var(--c)}
+      #ftv .ftv-k.k-da b,#ftv .ftv-k.k-hj b{color:var(--c)}
+      #ftv .ftv-st{display:flex;flex-direction:column;align-items:flex-end;gap:.35em}
+      #ftv .ftv-rl{text-align:right;line-height:1}
+      #ftv .ftv-rl b{display:block;font-size:2.4em;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+      #ftv .ftv-rl span{display:block;font-size:.8em;color:var(--tx2);margin-top:.2em}
+      #ftv .ftv-rl span::first-letter{text-transform:uppercase}
+      #ftv .ftv-st2{display:flex;align-items:center;gap:.6em}
+      #ftv .ftv-st2>span{display:inline-flex;align-items:center;gap:.4em;font-size:.68em;color:var(--mut)}
+      #ftv .ftv-st2>span i{width:.6em;height:.6em;border-radius:50%;background:var(--ok);box-shadow:0 0 0 .2em color-mix(in srgb,var(--ok) 22%,transparent)}
+      #ftv .ftv-st2>span i.off{background:var(--da);box-shadow:0 0 0 .2em color-mix(in srgb,var(--da) 22%,transparent)}
+      #ftv .ftv-tm{display:inline-flex;align-items:center;gap:.35em;font:inherit;font-size:.68em;font-weight:700;color:var(--tx2);background:var(--sf);border:1px solid var(--ln2);border-radius:999px;padding:.3em .75em;cursor:pointer}
+      #ftv .ftv-tm:focus-visible{outline:2px solid var(--marca)}
+      /* letreiro */
+      #ftv .ftv-mq{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:stretch;border-radius:.9em;overflow:hidden;background:var(--sf);border:1px solid var(--ln2);box-shadow:var(--brilho),var(--sombra)}
+      #ftv .ftv-mql{display:flex;align-items:center;gap:.6em;padding:.4em 1.1em .4em .6em;background:var(--marca2);border-right:1px solid var(--ln2)}
+      #ftv .ftv-mql .ic{width:2em;height:2em;border-radius:.55em;display:flex;align-items:center;justify-content:center;background:var(--marca);color:var(--sf)}
+      #ftv .ftv-mql .ic svg{width:1.1em;height:1.1em}
+      #ftv .ftv-mql span:not(.ic){display:block;font-size:.62em;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);font-weight:700}
+      #ftv .ftv-mql b{display:block;font-size:.95em}
+      #ftv .ftv-mqv{overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 3%,#000 97%,transparent);mask-image:linear-gradient(90deg,transparent,#000 3%,#000 97%,transparent)}
+      #ftv .ftv-mqt{display:flex;width:max-content;gap:.8em;padding:.55em .8em;animation:ftvMarq 40s linear infinite;will-change:transform}
+      @keyframes ftvMarq{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+      #ftv .ftv-tk{display:inline-flex;align-items:center;gap:.55em;padding:.32em 1em .32em .45em;border-radius:999px;white-space:nowrap;
+        background:hsl(var(--h) var(--s1) var(--l1) / .13);border:1px solid hsl(var(--h) var(--s1) var(--l1) / .55)}
+      #ftv .ftv-tk i{width:.85em;height:.85em;border-radius:50%;margin-left:.3em;background:hsl(var(--h) var(--s1) var(--l1));box-shadow:0 0 .6em hsl(var(--h) var(--s1) var(--l1) / .7)}
+      #ftv .ftv-tk b{font-size:1.1em;color:hsl(var(--h) var(--s1) var(--l1))}
+      #ftv .ftv-tk em{font-style:normal;font-weight:900;font-size:1.45em;line-height:1;color:var(--tx);font-variant-numeric:tabular-nums}
+      #ftv .ftv-tk small{font-size:.76em;color:var(--tx2)}
+      /* cards dos supervisores */
+      #ftv .ftv-grid{display:grid;grid-template-columns:repeat(var(--cols),minmax(0,1fr));grid-auto-rows:minmax(0,1fr);gap:.7em;min-height:0}
+      #ftv .ftv-card{container-type:inline-size;position:relative;display:flex;flex-direction:column;min-height:0;border-radius:.9em;overflow:hidden;cursor:pointer;
+        background:var(--sf);border:1px solid var(--ln2);box-shadow:var(--brilho),var(--sombra);transition:transform .15s,border-color .15s}
+      #ftv .ftv-card::before{content:"";position:absolute;left:0;right:0;top:0;height:.28em;background:linear-gradient(90deg,hsl(var(--h) var(--s1) var(--l1)),hsl(var(--h) var(--s1) var(--l1) / .35))}
+      #ftv .ftv-card:hover,#ftv .ftv-card:focus-visible{border-color:hsl(var(--h) var(--s1) var(--l1) / .8);outline:none;transform:translateY(-.1em)}
+      #ftv .ftv-card.vazio{opacity:.88}
+      #ftv .ftv-ch0{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:.6em;padding:.75em .8em .5em}
+      #ftv .ftv-av{width:2.2em;height:2.2em;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:1.05em;flex:none;
+        color:#fff;background:hsl(var(--h) var(--s1) var(--l1));box-shadow:0 0 0 .2em hsl(var(--h) var(--s1) var(--l1) / .22)}
+      #ftv .ftv-sn{min-width:0}
+      #ftv .ftv-sn b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:1.1em;line-height:1.12}
+      #ftv .ftv-sn span{display:block;font-size:.7em;color:var(--mut);margin-top:.1em}
+      #ftv .ftv-tt{text-align:right;line-height:1}
+      #ftv .ftv-tt b{display:block;font-size:2.2em;font-variant-numeric:tabular-nums;color:hsl(var(--h) var(--s1) var(--l1))}
+      #ftv .ftv-tt span{display:block;font-size:.6em;color:var(--mut);margin-top:.15em;max-width:6.5em;font-weight:700;line-height:1.15}
+      #ftv .ftv-card.vazio .ftv-tt b{color:var(--ok)}
+      #ftv .ftv-bar{display:flex;gap:2px;height:.32em;margin:0 .8em .45em;border-radius:999px;overflow:hidden;background:var(--sf3)}
+      #ftv .ftv-bar i{background:var(--c)}
+      #ftv .ftv-cs{display:flex;flex-wrap:wrap;gap:.3em;padding:0 .7em .5em;border-bottom:1px solid var(--ln)}
+      #ftv .ftv-ch{display:inline-flex;align-items:center;gap:.35em;font-size:.66em;font-weight:700;padding:.18em .6em;border-radius:999px;color:var(--tx2);
+        background:color-mix(in srgb,var(--c) 11%,transparent);border:1px solid color-mix(in srgb,var(--c) 32%,transparent)}
+      #ftv .ftv-ch i{width:.62em;height:.62em;border-radius:50%;background:var(--c)}
+      #ftv .ftv-ls{flex:1;min-height:0;overflow:hidden;position:relative}
+      #ftv .ftv-tr{list-style:none;margin:0;display:flex;flex-direction:column;gap:.35em;padding:.35em .55em 0}
+      #ftv .ftv-tr.rola{animation:ftvRola 30s linear infinite}
+      @keyframes ftvRola{from{transform:translateY(0)}to{transform:translateY(calc(-1 * var(--alt)))}}
+      #ftv .ftv-it{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:.55em;padding:.45em .55em .45em .85em;border-radius:.55em;background:var(--sf2);border:1px solid var(--ln)}
+      #ftv .ftv-it::before{content:"";position:absolute;left:.3em;top:.4em;bottom:.4em;width:.22em;border-radius:999px;background:var(--c)}
+      #ftv .ftv-pe{min-width:0}
+      #ftv .ftv-pe b{display:block;font-size:.98em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      #ftv .ftv-pe span{display:block;font-size:.7em;color:var(--tx2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:.1em}
+      #ftv .ftv-pe small{display:block;font-size:.63em;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:.1em}
+      #ftv .ftv-pz{text-align:right;padding:.28em .6em;border-radius:.5em;min-width:6.4em;background:color-mix(in srgb,var(--c) 13%,transparent);border:1px solid color-mix(in srgb,var(--c) 50%,transparent)}
+      #ftv .ftv-pz small{display:block;font-size:.5em;text-transform:uppercase;letter-spacing:.05em;font-weight:700;color:var(--mut);white-space:nowrap}
+      #ftv .ftv-pz b{display:block;font-size:.92em;color:var(--c);white-space:nowrap}
+      #ftv .ftv-pz span{display:block;font-size:.6em;color:var(--tx2);white-space:nowrap}
+      #ftv .k-da .ftv-pz{background:var(--da);border-color:var(--da)}
+      #ftv .k-da .ftv-pz b,#ftv .k-da .ftv-pz span,#ftv .k-da .ftv-pz small{color:#fff}
+      #ftv .k-vi .ftv-pz,#ftv .k-gr .ftv-pz{background:transparent;border-style:dashed}
+      #ftv .k-hj .ftv-pz{animation:ftvHoje 2.4s ease-in-out infinite}
+      @keyframes ftvHoje{50%{background:color-mix(in srgb,var(--hj) 34%,transparent)}}
+      #ftv .ftv-cf{display:flex;align-items:center;justify-content:space-between;gap:.6em;padding:.4em .8em;border-top:1px solid var(--ln);font-size:.64em;color:var(--mut)}
+      #ftv .ftv-mais{font-weight:700;color:var(--tx2)}
+      #ftv .ftv-toque{display:inline-flex;align-items:center;gap:.35em;opacity:.8}
+      #ftv .ftv-ok{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.3em;color:var(--ok);padding:1em;text-align:center}
+      #ftv .ftv-ok svg{width:2.2em;height:2.2em}
+      #ftv .ftv-ok b{font-size:1.1em}
+      #ftv .ftv-ok span{font-size:.72em;color:var(--mut)}
+      /* rodapé: regra e legenda */
+      #ftv .ftv-rg{display:flex;align-items:center;gap:.7em;padding:.45em .9em .45em .5em;border-radius:.8em;background:var(--sf);border:1px solid var(--ln2);box-shadow:var(--brilho)}
+      #ftv .ftv-rg .ic{width:1.9em;height:1.9em;border-radius:.55em;display:flex;align-items:center;justify-content:center;background:var(--marca2);color:var(--marca)}
+      #ftv .ftv-rg p{margin:0;flex:1;font-size:.82em;color:var(--tx2)}
+      #ftv .ftv-rg p b{color:var(--tx)}
+      #ftv .ftv-lgd{display:flex;flex-wrap:wrap;gap:.9em;font-size:.7em;color:var(--tx2);font-weight:600}
+      #ftv .ftv-lgd span{display:inline-flex;align-items:center;gap:.35em}
+      #ftv .ftv-lgd i{width:.7em;height:.7em;border-radius:.2em;background:var(--c)}
+      /* detalhe da área de um supervisor (toque no card) */
+      #ftv .ftv-ov{position:fixed;inset:0;z-index:2;background:rgba(4,9,18,.62);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+      #ftv .ftv-det{position:fixed;inset:4% 5%;z-index:3;display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;border-radius:1.1em;overflow:hidden;
+        background:var(--sf);border:1px solid var(--ln2);border-top:.35em solid hsl(var(--h) var(--s1) var(--l1));box-shadow:0 1.5em 4em rgba(0,0,0,.5);animation:ftvDet .22s ease-out}
+      @keyframes ftvDet{from{opacity:0;transform:translateY(1em) scale(.985)}to{opacity:1;transform:none}}
+      #ftv .ftv-deh{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:.9em;padding:1em 1.3em .8em;border-bottom:1px solid var(--ln)}
+      #ftv .ftv-av.g{width:2.8em;height:2.8em;font-size:1.35em}
+      #ftv .ftv-deh .ftv-sn small{display:block;font-size:.66em;text-transform:uppercase;letter-spacing:.08em;font-weight:700;color:hsl(var(--h) var(--s1) var(--l1))}
+      #ftv .ftv-deh .ftv-sn b{font-size:1.7em}
+      #ftv .ftv-deh .ftv-sn span{font-size:.78em}
+      #ftv .ftv-dx{display:inline-flex;align-items:center;gap:.4em;font:inherit;font-size:.85em;font-weight:700;color:var(--tx);background:var(--sf2);border:1px solid var(--ln2);border-radius:.6em;padding:.45em .9em;cursor:pointer}
+      #ftv .ftv-dx:focus-visible{outline:2px solid var(--marca)}
+      #ftv .ftv-dks{display:flex;flex-wrap:wrap;gap:.55em;padding:.75em 1.3em;background:var(--sf2);border-bottom:1px solid var(--ln)}
+      #ftv .ftv-dk{display:flex;align-items:center;gap:.5em;padding:.4em .85em;border-radius:.65em;background:var(--sf);border:1px solid var(--ln2)}
+      #ftv .ftv-dk svg{width:1.2em;height:1.2em;color:var(--marca)}
+      #ftv .ftv-dk i{width:.75em;height:.75em;border-radius:50%;background:var(--c)}
+      #ftv .ftv-dk b{font-size:1.35em;line-height:1;font-variant-numeric:tabular-nums}
+      #ftv .ftv-dk[class*="k-"] b{color:var(--c)}
+      #ftv .ftv-dk span{font-size:.74em;color:var(--tx2)}
+      #ftv .ftv-db{overflow:auto;padding:.9em 1.3em 1.1em;overscroll-behavior:contain}
+      #ftv .ftv-dg{margin-bottom:1.1em}
+      #ftv .ftv-dg h4{display:flex;align-items:center;gap:.5em;margin:0 0 .45em;font-size:1em;color:var(--tx)}
+      #ftv .ftv-dg h4 i{width:.8em;height:.8em;border-radius:.25em;background:var(--c)}
+      #ftv .ftv-dg h4 em{font-style:normal;font-size:.72em;font-weight:700;color:var(--c);padding:.12em .6em;border-radius:999px;background:color-mix(in srgb,var(--c) 13%,transparent)}
+      #ftv .ftv-dt{border:1px solid var(--ln2);border-radius:.7em;overflow:hidden}
+      #ftv .ftv-dh,#ftv .ftv-dr{display:grid;grid-template-columns:1.7fr 1.6fr 1.15fr 1.15fr 1.05fr;gap:.9em;padding:.55em .9em}
+      #ftv .ftv-dh{background:var(--sf2);font-size:.62em;text-transform:uppercase;letter-spacing:.07em;font-weight:800;color:var(--mut)}
+      #ftv .ftv-dr{border-top:1px solid var(--ln);align-items:center;box-shadow:inset .25em 0 0 var(--c)}
+      #ftv .ftv-dr:nth-child(odd){background:var(--sf3)}
+      #ftv .ftv-dr b{display:block;font-size:.9em}
+      #ftv .ftv-dr small{display:block;font-size:.68em;color:var(--mut);margin-top:.1em}
+      #ftv .ftv-dp b{color:var(--c)}
+      #ftv .ftv-hs{display:inline-block;font-size:.68em;font-weight:700;padding:.2em .65em;border-radius:999px;background:var(--sf3);color:var(--mut);border:1px solid var(--ln2)}
+      #ftv .ftv-hs.med{color:var(--hj);border-color:color-mix(in srgb,var(--hj) 45%,transparent);background:color-mix(in srgb,var(--hj) 10%,transparent)}
+      #ftv .ftv-hs.rein{color:var(--da);border-color:color-mix(in srgb,var(--da) 45%,transparent);background:color-mix(in srgb,var(--da) 10%,transparent)}
+      #ftv .ftv-hs.zero{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 40%,transparent);background:color-mix(in srgb,var(--ok) 9%,transparent)}
+      #ftv .ftv-dfo{display:flex;align-items:center;gap:.55em;padding:.6em 1.3em;border-top:1px solid var(--ln);background:var(--sf2);font-size:.78em;color:var(--tx2)}
+      #ftv .ftv-dfo svg{color:var(--marca)}
+      #ftv .ftv-dfo span{flex:1}
+      #ftv .ftv-dfo em{font-style:normal;font-size:.85em;color:var(--mut)}
+      /* avisos e botões */
+      #ftv .ftv-vz{grid-row:1/-1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.4em;font-size:1.3em}
+      #ftv .ftv-vz span{font-size:.7em;color:var(--mut)}
+      #ftv .ftv-x{position:fixed;left:1.2em;top:1em;z-index:4;display:inline-flex;align-items:center;gap:.35em;font:inherit;font-size:.72em;font-weight:700;color:var(--tx);background:var(--sf);border:1px solid var(--ln2);border-radius:.6em;padding:.4em .8em;cursor:pointer;box-shadow:var(--sombra);opacity:0;transition:opacity .2s}
+      #ftv:not(.sem-cursor) .ftv-x{opacity:.95}
+      #ftv .ftv-x:focus-visible{opacity:1;outline:2px solid var(--marca)}
+      #ftv .ftv-fs{position:fixed;left:50%;bottom:3.6em;z-index:4;transform:translateX(-50%);font-size:.72em;font-weight:700;color:var(--tx);background:var(--sf);border:1px solid var(--marca);border-radius:999px;padding:.4em 1em;pointer-events:none;box-shadow:var(--sombra)}
+      #ftv.cheia .ftv-fs{display:none}
+      /* card estreito: o prazo desce para baixo do nome, para o nome não ser cortado */
+      @container (max-width:17em){#ftv .ftv-it{grid-template-columns:minmax(0,1fr);gap:.3em}#ftv .ftv-pz{justify-self:start;text-align:left;display:flex;align-items:baseline;gap:.5em;min-width:0}#ftv .ftv-pz small{display:none}#ftv .ftv-tt span{display:none}#ftv .ftv-sn b{font-size:1em}#ftv .ftv-toque{display:none}}
+      @media (prefers-reduced-motion:reduce){#ftv .ftv-mqt,#ftv .ftv-tr.rola,#ftv .k-hj .ftv-pz,#ftv .ftv-det{animation-duration:0s!important;animation-iteration-count:1!important}}
+      /* ── fiel à referência ── */
+      #ftv[data-tema="escuro"]{--fundo:linear-gradient(180deg,#0a1830 0%,#071226 100%);--sf:#0e213f;--sf2:#0e213f;--ln:rgba(140,170,220,.14);--ln2:rgba(140,170,220,.22);--marca:#5aa2ff;--marca2:rgba(90,162,255,.12)}
+      #ftv .ftv-logo{padding:.6em 1.6em;border-radius:.5em}
+      #ftv .ftv-logo svg{height:4em}
+      #ftv .ftv-ti{border-left:0;padding-left:.3em}
+      #ftv .ftv-k{box-shadow:none;border-radius:.5em;padding:.45em .9em .45em .6em;background:transparent}
+      #ftv .ftv-k .ic{background:none;width:1.6em;height:1.6em}#ftv .ftv-k .ic svg{width:1.4em;height:1.4em}
+      #ftv .ftv-k b{font-size:1.25em}
+      #ftv .ftv-k span:not(.ic){text-transform:none;letter-spacing:0;font-weight:500;font-size:.66em;margin-top:.1em}
+      #ftv .ftv-k.fo>div{display:flex;flex-direction:column-reverse}
+      #ftv .ftv-k.fo span:not(.ic){text-transform:uppercase;font-size:.56em;margin:0 0 .2em}
+      #ftv .ftv-k.fo b{font-size:1em}
+      #ftv .ftv-k.k-da{background:transparent;border-color:var(--ln2)}#ftv .ftv-k.k-da .ic{background:none}
+      #ftv .ftv-st{padding-left:1.1em;border-left:1px solid var(--ln2)}
+      #ftv .ftv-rl b{font-size:2.3em}
+      #ftv .ftv-st2>span{font-size:.56em}
+      #ftv .ftv-mq{background:transparent;border:1px solid var(--ln2);box-shadow:none;border-radius:.5em}
+      #ftv .ftv-mql{background:transparent;border-right:0}#ftv .ftv-mql .ic{background:none;color:var(--marca)}#ftv .ftv-mql .ic svg{width:1.5em;height:1.5em}
+      #ftv .ftv-mqv{-webkit-mask-image:none;mask-image:none}
+      #ftv .ftv-tk{border-radius:.4em;padding:.5em 1.6em .5em .7em;background:hsl(var(--h) 60% 30% / .35);border-color:hsl(var(--h) 60% 55% / .45)}
+      #ftv .ftv-tk b{color:var(--tx);font-size:1em}#ftv .ftv-tk em{font-size:1.3em}#ftv .ftv-tk small{font-size:.7em}
+      #ftv .ftv-tk i{box-shadow:none}
+      #ftv .ftv-card{border-radius:.6em;cursor:pointer;box-shadow:none}
+      #ftv .ftv-card::before,#ftv .ftv-bar,#ftv .ftv-cs,#ftv .ftv-toque{display:none}
+      #ftv .ftv-card:hover,#ftv .ftv-card:focus-visible{transform:none;border-color:var(--marca)}
+      #ftv .ftv-ch0{padding:.7em .9em;border-bottom:1px solid var(--ln);background:rgba(255,255,255,.025)}
+      #ftv .ftv-av{background:#1d4a8f;box-shadow:none;width:2.3em;height:2.3em}
+      #ftv .ftv-tt b{color:var(--tx);font-size:1.6em}
+      #ftv .ftv-tt span{font-weight:500;font-size:.56em}
+      #ftv .ftv-card.vazio .ftv-tt b{color:var(--tx)}
+      #ftv .ftv-tr{gap:0;padding:0 .7em}
+      #ftv .ftv-it{background:transparent;border:0;border-bottom:1px solid var(--ln);border-radius:0;padding:.5em .2em .5em .75em}
+      #ftv .ftv-it::before{left:0;top:.45em;bottom:.45em;width:.2em;border-radius:0}
+      #ftv .ftv-pz{min-width:0;max-width:11em;white-space:normal;text-align:left;font-size:.68em;font-weight:600;line-height:1.3;padding:.4em .8em;border-radius:.35em;color:var(--c);background:color-mix(in srgb,var(--c) 18%,transparent);border:1px solid color-mix(in srgb,var(--c) 55%,transparent)}
+      #ftv .k-da .ftv-pz{background:color-mix(in srgb,var(--da) 18%,transparent);border-color:color-mix(in srgb,var(--da) 60%,transparent);color:#ff7a72}
+      #ftv .k-vi .ftv-pz,#ftv .k-gr .ftv-pz{text-align:center;color:var(--tx);background:transparent;border:1px solid var(--ln2);border-style:solid;max-width:8em}
+      #ftv .ftv-cf{border-top:0;padding:.35em 1.2em .5em}
+      #ftv .ftv-mais{color:var(--marca);font-size:1.3em;font-weight:600}
+      #ftv .ftv-rg{background:transparent;border:0;box-shadow:none;padding:.2em 0}
+      #ftv .ftv-rg .ic{background:#e8b737;color:#1a1a1a;border-radius:50%;width:1.8em;height:1.8em}
+      #ftv .ftv-rg p{flex:none;font-size:1em;color:var(--tx);padding-left:.8em;border-left:1px solid #b8913a}
+      #ftv .ftv-rg p b{color:#e8b737}
+      #ftv .ftv-lgd{flex:1;justify-content:flex-end;border-top:1px solid #8a6d2a;padding-top:.3em;margin-left:1em;opacity:.85}
+      #ftv[data-tema="claro"] .ftv-ch0{background:#f5f8fc}#ftv[data-tema="claro"] .k-da .ftv-pz{color:var(--da)}
+      @container (max-width:17em){#ftv .ftv-pz{max-width:none}}
+      #ftv .ftv-pz{max-width:14em}#ftv .k-vi .ftv-pz,#ftv .k-gr .ftv-pz{max-width:10em}
+      #ftv .ftv-pe b,#ftv .ftv-sn b,#ftv .ftv-ti b,#ftv .ftv-tk b{font-weight:700}
     </style>
-    <div class="sec-hdr"><span class="fm-ic-tile" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg></span><div><div class="sec-hdr-t">Faltas da Supervisão</div><div class="sec-hdr-sub">Faltas injustificadas, prazo para a medida e histórico de reincidência</div></div>
-      <div style="margin-left:auto"><button class="fm-btn" onclick="fsLoad(true)" title="Buscar os dados de novo">Atualizar</button></div></div>
+    <div class="sec-hdr"><span class="fm-ic-tile" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg></span><div><div class="sec-hdr-t">Acompanhamento de Medidas (Supervisão)</div><div class="sec-hdr-sub">Faltas injustificadas, prazo para a medida e histórico de reincidência</div></div>
+      <div style="margin-left:auto;display:flex;gap:8px"><button class="fm-btn fm-pri" onclick="ftvAbrir()" title="Abrir a tela para a TV da sala do operacional (tela cheia)">Modo TV</button><button class="fm-btn" onclick="fsLoad(true)" title="Buscar os dados de novo">Atualizar</button></div></div>
     <div id="fs-sec"><div class="fm-empty"><b>Carregando…</b></div></div>
   </div>
 
@@ -3706,7 +3923,7 @@ function _abrirSessao(u){
   sessionStorage.setItem("userMetas",usr.metas?"1":"0");
   applyUserUI();
   if(typeof hqBeat==="function")hqBeat(); // já aparece na Sede Virtual
-  tvModoChecar(); // se abriu a TV sem estar logado ainda, ativa só depois do login
+  tvModoChecar(); ftvChecar(); // se abriu a TV sem estar logado ainda, ativa só depois do login
   vgContrato();
   // A planilha é buscada ao abrir a página; sem login o servidor recusa. Busca de novo agora.
   if(!_dadosDoServidor&&typeof loadFromSupabase==="function")loadFromSupabase().then(function(g){if(g&&typeof renderAfterLoad==="function")renderAfterLoad();}).catch(function(){});
@@ -4391,7 +4608,7 @@ function setTurno(t,btn){document.querySelectorAll("#trnoPg .pi").forEach(b=>b.c
 function setArea(){ST.area=document.getElementById("areaS").value;rpg();refresh();}
 function rpg(){Object.keys(ST.tpg).forEach(k=>ST.tpg[k]=1);}
 
-const PTITLES={fmrel:"Relatório de Faltas x Medidas",metas:"Metas da Diretoria",visao:"Visão Geral",ativos:"Funcionários Ativos",clientes:"Clientes",faltas:"Faltas & Top 10",coberturas:"Coberturas",postos:"Justificativa de Postos Descobertos",os:"OS Avulsos",fts:"FTS",dispo:"Sem Alocação",restec:"Reservas Técnicas",hrextra:"Horas Extras",checklist:"Check List",rhvagas:"RH — Controle de Vagas",rhentrev:"RH — Entrevistas & Funil",rhdesl:"RH — Desligamentos",rhres:"RH — Reservas → Efetivação",rhtrein:"RH — Treinamentos",rhdash:"Painel RH — Diretoria",compro:"Comercial — Propostas e Serviços Extras",comdash:"Painel Comercial",config:"Configurações — Acessos & Usuários",sede:"Base Virtual — Equipe",prj:"Projetos — Evolução & Inovação",audqual:"Auditoria de Qualidade",ligacoes:"Feedback de Faltas",faltasmed:"Faltas x Medidas",bdvrel:"Relatório de Coberturas do Supervisor",faltassup:"Faltas da Supervisão"};
+const PTITLES={fmrel:"Relatório de Faltas x Medidas",metas:"Metas da Diretoria",visao:"Visão Geral",ativos:"Funcionários Ativos",clientes:"Clientes",faltas:"Faltas & Top 10",coberturas:"Coberturas",postos:"Justificativa de Postos Descobertos",os:"OS Avulsos",fts:"FTS",dispo:"Sem Alocação",restec:"Reservas Técnicas",hrextra:"Horas Extras",checklist:"Check List",rhvagas:"RH — Controle de Vagas",rhentrev:"RH — Entrevistas & Funil",rhdesl:"RH — Desligamentos",rhres:"RH — Reservas → Efetivação",rhtrein:"RH — Treinamentos",rhdash:"Painel RH — Diretoria",compro:"Comercial — Propostas e Serviços Extras",comdash:"Painel Comercial",config:"Configurações — Acessos & Usuários",sede:"Base Virtual — Equipe",prj:"Projetos — Evolução & Inovação",audqual:"Auditoria de Qualidade",ligacoes:"Feedback de Faltas",faltasmed:"Faltas x Medidas",bdvrel:"Relatório de Coberturas do Supervisor",faltassup:"Acompanhamento de Medidas (Supervisão)"};
 
 /* ── Sidebar 2.0: accordion com estado salvo + busca de módulos ── */
 function navCatToggle(k){
@@ -12691,7 +12908,7 @@ function vgFmDir(){
   o.onclick=e=>{if(e.target===o)vgFmFechar();};
   o.innerHTML=`<div class="dr-card"><div class="dr-top"><span class="fm-ic-tile" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5v16.5M8 20h8"/><path d="M5 7h14"/><circle cx="12" cy="4.2" r=".9"/><path d="M5 7l-2.8 6.2a3 3 0 0 0 5.6 0z"/><path d="M19 7l-2.8 6.2a3 3 0 0 0 5.6 0z"/></svg></span>`+
     `<div class="tt"><h3>Faltas injustificadas e medidas</h3><p>${fmPermitido()?"Visão da diretoria":"Visão geral"} · o que está pendente de medida disciplinar, por supervisor e por posto</p></div>`+
-    `<button type="button" class="ir" onclick="vgFmFechar();navTo('${fmPermitido()?"faltasmed":"faltassup"}')">${fmPermitido()?"Abrir o painel completo":"Abrir Faltas da Supervisão"}</button>`+
+    `<button type="button" class="ir" onclick="vgFmFechar();navTo('${fmPermitido()?"faltasmed":"faltassup"}')">${fmPermitido()?"Abrir o painel completo":"Abrir Acompanhamento de Medidas (Supervisão)"}</button>`+
     `<button type="button" class="x" aria-label="Fechar" onclick="vgFmFechar()">${FM_IC.x}</button></div><div id="vgFmCorpo"></div></div>`;
   document.body.appendChild(o);document.addEventListener("keydown",vgFmTecla);
   vgFmRender();
@@ -15964,6 +16181,274 @@ function fmIniFolhaAtual(){
   return m===1?`${a-1}-12-26`:`${a}-${_fmP2(m-1)}-26`;
 }
 
+/* ═════════ MODO TV — ACOMPANHAMENTO DE MEDIDAS (SUPERVISÃO) ═════════
+   Tela para a TV da sala do operacional: todo mundo lê de longe e quem quiser toca no card do supervisor.
+     1. topo: logo, nome da tela, folha atual, os totais e o relógio;
+     2. letreiro correndo da direita para a esquerda: cada supervisor (na cor dele) e as faltas injustificadas
+        esperando medida na área dele;
+     3. um card por supervisor, todos visíveis ao mesmo tempo: quem precisa de medida (nome e sobrenome, RE,
+        posto, faltas) e o prazo por extenso em destaque; a lista rola sozinha quando não cabe;
+     4. rodapé com a regra do prazo e a legenda das cores.
+   Tocar num card abre o detalhe da área daquele supervisor (fecha sozinho depois de um tempo sem ninguém mexer).
+   Tema escuro ou claro (botão no topo ou &tema=claro no endereço; fica guardado nesta TV).
+   Regras: sempre a folha atual (26 a 25). Entram todos os casos em aberto (sem medida aplicada); atestados
+   (faltas abonadas) não são caso e não entram. Conta = dias de falta injustificada dentro da folha atual.
+   Os dados são os mesmos da tela da supervisão (FM.dados). Abre pelo botão "Modo TV" ou por ?tv=medidas. */
+const FTV={on:false,tAtual:0,tDia:0,tRel:0,tCursor:0,tDet:0,carregadoEm:0,erro:"",wake:null,det:"",dia:""};
+const FTV_MATIZ=[212,330,160,275,95,192,40,248,135,305,178,352,225,115,290,60];
+/* Cor de cada supervisor: pela ordem alfabética, numa paleta em que vizinhos têm cores bem diferentes (nenhuma se repete na tela). */
+function ftvCores(nomes){
+  const cor={};
+  nomes.slice().sort().forEach((n,i)=>{cor[n]=FTV_MATIZ[i%FTV_MATIZ.length];});
+  return cor;
+}
+/* Folha atual: do dia 26 ao dia 25 do mês seguinte. */
+function ftvFolha(){
+  const ini=fmIniFolhaAtual(),[a,m]=ini.split("-").map(Number),fa=m===12?a+1:a,fm=m===12?1:m+1;
+  return{ini,fim:`${fa}-${_fmP2(fm)}-25`};
+}
+/* Situação do caso na TV: atrasada, vence hoje, no prazo, aguardando retorno ou coordenação. */
+function ftvCat(c,hoje){
+  switch(c.situacao){
+    case"PRAZO_VENCIDO":return"da";
+    case"NO_PRAZO":return String(c.prazoFim)<=hoje?"hj":"np";
+    case"AGUARDANDO_RETORNO":return"gr";
+    case"COORDENACAO":return"vi";
+  }
+  return"";
+}
+const FTV_CAT={
+  da:{rot:["atrasada","atrasadas"],tit:"Prazo vencido",o:0},
+  hj:{rot:["vence hoje","vencem hoje"],tit:"Vence hoje",o:1},
+  np:{rot:["no prazo","no prazo"],tit:"No prazo",o:2},
+  gr:{rot:["aguardando retorno","aguardando retorno"],tit:"Aguardando retorno",o:3},
+  vi:{rot:["na coordenação","na coordenação"],tit:"Encaminhado à coordenação",o:4}
+};
+/* O prazo por extenso, para ler de longe: l = rótulo pequeno, b = o principal, s = o complemento. */
+function ftvPrazo(c,cat,hoje){
+  switch(cat){
+    case"da":{const n=fmDif(c.prazoFim,hoje);return{l:"Prazo para aplicar medida",b:"Vencido em "+fmDd(c.prazoFim),s:n===1?"há 1 dia":`há ${n} dias`};}
+    case"hj":return{l:"Prazo para aplicar medida",b:"Vence hoje",s:fmDd(c.prazoFim)+" · último dia"};
+    case"np":{const n=fmDif(hoje,c.prazoFim);return{l:"Prazo para aplicar medida",b:"Até "+fmDd(c.prazoFim),s:n===1?"amanhã":`faltam ${n} dias`};}
+    case"gr":return{l:"Aguardando retorno",b:"No próximo plantão",s:"ainda não voltou"};
+    case"vi":return{l:"Encaminhado à",b:"Coordenação",s:/ABANDONO/i.test((c.posto||"")+" "+(c.motivo||""))?"abandono":"continua faltando"};
+  }
+  return{l:"",b:"—",s:""};
+}
+/* Nome e sobrenome: o primeiro e o último nome. */
+function ftvNome(n){const p=String(n||"").trim().split(/\s+/).filter(Boolean);return fmNomeCard(p.length<2?(p[0]||"—"):p[0]+" "+p[p.length-1]);}
+/* Quem entra e quanto conta: só a folha atual. Todos os supervisores aparecem, mesmo os que estão em dia. */
+function ftvDados(){
+  const j=FM.dados,F=ftvFolha(),hoje=j.hoje,por={};
+  const sup=n=>por[n]||(por[n]={nome:n,itens:[],faltas:0,n:{}});
+  j.casos.forEach(c=>{if(c.supervisor)sup(c.supervisor);});
+  fmAbonos().forEach(a=>{if(a.supervisor)sup(a.supervisor);});
+  j.casos.forEach(c=>{
+    if(FM_ABERTAS.indexOf(c.situacao)<0)return;
+    const fl=[...new Set(c.faltas||[])].filter(d=>d>=F.ini&&d<=F.fim).sort();
+    if(!fl.length)return;
+    const x=sup(c.supervisor||"Sem supervisor"),cat=ftvCat(c,hoje);
+    x.itens.push({c,fl,cat,p:ftvPrazo(c,cat,hoje)});x.faltas+=fl.length;x.n[cat]=(x.n[cat]||0)+1;
+  });
+  const lista=Object.values(por);
+  lista.forEach(x=>x.itens.sort((a,b)=>FTV_CAT[a.cat].o-FTV_CAT[b.cat].o||String(a.c.prazoFim||a.c.primeiraFalta).localeCompare(String(b.c.prazoFim||b.c.primeiraFalta))||a.c.nome.localeCompare(b.c.nome)));
+  const cor=ftvCores(lista.map(x=>x.nome));lista.forEach(x=>{x.h=cor[x.nome];});
+  return{F,hoje,lista:lista.sort((a,b)=>a.nome.localeCompare(b.nome))};
+}
+/* Quantas colunas: o arranjo em que o card fica mais confortável de ler, medido em letras (em):
+   o ideal é uns 18em de largura (nome, RE, posto e o prazo) e uns 13em de altura (cabeçalho e algumas pessoas). */
+function ftvColunas(n,W,H,em){
+  em=em||19.6;let melhor=1,nota=-1;
+  for(let c=1;c<=Math.max(1,n);c++){const r=Math.ceil(n/c),s=Math.min(W/c/(18*em),H/r/(13*em));if(s>nota+1e-9){nota=s;melhor=c;}}
+  return melhor;
+}
+const FTV_IC={
+  tv:_fmSvg('<rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>'),
+  cal:_fmSvg('<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="M7 13h2M11 13h2M15 13h2M7 17h2M11 17h2"/>'),
+  falta:_fmSvg('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="m17 9 4 4M21 9l-4 4"/>'),
+  grupo:_fmSvg('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>'),
+  relogio:_fmSvg('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
+  hoje:_fmSvg('<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>'),
+  sup:_fmSvg('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/>'),
+  regra:_fmSvg('<circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/>'),
+  ok:_fmSvg('<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>'),
+  sol:_fmSvg('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'),
+  lua:_fmSvg('<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>'),
+  sair:_fmSvg('<path d="M18 6 6 18M6 6l12 12"/>'),
+  mao:_fmSvg('<path d="M9 11V5.5a1.5 1.5 0 0 1 3 0V11"/><path d="M12 10.5V4a1.5 1.5 0 0 1 3 0v6.5"/><path d="M15 10.5V6a1.5 1.5 0 0 1 3 0v8a7 7 0 0 1-7 7h-.5a6 6 0 0 1-5.2-3l-2.2-3.8a1.5 1.5 0 0 1 2.5-1.6L7 14V8a1.5 1.5 0 0 1 3 0"/>')
+};
+const ftvPl=(n,um,v)=>n+" "+(n===1?um:v);
+/* Relógio do topo: hora e data de Brasília. Só troca o texto, sem redesenhar a tela. */
+function ftvRelTxt(){
+  const d=new Date(),o={timeZone:"America/Sao_Paulo"};
+  return{h:d.toLocaleTimeString("pt-BR",{...o,hour:"2-digit",minute:"2-digit"}),d:d.toLocaleDateString("pt-BR",{...o,weekday:"long",day:"2-digit",month:"long"})};
+}
+function ftvRelogio(){
+  const el=document.getElementById("ftv");if(!el)return;const t=ftvRelTxt(),h=el.querySelector(".ftv-rl b"),d=el.querySelector(".ftv-rl span");
+  if(h&&h.textContent!==t.h)h.textContent=t.h;if(d&&d.textContent!==t.d)d.textContent=t.d;
+}
+function ftvTema(){
+  let t="";try{t=localStorage.getItem("ftvTema")||"";}catch(e){}
+  const q=new URLSearchParams(location.search).get("tema");
+  if(q==="claro"||q==="escuro")t=q;
+  return t==="claro"?"claro":"escuro";
+}
+function ftvTrocaTema(){
+  const el=document.getElementById("ftv");if(!el)return;
+  const t=el.dataset.tema==="claro"?"escuro":"claro";el.dataset.tema=t;
+  try{localStorage.setItem("ftvTema",t);}catch(e){}
+  const b=el.querySelector(".ftv-tm");if(b)b.innerHTML=(t==="claro"?FTV_IC.lua+"Escuro":FTV_IC.sol+"Claro");
+}
+/* Uma pessoa na lista do card. */
+function ftvLinha(it){
+  const c=it.c;
+  return`<li class="ftv-it k-${it.cat}"><div class="ftv-pe"><b>${_esc(ftvNome(c.nome))}</b><span>RE ${_esc(c.re)} · ${_esc(c.posto||"Sem posto")}</span><small>${ftvPl(it.fl.length,"falta","faltas")}: ${_esc(it.fl.map(fmDd).join(" · "))}</small></div>`+
+    `<div class="ftv-pz">${_esc(it.p.l+" "+it.p.b.charAt(0).toLowerCase()+it.p.b.slice(1))}</div></li>`;
+}
+/* Barra de composição: quanto de cada situação a área tem (atrasadas primeiro). */
+function ftvBarra(x){
+  const t=x.itens.length;if(!t)return"";
+  return`<div class="ftv-bar" aria-hidden="true">${Object.keys(FTV_CAT).filter(k=>x.n[k]).map(k=>`<i class="k-${k}" style="flex:${x.n[k]}"></i>`).join("")}</div>`;
+}
+function ftvCard(x){
+  const cats=Object.keys(FTV_CAT).filter(k=>x.n[k]).map(k=>`<span class="ftv-ch k-${k}"><i></i>${x.n[k]} ${_esc(FTV_CAT[k].rot[x.n[k]===1?0:1])}</span>`).join("");
+  const corpo=x.itens.length?`<div class="ftv-ls"><ul class="ftv-tr">${x.itens.map(ftvLinha).join("")}</ul></div>`:
+    `<div class="ftv-ok">${FTV_IC.ok}<b>Área em dia</b><span>Nenhuma medida pendente nesta folha</span></div>`;
+  const pe=x.itens.length?`<footer class="ftv-cf"><span class="ftv-mais" data-total="${x.itens.length}"></span><span class="ftv-toque">${FTV_IC.mao}Toque para ver a área</span></footer>`:"";
+  return`<section class="ftv-card${x.itens.length?"":" vazio"}" style="--h:${x.h}" role="button" tabindex="0" data-n="${_esc(x.nome)}" aria-label="Ver a área de ${_esc(fmNomeCard(x.nome))}" onclick="ftvDet(this.dataset.n)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();ftvDet(this.dataset.n)}">`+
+    `<header class="ftv-ch0"><span class="ftv-av">${_esc(x.nome.charAt(0))}</span><div class="ftv-sn"><b>${_esc(fmNomeCard(x.nome))}</b><span>${ftvPl(x.itens.length,"colaborador esperando medida","colaboradores esperando medida")}</span></div><div class="ftv-tt"><b>${x.faltas}</b><span>${x.faltas===1?"falta injustificada":"faltas injustificadas"}</span></div></header>`+
+    ftvBarra(x)+(cats?`<div class="ftv-cs">${cats}</div>`:"")+corpo+pe+`</section>`;
+}
+/* Detalhe da área de um supervisor: tudo o que está esperando medida, agrupado pela situação, com o histórico da pessoa. */
+function ftvDetHtml(D){
+  const x=D.lista.find(s=>s.nome===FTV.det);if(!x){FTV.det="";return"";}
+  const hist=re=>{
+    if(!(FM.hist&&!FM.hist.erro&&typeof fmHistDe==="function"))return'<span class="ftv-hs">…</span>';
+    const n=fmHistDe(re).length;
+    return n?`<span class="ftv-hs ${n>=2?"rein":"med"}">${n>=2?"Reincidente · ":""}${ftvPl(n,"medida","medidas")} no ano</span>`:'<span class="ftv-hs zero">Sem medida no ano</span>';
+  };
+  const k=(rot,n,cls,ic)=>`<div class="ftv-dk${cls?" k-"+cls:""}">${ic||"<i></i>"}<b>${n}</b><span>${rot}</span></div>`;
+  let grupos="";
+  Object.keys(FTV_CAT).forEach(cat=>{
+    const l=x.itens.filter(i=>i.cat===cat);if(!l.length)return;
+    grupos+=`<section class="ftv-dg k-${cat}"><h4><i></i>${_esc(FTV_CAT[cat].tit)}<em>${ftvPl(l.length,"colaborador","colaboradores")}</em></h4>`+
+      `<div class="ftv-dt"><div class="ftv-dh"><span>Colaborador</span><span>Posto</span><span>Faltas na folha</span><span>Prazo para a medida</span><span>Histórico</span></div>`+
+      l.map(i=>{const c=i.c,v=fmVinculoRot(c.tipo);return`<div class="ftv-dr"><div><b>${_esc(fmNomeCard(c.nome))}</b><small>RE ${_esc(c.re)}${v.t!=="—"?" · "+_esc(v.t):""}${c.turno==="NOTURNO"?" · noturno":""}${c.escala?" · "+_esc(c.escala):""}</small></div>`+
+        `<div><b>${_esc(c.posto||"Sem posto")}</b>${c.horario?`<small>vaga ${_esc(c.horario)}</small>`:""}</div>`+
+        `<div><b>${ftvPl(i.fl.length,"falta","faltas")}</b><small>${_esc(i.fl.map(fmDdS).join(" · "))}</small></div>`+
+        `<div class="ftv-dp"><b>${_esc(i.p.b)}</b><small>${_esc(i.p.s)}</small></div><div>${hist(c.re)}</div></div>`;}).join("")+`</div></section>`;
+  });
+  return`<div class="ftv-ov" onclick="event.stopPropagation();ftvDetFecha()"></div><div class="ftv-det" role="dialog" aria-modal="true" aria-label="Área de ${_esc(fmNomeCard(x.nome))}" style="--h:${x.h}" onclick="event.stopPropagation()">`+
+    `<header class="ftv-deh"><span class="ftv-av g">${_esc(x.nome.charAt(0))}</span><div class="ftv-sn"><small>Área do supervisor</small><b>${_esc(fmNomeCard(x.nome))}</b><span>Folha ${fmDd(D.F.ini)} a ${fmDd(D.F.fim)} · faltas injustificadas esperando medida disciplinar</span></div>`+
+    `<button type="button" class="ftv-dx" onclick="ftvDetFecha()" aria-label="Fechar o detalhe">${FTV_IC.sair}Fechar</button></header>`+
+    `<div class="ftv-dks">${k(x.faltas===1?"falta injustificada":"faltas injustificadas",x.faltas,"",FTV_IC.falta)}${k(x.itens.length===1?"colaborador":"colaboradores",x.itens.length,"",FTV_IC.grupo)}`+
+    Object.keys(FTV_CAT).filter(c=>x.n[c]).map(c=>k(FTV_CAT[c].rot[x.n[c]===1?0:1],x.n[c],c)).join("")+`</div>`+
+    `<div class="ftv-db">${grupos||`<div class="ftv-ok">${FTV_IC.ok}<b>Área em dia</b><span>Nenhuma medida pendente nesta folha</span></div>`}</div>`+
+    `<footer class="ftv-dfo">${FTV_IC.regra}<span>A medida deve ser aplicada no próximo plantão do colaborador após a falta.</span><em>Volta sozinho para a visão geral depois de 90 s sem toque</em></footer></div>`;
+}
+function ftvHtml(){
+  const D=ftvDados(),tot=D.lista.reduce((s,x)=>s+x.faltas,0),pes=D.lista.reduce((s,x)=>s+x.itens.length,0);
+  const atr=D.lista.reduce((s,x)=>s+(x.n.da||0),0),hj=D.lista.reduce((s,x)=>s+(x.n.hj||0),0);
+  const el=document.getElementById("ftv"),tema=(el&&el.dataset.tema)||ftvTema();
+  const tk=D.lista.slice().sort((a,b)=>b.faltas-a.faltas||a.nome.localeCompare(b.nome)).map(x=>`<span class="ftv-tk" style="--h:${x.h}"><i></i><b>${_esc(fmNomeCard(x.nome))}</b><em>${x.faltas}</em><small>${x.faltas===1?"falta injustificada":"faltas injustificadas"}</small></span>`).join("");
+  const kpi=(ic,b,s,cls)=>`<div class="ftv-k${cls?" "+cls:""}"><span class="ic">${ic}</span><div><b>${b}</b><span>${s}</span></div></div>`;
+  const logo=typeof BR_LOGO==="string"?BR_LOGO:"<b>Grupo ServCamp</b>";
+  const leg=Object.keys(FTV_CAT).map(k=>`<span class="k-${k}"><i></i>${_esc(FTV_CAT[k].tit)}</span>`).join("");
+  return`<header class="ftv-top"><div class="ftv-logo">${logo}</div><div class="ftv-ti"><span class="ftv-lg">${FTV_IC.tv}</span><div><b>Acompanhamento de Medidas</b><span>Supervisão · faltas injustificadas esperando medida disciplinar</span></div></div>`+
+    `<div class="ftv-kp">${kpi(FTV_IC.cal,`${fmDd(D.F.ini)} a ${fmDd(D.F.fim)}`,"folha atual","fo")}${kpi(FTV_IC.falta,tot,tot===1?"falta injustificada":"faltas injustificadas")}${kpi(FTV_IC.grupo,pes,pes===1?"colaborador":"colaboradores")}${kpi(FTV_IC.relogio,atr,atr===1?"atrasada":"atrasadas","k-da")}${hj?kpi(FTV_IC.hoje,hj,hj===1?"vence hoje":"vencem hoje","k-hj"):""}</div>`+
+    `<div class="ftv-st"><div class="ftv-rl"><b>${ftvRelTxt().h}</b><span>${ftvRelTxt().d}</span></div><div class="ftv-st2"><button type="button" class="ftv-tm" onclick="event.stopPropagation();ftvTrocaTema()">${tema==="claro"?FTV_IC.lua+"Escuro":FTV_IC.sol+"Claro"}</button><span><i class="${FTV.erro?"off":""}"></i>${FTV.erro?"Sem conexão · mostrando o último dado":"Dados da planilha de "+fmDdA(FM.dados.dataBase)}</span></div></div></header>`+
+    `<div class="ftv-mq" aria-label="Faltas injustificadas por supervisor"><div class="ftv-mql"><span class="ic">${FTV_IC.sup}</span><div><span>Faltas injustificadas</span><b>por supervisor</b></div></div><div class="ftv-mqv"><div class="ftv-mqt">${tk}${tk}</div></div></div>`+
+    `<main class="ftv-grid" style="--cols:1">${D.lista.map(ftvCard).join("")}</main>`+
+    `<footer class="ftv-rg"><span class="ic">${FTV_IC.regra}</span><p><b>Regra:</b> a medida deve ser aplicada no próximo plantão do colaborador após a falta.</p><div class="ftv-lgd">${leg}</div></footer>`+
+    ftvDetHtml(D)+
+    `<button type="button" class="ftv-x" onclick="event.stopPropagation();ftvFechar()" aria-label="Sair do Modo TV">${FTV_IC.sair}Sair</button>`+
+    `<div class="ftv-fs">Clique uma vez na tela para ficar em tela cheia (ou aperte F11)</div>`;
+}
+/* Depois de desenhar: arranjo das colunas, velocidade do letreiro, rolagem de cada lista que não cabe e o "+N". */
+function ftvAjusta(){
+  const el=document.getElementById("ftv");if(!el)return;
+  const g=el.querySelector(".ftv-grid"),n=el.querySelectorAll(".ftv-card").length;
+  if(g)g.style.setProperty("--cols",ftvColunas(n,g.clientWidth,g.clientHeight,parseFloat(getComputedStyle(el).fontSize)||19.6));
+  const t=el.querySelector(".ftv-mqt");
+  if(t){const w=t.scrollWidth/2;t.style.animationDuration=Math.max(20,w/70)+"s";}
+  el.querySelectorAll(".ftv-card").forEach(card=>{
+    const ls=card.querySelector(".ftv-ls"),tr=ls&&ls.querySelector(".ftv-tr"),m=card.querySelector(".ftv-mais");if(!tr)return;
+    tr.classList.remove("rola");tr.querySelectorAll(".ftv-dup").forEach(x=>x.remove());
+    const h=tr.scrollHeight,cabe=h<=ls.clientHeight+2;
+    if(m){let vis=0;[...tr.children].forEach(li=>{if(li.offsetTop+li.offsetHeight<=ls.clientHeight+2)vis++;});const resto=tr.children.length-vis;m.textContent=cabe||!resto?"":`+${ftvPl(resto,"ocorrência","ocorrências")}`;}
+    if(!cabe){
+      [...tr.children].forEach(li=>{const d=li.cloneNode(true);d.classList.add("ftv-dup");d.setAttribute("aria-hidden","true");tr.appendChild(d);});
+      tr.style.setProperty("--alt",h+"px");tr.style.animationDuration=Math.max(12,h/26)+"s";tr.classList.add("rola");
+    }
+  });
+}
+function ftvPinta(){
+  const el=document.getElementById("ftv");if(!el||!FM.dados)return;
+  if(FM.dados.vazio){el.innerHTML=`<div class="ftv-vz"><b>Ainda não há dados</b><span>As faltas aparecem aqui assim que a planilha do SAR2G for enviada.</span></div><button type="button" class="ftv-x" onclick="ftvFechar()">${FTV_IC.sair}Sair</button>`;return;}
+  const db=el.querySelector(".ftv-db"),y=db?db.scrollTop:0;
+  el.innerHTML=ftvHtml();
+  const nb=el.querySelector(".ftv-db");if(nb&&y)nb.scrollTop=y;
+  setTimeout(ftvAjusta,30);
+}
+/* Detalhe de um supervisor: abre por cima e volta sozinho para a visão geral depois de 90 s sem ninguém mexer. */
+function ftvDet(nome){FTV.det=nome;ftvPinta();ftvDetTimer();}
+function ftvDetFecha(){FTV.det="";clearTimeout(FTV.tDet);ftvPinta();}
+function ftvDetTimer(){clearTimeout(FTV.tDet);if(FTV.det)FTV.tDet=setTimeout(ftvDetFecha,90000);}
+/* Busca os dados de novo sem apagar a tela: se a internet cair, continua mostrando o último dado. */
+function ftvAtualiza(){
+  return fmPedir("GET","casos").then(j=>{FM.dados=j;FM.carregadoEm=Date.now();FTV.carregadoEm=Date.now();FTV.erro="";ftvPinta();if(typeof fmHistCarregar==="function")fmHistCarregar();})
+    .catch(e=>{FTV.erro=e.message||"erro";ftvPinta();});
+}
+/* Virou o dia: a folha, os prazos e o "vence hoje" mudam. */
+function ftvDiaMudou(){const d=new Date(Date.now()-3*3600000).toISOString().slice(0,10);if(FTV.dia&&FTV.dia!==d)ftvAtualiza();FTV.dia=d;}
+function ftvWake(){try{if(navigator.wakeLock&&document.visibilityState==="visible")navigator.wakeLock.request("screen").then(w=>{FTV.wake=w;}).catch(()=>{});}catch(e){}}
+function ftvCursor(){const el=document.getElementById("ftv");if(!el)return;el.classList.remove("sem-cursor");clearTimeout(FTV.tCursor);FTV.tCursor=setTimeout(()=>el.classList.add("sem-cursor"),3000);}
+function ftvAbrir(){
+  if(!fsPermitido())return;
+  let el=document.getElementById("ftv");
+  if(!el){
+    el=document.createElement("div");el.id="ftv";el.setAttribute("role","region");el.setAttribute("aria-label","Modo TV: acompanhamento de medidas");document.body.appendChild(el);
+    // o navegador só entra em tela cheia depois de um clique: aberta pelo endereço, um clique em qualquer lugar resolve
+    el.addEventListener("click",e=>{if(e.target.closest(".ftv-x"))return;try{if(!document.fullscreenElement&&el.requestFullscreen)el.requestFullscreen().catch(()=>{});}catch(x){}});
+  }
+  el.dataset.tema=ftvTema();el.classList.toggle("cheia",!!document.fullscreenElement);
+  FTV.on=true;FTV.det="";document.body.classList.add("ftv-on");
+  try{if(el.requestFullscreen&&!document.fullscreenElement)el.requestFullscreen().catch(()=>{});}catch(e){}
+  if(FM.dados){FTV.carregadoEm=FTV.carregadoEm||FM.carregadoEm;ftvPinta();}else el.innerHTML=`<div class="ftv-vz"><b>Carregando…</b></div>`;
+  if(!FM.dados||Date.now()-FM.carregadoEm>60000)ftvAtualiza();else if(typeof fmHistCarregar==="function")fmHistCarregar();
+  clearInterval(FTV.tAtual);FTV.tAtual=setInterval(ftvAtualiza,10*60000);
+  clearInterval(FTV.tDia);ftvDiaMudou();FTV.tDia=setInterval(ftvDiaMudou,60000);
+  clearInterval(FTV.tRel);FTV.tRel=setInterval(ftvRelogio,1000);
+  ftvWake();ftvCursor();
+}
+function ftvFechar(){
+  FTV.on=false;FTV.det="";clearInterval(FTV.tAtual);clearInterval(FTV.tDia);clearInterval(FTV.tRel);clearTimeout(FTV.tDet);
+  const el=document.getElementById("ftv");if(el)el.remove();
+  document.body.classList.remove("ftv-on");
+  try{if(document.fullscreenElement)document.exitFullscreen();}catch(e){}
+  try{if(FTV.wake)FTV.wake.release();}catch(e){}
+  if(location.search.indexOf("tv=medidas")>=0)try{history.replaceState(null,"",location.pathname);}catch(e){}
+}
+/* Pelo endereço ?tv=medidas: abre sozinho depois do login (a conta precisa ver a tela da supervisão). */
+function ftvChecar(){
+  try{
+    if(FTV.on||new URLSearchParams(location.search).get("tv")!=="medidas")return;
+    if(sessionStorage.getItem("logged")!=="1"||!fsPermitido())return;
+    navTo("faltassup",null);ftvAbrir();
+  }catch(e){}
+}
+document.addEventListener("keydown",e=>{
+  if(!FTV.on||e.key!=="Escape")return;
+  if(FTV.det){ftvDetFecha();return;}
+  if(!document.fullscreenElement)ftvFechar();
+});
+document.addEventListener("visibilitychange",()=>{if(FTV.on&&document.visibilityState==="visible")ftvWake();});
+["mousemove","pointerdown","touchstart"].forEach(t=>document.addEventListener(t,()=>{if(FTV.on){ftvCursor();ftvDetTimer();}},{passive:true}));
+window.addEventListener("resize",()=>{if(FTV.on)setTimeout(ftvAjusta,30);});
+document.addEventListener("fullscreenchange",()=>{const el=document.getElementById("ftv");if(el)el.classList.toggle("cheia",!!document.fullscreenElement);});
+// checagem própria do endereço ?tv=medidas, que não depende do resto da página terminar sem erro
+window.addEventListener("load",()=>setTimeout(ftvChecar,2000));
+
 /* ═════════ QUADRO POR SUPERVISOR ═════════
    Uma coluna para cada supervisor, lado a lado: dá para ver de uma vez quem tem mais
    casos e em que situação está cada um. Só casos em aberto. Clicar num caso abre os
@@ -17986,7 +18471,7 @@ function init(){
         if(!it||it.style.display!=="none")navTo(volta,it||null);
       }
     }catch(e){}
-    tvModoChecar(); // pega o caso de já estar logado (aba antiga reaberta)
+    tvModoChecar(); ftvChecar(); // pega o caso de já estar logado (aba antiga reaberta)
     setTimeout(rtPing,2000);
   });
 }
