@@ -30,6 +30,12 @@ function erro(res, status, mensagem, codigo) { return res.status(status).json({ 
 const ehData = d => /^\d{4}-\d{2}-\d{2}$/.test(String(d || ""));
 const diaSP = iso => new Date(Date.parse(iso) - 3 * 3600000).toISOString().slice(0, 10);
 
+/* Rafael Andrade foi desligado: as coberturas dele (de qualquer data) passam para a área do Carlos Nogueira, em todas as telas e Excel. */
+const SUPERVISOR_TROCADO = { de: /^RAFAEL\b.*\bANDRADE\b/, para: "CARLOS NOGUEIRA" };
+function supervisorAtual(nome) {
+  return SUPERVISOR_TROCADO.de.test(R.bdvNorm(nome)) ? SUPERVISOR_TROCADO.para : nome;
+}
+
 /* Idas do supervisor entre de e ate, montadas a partir das planilhas guardadas.
    Devolve também até onde se conseguiu voltar (primeiro dia com dado). */
 async function idasDoPeriodo(db, de, ate) {
@@ -51,6 +57,7 @@ async function idasDoPeriodo(db, de, ate) {
     if (!datas.length) { if (!limite) limite = criado; continue; } // planilha sem a aba do BDV
     if (!ultimo) ultimo = datas[datas.length - 1];
     R.bdvMontar(bdv, p.faltas, p.ativos, p.cobertura, R.BDV_JORNADAS_REF).forEach(x => {
+      x.supervisor = supervisorAtual(x.supervisor);
       if (x.data >= de && x.data <= ate && (!limite || x.data < limite)) linhas.push(x);
     });
     primeiro = datas[0];

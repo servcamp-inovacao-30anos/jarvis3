@@ -32,6 +32,26 @@ test("as quatro contas abrem a Visão Diretoria e recebem os mesmos dados do ope
   }
 });
 
+test("Rafael Andrade foi desligado: as coberturas dele passam para o Carlos Nogueira (qualquer data, operacional e Diretoria)", async () => {
+  bdvApi._zerarCache();
+  const t = tabelas();
+  t.dashboard_snapshots[0].data.bdvCobertura = [
+    { ...ida("POSTO A", dia(-3), "9:30:00"), NOME: "RAFAEL ANDRADE DA SILVA" },
+    { ...ida("POSTO B", dia(-2), "6:05:00"), NOME: "Rafael  Andrade" },
+    { ...ida("POSTO C", dia(-1), "7:00:00"), NOME: "RAFAEL SOUZA" },
+    { ...ida("POSTO D", dia(-1), "8:00:00"), NOME: "FRANK" }
+  ];
+  supabaseFalso(t);
+  for (const rota of ["coberturas", "diretoria"]) {
+    const r = await pedir(rota, "raphaelvictor");
+    const sup = Object.fromEntries(r.body.coberturas.map(x => [x.posto || x.destino, x.supervisor]));
+    assert.equal(sup["POSTO A"], "CARLOS NOGUEIRA", rota);
+    assert.equal(sup["POSTO B"], "CARLOS NOGUEIRA", rota + ": mesmo com espaços e minúsculas");
+    assert.notEqual(sup["POSTO C"], "CARLOS NOGUEIRA", rota + ": outro Rafael não é trocado");
+    assert.notEqual(sup["POSTO D"], "CARLOS NOGUEIRA", rota);
+  }
+});
+
 test("quem lê o relatório operacional mas não está entre as quatro contas é barrado na Visão Diretoria (servidor)", async () => {
   bdvApi._zerarCache(); supabaseFalso(tabelas());
   for (const u of ["eduardocipriano", "jussilenealmeida", "amauriantonio", "adrianomacedo", "testejoao", "sandraalves"]) {
