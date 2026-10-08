@@ -3284,8 +3284,36 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       #pg-faltassup .fs-top p b{color:var(--fm-text2)}
       #pg-faltassup .fs-esc{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
       #pg-faltassup .fs-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 12px}
-      #pg-faltassup .fs-datas{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--mut,#64748b)}
-      #pg-faltassup .fs-datas .fm-in{width:auto;padding:6px 8px}
+      #pg-faltassup .fs-calw{position:relative}
+      #pg-faltassup .fs-calbtn{display:inline-flex;align-items:center;gap:8px;height:42px;padding:0 14px;border:1px solid var(--fm-line);border-radius:10px;background:var(--fm-surface);box-shadow:var(--fm-sh);font:inherit;font-size:.82rem;color:var(--fm-text2);cursor:pointer}
+      #pg-faltassup .fs-calbtn .ic{display:flex}#pg-faltassup .fs-calbtn .ic svg{width:18px;height:18px}
+      #pg-faltassup .fs-calbtn b{color:var(--fm-text)}
+      #pg-faltassup .fs-calbtn.on{border-color:var(--fm-brand);background:var(--fm-brand-soft);color:var(--fm-brand-tx)}
+      #pg-faltassup .fs-calbtn.on b{color:inherit}
+      #pg-faltassup .fs-calbtn:focus-visible{outline:none;box-shadow:0 0 0 4px var(--fm-ring)}
+      #pg-faltassup .fs-calpop{position:absolute;z-index:40;top:calc(100% + 8px);left:0;display:flex;gap:14px;padding:14px;border:1px solid var(--fm-line);border-radius:14px;background:var(--fm-surface);box-shadow:0 14px 40px rgba(15,23,42,.22);max-width:calc(100vw - 24px)}
+      #pg-faltassup .fs-calpre{display:flex;flex-direction:column;gap:4px;min-width:158px;padding-right:12px;border-right:1px solid var(--fm-line)}
+      #pg-faltassup .fs-calpre button{text-align:left;border:0;background:none;padding:8px 10px;border-radius:8px;font:inherit;font-size:.8rem;color:var(--fm-text2);cursor:pointer}
+      #pg-faltassup .fs-calpre button:hover{background:var(--fm-brand-soft)}
+      #pg-faltassup .fs-calpre button.on{background:var(--fm-brand-soft);color:var(--fm-brand-tx);font-weight:800}
+      #pg-faltassup .fs-calm{width:266px}
+      #pg-faltassup .fs-calhd{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;font-weight:800;font-size:.86rem;color:var(--fm-text)}
+      #pg-faltassup .fs-calhd button{display:flex;align-items:center;justify-content:center;width:30px;height:30px;border:1px solid var(--fm-line);border-radius:8px;background:var(--fm-surface);color:var(--fm-text2);cursor:pointer}
+      #pg-faltassup .fs-calhd button svg{width:16px;height:16px}
+      #pg-faltassup .fs-calg{display:grid;grid-template-columns:repeat(7,1fr);row-gap:2px}
+      #pg-faltassup .fs-calg b{text-align:center;font-size:.68rem;font-weight:700;color:var(--fm-text3,#94a3b8);padding:4px 0}
+      #pg-faltassup .fs-calg button{position:relative;height:36px;border:0;border-radius:0;background:none;font:inherit;font-size:.8rem;color:var(--fm-text);cursor:pointer}
+      #pg-faltassup .fs-calg button:hover{background:var(--fm-brand-soft)}
+      #pg-faltassup .fs-calg button.in{background:var(--fm-brand-soft);color:var(--fm-brand-tx)}
+      #pg-faltassup .fs-calg button.a,#pg-faltassup .fs-calg button.z{background:var(--fm-brand);color:#fff;font-weight:800}
+      #pg-faltassup .fs-calg button.a{border-radius:9px 0 0 9px}#pg-faltassup .fs-calg button.z{border-radius:0 9px 9px 0}#pg-faltassup .fs-calg button.a.z{border-radius:9px}
+      #pg-faltassup .fs-calg button.hoje:not(.a):not(.z){box-shadow:inset 0 0 0 1.5px var(--fm-brand);border-radius:9px}
+      #pg-faltassup .fs-calg button.tem::after{content:"";position:absolute;left:50%;bottom:4px;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:#ef4444}
+      #pg-faltassup .fs-calg button.a.tem::after,#pg-faltassup .fs-calg button.z.tem::after{background:#fff}
+      #pg-faltassup .fs-calrod{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-top:8px;font-size:.72rem;line-height:1.3;color:var(--fm-text2)}
+      #pg-faltassup .fs-calrod .fs-lg{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+      #pg-faltassup .fs-calrod .fs-lg i{width:6px;height:6px;border-radius:50%;background:#ef4444}
+      @media (max-width:700px){#pg-faltassup .fs-calpop{flex-direction:column}#pg-faltassup .fs-calpre{flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:1px solid var(--fm-line);padding:0 0 10px;min-width:0}#pg-faltassup .fs-calm{width:100%}}
       #pg-faltassup .fs-bar .fm-search{flex:0 1 340px;min-width:190px}
       #pg-faltassup .fs-bar .fm-search .fm-in{width:100%;max-width:none;height:40px;border-radius:10px;font-size:.85rem;padding-left:38px}
       #pg-faltassup .fs-bar .fm-seg button{height:40px}
@@ -12664,7 +12692,7 @@ function fmHistAbrir(re){FM.hs.ab[re]=!FM.hs.ab[re];fmRenderCorpo();}
    até quando a medida pode ser aplicada e o histórico simplificado de cada pessoa
    (reincidência). Mostra a área do supervisor e, se ele quiser, as dos outros.
    Usa os mesmos dados do painel operacional (FM.dados e FM.hist). */
-const FS={vista:"",sup:"",aba:"ABERTAS",busca:"",cat:"",tratadas:false,per:"",de:"",ate:"",ab:{},hs:{busca:"",rein:false,lim:10,ab:{}}};
+const FS={vista:"",sup:"",aba:"ABERTAS",busca:"",cat:"",tratadas:false,per:"",de:"",ate:"",calAberto:false,calMes:"",calIni:"",ab:{},hs:{busca:"",rein:false,lim:10,ab:{}}};
 const fsNorm=s=>String(s||"").toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/\s+/g," ").trim();
 function fsSupsLista(){
   const set=new Set();
@@ -12715,15 +12743,55 @@ function fsNoPeriodo(c){
   const ds=(c.faltas&&c.faltas.length)?c.faltas:[c.primeiraFalta];
   return ds.some(d=>d&&(!p.ini||d>=p.ini)&&(!p.fim||d<=p.fim));
 }
-function fsPer(v){
-  FS.per=v;FS.cat="";FS.ab={};
-  if(v==="custom"&&!FS.de&&!FS.ate){FS.de=fmIniFolhaAtual();FS.ate=FM.dados?FM.dados.hoje:"";}
+/* Calendário do período: botão com o período atual; abre um calendário (atalhos à esquerda, mês à direita).
+   Clique no primeiro dia e depois no último. Os dias com falta ganham um pontinho vermelho. */
+const FS_MESES=["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+function fsPer(v){FS.per=v;FS.cat="";FS.ab={};FS.calIni="";FS.calAberto=false;if(v!=="custom"){FS.de="";FS.ate="";}fsRender();}
+function fsCalTxt(){
+  const p=fsPeriodo();if(!p)return"Todo o período";
+  const d=(p.ini?fmDdA(p.ini):"…")+" a "+(p.fim?fmDdA(p.fim):"…"),r=(FS_PERIODOS.find(x=>x[0]===FS.per)||[])[1];
+  return FS.per==="custom"?d:String(r||"").replace(/ \(.*\)/,"")+" · "+(p.ini?fmDd(p.ini):"")+" a "+(p.fim?fmDd(p.fim):"");
+}
+function fsCalAbrir(e){
+  if(e)e.stopPropagation();
+  FS.calAberto=!FS.calAberto;FS.calIni="";
+  if(FS.calAberto){const p=fsPeriodo(),d=(p&&p.ini)||(FM.dados&&FM.dados.hoje)||"";FS.calMes=d.slice(0,7);}
   fsRender();
 }
-function fsPerBloco(){
-  const custom=FS.per==="custom"?`<label class="fs-datas"><span>De</span><input type="date" class="fm-in" aria-label="Data inicial" value="${_esc(FS.de)}" max="${_esc(FS.ate)}" onchange="FS.de=this.value;FS.ab={};fsRender()"><span>até</span><input type="date" class="fm-in" aria-label="Data final" value="${_esc(FS.ate)}" min="${_esc(FS.de)}" onchange="FS.ate=this.value;FS.ab={};fsRender()"></label>`:"";
-  return `<div class="fm-selb${FS.per?" on":""}"><span class="ic">${FM_IC.cal}</span><label><span class="t">Período:</span><select aria-label="Período da falta" onchange="fsPer(this.value)">${FS_PERIODOS.map(([v,r])=>`<option value="${v}"${v===FS.per?" selected":""}>${r}</option>`).join("")}</select></label></div>${custom}`;
+function fsCalMes(n){const [a,m]=FS.calMes.split("-").map(Number),x=new Date(Date.UTC(a,m-1+n,1));FS.calMes=x.getUTCFullYear()+"-"+_fmP2(x.getUTCMonth()+1);fsRender();}
+function fsCalDia(d){
+  if(!FS.calIni){FS.calIni=d;fsRender();return;}
+  const x=FS.calIni<=d?[FS.calIni,d]:[d,FS.calIni];
+  FS.de=x[0];FS.ate=x[1];FS.per="custom";FS.calIni="";FS.calAberto=false;FS.cat="";FS.ab={};fsRender();
 }
+function fsDiasComFalta(){
+  const n={};if(!FM.dados)return n;
+  FM.dados.casos.forEach(c=>{if(!fsNaArea(c.supervisor||""))return;[...new Set(c.faltas||[])].forEach(d=>{n[d]=(n[d]||0)+1;});});
+  return n;
+}
+function fsPerBloco(){
+  const on=!!FS.per,hoje=FM.dados.hoje;
+  let pop="";
+  if(FS.calAberto){
+    const [a,m]=FS.calMes.split("-").map(Number),dim=new Date(Date.UTC(a,m,0)).getUTCDate(),dow=new Date(Date.UTC(a,m-1,1)).getUTCDay();
+    const p=fsPeriodo(),tem=fsDiasComFalta();
+    const i0=FS.calIni||(p&&p.ini)||"",i1=FS.calIni?FS.calIni:(p&&p.fim)||"";
+    let g="";["D","S","T","Q","Q","S","S"].forEach(x=>{g+=`<b>${x}</b>`;});
+    for(let i=0;i<dow;i++)g+="<i></i>";
+    for(let d=1;d<=dim;d++){
+      const iso=a+"-"+_fmP2(m)+"-"+_fmP2(d),dentro=i0&&i1&&iso>=i0&&iso<=i1;
+      const cls=[dentro?"in":"",iso===i0?"a":"",iso===i1?"z":"",iso===hoje?"hoje":"",tem[iso]?"tem":""].filter(Boolean).join(" ");
+      g+=`<button type="button" class="${cls}" onclick="event.stopPropagation();fsCalDia('${iso}')" title="${tem[iso]?tem[iso]+(tem[iso]===1?" caso com falta":" casos com falta"):"sem falta"}" aria-label="${d} de ${FS_MESES[m-1]}">${d}</button>`;
+    }
+    const pre=FS_PERIODOS.filter(x=>x[0]!=="custom").map(([v,r])=>`<button type="button" class="${FS.per===v?"on":""}" onclick="event.stopPropagation();fsPer('${v}')">${r}</button>`).join("");
+    const dica=FS.calIni?`Início: <b>${fmDdA(FS.calIni)}</b> · clique no último dia`:"Clique no primeiro e no último dia";
+    pop=`<div class="fs-calpop" role="dialog" aria-label="Escolher o período" onclick="event.stopPropagation()"><div class="fs-calpre">${pre}</div><div class="fs-calm"><div class="fs-calhd"><button type="button" aria-label="Mês anterior" onclick="event.stopPropagation();fsCalMes(-1)">${FM_IC.ant}</button><span>${FS_MESES[m-1].charAt(0).toUpperCase()+FS_MESES[m-1].slice(1)} de ${a}</span><button type="button" aria-label="Próximo mês" onclick="event.stopPropagation();fsCalMes(1)">${FM_IC.prox}</button></div><div class="fs-calg">${g}</div><div class="fs-calrod"><span>${dica}</span><span class="fs-lg"><i></i>com falta</span></div></div></div>`;
+  }
+  return `<div class="fs-calw"><button type="button" class="fs-calbtn${on?" on":""}" aria-haspopup="dialog" aria-expanded="${FS.calAberto}" onclick="fsCalAbrir(event)"><span class="ic">${FM_IC.cal}</span><span>Período:</span><b>${_esc(fsCalTxt())}</b></button>${pop}</div>`;
+}
+// fecha o calendário ao clicar fora ou apertar Esc
+document.addEventListener("click",e=>{if(FS.calAberto&&!e.target.closest(".fs-calw")){FS.calAberto=false;FS.calIni="";fsRender();}});
+document.addEventListener("keydown",e=>{if(FS.calAberto&&e.key==="Escape"){FS.calAberto=false;FS.calIni="";fsRender();}});
 function fsNaArea(sup){const e=fsEscopo();return e.vista==="minha"?sup===e.meu:(!FS.sup||sup===FS.sup);}
 function fsCat(c,hoje){
   switch(c.situacao){
