@@ -94,6 +94,8 @@ test("nome e sobrenome; cores diferentes para cada supervisor; colunas que deixa
   assert.equal(new Set(Object.values(cor)).size, nomes.length, "nenhuma cor repetida");
   assert.equal(T.ftvColunas(8, 1880, 860), 4);
   assert.equal(T.ftvColunas(1, 1880, 860), 1);
+  assert.equal(T.ftvColunas(7, 1880, 860), 4, "7 supervisores: 4 em cima e 3 embaixo");
+  assert.equal(T.ftvColunas(7, 1000, 760), 4, "mesmo arranjo numa TV mais estreita");
   assert.ok(T.ftvColunas(12, 1880, 860) >= 4);
   assert.equal(T.ftvColunas(14, 1880, 860), 5, "com 14 supervisores, 5 colunas: card largo o bastante para ler o nome e a data");
 });

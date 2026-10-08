@@ -16274,11 +16274,13 @@ function ftvDados(){
   const cor=ftvCores(lista.map(x=>x.nome));lista.forEach(x=>{x.h=cor[x.nome];});
   return{F,hoje,lista:lista.sort((a,b)=>a.nome.localeCompare(b.nome))};
 }
-/* Quantas colunas: o arranjo em que o card fica mais confortável de ler, medido em letras (em):
-   o ideal é uns 18em de largura (nome, RE, posto e o prazo) e uns 13em de altura (cabeçalho e algumas pessoas). */
+/* Quantas colunas: até 10 supervisores, sempre 2 linhas (com 7, ficam 4 em cima e 3 embaixo, como na TV).
+   Acima disso, o arranjo em que o card fica mais confortável de ler, medido em letras (em):
+   o ideal é uns 24em de largura (nome, RE, posto e o prazo) e uns 15em de altura (cabeçalho e algumas pessoas). */
 function ftvColunas(n,W,H,em){
+  if(n<=10)return Math.max(1,Math.ceil(n/2));
   em=em||19.6;let melhor=1,nota=-1;
-  for(let c=1;c<=Math.max(1,n);c++){const r=Math.ceil(n/c),s=Math.min(W/c/(18*em),H/r/(13*em));if(s>nota+1e-9){nota=s;melhor=c;}}
+  for(let c=1;c<=Math.max(1,n);c++){const r=Math.ceil(n/c),s=Math.min(W/c/(24*em),H/r/(15*em));if(s>nota+1e-9){nota=s;melhor=c;}}
   return melhor;
 }
 const FTV_IC={
@@ -16427,14 +16429,14 @@ function ftvHtml(){
 }
 /* Depois de desenhar: arranjo das colunas, velocidade do letreiro, rolagem de cada lista que não cabe e o "+N". */
 /* Tudo na tela sem cortar, em qualquer TV: a letra base sai da largura E da altura da tela (TV mais estreita
-   ou com zoom no navegador), e se ainda sobrar texto cortado ela encolhe aos poucos (até 70%). Só se nem
-   assim couber, a lista daquele card passa a rolar sozinha. */
+   ou com zoom no navegador); se o topo ou o cabeçalho dos cards cortar, ela encolhe aos poucos (até 70%).
+   A lista de cada card nunca encolhe a letra: quando não cabe, rola sozinha. */
 function ftvCorta(el){
   const sai=x=>x&&(x.scrollWidth>x.clientWidth+1||x.scrollHeight>x.clientHeight+1);
   if(el.scrollWidth>el.clientWidth+1||el.scrollHeight>el.clientHeight+1)return true;
   if([".ftv-top",".ftv-kp",".ftv-ti",".ftv-mql",".ftv-rg"].some(q=>sai(el.querySelector(q))))return true;
-  if([...el.querySelectorAll(".ftv-k,.ftv-ch0,.ftv-sn")].some(sai))return true;
-  return [...el.querySelectorAll(".ftv-card")].some(card=>{const ls=card.querySelector(".ftv-ls"),tr=ls&&ls.querySelector(".ftv-tr");return tr&&tr.scrollHeight>ls.clientHeight+2;});
+  // lista comprida não encolhe a letra: ela rola sozinha (letra grande para ler de longe)
+  return [...el.querySelectorAll(".ftv-k,.ftv-ch0")].some(sai);
 }
 function ftvAjusta(){
   const el=document.getElementById("ftv");if(!el)return;
