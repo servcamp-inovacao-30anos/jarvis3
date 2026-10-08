@@ -3284,6 +3284,36 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       #pg-faltassup .fs-top p b{color:var(--fm-text2)}
       #pg-faltassup .fs-esc{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
       #pg-faltassup .fs-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 12px}
+      #pg-faltassup .fs-calw{position:relative}
+      #pg-faltassup .fs-calbtn{display:inline-flex;align-items:center;gap:8px;height:42px;padding:0 14px;border:1px solid var(--fm-line);border-radius:10px;background:var(--fm-surface);box-shadow:var(--fm-sh);font:inherit;font-size:.82rem;color:var(--fm-text2);cursor:pointer}
+      #pg-faltassup .fs-calbtn .ic{display:flex}#pg-faltassup .fs-calbtn .ic svg{width:18px;height:18px}
+      #pg-faltassup .fs-calbtn b{color:var(--fm-text)}
+      #pg-faltassup .fs-calbtn.on{border-color:var(--fm-brand);background:var(--fm-brand-soft);color:var(--fm-brand-tx)}
+      #pg-faltassup .fs-calbtn.on b{color:inherit}
+      #pg-faltassup .fs-calbtn:focus-visible{outline:none;box-shadow:0 0 0 4px var(--fm-ring)}
+      #pg-faltassup .fs-calpop{position:absolute;z-index:40;top:calc(100% + 8px);left:0;display:flex;gap:14px;padding:14px;border:1px solid var(--fm-line);border-radius:14px;background:var(--fm-surface);box-shadow:0 14px 40px rgba(15,23,42,.22);max-width:calc(100vw - 24px)}
+      #pg-faltassup .fs-calpre{display:flex;flex-direction:column;gap:4px;min-width:158px;padding-right:12px;border-right:1px solid var(--fm-line)}
+      #pg-faltassup .fs-calpre button{text-align:left;border:0;background:none;padding:8px 10px;border-radius:8px;font:inherit;font-size:.8rem;color:var(--fm-text2);cursor:pointer}
+      #pg-faltassup .fs-calpre button:hover{background:var(--fm-brand-soft)}
+      #pg-faltassup .fs-calpre button.on{background:var(--fm-brand-soft);color:var(--fm-brand-tx);font-weight:800}
+      #pg-faltassup .fs-calm{width:266px}
+      #pg-faltassup .fs-calhd{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;font-weight:800;font-size:.86rem;color:var(--fm-text)}
+      #pg-faltassup .fs-calhd button{display:flex;align-items:center;justify-content:center;width:30px;height:30px;border:1px solid var(--fm-line);border-radius:8px;background:var(--fm-surface);color:var(--fm-text2);cursor:pointer}
+      #pg-faltassup .fs-calhd button svg{width:16px;height:16px}
+      #pg-faltassup .fs-calg{display:grid;grid-template-columns:repeat(7,1fr);row-gap:2px}
+      #pg-faltassup .fs-calg b{text-align:center;font-size:.68rem;font-weight:700;color:var(--fm-text3,#94a3b8);padding:4px 0}
+      #pg-faltassup .fs-calg button{position:relative;height:36px;border:0;border-radius:0;background:none;font:inherit;font-size:.8rem;color:var(--fm-text);cursor:pointer}
+      #pg-faltassup .fs-calg button:hover{background:var(--fm-brand-soft)}
+      #pg-faltassup .fs-calg button.in{background:var(--fm-brand-soft);color:var(--fm-brand-tx)}
+      #pg-faltassup .fs-calg button.a,#pg-faltassup .fs-calg button.z{background:var(--fm-brand);color:#fff;font-weight:800}
+      #pg-faltassup .fs-calg button.a{border-radius:9px 0 0 9px}#pg-faltassup .fs-calg button.z{border-radius:0 9px 9px 0}#pg-faltassup .fs-calg button.a.z{border-radius:9px}
+      #pg-faltassup .fs-calg button.hoje:not(.a):not(.z){box-shadow:inset 0 0 0 1.5px var(--fm-brand);border-radius:9px}
+      #pg-faltassup .fs-calg button.tem::after{content:"";position:absolute;left:50%;bottom:4px;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:#ef4444}
+      #pg-faltassup .fs-calg button.a.tem::after,#pg-faltassup .fs-calg button.z.tem::after{background:#fff}
+      #pg-faltassup .fs-calrod{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-top:8px;font-size:.72rem;line-height:1.3;color:var(--fm-text2)}
+      #pg-faltassup .fs-calrod .fs-lg{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+      #pg-faltassup .fs-calrod .fs-lg i{width:6px;height:6px;border-radius:50%;background:#ef4444}
+      @media (max-width:700px){#pg-faltassup .fs-calpop{flex-direction:column}#pg-faltassup .fs-calpre{flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:1px solid var(--fm-line);padding:0 0 10px;min-width:0}#pg-faltassup .fs-calm{width:100%}}
       #pg-faltassup .fs-bar .fm-search{flex:0 1 340px;min-width:190px}
       #pg-faltassup .fs-bar .fm-search .fm-in{width:100%;max-width:none;height:40px;border-radius:10px;font-size:.85rem;padding-left:38px}
       #pg-faltassup .fs-bar .fm-seg button{height:40px}
@@ -12662,7 +12692,7 @@ function fmHistAbrir(re){FM.hs.ab[re]=!FM.hs.ab[re];fmRenderCorpo();}
    até quando a medida pode ser aplicada e o histórico simplificado de cada pessoa
    (reincidência). Mostra a área do supervisor e, se ele quiser, as dos outros.
    Usa os mesmos dados do painel operacional (FM.dados e FM.hist). */
-const FS={vista:"",sup:"",aba:"ABERTAS",busca:"",cat:"",tratadas:false,ab:{},hs:{busca:"",rein:false,lim:10,ab:{}}};
+const FS={vista:"",sup:"",aba:"ABERTAS",busca:"",cat:"",tratadas:false,per:"",de:"",ate:"",calAberto:false,calMes:"",calIni:"",ab:{},hs:{busca:"",rein:false,lim:10,ab:{}}};
 const fsNorm=s=>String(s||"").toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/\s+/g," ").trim();
 function fsSupsLista(){
   const set=new Set();
@@ -12693,6 +12723,75 @@ function fsEscopo(){
   const v=FS.vista||(real?"minha":"todas");
   return{meu,real,simulado:!real&&!!meu,vista:(v==="minha"&&meu)?"minha":"todas"};
 }
+/* Filtro de período: pela DATA DA FALTA (qualquer falta do caso dentro do período). Vazio = sem filtro, como sempre foi. */
+const FS_PERIODOS=[["","Todo o período"],["folha","Folha atual (26 a 25)"],["ant","Folha anterior"],["7","Últimos 7 dias"],["30","Últimos 30 dias"],["custom","Escolher datas"]];
+function fsPeriodo(){
+  const j=FM.dados;if(!j||!FS.per)return null;
+  const hoje=j.hoje,soma=(d,n)=>new Date(Date.parse(d+"T12:00:00Z")+n*864e5).toISOString().slice(0,10);
+  const ini=fmIniFolhaAtual();
+  switch(FS.per){
+    case"folha":{const m=+ini.slice(5,7),a=+ini.slice(0,4);return{ini,fim:(m===12?a+1:a)+"-"+_fmP2(m===12?1:m+1)+"-25"};}
+    case"ant":{const m=+ini.slice(5,7),a=+ini.slice(0,4);return{ini:(m===1?a-1:a)+"-"+_fmP2(m===1?12:m-1)+"-26",fim:ini.slice(0,8)+"25"};}
+    case"7":return{ini:soma(hoje,-6),fim:hoje};
+    case"30":return{ini:soma(hoje,-29),fim:hoje};
+    case"custom":return(FS.de||FS.ate)?{ini:FS.de||"",fim:FS.ate||""}:null;
+  }
+  return null;
+}
+function fsNoPeriodo(c){
+  const p=fsPeriodo();if(!p)return true;
+  const ds=(c.faltas&&c.faltas.length)?c.faltas:[c.primeiraFalta];
+  return ds.some(d=>d&&(!p.ini||d>=p.ini)&&(!p.fim||d<=p.fim));
+}
+/* Calendário do período: botão com o período atual; abre um calendário (atalhos à esquerda, mês à direita).
+   Clique no primeiro dia e depois no último. Os dias com falta ganham um pontinho vermelho. */
+const FS_MESES=["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+function fsPer(v){FS.per=v;FS.cat="";FS.ab={};FS.calIni="";FS.calAberto=false;if(v!=="custom"){FS.de="";FS.ate="";}fsRender();}
+function fsCalTxt(){
+  const p=fsPeriodo();if(!p)return"Todo o período";
+  const d=(p.ini?fmDdA(p.ini):"…")+" a "+(p.fim?fmDdA(p.fim):"…"),r=(FS_PERIODOS.find(x=>x[0]===FS.per)||[])[1];
+  return FS.per==="custom"?d:String(r||"").replace(/ \(.*\)/,"")+" · "+(p.ini?fmDd(p.ini):"")+" a "+(p.fim?fmDd(p.fim):"");
+}
+function fsCalAbrir(e){
+  if(e)e.stopPropagation();
+  FS.calAberto=!FS.calAberto;FS.calIni="";
+  if(FS.calAberto){const p=fsPeriodo(),d=(p&&p.ini)||(FM.dados&&FM.dados.hoje)||"";FS.calMes=d.slice(0,7);}
+  fsRender();
+}
+function fsCalMes(n){const [a,m]=FS.calMes.split("-").map(Number),x=new Date(Date.UTC(a,m-1+n,1));FS.calMes=x.getUTCFullYear()+"-"+_fmP2(x.getUTCMonth()+1);fsRender();}
+function fsCalDia(d){
+  if(!FS.calIni){FS.calIni=d;fsRender();return;}
+  const x=FS.calIni<=d?[FS.calIni,d]:[d,FS.calIni];
+  FS.de=x[0];FS.ate=x[1];FS.per="custom";FS.calIni="";FS.calAberto=false;FS.cat="";FS.ab={};fsRender();
+}
+function fsDiasComFalta(){
+  const n={};if(!FM.dados)return n;
+  FM.dados.casos.forEach(c=>{if(!fsNaArea(c.supervisor||""))return;[...new Set(c.faltas||[])].forEach(d=>{n[d]=(n[d]||0)+1;});});
+  return n;
+}
+function fsPerBloco(){
+  const on=!!FS.per,hoje=FM.dados.hoje;
+  let pop="";
+  if(FS.calAberto){
+    const [a,m]=FS.calMes.split("-").map(Number),dim=new Date(Date.UTC(a,m,0)).getUTCDate(),dow=new Date(Date.UTC(a,m-1,1)).getUTCDay();
+    const p=fsPeriodo(),tem=fsDiasComFalta();
+    const i0=FS.calIni||(p&&p.ini)||"",i1=FS.calIni?FS.calIni:(p&&p.fim)||"";
+    let g="";["D","S","T","Q","Q","S","S"].forEach(x=>{g+=`<b>${x}</b>`;});
+    for(let i=0;i<dow;i++)g+="<i></i>";
+    for(let d=1;d<=dim;d++){
+      const iso=a+"-"+_fmP2(m)+"-"+_fmP2(d),dentro=i0&&i1&&iso>=i0&&iso<=i1;
+      const cls=[dentro?"in":"",iso===i0?"a":"",iso===i1?"z":"",iso===hoje?"hoje":"",tem[iso]?"tem":""].filter(Boolean).join(" ");
+      g+=`<button type="button" class="${cls}" onclick="event.stopPropagation();fsCalDia('${iso}')" title="${tem[iso]?tem[iso]+(tem[iso]===1?" caso com falta":" casos com falta"):"sem falta"}" aria-label="${d} de ${FS_MESES[m-1]}">${d}</button>`;
+    }
+    const pre=FS_PERIODOS.filter(x=>x[0]!=="custom").map(([v,r])=>`<button type="button" class="${FS.per===v?"on":""}" onclick="event.stopPropagation();fsPer('${v}')">${r}</button>`).join("");
+    const dica=FS.calIni?`Início: <b>${fmDdA(FS.calIni)}</b> · clique no último dia`:"Clique no primeiro e no último dia";
+    pop=`<div class="fs-calpop" role="dialog" aria-label="Escolher o período" onclick="event.stopPropagation()"><div class="fs-calpre">${pre}</div><div class="fs-calm"><div class="fs-calhd"><button type="button" aria-label="Mês anterior" onclick="event.stopPropagation();fsCalMes(-1)">${FM_IC.ant}</button><span>${FS_MESES[m-1].charAt(0).toUpperCase()+FS_MESES[m-1].slice(1)} de ${a}</span><button type="button" aria-label="Próximo mês" onclick="event.stopPropagation();fsCalMes(1)">${FM_IC.prox}</button></div><div class="fs-calg">${g}</div><div class="fs-calrod"><span>${dica}</span><span class="fs-lg"><i></i>com falta</span></div></div></div>`;
+  }
+  return `<div class="fs-calw"><button type="button" class="fs-calbtn${on?" on":""}" aria-haspopup="dialog" aria-expanded="${FS.calAberto}" onclick="fsCalAbrir(event)"><span class="ic">${FM_IC.cal}</span><span>Período:</span><b>${_esc(fsCalTxt())}</b></button>${pop}</div>`;
+}
+// fecha o calendário ao clicar fora ou apertar Esc
+document.addEventListener("click",e=>{if(FS.calAberto&&!e.target.closest(".fs-calw")){FS.calAberto=false;FS.calIni="";fsRender();}});
+document.addEventListener("keydown",e=>{if(FS.calAberto&&e.key==="Escape"){FS.calAberto=false;FS.calIni="";fsRender();}});
 function fsNaArea(sup){const e=fsEscopo();return e.vista==="minha"?sup===e.meu:(!FS.sup||sup===FS.sup);}
 function fsCat(c,hoje){
   switch(c.situacao){
@@ -12727,7 +12826,7 @@ function fsRender(){
   const e=fsEscopo(),hoje=j.hoje;
   const doAbertas=c=>FM_ABERTAS.indexOf(c.situacao)>=0;
   const naBusca=c=>{const q=FS.busca.trim().toLowerCase();return!q||[c.nome,c.re,c.posto].some(v=>String(v==null?"":v).toLowerCase().indexOf(q)>=0);};
-  const base=j.casos.filter(c=>fsNaArea(c.supervisor||"")&&naBusca(c));
+  const base=j.casos.filter(c=>fsNaArea(c.supervisor||"")&&naBusca(c)&&fsNoPeriodo(c));
   const abertas=base.filter(doAbertas),tratadas=base.filter(c=>c.situacao==="TRATADA"||c.situacao==="TRATADA_FORA_DO_PRAZO");
   const nHist=(FM.hist&&!FM.hist.erro)?fmHistPessoas().filter(p=>p.val.length&&fsNaArea(p.supervisor)).length:null;
   // quem está sendo visto
@@ -12750,7 +12849,7 @@ function fsAbertasTela(e,abertas,tratadas,hoje){
   const cats=[["da","Atrasadas"],["hj","Vencem hoje"],["np","No prazo"],["vi","Coordenação"]];
   const cont={};abertas.forEach(c=>{const k=fsCat(c,hoje);cont[k]=(cont[k]||0)+1;});
   const pill=(on,cls,rot,n,acao)=>`<button type="button" class="fs-pill${cls?" cat-"+cls:""}${on?" on":""}" onclick="${acao}">${cls?"<i></i>":""}${rot}<b>${n}</b></button>`;
-  let h=`<div class="fs-bar">${fsBusca()}<div class="fm-seg" role="group" aria-label="Situação"><button class="${!FS.tratadas?"on":""}" onclick="FS.tratadas=false;FS.cat='';fsRender()">Em aberto</button><button class="${FS.tratadas?"on":""}" onclick="FS.tratadas=true;FS.cat='';fsRender()">Já com medida (${tratadas.length})</button></div></div>`;
+  let h=`<div class="fs-bar">${fsBusca()}${fsPerBloco()}<div class="fm-seg" role="group" aria-label="Situação"><button class="${!FS.tratadas?"on":""}" onclick="FS.tratadas=false;FS.cat='';fsRender()">Em aberto</button><button class="${FS.tratadas?"on":""}" onclick="FS.tratadas=true;FS.cat='';fsRender()">Já com medida (${tratadas.length})</button></div></div>`;
   if(!FS.tratadas){
     h+=`<div class="fs-pills">`+pill(!FS.cat,"","Todas",abertas.length,"FS.cat='';fsRender()")+cats.map(([k,r])=>pill(FS.cat===k,k,r,cont[k]||0,`FS.cat=FS.cat==='${k}'?'':'${k}';fsRender()`)).join("")+`</div>`;
   }
@@ -12942,7 +13041,7 @@ function vgFmDir(){
    rolagem não pula. */
 const BR={kpi:null,maisK:false,dados:null,de:null,ate:null,atalho:"folha",vis:"sup",sups:[],postos:[],mot:"",aberto:{},mais:{},ord:{c:"n",d:-1},carregando:false,erro:null,pedido:0};
 const BR_SIT={ANTES:["Antes do início da vaga","an"],NO_PRAZO:["Até 1h de atraso","ok"],ATRASO:["1 a 3h de atraso","am"],GRAVE:["Mais de 3h de atraso","da"],SEM_HORARIO:["Sem horário","gr"]};
-const BR_FONTE={FALTA:"horário da vaga de quem faltou",JORNADA:"jornada de quem faltou",POSTO:"turno do posto"};
+const BR_FONTE={FALTA:"Horário de início da vaga",JORNADA:"Horário de início da vaga",POSTO:"Horário de início da vaga"};
 const BR_MAX_COMPARA=200; // períodos maiores vêm sem a comparação (o servidor entrega até 400 dias)
 const BR_MOT={"":"Todos os motivos",FALTA:"Só faltas",OUTROS:"Outros motivos"};
 function brPermitido(){return bdvPermitido();}
@@ -13793,7 +13892,14 @@ async function brXlsxMontar(Ex,logo,ctx){
      com filtro em cada coluna (supervisor, posto, data, motivo, situação…); o filtro da tabela de cima continua valendo para ela. */
   const horaX=h=>{const m=bdvHoraMin(h);return m==null?null:m/1440;};
   const dataX=s=>{const d=s.split("-");return new Date(Date.UTC(+d[0],+d[1]-1,+d[2]));};
-  const NCX=12;
+  /* Excedentes e treinamentos que o supervisor levou ao posto (a ida dele àquele posto naquele dia): só chegam para a Visão Diretoria
+     (o servidor manda "os" em cada ida). Sem eles o detalhamento sai como antes, sem as duas colunas. */
+  const OSX=L.some(x=>Array.isArray(x.os));
+  const nomeOs=r=>brNomeCurto(r.nome)+(r.re?" (RE "+r.re+")":"");
+  const entradasOs=i=>{const o=i.os||[];if(!OSX||!o.length)return[{i,cls:"Cobertura",nomes:""}];
+    return["EXCEDENTE","TREINAMENTO"].filter(t=>o.some(r=>r.tipo===t)).map(t=>({i,cls:t==="EXCEDENTE"?"Excedente":"Treinamento",nomes:o.filter(r=>r.tipo===t).map(nomeOs).join("\n")}));};
+  const CLSOS={"Cobertura":[BRX.mudo,"FFFFFFFF"],"Excedente":BRX.am,"Treinamento":["FF1E4D8C","FFE8F1FC"]};
+  const NCX=12+(OSX?2:0);
   const detalhe=(w,dim,gr,r0)=>{
     let r=r0;
     w.getRow(r).height=28;w.mergeCells(r,1,r,NCX);
@@ -13802,26 +13908,26 @@ async function brXlsxMontar(Ex,logo,ctx){
     r++;
     w.mergeCells(r,1,r,NCX);const n=w.getCell(r,1);
     n.value=(dim==="sup"?"Cada supervisor com todas as coberturas que fez no período, uma por linha, na mesma ordem da tabela de cima: o posto, quem faltou, o motivo, o horário da vaga, a chegada e o atraso.":"Cada posto com todas as coberturas que recebeu no período, uma por linha, na mesma ordem da tabela de cima: quem cobriu (supervisor), quem faltou, o motivo, o horário da vaga, a chegada e o atraso.")+
-      " Use as setas dos títulos para filtrar por supervisor, posto, data, motivo ou situação. Valores fixos, da data em que o arquivo foi gerado.";
+      (OSX?" A classificação vem das OS avulsas: Excedente ou Treinamento quando o supervisor levou alguém ao posto naquele dia (com o nome e a RE de quem ficou); sem OS, Cobertura. Se levou um de cada tipo no mesmo dia, a cobertura aparece em uma linha para cada tipo.":"")+" Use as setas dos títulos para filtrar por supervisor, posto, data, motivo ou situação. Valores fixos, da data em que o arquivo foi gerado.";
     n.font=fonte({size:9,italic:true,color:{argb:BRX.mudo}});n.alignment={wrapText:true,vertical:"top",indent:1};w.getRow(r).height=30;r+=2;
-    const cab=[dim==="sup"?"Supervisor":"Posto",dim==="sup"?"Posto":"Supervisor (quem cobriu)","Data","Dia","Quem faltou","RE","Motivo","Início da vaga","Chegada","Atraso","Minutos","Situação"];
+    const cab=[dim==="sup"?"Supervisor":"Posto",dim==="sup"?"Posto":"Supervisor (quem cobriu)","Data","Dia","Quem faltou","RE","Motivo","Início da vaga","Chegada","Atraso","Minutos","Situação"].concat(OSX?["Classificação","Deixado no posto"]:[]);
     const lin=[];
     gr.forEach((x,gi)=>{
-      x.linhas.filter(i=>i.situacao!=="NAO_E_POSTO").slice().sort((a,b)=>a.data.localeCompare(b.data)||String(a.chegada).localeCompare(String(b.chegada))).forEach((i,k)=>lin.push({i,gi,ini:k===0}));
+      x.linhas.filter(i=>i.situacao!=="NAO_E_POSTO").slice().sort((a,b)=>a.data.localeCompare(b.data)||String(a.chegada).localeCompare(String(b.chegada))).forEach(i=>entradasOs(i).forEach(e=>lin.push({i,gi,ini:lin.length===0||lin[lin.length-1].gi!==gi,cls:e.cls,nomes:e.nomes})));
     });
     if(!lin.length)return r;
     const centro=c=>c===3||c===4||c===6||c>=8&&c<=11;
     const hdr=r;
     w.addTable({name:dim==="sup"?"DetalheSupervisor":"DetalhePosto",ref:"A"+hdr,headerRow:true,totalsRow:false,style:{theme:"TableStyleLight1",showRowStripes:false},
       columns:cab.map(c=>({name:c,filterButton:true})),
-      rows:lin.map(({i})=>[dim==="sup"?brNomeCurto(i.supervisor):(i.posto||i.destino),dim==="sup"?(i.posto||i.destino):brNomeCurto(i.supervisor),dataX(i.data),brSemana(i.data),i.falta_nome||"—",i.falta_re||"",brMotivoTxt(i.motivo),horaX(i.inicio),horaX(i.chegada),brDifTxt(i),i.diferenca_min==null?"":i.diferenca_min,(BR_SIT[i.situacao]||["Sem horário"])[0]])});
+      rows:lin.map(({i,cls,nomes})=>[dim==="sup"?brNomeCurto(i.supervisor):(i.posto||i.destino),dim==="sup"?(i.posto||i.destino):brNomeCurto(i.supervisor),dataX(i.data),brSemana(i.data),i.falta_nome||"—",i.falta_re||"",brMotivoTxt(i.motivo),horaX(i.inicio),horaX(i.chegada),brDifTxt(i),i.diferenca_min==null?"":i.diferenca_min,(BR_SIT[i.situacao]||["Sem horário"])[0]].concat(OSX?[cls,nomes]:[]))});
     w.getRow(hdr).height=24;
     cab.forEach((c,j)=>{const ce=w.getCell(hdr,j+1);ce.font=fonte({size:9,bold:true,color:{argb:"FFFFFFFF"}});ce.fill=preenche(BRX.navy);ce.alignment={vertical:"middle",horizontal:centro(j+1)?"center":"left",indent:j===0?1:0,wrapText:true};});
-    lin.forEach(({i,gi,ini},k)=>{
+    lin.forEach(({i,gi,ini,cls,nomes},k)=>{
       const rr=hdr+1+k,cor=brXSit(i.situacao);
       for(let c=1;c<=NCX;c++){
         const ce=w.getCell(rr,c);
-        ce.font=fonte({size:10,bold:(c===1&&ini)||c===9,color:c===1&&ini?{argb:BRX.navy}:(c===1&&!ini?{argb:"FF98A2B3"}:undefined)});
+        ce.font=fonte({size:10,bold:(c===1&&ini)||c===9,color:c===1&&ini?{argb:BRX.navy}:(c===1&&!ini?{argb:"FF475467"}:undefined)});
         ce.alignment={vertical:"middle",horizontal:centro(c)?"center":"left",indent:c===1?1:0,shrinkToFit:c===7||c===10};
         ce.border={top:ini?{style:"thin",color:{argb:BRX.navy}}:undefined,bottom:{style:"thin",color:{argb:BRX.linha}}};
         if(gi%2)ce.fill=preenche(BRX.faixa);
@@ -13829,8 +13935,10 @@ async function brXlsxMontar(Ex,logo,ctx){
         if(c===8||c===9)ce.numFmt="hh:mm";
         if(c===10||c===11)ce.font=fonte({size:10,bold:true,color:{argb:cor[0]}});
         if(c===12){ce.font=fonte({size:10,bold:true,color:{argb:cor[0]}});ce.fill=preenche(cor[1]);}
+        if(OSX&&c===13){const cl=CLSOS[cls];ce.font=fonte({size:10,bold:true,color:{argb:cl[0]}});if(cls!=="Cobertura")ce.fill=preenche(cl[1]);ce.alignment={vertical:"middle",horizontal:"center"};}
+        if(OSX&&c===14)ce.alignment={vertical:"middle",horizontal:"left",wrapText:true};
       }
-      w.getRow(rr).height=20;
+      w.getRow(rr).height=OSX&&nomes&&nomes.split("\n").length>1?15*nomes.split("\n").length+5:20;
     });
     return hdr+lin.length+1;
   };
@@ -13839,7 +13947,7 @@ async function brXlsxMontar(Ex,logo,ctx){
   const tabela=(nome,dim,cor)=>{
     const w=wb.addWorksheet(nome,{properties:{tabColor:{argb:cor}},views:[{showGridLines:false,state:"frozen",xSplit:1}]});
     const cab=[dim==="sup"?"Supervisor":"Posto","Coberturas","Chegou em até 1h","Antes do início","Até 1h de atraso","1 a 3h de atraso","Mais de 3h de atraso","Sem horário",dim==="sup"?"Postos":"Supervisores",dim==="sup"?"Horas em campo":"Motivo mais comum",dim==="sup"?"Km":"3 ou mais"];
-    w.columns=[{width:dim==="sup"?30:36},{width:dim==="sup"?32:26},{width:14},{width:12},{width:28},{width:13},{width:22},{width:13},{width:13},{width:22},{width:dim==="sup"?17:22},{width:24}];
+    w.columns=[{width:dim==="sup"?30:36},{width:dim==="sup"?32:26},{width:14},{width:12},{width:28},{width:13},{width:22},{width:13},{width:13},{width:22},{width:dim==="sup"?17:22},{width:24}].concat(OSX?[{width:24},{width:52}]:[]);
     topo(w,dim==="sup"?"Por supervisor":"Por posto",subTxt,Math.max(cab.length,NCX));
     w.getRow(4).height=6;w.getRow(5).height=34;
     cab.forEach((c,i)=>{const ce=w.getCell(5,i+1);ce.value=c;ce.font=fonte({size:9,bold:true,color:{argb:"FFFFFFFF"}});ce.fill=preenche(BRX.navy);ce.alignment={vertical:"middle",horizontal:i?"center":"left",wrapText:true,indent:i?0:1};ce.border={bottom:{style:"medium",color:{argb:BRX.navy}}};});
@@ -16048,10 +16156,10 @@ async function brXlsxConectado(Ex,logo,j,k){
     ws.addConditionalFormatting({ref:`L${N0}:L${ULT}`,rules:[regra(SN.A,BRX.an,1),regra(SN.N,BRX.ok,2),regra(SN.T,BRX.am,3),regra(SN.G,BRX.da,4),regra(SN.S,BRX.gr,5)]});
     const txtCor=(txt,cor,p)=>({type:"expression",priority:p,formulae:[`$L${N0}="${txt}"`],style:{font:{bold:true,color:{argb:cor[0]}}}});
     ws.addConditionalFormatting({ref:`J${N0}:J${ULT}`,rules:[txtCor(SN.A,BRX.an,6),txtCor(SN.N,BRX.ok,7),txtCor(SN.T,BRX.am,8),txtCor(SN.G,BRX.da,9)]});
-    /* o primeiro de cada grupo ganha destaque e linha de cima; os seguintes mostram o nome do grupo mais apagado */
+    /* o primeiro de cada grupo ganha destaque e linha de cima; os seguintes mostram o nome do grupo em cinza-escuro (legível) */
     ws.addConditionalFormatting({ref:`A${N0}:K${ULT}`,rules:[
-      {type:"expression",priority:11,formulae:[`AND($A${N0}<>"",$A${N0}<>$A${N0-1})`],style:{fill:dxf("FFEEF0F8"),font:{bold:true,color:{argb:BRX.navy}},border:{top:{style:"thin",color:{argb:BRX.navy}}}}},
-      {type:"expression",priority:12,formulae:[`AND($A${N0}<>"",$A${N0}=$A${N0-1})`],style:{font:{color:{argb:"FF98A2B3"}}}}]});
+      {type:"expression",priority:11,formulae:[`AND($A${N0}<>"",$A${N0}<>$A${N0-1})`],style:{fill:dxf("FFDDE3F5"),font:{bold:true,color:{argb:BRX.navy}},border:{top:{style:"medium",color:{argb:BRX.navy}}}}},
+      {type:"expression",priority:12,formulae:[`AND($A${N0}<>"",$A${N0}=$A${N0-1})`],style:{font:{color:{argb:"FF475467"}}}}]});
     ws.autoFilter={from:{row:5,column:1},to:{row:ULT,column:cols.length}};
     pagina(ws,"5:5",true);
   };
@@ -16438,8 +16546,20 @@ function ftvCorta(el){
   // lista comprida não encolhe a letra: ela rola sozinha (letra grande para ler de longe)
   return [...el.querySelectorAll(".ftv-k,.ftv-ch0")].some(sai);
 }
+/* Detalhe do supervisor: o painel tem tamanho fixo (sobre a central operacional); as letras de dentro são grandes e só
+   diminuem o necessário para a tabela caber inteira, sem barra de rolagem (até 62%; abaixo disso a tabela rola). */
+function ftvDetAjusta(){
+  const det=document.querySelector("#ftv .ftv-det"),db=det&&det.querySelector(".ftv-db");if(!db)return;
+  const cabe=k=>{det.style.fontSize=k.toFixed(3)+"em";return db.scrollHeight<=db.clientHeight+2;};
+  // maior tamanho (entre 62% e 115%) em que a tabela cabe inteira
+  let lo=.62,hi=1.15;
+  if(cabe(hi))return;
+  for(let i=0;i<8;i++){const m=(lo+hi)/2;if(cabe(m))lo=m;else hi=m;}
+  cabe(lo);
+}
 function ftvAjusta(){
   const el=document.getElementById("ftv");if(!el)return;
+  ftvDetAjusta();
   const g=el.querySelector(".ftv-grid"),n=el.querySelectorAll(".ftv-card").length;
   el.querySelectorAll(".ftv-tr").forEach(tr=>{tr.classList.remove("rola");tr.querySelectorAll(".ftv-dup").forEach(x=>x.remove());});
   const base=Math.min(el.clientWidth/100,el.clientHeight/56.25);
@@ -16483,8 +16603,9 @@ function ftvFiltra(v){
     g.hidden=!n;tot+=n;
   });
   const m=el.querySelector(".ftv-fn");if(m)m.hidden=!q||tot>0;
+  ftvDetAjusta();
 }
-function ftvDet(nome){FTV.det=nome;FTV.q="";ftvPinta();ftvDetTimer();}
+function ftvDet(nome){FTV.det=nome;FTV.q="";ftvPinta();ftvDetTimer();setTimeout(ftvDetAjusta,500);}
 function ftvDetFecha(){FTV.det="";FTV.q="";clearTimeout(FTV.tDet);ftvPinta();}
 function ftvDetTimer(){clearTimeout(FTV.tDet);if(FTV.det)FTV.tDet=setTimeout(ftvDetFecha,90000);}
 /* Busca os dados de novo sem apagar a tela: se a internet cair, continua mostrando o último dado. */
@@ -16538,6 +16659,8 @@ document.addEventListener("keydown",e=>{
 document.addEventListener("visibilitychange",()=>{if(FTV.on&&document.visibilityState==="visible")ftvWake();});
 ["mousemove","pointerdown","touchstart"].forEach(t=>document.addEventListener(t,()=>{if(FTV.on){ftvCursor();ftvDetTimer();}},{passive:true}));
 window.addEventListener("resize",()=>{if(FTV.on)setTimeout(ftvAjusta,30);});
+// quando a fonte da TV termina de carregar o texto muda de largura: mede de novo
+if(document.fonts&&document.fonts.addEventListener)document.fonts.addEventListener("loadingdone",()=>{if(FTV.on)ftvAjusta();});
 document.addEventListener("fullscreenchange",()=>{const el=document.getElementById("ftv");if(el)el.classList.toggle("cheia",!!document.fullscreenElement);});
 // checagem própria do endereço ?tv=medidas, que não depende do resto da página terminar sem erro
 window.addEventListener("load",()=>setTimeout(ftvChecar,2000));

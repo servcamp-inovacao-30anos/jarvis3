@@ -128,3 +128,28 @@ test("tela da TV: relógio no topo, tema escuro e claro, card que abre o detalhe
   assert.ok(H.includes('onclick="ftvDet(this.dataset.n)"') && H.includes("function ftvDetHtml(D)"), "tocar no card abre o detalhe");
   assert.ok(/if\(FTV\.det\)\{ftvDetFecha\(\);return;\}/.test(H), "Esc fecha primeiro o detalhe");
 });
+
+// Filtro de período do Acompanhamento de Medidas (Supervisão): pela data da falta, sem mexer em quem entra na TV.
+test("filtro de período da tela da supervisão: folha atual, anterior, últimos dias e datas escolhidas", () => {
+  const a = H.indexOf("const FS_PERIODOS="), b = H.indexOf("function fsPer(v)");
+  assert.ok(a > 0 && b > a, "bloco do período no index.html");
+  const hoje = "2026-10-08", _fmP2 = n => String(n).padStart(2, "0");
+  const fmIniFolhaAtual = () => "2026-09-26";
+  const FM = { dados: { hoje } };
+  const FS = { per: "", de: "", ate: "" };
+  const { fsPeriodo, fsNoPeriodo } = new Function("FM", "FS", "fmIniFolhaAtual", "_fmP2", H.slice(a, b) + "; return {fsPeriodo, fsNoPeriodo};")(FM, FS, fmIniFolhaAtual, _fmP2);
+  const caso = faltas => ({ faltas, primeiraFalta: faltas[0] });
+  assert.equal(fsPeriodo(), null, "sem filtro: tudo, como sempre foi");
+  assert.equal(fsNoPeriodo(caso(["2020-01-01"])), true);
+  FS.per = "folha"; assert.deepEqual(fsPeriodo(), { ini: "2026-09-26", fim: "2026-10-25" });
+  assert.equal(fsNoPeriodo(caso(["2026-09-25", "2026-09-27"])), true, "basta uma falta dentro da folha");
+  assert.equal(fsNoPeriodo(caso(["2026-09-25"])), false);
+  FS.per = "ant"; assert.deepEqual(fsPeriodo(), { ini: "2026-08-26", fim: "2026-09-25" });
+  FS.per = "7"; assert.deepEqual(fsPeriodo(), { ini: "2026-10-02", fim: "2026-10-08" });
+  FS.per = "30"; assert.deepEqual(fsPeriodo(), { ini: "2026-09-09", fim: "2026-10-08" });
+  FS.per = "custom"; FS.de = "2026-10-01"; FS.ate = "2026-10-03";
+  assert.equal(fsNoPeriodo(caso(["2026-10-02"])), true); assert.equal(fsNoPeriodo(caso(["2026-10-04"])), false);
+  FS.de = ""; FS.ate = ""; assert.equal(fsPeriodo(), null, "datas vazias: sem filtro");
+  assert.ok(H.includes("&&fsNoPeriodo(c));"), "o filtro vale para a lista em aberto e para as com medida");
+  assert.ok(!/function ftvDados\(\)[\s\S]*?fsNoPeriodo/.test(H), "a TV continua sempre na folha atual");
+});

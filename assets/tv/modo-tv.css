@@ -482,3 +482,99 @@
 #ftv .ftv-rg{height:3.6em}
 #ftv .ftv-rg p{font-size:1.6em}
 #ftv .ftv-lgd{font-size:1.4em}
+/* ── detalhe da área: ocupa a TV inteira e letras grandes para ler de longe (pedido de 08/10) ── */
+#ftv .ftv-palco-d{left:0;top:0;width:100%;height:100%;transform:none}
+#ftv .ftv-det{left:.7em;top:.7em;right:.7em;bottom:.7em;width:auto;height:auto}
+#ftv .ftv-deh{padding:.7em 1.3em .6em;gap:1.2em}
+#ftv .ftv-deh .ftv-av.g{font-size:3.6em}
+#ftv .ftv-deh .ftv-sn small{font-size:1.6em}
+#ftv .ftv-deh .ftv-sn b{font-size:4.2em}
+#ftv .ftv-deh .ftv-sn span{font-size:1.7em}
+#ftv .ftv-dx{font-size:1.8em}
+#ftv .ftv-dks{gap:1em;padding:.7em 1.3em .5em}
+#ftv .ftv-dk{padding:.4em 1.3em;gap:.7em}
+#ftv .ftv-dk svg{width:2.4em;height:2.4em}
+#ftv .ftv-dk i{width:1.4em;height:1.4em}
+#ftv .ftv-dk b{font-size:3.2em}
+#ftv .ftv-dk span{font-size:1.8em}
+#ftv .ftv-fl{padding:.3em 1.3em .6em}
+#ftv .ftv-fl::before{width:1.9em;height:1.9em;left:2.1em}
+#ftv .ftv-fl input{flex:0 1 38em;font-size:1.8em;padding:.35em .8em .35em 2.2em}
+#ftv .ftv-fn{font-size:1.7em}
+#ftv .ftv-db{padding:.2em 1.3em 1em}
+#ftv .ftv-dg{margin-bottom:.8em}
+#ftv .ftv-dg h4{font-size:2.3em;margin:.15em 0 .35em}
+#ftv .ftv-dg h4 em{font-size:.62em}
+#ftv .ftv-dh,#ftv .ftv-dr{grid-template-columns:1.5fr 1.5fr 1.05fr 1.45fr 1.2fr 1.3fr;gap:1em;padding:.45em 1em}
+#ftv .ftv-dh{font-size:1.45em}
+#ftv .ftv-dr b{font-size:2em;line-height:1.05}
+#ftv .ftv-dr small{font-size:1.5em;line-height:1}
+#ftv .ftv-fd span{font-size:1.4em}
+#ftv .ftv-sit b{font-size:1.6em;line-height:1.1}
+#ftv .ftv-dp b{font-size:2.4em}
+#ftv .ftv-hs{font-size:1.5em;white-space:normal;line-height:1.15}
+#ftv .ftv-nota{padding:.7em 1.2em;gap:1.2em}
+#ftv .ftv-nota svg{width:3em;height:3em}
+#ftv .ftv-nota b{font-size:2em}
+#ftv .ftv-nota span{font-size:1.65em}
+#ftv .ftv-ok b{font-size:2.4em}
+#ftv .ftv-deh .ftv-sn b{font-size:4.8em}
+#ftv .ftv-dg h4{font-size:2.6em}
+#ftv .ftv-dh{font-size:1.6em}
+#ftv .ftv-dr{padding:.55em 1em}
+#ftv .ftv-dr b{font-size:2.35em}
+#ftv .ftv-dr small{font-size:1.7em}
+#ftv .ftv-fd span{font-size:1.6em}
+#ftv .ftv-sit b{font-size:1.85em}
+#ftv .ftv-dp b{font-size:2.8em}
+#ftv .ftv-hs{font-size:1.7em}
+#ftv .ftv-nota b{font-size:2.3em}#ftv .ftv-nota span{font-size:1.9em}
+/* informações do detalhe um pouco maiores e com mais destaque (pedido de 08/10) */
+#ftv .ftv-dh{font-size:1.85em}
+#ftv .ftv-dr{padding:.6em 1em}
+#ftv .ftv-dr b{font-size:2.9em;line-height:1.02}
+#ftv .ftv-dr small{font-size:2.05em;line-height:1}
+#ftv .ftv-dr>div:first-child small{font-size:1.95em}
+#ftv .ftv-fd span{font-size:1.9em;padding:.02em .5em}
+#ftv .ftv-sit b{font-size:2.2em;line-height:1.08}
+#ftv .ftv-dp b{font-size:3.3em}
+#ftv .ftv-hs{font-size:2em;padding:.12em .6em}
+#ftv .ftv-dg h4{font-size:3em}
+#ftv .ftv-dg h4 em{font-size:.6em}
+#ftv .ftv-dk b{font-size:3.6em}#ftv .ftv-dk span{font-size:2em}
+#ftv .ftv-nota b{font-size:2.6em}#ftv .ftv-nota span{font-size:2.1em}
+/* ── detalhe: volta ao painel do tamanho original sobre a central operacional; o aumento é só nas letras de dentro ── */
+#ftv .ftv-palco-d{left:50%;top:50%;width:min(100vw,177.68vh);height:min(56.28vw,100vh);transform:translate(-50%,-50%)}
+#ftv .ftv-det{left:13.25%;top:5.4%;right:auto;bottom:auto;width:73.9%;height:72.2%}
+#ftv .ftv-deh{padding:.75em 1.2em .6em;gap:1em}
+#ftv .ftv-deh .ftv-av.g{font-size:3em}
+#ftv .ftv-deh .ftv-sn small{font-size:1.25em}
+#ftv .ftv-deh .ftv-sn b{font-size:3.3em}
+#ftv .ftv-deh .ftv-sn span{font-size:1.35em}
+#ftv .ftv-dx{font-size:1.5em}
+#ftv .ftv-dks{gap:.7em;padding:.6em 1.2em .4em}
+#ftv .ftv-dk{padding:.3em 1em;gap:.55em}
+#ftv .ftv-dk svg{width:1.9em;height:1.9em}
+#ftv .ftv-dk i{width:1.1em;height:1.1em}
+#ftv .ftv-dk b{font-size:2.6em}#ftv .ftv-dk span{font-size:1.55em}
+#ftv .ftv-fl{padding:.25em 1.2em .5em}
+#ftv .ftv-fl::before{width:1.5em;height:1.5em;left:1.95em}
+#ftv .ftv-fl input{font-size:1.5em;flex:0 1 30em;padding:.3em .7em .3em 2em}
+#ftv .ftv-fn{font-size:1.4em}
+#ftv .ftv-db{padding:.1em 1.2em .8em}
+#ftv .ftv-dg{margin-bottom:.6em}
+#ftv .ftv-dg h4{font-size:2.15em;margin:.1em 0 .3em}
+#ftv .ftv-dg h4 em{font-size:.62em}
+#ftv .ftv-dh,#ftv .ftv-dr{gap:.8em;padding:.4em .8em}
+#ftv .ftv-dh{font-size:1.4em}
+#ftv .ftv-dr{padding:.45em .8em}
+#ftv .ftv-dr b{font-size:2.15em;line-height:1.02}
+#ftv .ftv-dr small,#ftv .ftv-dr>div:first-child small{font-size:1.55em;line-height:1}
+#ftv .ftv-fd span{font-size:1.5em}
+#ftv .ftv-sit b{font-size:1.65em;line-height:1.08}
+#ftv .ftv-dp b{font-size:2.5em}
+#ftv .ftv-hs{font-size:1.5em;padding:.1em .5em}
+#ftv .ftv-nota{padding:.5em 1em;gap:1em}
+#ftv .ftv-nota svg{width:2.4em;height:2.4em}
+#ftv .ftv-nota b{font-size:1.9em}#ftv .ftv-nota span{font-size:1.6em}
+#ftv .ftv-ok b{font-size:2em}
