@@ -16546,8 +16546,20 @@ function ftvCorta(el){
   // lista comprida não encolhe a letra: ela rola sozinha (letra grande para ler de longe)
   return [...el.querySelectorAll(".ftv-k,.ftv-ch0")].some(sai);
 }
+/* Detalhe do supervisor: o painel tem tamanho fixo (sobre a central operacional); as letras de dentro são grandes e só
+   diminuem o necessário para a tabela caber inteira, sem barra de rolagem (até 62%; abaixo disso a tabela rola). */
+function ftvDetAjusta(){
+  const det=document.querySelector("#ftv .ftv-det"),db=det&&det.querySelector(".ftv-db");if(!db)return;
+  const cabe=k=>{det.style.fontSize=k.toFixed(3)+"em";return db.scrollHeight<=db.clientHeight+2;};
+  // maior tamanho (entre 62% e 115%) em que a tabela cabe inteira
+  let lo=.62,hi=1.15;
+  if(cabe(hi))return;
+  for(let i=0;i<8;i++){const m=(lo+hi)/2;if(cabe(m))lo=m;else hi=m;}
+  cabe(lo);
+}
 function ftvAjusta(){
   const el=document.getElementById("ftv");if(!el)return;
+  ftvDetAjusta();
   const g=el.querySelector(".ftv-grid"),n=el.querySelectorAll(".ftv-card").length;
   el.querySelectorAll(".ftv-tr").forEach(tr=>{tr.classList.remove("rola");tr.querySelectorAll(".ftv-dup").forEach(x=>x.remove());});
   const base=Math.min(el.clientWidth/100,el.clientHeight/56.25);
@@ -16591,8 +16603,9 @@ function ftvFiltra(v){
     g.hidden=!n;tot+=n;
   });
   const m=el.querySelector(".ftv-fn");if(m)m.hidden=!q||tot>0;
+  ftvDetAjusta();
 }
-function ftvDet(nome){FTV.det=nome;FTV.q="";ftvPinta();ftvDetTimer();}
+function ftvDet(nome){FTV.det=nome;FTV.q="";ftvPinta();ftvDetTimer();setTimeout(ftvDetAjusta,500);}
 function ftvDetFecha(){FTV.det="";FTV.q="";clearTimeout(FTV.tDet);ftvPinta();}
 function ftvDetTimer(){clearTimeout(FTV.tDet);if(FTV.det)FTV.tDet=setTimeout(ftvDetFecha,90000);}
 /* Busca os dados de novo sem apagar a tela: se a internet cair, continua mostrando o último dado. */
@@ -16646,6 +16659,8 @@ document.addEventListener("keydown",e=>{
 document.addEventListener("visibilitychange",()=>{if(FTV.on&&document.visibilityState==="visible")ftvWake();});
 ["mousemove","pointerdown","touchstart"].forEach(t=>document.addEventListener(t,()=>{if(FTV.on){ftvCursor();ftvDetTimer();}},{passive:true}));
 window.addEventListener("resize",()=>{if(FTV.on)setTimeout(ftvAjusta,30);});
+// quando a fonte da TV termina de carregar o texto muda de largura: mede de novo
+if(document.fonts&&document.fonts.addEventListener)document.fonts.addEventListener("loadingdone",()=>{if(FTV.on)ftvAjusta();});
 document.addEventListener("fullscreenchange",()=>{const el=document.getElementById("ftv");if(el)el.classList.toggle("cheia",!!document.fullscreenElement);});
 // checagem própria do endereço ?tv=medidas, que não depende do resto da página terminar sem erro
 window.addEventListener("load",()=>setTimeout(ftvChecar,2000));
