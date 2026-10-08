@@ -3284,6 +3284,8 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       #pg-faltassup .fs-top p b{color:var(--fm-text2)}
       #pg-faltassup .fs-esc{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
       #pg-faltassup .fs-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 12px}
+      #pg-faltassup .fs-datas{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--mut,#64748b)}
+      #pg-faltassup .fs-datas .fm-in{width:auto;padding:6px 8px}
       #pg-faltassup .fs-bar .fm-search{flex:0 1 340px;min-width:190px}
       #pg-faltassup .fs-bar .fm-search .fm-in{width:100%;max-width:none;height:40px;border-radius:10px;font-size:.85rem;padding-left:38px}
       #pg-faltassup .fs-bar .fm-seg button{height:40px}
@@ -12662,7 +12664,7 @@ function fmHistAbrir(re){FM.hs.ab[re]=!FM.hs.ab[re];fmRenderCorpo();}
    até quando a medida pode ser aplicada e o histórico simplificado de cada pessoa
    (reincidência). Mostra a área do supervisor e, se ele quiser, as dos outros.
    Usa os mesmos dados do painel operacional (FM.dados e FM.hist). */
-const FS={vista:"",sup:"",aba:"ABERTAS",busca:"",cat:"",tratadas:false,ab:{},hs:{busca:"",rein:false,lim:10,ab:{}}};
+const FS={vista:"",sup:"",aba:"ABERTAS",busca:"",cat:"",tratadas:false,per:"",de:"",ate:"",ab:{},hs:{busca:"",rein:false,lim:10,ab:{}}};
 const fsNorm=s=>String(s||"").toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/\s+/g," ").trim();
 function fsSupsLista(){
   const set=new Set();
@@ -12692,6 +12694,35 @@ function fsEscopo(){
   if(!meu){const c=FS.como||fsLer("fsComo");meu=l.indexOf(c)>=0?c:fsComoPadrao(l);}
   const v=FS.vista||(real?"minha":"todas");
   return{meu,real,simulado:!real&&!!meu,vista:(v==="minha"&&meu)?"minha":"todas"};
+}
+/* Filtro de período: pela DATA DA FALTA (qualquer falta do caso dentro do período). Vazio = sem filtro, como sempre foi. */
+const FS_PERIODOS=[["","Todo o período"],["folha","Folha atual (26 a 25)"],["ant","Folha anterior"],["7","Últimos 7 dias"],["30","Últimos 30 dias"],["custom","Escolher datas"]];
+function fsPeriodo(){
+  const j=FM.dados;if(!j||!FS.per)return null;
+  const hoje=j.hoje,soma=(d,n)=>new Date(Date.parse(d+"T12:00:00Z")+n*864e5).toISOString().slice(0,10);
+  const ini=fmIniFolhaAtual();
+  switch(FS.per){
+    case"folha":{const m=+ini.slice(5,7),a=+ini.slice(0,4);return{ini,fim:(m===12?a+1:a)+"-"+_fmP2(m===12?1:m+1)+"-25"};}
+    case"ant":{const m=+ini.slice(5,7),a=+ini.slice(0,4);return{ini:(m===1?a-1:a)+"-"+_fmP2(m===1?12:m-1)+"-26",fim:ini.slice(0,8)+"25"};}
+    case"7":return{ini:soma(hoje,-6),fim:hoje};
+    case"30":return{ini:soma(hoje,-29),fim:hoje};
+    case"custom":return(FS.de||FS.ate)?{ini:FS.de||"",fim:FS.ate||""}:null;
+  }
+  return null;
+}
+function fsNoPeriodo(c){
+  const p=fsPeriodo();if(!p)return true;
+  const ds=(c.faltas&&c.faltas.length)?c.faltas:[c.primeiraFalta];
+  return ds.some(d=>d&&(!p.ini||d>=p.ini)&&(!p.fim||d<=p.fim));
+}
+function fsPer(v){
+  FS.per=v;FS.cat="";FS.ab={};
+  if(v==="custom"&&!FS.de&&!FS.ate){FS.de=fmIniFolhaAtual();FS.ate=FM.dados?FM.dados.hoje:"";}
+  fsRender();
+}
+function fsPerBloco(){
+  const custom=FS.per==="custom"?`<label class="fs-datas"><span>De</span><input type="date" class="fm-in" aria-label="Data inicial" value="${_esc(FS.de)}" max="${_esc(FS.ate)}" onchange="FS.de=this.value;FS.ab={};fsRender()"><span>até</span><input type="date" class="fm-in" aria-label="Data final" value="${_esc(FS.ate)}" min="${_esc(FS.de)}" onchange="FS.ate=this.value;FS.ab={};fsRender()"></label>`:"";
+  return `<div class="fm-selb${FS.per?" on":""}"><span class="ic">${FM_IC.cal}</span><label><span class="t">Período:</span><select aria-label="Período da falta" onchange="fsPer(this.value)">${FS_PERIODOS.map(([v,r])=>`<option value="${v}"${v===FS.per?" selected":""}>${r}</option>`).join("")}</select></label></div>${custom}`;
 }
 function fsNaArea(sup){const e=fsEscopo();return e.vista==="minha"?sup===e.meu:(!FS.sup||sup===FS.sup);}
 function fsCat(c,hoje){
@@ -12727,7 +12758,7 @@ function fsRender(){
   const e=fsEscopo(),hoje=j.hoje;
   const doAbertas=c=>FM_ABERTAS.indexOf(c.situacao)>=0;
   const naBusca=c=>{const q=FS.busca.trim().toLowerCase();return!q||[c.nome,c.re,c.posto].some(v=>String(v==null?"":v).toLowerCase().indexOf(q)>=0);};
-  const base=j.casos.filter(c=>fsNaArea(c.supervisor||"")&&naBusca(c));
+  const base=j.casos.filter(c=>fsNaArea(c.supervisor||"")&&naBusca(c)&&fsNoPeriodo(c));
   const abertas=base.filter(doAbertas),tratadas=base.filter(c=>c.situacao==="TRATADA"||c.situacao==="TRATADA_FORA_DO_PRAZO");
   const nHist=(FM.hist&&!FM.hist.erro)?fmHistPessoas().filter(p=>p.val.length&&fsNaArea(p.supervisor)).length:null;
   // quem está sendo visto
@@ -12750,7 +12781,7 @@ function fsAbertasTela(e,abertas,tratadas,hoje){
   const cats=[["da","Atrasadas"],["hj","Vencem hoje"],["np","No prazo"],["vi","Coordenação"]];
   const cont={};abertas.forEach(c=>{const k=fsCat(c,hoje);cont[k]=(cont[k]||0)+1;});
   const pill=(on,cls,rot,n,acao)=>`<button type="button" class="fs-pill${cls?" cat-"+cls:""}${on?" on":""}" onclick="${acao}">${cls?"<i></i>":""}${rot}<b>${n}</b></button>`;
-  let h=`<div class="fs-bar">${fsBusca()}<div class="fm-seg" role="group" aria-label="Situação"><button class="${!FS.tratadas?"on":""}" onclick="FS.tratadas=false;FS.cat='';fsRender()">Em aberto</button><button class="${FS.tratadas?"on":""}" onclick="FS.tratadas=true;FS.cat='';fsRender()">Já com medida (${tratadas.length})</button></div></div>`;
+  let h=`<div class="fs-bar">${fsBusca()}${fsPerBloco()}<div class="fm-seg" role="group" aria-label="Situação"><button class="${!FS.tratadas?"on":""}" onclick="FS.tratadas=false;FS.cat='';fsRender()">Em aberto</button><button class="${FS.tratadas?"on":""}" onclick="FS.tratadas=true;FS.cat='';fsRender()">Já com medida (${tratadas.length})</button></div></div>`;
   if(!FS.tratadas){
     h+=`<div class="fs-pills">`+pill(!FS.cat,"","Todas",abertas.length,"FS.cat='';fsRender()")+cats.map(([k,r])=>pill(FS.cat===k,k,r,cont[k]||0,`FS.cat=FS.cat==='${k}'?'':'${k}';fsRender()`)).join("")+`</div>`;
   }
