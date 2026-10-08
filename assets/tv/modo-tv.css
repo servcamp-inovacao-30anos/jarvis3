@@ -529,3 +529,17 @@
 #ftv .ftv-dp b{font-size:2.8em}
 #ftv .ftv-hs{font-size:1.7em}
 #ftv .ftv-nota b{font-size:2.3em}#ftv .ftv-nota span{font-size:1.9em}
+/* informações do detalhe um pouco maiores e com mais destaque (pedido de 08/10) */
+#ftv .ftv-dh{font-size:1.85em}
+#ftv .ftv-dr{padding:.6em 1em}
+#ftv .ftv-dr b{font-size:2.9em;line-height:1.02}
+#ftv .ftv-dr small{font-size:2.05em;line-height:1}
+#ftv .ftv-dr>div:first-child small{font-size:1.95em}
+#ftv .ftv-fd span{font-size:1.9em;padding:.02em .5em}
+#ftv .ftv-sit b{font-size:2.2em;line-height:1.08}
+#ftv .ftv-dp b{font-size:3.3em}
+#ftv .ftv-hs{font-size:2em;padding:.12em .6em}
+#ftv .ftv-dg h4{font-size:3em}
+#ftv .ftv-dg h4 em{font-size:.6em}
+#ftv .ftv-dk b{font-size:3.6em}#ftv .ftv-dk span{font-size:2em}
+#ftv .ftv-nota b{font-size:2.6em}#ftv .ftv-nota span{font-size:2.1em}
