@@ -1,253 +1,175 @@
-/* Modo TV do Acompanhamento de Medidas (Supervisão): identidade pixel/arcade.
-   Carregado no fim do index.html para valer por cima do estilo base do #ftv. */
-/* ── Modo TV: identidade pixel (retro) ── */
-@font-face{font-family:"TVJersey";src:url(/fonts/Jersey10.woff2) format("woff2");font-display:block}
-@font-face{font-family:"TVTerm";src:url(/fonts/VT323.woff2) format("woff2");font-display:block}
-#ftv{--fj:"TVJersey","Segoe UI",sans-serif;--fv:"TVTerm","Consolas",monospace;
-  --stp:polygon(0 .4em,.2em .4em,.2em .2em,.4em .2em,.4em 0,calc(100% - .4em) 0,calc(100% - .4em) .2em,calc(100% - .2em) .2em,calc(100% - .2em) .4em,100% .4em,100% calc(100% - .4em),calc(100% - .2em) calc(100% - .4em),calc(100% - .2em) calc(100% - .2em),calc(100% - .4em) calc(100% - .2em),calc(100% - .4em) 100%,.4em 100%,.4em calc(100% - .2em),.2em calc(100% - .2em),.2em calc(100% - .4em),0 calc(100% - .4em));
-  --oct:polygon(24% 0,76% 0,100% 24%,100% 76%,76% 100%,24% 100%,0 76%,0 24%);
-  font-family:var(--fj);font-size:min(1vw,1.778vh);line-height:1.1;letter-spacing:.04em;text-transform:none;
-  padding:.55em .6em .5em;gap:.5em;grid-template-rows:auto auto minmax(0,1fr) auto}
-#ftv,#ftv *{font-weight:400!important;font-synthesis:none}
-#ftv[data-tema="escuro"]{
-  --fundo:repeating-linear-gradient(0deg,rgba(90,150,255,.045) 0 .1em,transparent .1em .55em),repeating-linear-gradient(90deg,rgba(90,150,255,.035) 0 .1em,transparent .1em .55em),radial-gradient(120% 90% at 50% 40%,#11296f 0%,#0a1c4f 55%,#06123a 100%);
-  --pn:#08173f;--pn2:#0c2257;--pb:#2d64cc;--pb2:#1a3f93;--tx:#ffffff;--tx2:#a9cdf5;--cy:#4fd0ff;--am:#ffd23f;--mut:#8fb0de;--ln:#1b3878;
-  --da:#ff4a3f;--hj:#ff8a1a;--np:#ffd21a;--gr:#9b6cff;--vi:#2f86ff;--ok:#3ddc97;--s1:85%;--l1:55%}
-#ftv[data-tema="claro"]{
-  --fundo:repeating-linear-gradient(0deg,rgba(40,90,200,.05) 0 .1em,transparent .1em .55em),repeating-linear-gradient(90deg,rgba(40,90,200,.04) 0 .1em,transparent .1em .55em),linear-gradient(180deg,#eaf1ff,#d6e3fa);
-  --pn:#ffffff;--pn2:#eef4ff;--pb:#2d64cc;--pb2:#a9c2ee;--tx:#0b1b4a;--tx2:#2b4f99;--cy:#0b6fb8;--am:#a87000;--mut:#5070a8;--ln:#d3e0f5;
-  --da:#d61f35;--hj:#e56f00;--np:#a88000;--gr:#6d45d0;--vi:#1b6fd6;--ok:#0f9d63;--s1:70%;--l1:42%}
-#ftv{background:var(--fundo);color:var(--tx)}
+/* Modo TV do Acompanhamento de Medidas (Supervisão) — visual v3 (HUD futurista, referência de 08/10/2026).
+   Carregado no fim do index.html para valer por cima do estilo base do #ftv.
+   Fontes: Rajdhani nos títulos, nomes de supervisor e números grandes; Chakra Petch nos dados (padrão aprovado). */
+@font-face{font-family:"TVTitulo";src:url(/fonts/Rajdhani600.woff2) format("woff2");font-weight:400 600;font-display:block}
+@font-face{font-family:"TVTitulo";src:url(/fonts/Rajdhani700.woff2) format("woff2");font-weight:700 900;font-display:block}
+@font-face{font-family:"TVLegivel";src:url(/fonts/ChakraPetch500.woff2) format("woff2");font-weight:400 600;font-display:block}
+@font-face{font-family:"TVLegivel";src:url(/fonts/ChakraPetch700.woff2) format("woff2");font-weight:700 900;font-display:block}
+
+/* ═════════ base e cores ═════════ */
+#ftv{--fj:"TVTitulo","Segoe UI",sans-serif;--fv:"TVLegivel","Segoe UI",sans-serif;
+  --oct:polygon(29% 0,71% 0,100% 29%,100% 71%,71% 100%,29% 100%,0 71%,0 29%);
+  font-family:var(--fv);font-size:min(1vw,1.778vh);line-height:1.15;letter-spacing:.01em;text-transform:none;
+  padding:.6em .75em .55em;gap:.6em;grid-template-rows:auto auto minmax(0,1fr) auto}
 #ftv *{text-shadow:none}
-/* topo: logo | título + totais (numa faixa com moldura) | relógio */
-#ftv .ftv-top{position:relative;display:grid;grid-template-columns:17.4em minmax(0,1fr) auto 13.4em;gap:.5em;align-items:stretch;height:7.4em}
-#ftv .ftv-top::before{content:"";grid-column:2/4;grid-row:1;margin:.35em 0;border:.16em solid var(--pb);background:rgba(3,10,36,.45);clip-path:var(--stp)}
-#ftv[data-tema="claro"] .ftv-top::before{background:rgba(255,255,255,.5)}
-#ftv .ftv-logo,#ftv .ftv-st{border:.5em solid transparent;border-radius:0;box-shadow:none;outline:0;clip-path:var(--stp);
-  background:radial-gradient(circle,#f0c44e 0 .1em,#6b4a10 .11em .15em,transparent .16em) left top/.5em .5em no-repeat border-box,
-    radial-gradient(circle,#f0c44e 0 .1em,#6b4a10 .11em .15em,transparent .16em) right top/.5em .5em no-repeat border-box,
-    radial-gradient(circle,#f0c44e 0 .1em,#6b4a10 .11em .15em,transparent .16em) left bottom/.5em .5em no-repeat border-box,
-    radial-gradient(circle,#f0c44e 0 .1em,#6b4a10 .11em .15em,transparent .16em) right bottom/.5em .5em no-repeat border-box,
-    linear-gradient(var(--pn),var(--pn)) padding-box,linear-gradient(180deg,#2a63d4,#163c95) border-box}
-#ftv .ftv-logo{grid-column:1;grid-row:1;padding:0;display:flex}
+#ftv[data-tema="escuro"]{
+  --fundo:radial-gradient(70% 45% at 50% -8%,rgba(40,110,255,.22),transparent 70%),radial-gradient(60% 50% at 50% 115%,rgba(20,90,220,.16),transparent 70%),linear-gradient(180deg,#071226 0%,#050c1c 100%);
+  --sf:#0a1630;--sf2:#0d1c3d;--bd:rgba(56,132,255,.6);--bdf:#2b7bff;--glow:rgba(30,110,255,.35);
+  --tx:#f3f7ff;--tx2:#a9b8d6;--cy:#3fd0ff;--re:#4fb8ff;--am:#ffc928;--mut:#8ea3c8;--ln:rgba(90,130,210,.2);
+  --da:#ff3b4f;--hj:#ff9a1f;--np:#ffc928;--gr:#9b6cff;--vi:#22d3ee;--ok:#2fe0a0;
+  --pn:#0b1a4a;--pn2:#0c2257;--pb:#2d64cc;--pb2:#1a3f93}
+#ftv[data-tema="claro"]{
+  --fundo:radial-gradient(70% 45% at 50% -8%,rgba(40,110,255,.14),transparent 70%),linear-gradient(180deg,#eef3fc,#dfe8f7);
+  --sf:#ffffff;--sf2:#f2f6fd;--bd:rgba(43,108,230,.45);--bdf:#2b6ce6;--glow:rgba(43,108,230,.18);
+  --tx:#0d1a3a;--tx2:#46587e;--cy:#0b74b8;--re:#1665b0;--am:#a87000;--mut:#5d6f93;--ln:rgba(40,80,160,.14);
+  --da:#d61f35;--hj:#e06a00;--np:#b88600;--gr:#6d45d0;--vi:#0e8fae;--ok:#0f9d63;
+  --pn:#ffffff;--pn2:#eef4ff;--pb:#2d64cc;--pb2:#a9c2ee}
+#ftv{background:var(--fundo);color:var(--tx)}
+#ftv b{font-weight:700}
+#ftv .k-da{--c:var(--da)}#ftv .k-hj{--c:var(--hj)}#ftv .k-np{--c:var(--np)}#ftv .k-gr{--c:var(--gr)}#ftv .k-vi{--c:var(--vi)}
+
+/* ═════════ topo ═════════ */
+#ftv .ftv-top{position:relative;display:grid;grid-template-columns:19.5em minmax(0,1fr) auto 12.4em;gap:.65em;align-items:stretch;height:7em}
+#ftv .ftv-top::before{content:"";position:absolute;left:16.9em;top:0;bottom:0;width:4.2em;pointer-events:none;z-index:1;
+  background:linear-gradient(112deg,transparent 0 46%,rgba(70,160,255,.95) 46% 48.5%,transparent 48.5% 58%,rgba(70,160,255,.55) 58% 59.5%,transparent 59.5% 69%,rgba(70,160,255,.3) 69% 70%,transparent 70%);
+  filter:drop-shadow(0 0 .25em rgba(60,150,255,.8))}
+#ftv .ftv-logo{position:relative;grid-column:1;display:block;padding:0;border:0;outline:0;border-radius:.8em 0 0 .8em;
+  clip-path:polygon(0 0,100% 0,calc(100% - 2.8em) 100%,0 100%);
+  background:url(/assets/tv/logo-servcamp-claro.png) 1em 50%/auto 82% no-repeat,linear-gradient(135deg,#10234a,#091430 60%,#071026);
+  box-shadow:inset 0 0 0 .1em rgba(60,140,255,.55),inset 0 0 1.4em rgba(30,100,255,.25)}
 #ftv .ftv-logo::after{display:none}
-#ftv .ftv-logo img{width:100%;height:100%;object-fit:contain;background:#fff;border:.24em solid #f3c443;box-shadow:inset 0 0 0 .1em #c98f1a;padding:.25em .7em;box-sizing:border-box;display:block}
-#ftv .ftv-ti{grid-column:2;grid-row:1;z-index:1;margin:.35em 0 .35em .25em;padding:.25em 1em;display:flex;flex-direction:column;justify-content:center;gap:.15em;min-width:0;overflow:hidden;
-  background:var(--pn);border:.12em solid var(--pb2);clip-path:var(--stp);box-shadow:none}
+#ftv .ftv-logo img{display:none}
+#ftv .ftv-ti{grid-column:2;display:flex;flex-direction:column;justify-content:center;gap:.25em;min-width:0;padding:0 0 0 1.2em;margin:0;background:none;border:0;box-shadow:none;clip-path:none;overflow:hidden}
 #ftv .ftv-lg{display:none!important}
-#ftv .ftv-ti b{display:block;font-size:2.55em;line-height:1;letter-spacing:.06em;color:var(--tx);text-transform:uppercase;white-space:nowrap;background:none;-webkit-text-fill-color:currentColor;text-shadow:.06em .06em 0 rgba(0,0,0,.55)}
-#ftv[data-tema="claro"] .ftv-ti b{text-shadow:none}
-#ftv .ftv-ti span{display:block;font-size:1.08em;letter-spacing:.06em;color:var(--cy);text-transform:uppercase;white-space:nowrap;margin:0}
-#ftv .ftv-kp{grid-column:3;grid-row:1;z-index:1;margin:.6em .35em .6em 0;display:flex;gap:.35em;align-items:stretch;flex-wrap:nowrap}
-#ftv .ftv-k{display:flex;align-items:center;gap:.5em;padding:.3em .75em .3em .5em;background:var(--pn);border:.12em solid var(--pb2);border-radius:0;box-shadow:none;clip-path:var(--stp);white-space:nowrap}
-#ftv .ftv-k .ic{width:2.5em;height:2.5em;background:none;box-shadow:none;color:#3d8bff;border-radius:0}
-#ftv .ftv-k .ic svg{width:2.5em;height:2.5em;stroke-width:2.4}
-#ftv .ftv-k:nth-child(2) .ic svg,#ftv .ftv-k:nth-child(3) .ic svg{fill:currentColor}
-#ftv .ftv-k b{display:block;font-size:2.35em;line-height:.9;letter-spacing:.03em;color:var(--tx)}
-#ftv .ftv-k span:not(.ic){display:block;font-family:var(--fv);font-size:1.02em;line-height:.9;letter-spacing:.03em;color:var(--tx2);text-transform:uppercase;white-space:normal;max-width:8.2em;margin-top:.15em}
+#ftv .ftv-ti b{display:block;font-family:var(--fj);font-weight:700;font-size:2.45em;line-height:.95;letter-spacing:.015em;text-transform:uppercase;color:var(--tx);white-space:nowrap;background:none;-webkit-text-fill-color:currentColor;text-shadow:0 0 .6em rgba(80,160,255,.25)}
+#ftv .ftv-ti span{display:block;font-family:var(--fv);font-weight:600;font-size:.82em;letter-spacing:.03em;text-transform:uppercase;color:var(--cy);white-space:nowrap;margin:0}
+#ftv .ftv-kp{grid-column:3;display:flex;gap:.55em;align-items:stretch;flex-wrap:nowrap;margin:.25em 0}
+#ftv .ftv-k{display:flex;align-items:center;gap:.6em;padding:.4em .95em .4em .7em;white-space:nowrap;background:linear-gradient(180deg,var(--sf2),var(--sf));border:1px solid var(--bd);border-radius:.6em;clip-path:none;box-shadow:0 0 .8em var(--glow),inset 0 1px 0 rgba(255,255,255,.05)}
+#ftv .ftv-k .ic{display:flex;width:2em;height:2em;color:#3d8bff;background:none;box-shadow:none;border-radius:0}
+#ftv .ftv-k .ic svg{width:100%;height:100%;filter:drop-shadow(0 0 .35em rgba(60,140,255,.5))}
+#ftv .ftv-k b{display:block;font-family:var(--fj);font-weight:700;font-size:1.95em;line-height:.95;letter-spacing:0;color:var(--tx)}
+#ftv .ftv-k span:not(.ic){display:block;font-family:var(--fv);font-weight:500;font-size:.7em;line-height:1.1;letter-spacing:.01em;color:var(--tx2);text-transform:none;white-space:normal;max-width:6.8em;margin-top:.15em}
 #ftv .ftv-k.fo>div{display:flex;flex-direction:column-reverse}
-#ftv .ftv-k.fo b{font-size:1.6em;letter-spacing:.04em}
-#ftv .ftv-k.fo span:not(.ic){color:var(--am);font-family:var(--fj);font-size:.95em;margin:0 0 .2em;letter-spacing:.06em}
-#ftv .ftv-k.k-da,#ftv .ftv-k.k-hj{background:var(--pn);border-color:var(--pb2)}
-#ftv .ftv-k.k-da .ic{color:#ff3b3b;background:none}
-#ftv .ftv-k.k-da b{color:var(--da);text-shadow:none}
-#ftv .ftv-k.k-hj b{color:var(--hj)}
-#ftv .ftv-st{grid-column:4;grid-row:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;padding:0 .4em;min-width:0}
+#ftv .ftv-k.fo b{font-size:1.45em;line-height:1}
+#ftv .ftv-k.fo span:not(.ic){font-weight:700;font-size:.68em;text-transform:uppercase;letter-spacing:.04em;color:var(--tx);margin:0 0 .3em}
+#ftv .ftv-k.k-da .ic{color:var(--da)}#ftv .ftv-k.k-da .ic svg{filter:drop-shadow(0 0 .35em rgba(255,59,79,.55))}
+#ftv .ftv-k.k-da b{color:var(--da)}
+#ftv .ftv-k.k-hj .ic{color:var(--am)}#ftv .ftv-k.k-hj .ic svg{filter:drop-shadow(0 0 .35em rgba(255,201,40,.5))}
+#ftv .ftv-k.k-hj b{color:var(--am)}
+#ftv .ftv-k.k-da,#ftv .ftv-k.k-hj{background:linear-gradient(180deg,var(--sf2),var(--sf));border-color:var(--bd)}
+#ftv .ftv-st{grid-column:4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.1em;padding:.3em .6em;min-width:0;
+  background:linear-gradient(180deg,var(--sf2),var(--sf));border:1.5px solid var(--bdf);border-radius:.7em;clip-path:none;
+  box-shadow:0 0 1.1em rgba(30,120,255,.5),inset 0 0 1em rgba(30,120,255,.18)}
 #ftv .ftv-rl{text-align:center;line-height:1}
-#ftv .ftv-rl b{display:block;font-size:3.7em;line-height:.95;letter-spacing:.08em;color:var(--am);text-shadow:.05em .05em 0 rgba(90,55,0,.9)}
-#ftv[data-tema="claro"] .ftv-rl b{text-shadow:none}
-#ftv .ftv-rl span{display:block;font-family:var(--fv);font-size:1.32em;line-height:1;letter-spacing:.08em;color:var(--cy);text-transform:uppercase;margin-top:.1em}
+#ftv .ftv-rl b{display:block;font-family:var(--fj);font-weight:600;font-size:2.7em;line-height:.95;letter-spacing:.03em;color:#9fe6ff;text-shadow:0 0 .35em rgba(80,200,255,.55)}
+#ftv[data-tema="claro"] .ftv-rl b{color:#0b5fa8;text-shadow:none}
+#ftv .ftv-rl span{display:block;font-family:var(--fv);font-weight:600;font-size:.82em;line-height:1.1;letter-spacing:.04em;text-transform:uppercase;color:var(--cy);margin-top:.2em}
 #ftv .ftv-rl span em{display:block;font-style:normal;color:var(--cy)}
-#ftv .ftv-st2{margin-top:.2em;gap:0}
+#ftv .ftv-st2{margin-top:.15em;gap:0}
 #ftv .ftv-st2>span{display:none}
-#ftv .ftv-tm{display:inline-flex;align-items:center;gap:.9em;background:none;border:0;padding:0;font-family:var(--fv);font-size:1.32em;letter-spacing:.08em;color:var(--cy);text-transform:uppercase;clip-path:none;cursor:pointer}
-#ftv .ftv-tm svg{width:1.15em;height:1.15em;color:#ffc93a;stroke-width:3}
-/* letreiro */
-#ftv .ftv-mq{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);height:4.3em;margin:0 1.7em;background:var(--pn);border:.16em solid var(--pb);border-radius:0;box-shadow:none;clip-path:none;overflow:visible}
-#ftv .ftv-mq::before,#ftv .ftv-mq::after{content:"";position:absolute;top:-.16em;bottom:-.16em;width:1.25em;z-index:2;
-  background:linear-gradient(#ffb01e,#ffb01e) 0 8%/100% 26% no-repeat,linear-gradient(#e5542a,#e5542a) 0 50%/100% 26% no-repeat,linear-gradient(#ffb01e,#ffb01e) 0 92%/100% 26% no-repeat;
-  box-shadow:inset 0 0 0 .1em rgba(60,20,0,.55)}
-#ftv .ftv-mq::before{left:-1.6em}#ftv .ftv-mq::after{right:-1.6em}
-#ftv .ftv-mql{display:flex;align-items:center;gap:.7em;padding:0 1.2em 0 .8em;background:transparent;border:0;border-right:.12em solid var(--pb2);clip-path:none}
-#ftv .ftv-mql .ic{width:2.6em;height:2.6em;background:none;box-shadow:none;color:#3d8bff;clip-path:none}
-#ftv .ftv-mql .ic svg{width:2.6em;height:2.6em;fill:currentColor}
-#ftv .ftv-mql span:not(.ic),#ftv .ftv-mql b{display:block;font-size:1.12em;line-height:1.05;letter-spacing:.06em;color:var(--cy);text-transform:uppercase}
-#ftv .ftv-mqv{position:relative;overflow:hidden;margin:0;-webkit-mask-image:none;mask-image:none}
-#ftv .ftv-mqv::before{content:"";position:absolute;right:0;top:0;bottom:0;width:3.4em;z-index:1;background:linear-gradient(90deg,transparent,var(--pn) 45%)}
-#ftv .ftv-mqv::after{content:"";position:absolute;right:1.3em;top:50%;width:.95em;height:.95em;z-index:2;border-right:.24em solid #6fb6ff;border-bottom:.24em solid #6fb6ff;transform:translateY(-50%) rotate(-45deg)}
-#ftv .ftv-mqt{display:flex;align-items:center;gap:.9em;height:100%;padding:0 .8em}
-#ftv .ftv-tk{display:inline-flex;align-items:center;height:3em;gap:.75em;padding:0 .3em 0 .85em;border-radius:.3em;clip-path:none;box-shadow:none;
-  background:hsl(var(--h) 70% 18%);border:.14em solid hsl(var(--h) 85% 50%)}
-#ftv[data-tema="claro"] .ftv-tk{background:hsl(var(--h) 85% 92%);border-color:hsl(var(--h) 70% 42%)}
-#ftv .ftv-tk i{width:1.25em;height:1.25em;margin:0;border-radius:50%;background:hsl(var(--h) 90% 62%);box-shadow:inset -.14em -.14em 0 hsl(var(--h) 75% 42%)}
-#ftv .ftv-tk b{font-size:1.7em;letter-spacing:.04em;color:var(--tx);text-transform:none}
-#ftv .ftv-tk em{font-style:normal;font-size:2.05em;line-height:1.15;color:var(--tx);background:rgba(0,0,0,.28);padding:0 .35em;border-radius:.12em}
-#ftv[data-tema="claro"] .ftv-tk em{background:rgba(255,255,255,.6)}
+#ftv .ftv-tm{display:inline-flex;align-items:center;gap:.4em;background:none;border:0;padding:0;font-family:var(--fv);font-weight:700;font-size:.85em;letter-spacing:.06em;text-transform:uppercase;color:var(--am);cursor:pointer;clip-path:none}
+#ftv .ftv-tm svg{width:1.2em;height:1.2em;color:var(--am);stroke-width:2.6}
+
+/* ═════════ letreiro ═════════ */
+#ftv .ftv-mq{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);align-items:stretch;height:3.7em;margin:0;overflow:hidden;
+  background:linear-gradient(180deg,var(--sf2),var(--sf));border:1px solid var(--bd);border-radius:.65em;clip-path:none;box-shadow:0 0 .9em var(--glow)}
+#ftv .ftv-mq::before,#ftv .ftv-mq::after{display:none;content:none}
+#ftv .ftv-mql{display:flex;align-items:center;gap:.6em;padding:0 1.2em 0 .9em;background:none;border:0;border-right:1px solid var(--bd);clip-path:none}
+#ftv .ftv-mql .ic{display:flex;width:2.1em;height:2.1em;color:#3d8bff;background:none;box-shadow:none;clip-path:none}
+#ftv .ftv-mql .ic svg{width:100%;height:100%;filter:drop-shadow(0 0 .35em rgba(60,140,255,.5))}
+#ftv .ftv-mql span:not(.ic),#ftv .ftv-mql b{display:block;font-family:var(--fv);font-weight:700;font-size:.82em;line-height:1.15;letter-spacing:.03em;text-transform:uppercase;color:var(--cy)}
+#ftv .ftv-mqv{position:relative;overflow:hidden;margin:0;-webkit-mask-image:linear-gradient(90deg,transparent,#000 2%,#000 97%,transparent);mask-image:linear-gradient(90deg,transparent,#000 2%,#000 97%,transparent)}
+#ftv .ftv-mqv::before,#ftv .ftv-mqv::after{display:none;content:none}
+#ftv .ftv-mqt{display:flex;align-items:center;gap:.9em;height:100%;padding:0 .9em}
+#ftv .ftv-tk{display:inline-flex;align-items:center;height:2.55em;gap:.65em;padding:0 .3em 0 .85em;border-radius:.45em;clip-path:none;white-space:nowrap;
+  background:linear-gradient(90deg,hsl(var(--h) 85% 45% / .2),rgba(8,18,42,.85) 70%);border:1.5px solid hsl(var(--h) 90% 56%);
+  box-shadow:0 0 .7em hsl(var(--h) 90% 55% / .5),inset 0 0 .7em hsl(var(--h) 90% 55% / .14)}
+#ftv[data-tema="claro"] .ftv-tk{background:linear-gradient(90deg,hsl(var(--h) 85% 92%),#fff 70%);border-color:hsl(var(--h) 70% 45%);box-shadow:0 0 .5em hsl(var(--h) 80% 50% / .25)}
+#ftv .ftv-tk i{display:flex;width:1.3em;height:1.3em;margin:0;border-radius:0;background:none;box-shadow:none;color:hsl(var(--h) 95% 62%)}
+#ftv .ftv-tk i svg{width:100%;height:100%;filter:drop-shadow(0 0 .3em hsl(var(--h) 95% 60% / .7))}
+#ftv .ftv-tk b{font-family:var(--fv);font-weight:600;font-size:1.15em;letter-spacing:.005em;color:var(--tx);text-transform:none;background:none;-webkit-text-fill-color:currentColor;filter:none;animation:none}
+#ftv .ftv-tk em{font-style:normal;font-family:var(--fj);font-weight:700;font-size:1.35em;line-height:1.3;min-width:1.7em;text-align:center;padding:0 .35em;border-radius:.3em;color:var(--tx);background:rgba(0,0,0,.4)}
+#ftv[data-tema="claro"] .ftv-tk em{background:rgba(13,26,58,.08)}
 #ftv .ftv-tk small{display:none}
-/* cards */
-#ftv .ftv-grid{gap:.6em}
-#ftv .ftv-card{background:var(--pn);border:.17em solid hsl(var(--h) 85% 52%);border-radius:0;clip-path:var(--stp);box-shadow:inset 0 0 0 .12em rgba(0,0,0,.35);transform:none!important}
-#ftv[data-tema="claro"] .ftv-card{border-color:hsl(var(--h) 70% 42%);box-shadow:none}
+
+/* ═════════ cards ═════════ */
+#ftv .ftv-grid{gap:.75em}
+#ftv .ftv-card{position:relative;display:flex;flex-direction:column;min-height:0;overflow:hidden;cursor:pointer;transform:none!important;
+  background:linear-gradient(180deg,#0b1633,#081127);border:2px solid hsl(var(--h) 90% 56%);border-radius:.8em;clip-path:none;
+  box-shadow:0 0 1.1em hsl(var(--h) 90% 55% / .45),inset 0 0 1.4em hsl(var(--h) 90% 55% / .07);transition:box-shadow .2s,border-color .2s}
+#ftv[data-tema="claro"] .ftv-card{background:linear-gradient(180deg,#fff,#f5f8fe);border-color:hsl(var(--h) 70% 45%);box-shadow:0 0 .8em hsl(var(--h) 80% 50% / .2)}
 #ftv .ftv-card::before{display:none}
-#ftv .ftv-card:hover,#ftv .ftv-card:focus-visible{border-color:#fff;outline:none}
-#ftv .ftv-ch0{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:.75em;padding:.5em .8em .55em .6em;
-  background:linear-gradient(180deg,hsl(var(--h) 62% 23%),hsl(var(--h) 58% 15%));border-bottom:.14em solid hsl(var(--h) 85% 52%)}
-#ftv[data-tema="claro"] .ftv-ch0{background:linear-gradient(180deg,hsl(var(--h) 85% 90%),hsl(var(--h) 80% 95%))}
-#ftv .ftv-av{position:relative;isolation:isolate;width:1.5em;height:1.5em;font-size:2.3em;line-height:1;display:flex;align-items:center;justify-content:center;color:#fff;
-  background:hsl(var(--h) 95% 66%);clip-path:var(--oct);border:0;box-shadow:none;border-radius:0}
-#ftv .ftv-av::before{content:"";position:absolute;inset:.09em;z-index:-1;background:linear-gradient(180deg,hsl(var(--h) 80% 47%),hsl(var(--h) 80% 34%));clip-path:var(--oct)}
-#ftv .ftv-sn b{display:block;font-size:1.55em;line-height:1;letter-spacing:.05em;color:hsl(var(--h) 100% 93%);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;-webkit-line-clamp:unset}
+#ftv .ftv-card:hover,#ftv .ftv-card:focus-visible{outline:none;box-shadow:0 0 1.6em hsl(var(--h) 95% 60% / .7),inset 0 0 1.4em hsl(var(--h) 90% 55% / .12)}
+#ftv .ftv-ch0{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:.75em;padding:.6em .85em .6em .7em;
+  background:linear-gradient(90deg,hsl(var(--h) 85% 42% / .6),hsl(var(--h) 80% 30% / .2) 65%,transparent);border-bottom:1.5px solid hsl(var(--h) 90% 56% / .75)}
+#ftv[data-tema="claro"] .ftv-ch0{background:linear-gradient(90deg,hsl(var(--h) 85% 88%),hsl(var(--h) 80% 95%) 65%,transparent)}
+#ftv .ftv-ch0 .ftv-av{position:relative;isolation:isolate;display:flex;align-items:center;justify-content:center;width:1.55em;height:1.55em;font-size:1.85em;line-height:1;
+  font-family:var(--fj);font-weight:700;color:#fff;border:0;border-radius:0;clip-path:var(--oct);
+  background:linear-gradient(160deg,hsl(var(--h) 100% 86%),hsl(var(--h) 95% 62%) 45%,hsl(var(--h) 85% 34%));box-shadow:none;
+  text-shadow:0 .05em .12em rgba(0,0,0,.55)}
+#ftv .ftv-ch0 .ftv-av::before{content:"";position:absolute;inset:.08em;z-index:-1;clip-path:var(--oct);background:radial-gradient(130% 100% at 30% 15%,hsl(var(--h) 95% 64%),hsl(var(--h) 88% 42%) 58%,hsl(var(--h) 85% 26%))}
+#ftv .ftv-ch0 .ftv-av::after{content:"";position:absolute;inset:.08em .08em 52% .08em;z-index:-1;clip-path:polygon(29% 0,71% 0,100% 58%,100% 100%,0 100%,0 58%);background:linear-gradient(180deg,rgba(255,255,255,.38),rgba(255,255,255,.05));box-shadow:none}
+#ftv .ftv-sn{min-width:0}
+#ftv .ftv-sn b{display:block;font-family:var(--fj);font-weight:700;font-size:1.45em;line-height:1;letter-spacing:.02em;text-transform:uppercase;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  background:none;-webkit-text-fill-color:currentColor;filter:none;animation:none;-webkit-line-clamp:unset}
 #ftv[data-tema="claro"] .ftv-sn b{color:hsl(var(--h) 70% 22%)}
-#ftv .ftv-sn span{display:block;font-family:var(--fv);font-size:1.28em;line-height:.92;letter-spacing:.03em;color:hsl(var(--h) 80% 82%);text-transform:uppercase;margin-top:.12em;max-width:10.5em}
-#ftv[data-tema="claro"] .ftv-sn span{color:hsl(var(--h) 60% 35%)}
-#ftv .ftv-tt{text-align:right;line-height:1;align-self:stretch;display:flex;flex-direction:column;align-items:flex-end;justify-content:flex-start}
-#ftv .ftv-tt b{display:block;font-size:3.1em;line-height:.85;color:#fff;background:none;-webkit-text-fill-color:currentColor;filter:none;text-shadow:.05em .05em 0 rgba(0,0,0,.55)}
+#ftv .ftv-sn span{display:block;font-family:var(--fv);font-weight:500;font-size:.8em;line-height:1.2;letter-spacing:.005em;text-transform:none;color:#dce6f8;margin-top:.2em;max-width:12em}
+#ftv[data-tema="claro"] .ftv-sn span{color:var(--tx2)}
+#ftv .ftv-tt{display:flex;flex-direction:column;align-items:flex-end;align-self:stretch;justify-content:center;text-align:right;line-height:1}
+#ftv .ftv-tt b{display:block;font-family:var(--fj);font-weight:700;font-size:2.55em;line-height:.85;color:#fff;background:none;-webkit-text-fill-color:currentColor;filter:none;text-shadow:0 0 .4em hsl(var(--h) 90% 60% / .45)}
 #ftv[data-tema="claro"] .ftv-tt b{color:hsl(var(--h) 70% 25%);text-shadow:none}
-#ftv .ftv-tt span{display:block;font-family:var(--fv);font-size:1em;line-height:.88;letter-spacing:.03em;color:#bcd8ff;text-transform:uppercase;white-space:normal;max-width:7.4em;margin-top:.2em}
+#ftv .ftv-tt span{display:block;font-family:var(--fv);font-weight:500;font-size:.7em;line-height:1.1;text-transform:none;letter-spacing:0;color:#cdd8ee;white-space:normal;max-width:6.4em;margin-top:.25em}
 #ftv[data-tema="claro"] .ftv-tt span{color:var(--tx2)}
 #ftv .ftv-card.vazio .ftv-tt b{color:var(--ok)}
 #ftv .ftv-bar,#ftv .ftv-cs,#ftv .ftv-toque{display:none!important}
-#ftv .ftv-ls{background:transparent}
-#ftv .ftv-tr{gap:0;padding:0 .55em}
-#ftv .ftv-it{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:.7em;padding:.5em .15em .5em 1.05em;background:none;border:0;border-bottom:.1em solid var(--ln);border-radius:0;box-shadow:none}
-#ftv .ftv-it::before{display:block;content:"";position:absolute;left:.25em;top:.5em;bottom:.5em;width:.32em;background:var(--c);border-radius:0}
-#ftv .ftv-it.k-vi::before{background:#b48cff}
-#ftv .ftv-pe b{display:block;font-size:1.52em;line-height:1;letter-spacing:.05em;color:var(--tx);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#ftv .ftv-pe span{display:block;font-family:var(--fv);font-size:1.25em;line-height:1;letter-spacing:.03em;color:#8fd3f0;text-transform:uppercase;margin-top:.12em}
-#ftv[data-tema="claro"] .ftv-pe span{color:#1d6a9a}
-#ftv .ftv-pe small{display:block;font-family:var(--fv);font-size:1.25em;line-height:1;letter-spacing:.02em;color:#c5d2e8;text-transform:none;margin-top:.05em}
-#ftv[data-tema="claro"] .ftv-pe small{color:var(--mut)}
-#ftv .ftv-pz{min-width:6.6em;max-width:none;padding:.32em .6em;text-align:center;white-space:nowrap;line-height:1;border:.14em solid var(--c);border-radius:.3em;clip-path:none;box-shadow:none;animation:none;font-size:1em;background:#0b2050;color:var(--tx)}
-#ftv .ftv-pz small{display:block;font-size:1.12em;letter-spacing:.06em;text-transform:uppercase;color:inherit;opacity:1}
-#ftv .ftv-pz b{display:block;font-size:1.5em;letter-spacing:.05em;color:inherit}
-#ftv .k-da .ftv-pz{background:#2c0b17;border-color:#e8363f;color:#ff4a3f}
-#ftv .k-da .ftv-pz small{color:#ff7a3a}
-#ftv .k-hj .ftv-pz{background:#3a1d05;border-color:#ff8a1a;color:#ffa43a}
-#ftv .k-np .ftv-pz{background:#352c05;border-color:#ffd21a;color:#ffd84a}
-#ftv .k-gr .ftv-pz{background:#1f1250;border-color:#9b6cff;color:#d3c2ff}
-#ftv .k-vi .ftv-pz{background:#0b2050;border-color:#2f74d8;color:#e8f1ff;padding:.38em .7em}
-#ftv .k-vi .ftv-pz small,#ftv .k-gr .ftv-pz small{font-size:1.05em;line-height:1.05}
-#ftv[data-tema="claro"] .k-da .ftv-pz{background:#ffe7e9;color:#c3152b}
-#ftv[data-tema="claro"] .k-da .ftv-pz small{color:#d8481f}
-#ftv[data-tema="claro"] .k-vi .ftv-pz{background:#e3eeff;color:#0b3a8f}
-#ftv[data-tema="claro"] .k-hj .ftv-pz{background:#fff0d9;color:#a14d00}
-#ftv[data-tema="claro"] .k-np .ftv-pz{background:#fff6cf;color:#7a5a00}
-#ftv[data-tema="claro"] .k-gr .ftv-pz{background:#ece6ff;color:#4a2bb0}
-#ftv .ftv-cf{padding:.15em 1.3em .35em;border:0;font-size:1em}
+#ftv .ftv-ls{flex:1;min-height:0;overflow:hidden;position:relative;background:none}
+#ftv .ftv-tr{list-style:none;margin:0;display:flex;flex-direction:column;gap:0;padding:0 .8em}
+#ftv .ftv-it{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:.7em;padding:.5em .1em .5em .95em;
+  background:none;border:0;border-bottom:1px solid var(--ln);border-radius:0;box-shadow:none}
+#ftv .ftv-it::before{display:block;content:"";position:absolute;left:.15em;top:.55em;bottom:.55em;width:.22em;border-radius:2px;background:var(--c);box-shadow:0 0 .45em var(--c)}
+#ftv .ftv-pe{min-width:0}
+#ftv .ftv-pe b{display:block;font-family:var(--fv);font-weight:600;font-size:1.25em;line-height:1.15;letter-spacing:.005em;text-transform:none;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  background:none;-webkit-text-fill-color:currentColor;filter:none;animation:none}
+#ftv .ftv-pe span{display:block;font-family:var(--fv);font-weight:500;font-size:.88em;line-height:1.2;letter-spacing:.01em;text-transform:uppercase;color:var(--re);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:.12em}
+#ftv .ftv-pe small{display:block;font-family:var(--fv);font-weight:500;font-size:.86em;line-height:1.2;letter-spacing:.01em;text-transform:none;color:var(--tx2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:.05em}
+#ftv .ftv-pz{min-width:4.6em;max-width:none;padding:.3em .55em;text-align:center;white-space:nowrap;line-height:1;font-size:1em;animation:none;clip-path:none;
+  border:1.5px solid var(--c);border-radius:.4em;background:color-mix(in srgb,var(--c) 13%,#091228);color:var(--c);box-shadow:0 0 .6em color-mix(in srgb,var(--c) 35%,transparent)}
+#ftv[data-tema="claro"] .ftv-pz{background:color-mix(in srgb,var(--c) 9%,#fff)}
+#ftv .ftv-pz small{display:block;font-family:var(--fj);font-weight:700;font-size:.7em;line-height:1.05;letter-spacing:.05em;text-transform:uppercase;color:inherit;opacity:1}
+#ftv .ftv-pz b{display:block;font-family:var(--fj);font-weight:700;font-size:1.55em;line-height:1;letter-spacing:.01em;color:inherit;margin-top:.05em}
+#ftv .k-vi .ftv-pz small,#ftv .k-gr .ftv-pz small{font-size:.74em;line-height:1.15}
+#ftv .k-hj .ftv-pz{animation:ftvHoje3 2.4s ease-in-out infinite}
+@keyframes ftvHoje3{50%{box-shadow:0 0 1.1em color-mix(in srgb,var(--hj) 70%,transparent)}}
+#ftv .ftv-cf{display:flex;align-items:center;justify-content:space-between;gap:.6em;margin:.45em .8em .6em;padding:.3em .85em;font-size:1em;
+  border:1px solid var(--bd);border-radius:.45em;background:rgba(25,60,130,.28);box-shadow:inset 0 0 .6em rgba(40,110,255,.12)}
+#ftv[data-tema="claro"] .ftv-cf{background:rgba(43,108,230,.07)}
 #ftv .ftv-cf:has(.ftv-mais:empty){display:none}
-#ftv .ftv-mais{font-family:var(--fv);font-size:1.3em;letter-spacing:.03em;color:#4da3ff;text-transform:none}
-#ftv .ftv-ok{color:var(--ok);font-family:var(--fj)}
-#ftv .ftv-ok b{font-size:1.4em;text-transform:uppercase;letter-spacing:.05em}
-#ftv .ftv-ok span{font-family:var(--fv);font-size:1.2em}
-/* regra */
-#ftv .ftv-rg{display:flex;align-items:center;gap:.9em;height:3.1em;padding:0 1em 0 .4em;background:var(--pn);border:.17em solid #c99a2e;border-radius:0;box-shadow:none;clip-path:var(--stp)}
-#ftv .ftv-rg .ic{position:relative;width:2.3em;height:2.3em;flex:none;border-radius:50%!important;background:#ffc229;color:#2a1a00;box-shadow:inset 0 0 0 .15em #b07a10;clip-path:none;display:flex;align-items:center;justify-content:center}
-#ftv .ftv-rg .ic svg{display:none}
-#ftv .ftv-rg .ic::after{content:"!";font-family:var(--fj);font-size:2em;line-height:1;color:#2a1a00}
-#ftv .ftv-rg p{flex:none;margin:0;padding:0;border:0;font-size:1.48em;letter-spacing:.05em;color:var(--tx);text-transform:uppercase}
-#ftv .ftv-rg p b{color:#ffc229}
-#ftv[data-tema="claro"] .ftv-rg p b{color:#b07a00}
-#ftv .ftv-lgd{flex:1;display:flex;justify-content:flex-end;gap:1.25em;margin:0;padding:0;border:0;font-family:var(--fv);font-size:1.32em;letter-spacing:.02em;color:var(--tx);text-transform:none;opacity:1}
-#ftv .ftv-lgd span{display:inline-flex;align-items:center;gap:.4em}
-#ftv .ftv-lgd i{width:.95em;height:.95em;border-radius:0;box-shadow:none}
-#ftv .ftv-lgd .k-da i{background:#e8282f}#ftv .ftv-lgd .k-hj i{background:#ff8a1a}#ftv .ftv-lgd .k-np i{background:#ffd21a}#ftv .ftv-lgd .k-gr i{background:#8b5cf6}#ftv .ftv-lgd .k-vi i{background:#2f86ff}
-/* sair e aviso de tela cheia */
-#ftv .ftv-x{font-family:var(--fj);font-size:1.1em;letter-spacing:.05em;text-transform:uppercase;background:var(--pn);border:.14em solid var(--pb);border-radius:0;color:var(--tx);box-shadow:none;clip-path:none;top:8.5em;right:1em;left:auto}
-#ftv .ftv-fs{font-family:var(--fj);font-size:1.1em;letter-spacing:.05em;background:var(--pn);border:.14em solid #c99a2e;border-radius:0;color:#ffc229;box-shadow:none;bottom:4.2em}
-/* detalhe da área */
-#ftv .ftv-ov{background:rgba(3,10,34,.75);-webkit-backdrop-filter:none;backdrop-filter:none}
-#ftv .ftv-det{background:var(--pn);border:.2em solid hsl(var(--h) 85% 52%);border-radius:0;clip-path:var(--stp);box-shadow:none;animation:none}
-#ftv .ftv-deh{background:linear-gradient(180deg,hsl(var(--h) 62% 23%),hsl(var(--h) 58% 15%));border-bottom:.14em solid hsl(var(--h) 85% 52%)}
-#ftv[data-tema="claro"] .ftv-deh{background:linear-gradient(180deg,hsl(var(--h) 85% 90%),hsl(var(--h) 80% 95%))}
-#ftv .ftv-av.g{font-size:3em}
-#ftv .ftv-deh .ftv-sn small{display:block;font-size:1.1em;letter-spacing:.08em;color:var(--am);text-transform:uppercase}
-#ftv .ftv-deh .ftv-sn b{font-size:2.4em}
-#ftv .ftv-deh .ftv-sn span{font-size:1.3em;max-width:none}
-#ftv .ftv-dx{font-family:var(--fj);font-size:1.3em;letter-spacing:.05em;text-transform:uppercase;background:var(--pn2);border:.12em solid var(--pb);border-radius:0;color:var(--tx);clip-path:none}
-#ftv .ftv-dks{background:rgba(0,0,0,.15);gap:.5em}
-#ftv .ftv-dk{background:var(--pn2);border:.12em solid var(--pb2);border-radius:0;clip-path:var(--stp);box-shadow:none}
-#ftv .ftv-dk b{font-size:2em;letter-spacing:.03em;color:var(--tx)}
-#ftv .ftv-dk[class*="k-"] b{color:var(--c)}
-#ftv .ftv-dk span{font-family:var(--fv);font-size:1.25em;letter-spacing:.03em;color:var(--tx2);text-transform:uppercase}
-#ftv .ftv-fl input{font-family:var(--fv);font-size:1.4em;letter-spacing:.04em;background:var(--pn2);border:.1em solid var(--pb);border-radius:0;color:var(--tx);clip-path:none}
-#ftv .ftv-fl input::placeholder{color:var(--mut)}
-#ftv .ftv-fn{font-family:var(--fv);font-size:1.3em}
-#ftv .ftv-dg h4{font-size:1.5em;letter-spacing:.06em;text-transform:uppercase}
-#ftv .ftv-dg h4 i{border-radius:0}
-#ftv .ftv-dg h4 em{font-family:var(--fv);font-size:.85em;border-radius:0;background:transparent;border:.08em solid var(--c);color:var(--c);padding:0 .5em}
-#ftv .ftv-dt{border:.12em solid var(--pb2);border-radius:0;clip-path:none}
-#ftv .ftv-dh{background:var(--pn2);font-family:var(--fj);font-size:1.05em;letter-spacing:.08em;color:var(--am);text-transform:uppercase}
-#ftv .ftv-dr{border-top:.1em solid var(--ln)}
-#ftv .ftv-dr:nth-child(odd){background:rgba(0,0,0,.12)}
-#ftv .ftv-dr b{font-size:1.3em;letter-spacing:.05em;text-transform:uppercase}
-#ftv .ftv-dr small{font-family:var(--fv);font-size:1.15em;color:var(--mut);letter-spacing:.03em}
-#ftv .ftv-dp b{font-size:1.5em;color:var(--c)}
-#ftv .ftv-fd span{font-family:var(--fv);font-size:1.1em;border-radius:0;background:transparent;border:.08em solid var(--pb);color:var(--tx)}
-#ftv .ftv-sit b{font-family:var(--fv);font-size:1.25em;color:var(--tx2);text-transform:uppercase}
-#ftv .ftv-hs{font-family:var(--fv);font-size:1.15em;border-radius:0;letter-spacing:.03em}
-#ftv .ftv-nota{background:var(--pn2);border:.12em solid #2f74d8;border-radius:0;clip-path:var(--stp);box-shadow:none}
-#ftv .ftv-nota b{font-size:1.25em;letter-spacing:.05em;color:#8fd3f0;text-transform:uppercase}
-#ftv[data-tema="claro"] .ftv-nota b{color:#0b3a8f}
-#ftv .ftv-nota span{font-family:var(--fv);font-size:1.25em;color:var(--tx2)}
-#ftv .ftv-nota svg{color:#3d9bff}
-#ftv .ftv-dfo{background:rgba(0,0,0,.18);font-family:var(--fv);font-size:1.25em}
+#ftv .ftv-mais{font-family:var(--fv);font-weight:600;font-size:1em;letter-spacing:.01em;text-transform:none;color:#8fc8ff}
+#ftv[data-tema="claro"] .ftv-mais{color:var(--re)}
+#ftv .ftv-pts{display:flex;width:1em;height:1em;color:#8fc8ff;opacity:.85}
+#ftv .ftv-pts svg{width:100%;height:100%}
+#ftv .ftv-ok{flex:1;color:var(--ok);font-family:var(--fv)}
+#ftv .ftv-ok b{font-family:var(--fj);font-weight:700;font-size:1.5em;text-transform:uppercase;letter-spacing:.03em}
+#ftv .ftv-ok span{font-size:.95em;color:var(--tx2)}
+
+/* ═════════ rodapé da regra ═════════ */
+#ftv .ftv-rg{display:flex;align-items:center;gap:.75em;height:2.8em;padding:0 1.1em 0 .8em;clip-path:none;
+  background:linear-gradient(180deg,var(--sf2),var(--sf));border:1px solid var(--bd);border-radius:.6em;box-shadow:0 0 .8em var(--glow)}
+#ftv .ftv-rg .ic{display:flex;width:1.75em;height:1.75em;flex:none;color:var(--am);background:none!important;box-shadow:none;border-radius:0!important;clip-path:none}
+#ftv .ftv-rg .ic::after{display:none;content:none}
+#ftv .ftv-rg .ic svg{display:block;width:100%;height:100%;filter:drop-shadow(0 0 .35em rgba(255,201,40,.5))}
+#ftv .ftv-rg p{flex:none;margin:0;padding:0;border:0;font-family:var(--fv);font-weight:500;font-size:.98em;letter-spacing:.01em;text-transform:none;color:var(--tx);white-space:nowrap}
+#ftv .ftv-rg p b{font-family:var(--fv);font-weight:700;text-transform:uppercase;color:var(--am)}
+#ftv .ftv-lgd{flex:1;display:flex;justify-content:flex-end;flex-wrap:nowrap;gap:1.7em;margin:0;padding:0;border:0;font-family:var(--fv);font-weight:500;font-size:.88em;letter-spacing:.01em;color:var(--tx);white-space:nowrap;opacity:1}
+#ftv .ftv-lgd span{display:inline-flex;align-items:center;gap:.5em}
+#ftv .ftv-lgd i{width:1.05em;height:1.05em;border-radius:.22em;background:var(--c);box-shadow:0 0 .45em color-mix(in srgb,var(--c) 60%,transparent)}
+
+/* ═════════ sair e aviso de tela cheia ═════════ */
+#ftv .ftv-x{font-family:var(--fv);font-weight:700;font-size:.8em;letter-spacing:.04em;text-transform:uppercase;background:var(--sf);border:1px solid var(--bd);border-radius:.4em;color:var(--tx);box-shadow:0 0 .6em var(--glow);clip-path:none;top:8.2em;right:1em;left:auto}
+#ftv .ftv-fs{font-family:var(--fv);font-weight:600;font-size:.85em;background:var(--sf);border:1px solid var(--bdf);border-radius:2em;color:var(--tx);box-shadow:0 0 .8em var(--glow);bottom:3.8em}
 @container (max-width:17em){#ftv .ftv-it{grid-template-columns:minmax(0,1fr)}#ftv .ftv-pz{justify-self:start}}
-/* ajustes de medida (comparado com a referência em 1920x1080) */
-#ftv .ftv-top{height:auto;min-height:7.6em}
-#ftv .ftv-ti b{font-size:2.42em;letter-spacing:.05em}
-#ftv .ftv-ti span{font-size:1em}
-#ftv .ftv-kp{gap:.3em}
-#ftv .ftv-k{padding:.25em .6em .25em .4em;gap:.4em}
-#ftv .ftv-k .ic,#ftv .ftv-k .ic svg{width:2.05em;height:2.05em}
-#ftv .ftv-k b{font-size:2.1em}
-#ftv .ftv-k span:not(.ic){font-size:.95em;max-width:6.6em}
-#ftv .ftv-k.fo b{font-size:1.45em}
-#ftv .ftv-k.fo span:not(.ic){font-size:.9em}
-#ftv .ftv-rl b{font-size:3.25em}
-#ftv .ftv-rl span,#ftv .ftv-tm{font-size:1.15em}
-#ftv .ftv-st2{margin-top:.1em}
-#ftv .ftv-sn b{font-size:1.42em;letter-spacing:.035em}
-#ftv .ftv-sn span{font-size:1.18em}
-#ftv .ftv-tt span{font-size:.95em;max-width:7em}
-#ftv .ftv-ch0{gap:.6em;padding:.45em .7em .5em .55em}
-#ftv .ftv-av{font-size:2.15em}
-#ftv .ftv-it{padding:.38em .15em .38em 1.05em}
-#ftv .ftv-it::before{top:.4em;bottom:.4em}
-#ftv .ftv-pe b{font-size:1.45em}
-#ftv .ftv-pe span,#ftv .ftv-pe small{font-size:1.14em;line-height:.95}
-#ftv .ftv-pz{padding:.28em .55em}
-#ftv .ftv-pz small{font-size:1.05em}
-#ftv .ftv-pz b{font-size:1.4em}
-#ftv .ftv-rg p{font-size:1.32em;white-space:nowrap}
-#ftv .ftv-lgd{font-size:1.15em;gap:1em;white-space:nowrap;flex-wrap:nowrap}
-#ftv .ftv-top{min-height:0;height:7.1em}
-#ftv .ftv-logo,#ftv .ftv-st{border-width:.42em}
-#ftv .ftv-ti{padding:.2em 1.2em;margin:.3em 0 .3em .2em}
-#ftv .ftv-ti b{font-size:2.3em}
-#ftv .ftv-ti span{font-size:.95em}
-#ftv .ftv-top::before{margin:.3em 0}
-#ftv .ftv-kp{margin:.55em .3em .55em 0}
-#ftv .ftv-rl b{font-size:2.95em}
-#ftv .ftv-rl span,#ftv .ftv-tm{font-size:1.05em}
-#ftv .ftv-mq{height:4em}
-#ftv .ftv-tk{height:2.8em}
-#ftv .ftv-rg{height:2.9em}
-#ftv .ftv-top{height:auto}
-#ftv .ftv-logo img{height:6.3em;width:100%}
-#ftv .k-da .ftv-pz b{color:#ff4a3f}#ftv .k-hj .ftv-pz b{color:#ffa43a}#ftv .k-np .ftv-pz b{color:#ffd84a}
-#ftv[data-tema="claro"] .k-da .ftv-pz b{color:#c3152b}#ftv[data-tema="claro"] .k-hj .ftv-pz b{color:#a14d00}#ftv[data-tema="claro"] .k-np .ftv-pz b{color:#7a5a00}
-#ftv .ftv-logo img{padding:.1em .25em}
-#ftv .ftv-ch0{padding:.35em .7em .4em .5em}
-#ftv .ftv-av{font-size:2em}
-#ftv .ftv-sn span{font-size:1.12em;line-height:.88}
-#ftv .ftv-tt b{font-size:2.9em}
-#ftv .ftv-it{padding:.3em .15em .32em 1.05em}
-#ftv .ftv-pe span,#ftv .ftv-pe small{font-size:1.1em;line-height:.9;margin-top:.06em}
-#ftv .ftv-pe b{font-size:1.4em}
-#ftv .ftv-grid{gap:.5em}
-#ftv{gap:.45em}
-#ftv .ftv-av.g{font-size:2.3em}
-/* ── detalhe da área (referência 2): central operacional ao fundo e painel neon flutuando à frente ── */
+
+/* ═════════ detalhe do supervisor (clique no card): central operacional ao fundo e painel neon à frente ═════════ */
 #ftv .ftv-ov{position:fixed;inset:0;z-index:2;background:#040a1a;-webkit-backdrop-filter:none;backdrop-filter:none;overflow:hidden}
 #ftv .ftv-palco{position:fixed;left:50%;top:50%;width:max(100vw,177.68vh);height:max(56.28vw,100vh);transform:translate(-50%,-50%);--px:calc(max(100vw,177.68vh) / 1672)}
 #ftv .ftv-cena{background:url(/assets/tv/central-operacional.webp) center/100% 100% no-repeat;image-rendering:pixelated;pointer-events:none}
@@ -347,55 +269,6 @@
 #ftv .ftv-dg h4{margin:.05em 0 .3em;font-size:1.45em}
 #ftv .ftv-dg{margin-bottom:.45em}
 #ftv .ftv-nota{margin-top:.45em;padding:.45em 1em}
-/* ── visão geral, 2ª passada (comparada lado a lado com a referência 1) ── */
-#ftv[data-tema="escuro"]{--fundo:url(/assets/tv/fundo-arcade.png) 0 0/15.79vw auto repeat,#061128;--pn:#09173a;--pn2:#0c1f4d}
-#ftv{image-rendering:pixelated}
-#ftv .ftv-logo{border:0;padding:0;clip-path:none;background:url(/assets/tv/logo-arcade.png) center/100% 100% no-repeat}
-#ftv .ftv-logo img{opacity:0}
-/* letras mais encorpadas e com leve brilho, como na arte */
-#ftv .ftv-ti b,#ftv .ftv-sn b,#ftv .ftv-pe b,#ftv .ftv-tk b,#ftv .ftv-tk em,#ftv .ftv-tt b,#ftv .ftv-k b,#ftv .ftv-rl b,#ftv .ftv-pz,#ftv .ftv-mql,#ftv .ftv-rg p,#ftv .ftv-ti span,#ftv .ftv-av{text-shadow:.045em 0 0 currentColor,0 0 .35em rgba(120,190,255,.25)}
-#ftv .ftv-ti b{letter-spacing:.07em;text-shadow:.045em 0 0 currentColor,.08em .08em 0 rgba(0,0,0,.6)}
-#ftv .ftv-rl b{text-shadow:.045em 0 0 currentColor,0 0 .3em rgba(255,210,63,.55)}
-#ftv .ftv-pe span,#ftv .ftv-pe small,#ftv .ftv-sn span,#ftv .ftv-k span:not(.ic),#ftv .ftv-tt span,#ftv .ftv-lgd,#ftv .ftv-rl span,#ftv .ftv-tm,#ftv .ftv-mais{text-shadow:.03em 0 0 currentColor}
-/* molduras com brilho (neon) e cantos chanfrados */
-#ftv .ftv-card{clip-path:none;border-radius:.35em;border-width:.18em;box-shadow:0 0 0 .14em #040b1f,0 0 .7em hsl(var(--h) 90% 55% / .45),inset 0 0 0 .1em rgba(0,0,0,.35),inset 0 .12em 0 hsl(var(--h) 95% 75% / .45)}
-#ftv .ftv-ch0{border-radius:.2em .2em 0 0}
-#ftv .ftv-mq{border-radius:.3em;box-shadow:0 0 .6em rgba(45,100,204,.45)}
-#ftv .ftv-top::before{clip-path:none;border-radius:.35em;box-shadow:0 0 .6em rgba(45,100,204,.4)}
-#ftv .ftv-st{box-shadow:0 0 .7em rgba(45,100,204,.45)}
-#ftv .ftv-rg{clip-path:none;border-radius:.3em;box-shadow:0 0 .6em rgba(201,154,46,.4)}
-#ftv .ftv-k,#ftv .ftv-ti{clip-path:none;border-radius:.3em}
-#ftv .ftv-tk{box-shadow:0 0 .5em hsl(var(--h) 90% 55% / .35)}
-#ftv .ftv-pz{box-shadow:0 0 .45em color-mix(in srgb,var(--c) 45%,transparent)}
-#ftv .k-vi .ftv-pz{box-shadow:0 0 .45em rgba(47,116,216,.45)}
-#ftv .ftv-it{border-bottom-color:#16306a}
-#ftv .ftv-mq{margin:0 2.35em}
-#ftv .ftv-mq::before,#ftv .ftv-mq::after{top:-.3em;bottom:-.3em;width:2.2em;box-shadow:none;background:url(/assets/tv/letreiro-esq.png) center/100% 100% no-repeat}
-#ftv .ftv-mq::after{background-image:url(/assets/tv/letreiro-dir.png)}
-#ftv .ftv-mq::before{left:-2.35em}#ftv .ftv-mq::after{right:-2.35em}
-#ftv .ftv-mql span:not(.ic){font-size:1.15em}
-#ftv .ftv-mql b{font-size:1.45em;line-height:1;color:#7fd8ff}
-#ftv .ftv-mql .ic,#ftv .ftv-mql .ic svg{width:2.9em;height:2.9em}
-/* ── relevo das letras, iniciais e ícones (como na arte: contorno escuro + sombra embaixo) ── */
-#ftv{--sh:#020a22}
-#ftv .ftv-ti b,#ftv .ftv-sn b,#ftv .ftv-pe b,#ftv .ftv-tk b,#ftv .ftv-tk em,#ftv .ftv-tt b,#ftv .ftv-k b,#ftv .ftv-pz,#ftv .ftv-mql,#ftv .ftv-rg p,#ftv .ftv-ti span,#ftv .ftv-dk b,#ftv .ftv-deh .ftv-sn b,#ftv .ftv-dg h4,#ftv .ftv-dr b{
-  text-shadow:.045em 0 0 currentColor,0 .08em 0 var(--sh),.045em .08em 0 var(--sh),-.045em 0 0 var(--sh),.09em 0 0 var(--sh),0 -.045em 0 var(--sh),.045em -.045em 0 var(--sh),-.045em .08em 0 var(--sh),.09em .08em 0 var(--sh)}
-#ftv .ftv-ti b{text-shadow:.045em 0 0 currentColor,0 .1em 0 var(--sh),.045em .1em 0 var(--sh),-.045em 0 0 var(--sh),.09em 0 0 var(--sh),0 -.045em 0 var(--sh),.045em -.045em 0 var(--sh),-.045em .1em 0 var(--sh),.09em .1em 0 var(--sh),0 0 .5em rgba(120,190,255,.35)}
-#ftv .ftv-rl b{text-shadow:.045em 0 0 currentColor,0 .08em 0 #5a3500,.045em .08em 0 #5a3500,-.045em 0 0 #5a3500,.09em 0 0 #5a3500,0 -.045em 0 #5a3500,.045em -.045em 0 #5a3500,0 0 .4em rgba(255,210,63,.55)}
-#ftv .k-da .ftv-pz,#ftv .k-hj .ftv-pz,#ftv .k-np .ftv-pz{text-shadow:.04em 0 0 currentColor,0 .07em 0 rgba(0,0,0,.75),.04em .07em 0 rgba(0,0,0,.75),0 0 .4em color-mix(in srgb,var(--c) 60%,transparent)}
-#ftv .ftv-pe span,#ftv .ftv-pe small,#ftv .ftv-sn span,#ftv .ftv-k span:not(.ic),#ftv .ftv-tt span,#ftv .ftv-lgd,#ftv .ftv-rl span,#ftv .ftv-tm,#ftv .ftv-mais,#ftv .ftv-dr small,#ftv .ftv-dk span{text-shadow:.03em 0 0 currentColor,0 .07em 0 var(--sh),.03em .07em 0 var(--sh)}
-#ftv[data-tema="claro"]{--sh:rgba(255,255,255,.9)}
-/* iniciais: octógono com luz no alto à esquerda, sombra embaixo e letra contornada */
-#ftv .ftv-av::before{background:linear-gradient(135deg,hsl(var(--h) 95% 70%) 0 20%,hsl(var(--h) 85% 52%) 20% 70%,hsl(var(--h) 85% 36%) 70% 100%)}
-#ftv .ftv-av::after{content:"";position:absolute;inset:.16em;z-index:-1;clip-path:var(--oct);box-shadow:inset 0 0 0 .05em hsl(var(--h) 80% 22% / .6)}
-#ftv .ftv-av{text-shadow:.04em 0 0 #fff,0 .07em 0 hsl(var(--h) 80% 16%),.04em .07em 0 hsl(var(--h) 80% 16%),-.04em 0 0 hsl(var(--h) 80% 16%),.08em 0 0 hsl(var(--h) 80% 16%),0 -.04em 0 hsl(var(--h) 80% 16%),.04em -.04em 0 hsl(var(--h) 80% 16%),-.04em .07em 0 hsl(var(--h) 80% 16%),.08em .07em 0 hsl(var(--h) 80% 16%)}
-#ftv .ftv-deh .ftv-av.g{background:linear-gradient(135deg,hsl(var(--h) 95% 68%) 0 22%,hsl(var(--h) 85% 50%) 22% 72%,hsl(var(--h) 85% 36%) 72%);box-shadow:0 0 0 .06em hsl(var(--h) 95% 75%),0 .08em 0 .06em hsl(var(--h) 80% 18%)}
-/* ícones em pixel art */
-#ftv .ftv-k .ic svg,#ftv .ftv-mql .ic svg,#ftv .ftv-dk svg,#ftv .ftv-tm svg{filter:drop-shadow(0 .1em 0 var(--sh))}
-#ftv .ftv-k .ic,#ftv .ftv-k .ic svg{width:2.25em;height:2.25em}
-#ftv .ftv-tm svg{width:1.3em;height:1.3em}
-#ftv .ftv-tk i{width:1.35em;height:1.35em;background:none;box-shadow:none;border-radius:0;--pa:hsl(var(--h) 95% 86%);--pb:hsl(var(--h) 90% 60%);--pc:hsl(var(--h) 80% 38%);--pd:hsl(var(--h) 70% 12%)}
-#ftv .ftv-tk i svg{width:100%;height:100%}
 /* operadores: movimentos mais perceptíveis (cabeça vira, corpo se mexe, mãos digitam) */
 #ftv .ftv-op.olha{animation-name:ftvOlha;animation-duration:6.1s}
 #ftv .ftv-op.olha2{animation-name:ftvOlha2;animation-duration:7.3s}
@@ -407,143 +280,10 @@
 @keyframes ftvDigita{0%,18%{transform:none}20%{transform:translateY(calc(2 * var(--px)))}26%{transform:none}32%{transform:translateY(calc(2 * var(--px)))}38%{transform:translate(var(--px),0)}44%{transform:translateY(calc(2 * var(--px)))}50%,100%{transform:none}}
 @keyframes ftvMouse{0%,30%{transform:none}32%,44%{transform:translateX(calc(2 * var(--px)))}46%,62%{transform:translateX(calc(4 * var(--px)))}64%,74%{transform:translate(calc(2 * var(--px)),var(--px))}76%,100%{transform:none}}
 @keyframes ftvLe{0%,22%{transform:none}24%,42%{transform:translateY(calc(2 * var(--px)))}44%,58%{transform:translate(calc(-2 * var(--px)),calc(2 * var(--px)))}60%,100%{transform:none}}
-#ftv .ftv-ch0 .ftv-av{font-size:2.3em;width:1.32em;height:1.32em}
-#ftv .ftv-ch0 .ftv-av::before{inset:.08em}#ftv .ftv-ch0 .ftv-av::after{inset:.13em}
-#ftv .ftv-ch0 .ftv-av{font-size:2.75em;width:1.12em;height:1.12em}
-#ftv .ftv-ch0 .ftv-av::before{inset:.07em}#ftv .ftv-ch0 .ftv-av::after{inset:.11em}
-#ftv .ftv-ti b{font-size:2.15em;letter-spacing:.05em}
-#ftv .ftv-ti span{font-size:.9em}
-#ftv .ftv-ti{padding:.2em 1em .2em 1.1em}
 /* o painel do detalhe fica sempre inteiro dentro da tela (TV mais estreita ou mais quadrada); só a cena cobre tudo */
 #ftv .ftv-palco-d{width:min(100vw,177.68vh);height:min(56.28vw,100vh)}
 /* cena e painel do detalhe na mesma moldura 16:9 (em TV mais quadrada sobra fundo escuro em cima e embaixo, sem mostrar a arte por trás) */
-#ftv .ftv-ov{background:url(/assets/tv/fundo-arcade.png) 0 0/15.79vw auto repeat,#040a1a}
 #ftv .ftv-cena{width:min(100vw,177.68vh);height:min(56.28vw,100vh);--px:calc(min(100vw,177.68vh) / 1672);box-shadow:0 0 3em 1.5em #040a1a}
-/* ── nomes com cara de fliperama: letra em dois tons (metade de cima clara, de baixo tingida), contorno de 1 pixel e um brilho que passa ── */
-#ftv .ftv-sn b,#ftv .ftv-pe b,#ftv .ftv-tk b,#ftv .ftv-deh .ftv-sn b{
-  text-shadow:none;color:transparent;-webkit-text-fill-color:transparent;-webkit-background-clip:text;background-clip:text;
-  background-repeat:no-repeat;background-size:300% 100%,100% 100%;background-position:150% 0,0 0;
-  animation:ftvBrilho var(--bt,9s) linear infinite;animation-delay:var(--bd,0s)}
-#ftv .ftv-sn b{
-  background-image:linear-gradient(100deg,transparent 42%,rgba(255,255,255,.95) 48%,rgba(255,255,255,.95) 52%,transparent 58%),
-    linear-gradient(180deg,#ffffff 0 52%,hsl(var(--h) 100% 80%) 52% 100%);
-  filter:drop-shadow(.06em 0 0 hsl(var(--h) 80% 12%)) drop-shadow(-.06em 0 0 hsl(var(--h) 80% 12%)) drop-shadow(0 -.06em 0 hsl(var(--h) 80% 12%)) drop-shadow(0 .1em 0 hsl(var(--h) 80% 9%));--bt:8s}
-#ftv .ftv-pe b{
-  background-image:linear-gradient(100deg,transparent 42%,rgba(255,255,255,.9) 48%,rgba(255,255,255,.9) 52%,transparent 58%),
-    linear-gradient(180deg,#ffffff 0 52%,color-mix(in srgb,var(--c) 45%,#ffffff) 52% 100%);
-  filter:drop-shadow(.06em 0 0 #020a22) drop-shadow(-.06em 0 0 #020a22) drop-shadow(0 -.06em 0 #020a22) drop-shadow(0 .1em 0 #01061a);--bt:11s}
-#ftv .k-da .ftv-pe b{background-image:linear-gradient(100deg,transparent 42%,rgba(255,255,255,.9) 48%,rgba(255,255,255,.9) 52%,transparent 58%),linear-gradient(180deg,#fff2f5 0 52%,#ff9ab4 52% 100%)}
-#ftv .k-vi .ftv-pe b,#ftv .k-gr .ftv-pe b{background-image:linear-gradient(100deg,transparent 42%,rgba(255,255,255,.9) 48%,rgba(255,255,255,.9) 52%,transparent 58%),linear-gradient(180deg,#f6f0ff 0 52%,#c9b0ff 52% 100%)}
-#ftv .ftv-tk b{
-  background-image:linear-gradient(100deg,transparent 42%,rgba(255,255,255,.95) 48%,rgba(255,255,255,.95) 52%,transparent 58%),
-    linear-gradient(180deg,#ffffff 0 52%,hsl(var(--h) 100% 82%) 52% 100%);
-  filter:drop-shadow(.05em 0 0 hsl(var(--h) 80% 10%)) drop-shadow(-.05em 0 0 hsl(var(--h) 80% 10%)) drop-shadow(0 .08em 0 hsl(var(--h) 80% 8%));--bt:7s}
-#ftv .ftv-deh .ftv-sn b{--bt:6s}
-/* cada card e cada pessoa brilha num momento diferente, para a tela não piscar toda de uma vez */
-#ftv .ftv-card:nth-child(4n+1) .ftv-sn b{--bd:-0s}#ftv .ftv-card:nth-child(4n+2) .ftv-sn b{--bd:-2s}#ftv .ftv-card:nth-child(4n+3) .ftv-sn b{--bd:-4s}#ftv .ftv-card:nth-child(4n) .ftv-sn b{--bd:-6s}
-#ftv .ftv-it:nth-child(5n+1) .ftv-pe b{--bd:-1s}#ftv .ftv-it:nth-child(5n+2) .ftv-pe b{--bd:-3.2s}#ftv .ftv-it:nth-child(5n+3) .ftv-pe b{--bd:-5.4s}#ftv .ftv-it:nth-child(5n+4) .ftv-pe b{--bd:-7.6s}#ftv .ftv-it:nth-child(5n) .ftv-pe b{--bd:-9.8s}
-#ftv .ftv-card:nth-child(odd) .ftv-it .ftv-pe b{--bt:12.5s}
-@keyframes ftvBrilho{0%{background-position:150% 0,0 0}16%{background-position:-50% 0,0 0}100%{background-position:-50% 0,0 0}}
-#ftv[data-tema="claro"] .ftv-sn b,#ftv[data-tema="claro"] .ftv-pe b,#ftv[data-tema="claro"] .ftv-tk b{
-  background-image:linear-gradient(100deg,transparent 42%,rgba(255,255,255,.9) 48%,rgba(255,255,255,.9) 52%,transparent 58%),linear-gradient(180deg,#0b1b4a 0 52%,hsl(var(--h,220) 70% 32%) 52% 100%);
-  filter:drop-shadow(0 .08em 0 rgba(255,255,255,.9))}
-@media (prefers-reduced-motion:reduce){#ftv .ftv-sn b,#ftv .ftv-pe b,#ftv .ftv-tk b{animation:none!important;background-position:-50% 0,0 0}}
-#ftv .ftv-sn b,#ftv .ftv-pe b,#ftv .ftv-tk b{font-weight:700!important;font-synthesis:weight!important;letter-spacing:.06em}
-/* ── letras grandes para ler de longe na TV (pedido de 08/10): letreiro e cards bem maiores; a lista rola quando não cabe ── */
-#ftv .ftv-mq{height:6.4em}
-#ftv .ftv-mql{padding:0 1.4em 0 1em;gap:.8em}
-#ftv .ftv-mql .ic,#ftv .ftv-mql .ic svg{width:3.6em;height:3.6em}
-#ftv .ftv-mql span:not(.ic){font-size:1.5em}
-#ftv .ftv-mql b{font-size:2em}
-#ftv .ftv-mqt{gap:1.3em}
-#ftv .ftv-tk{height:5em;gap:1em;padding:0 .45em 0 1.1em;border-width:.2em;border-radius:.4em}
-#ftv .ftv-tk i{width:2em;height:2em}
-#ftv .ftv-tk b{font-size:3em;letter-spacing:.05em}
-#ftv .ftv-tk em{font-size:3.6em;padding:0 .3em}
-/* cabeçalho do card */
-#ftv .ftv-ch0{padding:.5em .8em .55em .6em;gap:.7em}
-#ftv .ftv-ch0 .ftv-av{font-size:3.4em}
-#ftv .ftv-sn b{font-size:2.05em;letter-spacing:.05em}
-#ftv .ftv-sn span{font-size:1.4em;line-height:.9;max-width:none}
-#ftv .ftv-tt b{font-size:3.9em}
-#ftv .ftv-tt span{font-size:1.15em}
-/* pessoas */
-#ftv .ftv-it{padding:.45em .2em .5em 1.15em;gap:.8em}
-#ftv .ftv-it::before{width:.38em;top:.5em;bottom:.5em}
-#ftv .ftv-pe b{font-size:2.05em;line-height:1.02}
-#ftv .ftv-pe span,#ftv .ftv-pe small{font-size:1.55em;line-height:.95;margin-top:.08em}
-#ftv .ftv-pz{padding:.35em .7em}
-#ftv .ftv-pz small{font-size:1.45em}
-#ftv .ftv-pz b{font-size:2.1em}
-#ftv .k-vi .ftv-pz small,#ftv .k-gr .ftv-pz small{font-size:1.4em}
-#ftv .ftv-mais{font-size:1.6em}
-#ftv .ftv-ok b{font-size:2em}#ftv .ftv-ok span{font-size:1.5em}
-/* rodapé */
-#ftv .ftv-rg{height:3.6em}
-#ftv .ftv-rg p{font-size:1.6em}
-#ftv .ftv-lgd{font-size:1.4em}
-/* ── detalhe da área: ocupa a TV inteira e letras grandes para ler de longe (pedido de 08/10) ── */
-#ftv .ftv-palco-d{left:0;top:0;width:100%;height:100%;transform:none}
-#ftv .ftv-det{left:.7em;top:.7em;right:.7em;bottom:.7em;width:auto;height:auto}
-#ftv .ftv-deh{padding:.7em 1.3em .6em;gap:1.2em}
-#ftv .ftv-deh .ftv-av.g{font-size:3.6em}
-#ftv .ftv-deh .ftv-sn small{font-size:1.6em}
-#ftv .ftv-deh .ftv-sn b{font-size:4.2em}
-#ftv .ftv-deh .ftv-sn span{font-size:1.7em}
-#ftv .ftv-dx{font-size:1.8em}
-#ftv .ftv-dks{gap:1em;padding:.7em 1.3em .5em}
-#ftv .ftv-dk{padding:.4em 1.3em;gap:.7em}
-#ftv .ftv-dk svg{width:2.4em;height:2.4em}
-#ftv .ftv-dk i{width:1.4em;height:1.4em}
-#ftv .ftv-dk b{font-size:3.2em}
-#ftv .ftv-dk span{font-size:1.8em}
-#ftv .ftv-fl{padding:.3em 1.3em .6em}
-#ftv .ftv-fl::before{width:1.9em;height:1.9em;left:2.1em}
-#ftv .ftv-fl input{flex:0 1 38em;font-size:1.8em;padding:.35em .8em .35em 2.2em}
-#ftv .ftv-fn{font-size:1.7em}
-#ftv .ftv-db{padding:.2em 1.3em 1em}
-#ftv .ftv-dg{margin-bottom:.8em}
-#ftv .ftv-dg h4{font-size:2.3em;margin:.15em 0 .35em}
-#ftv .ftv-dg h4 em{font-size:.62em}
-#ftv .ftv-dh,#ftv .ftv-dr{grid-template-columns:1.5fr 1.5fr 1.05fr 1.45fr 1.2fr 1.3fr;gap:1em;padding:.45em 1em}
-#ftv .ftv-dh{font-size:1.45em}
-#ftv .ftv-dr b{font-size:2em;line-height:1.05}
-#ftv .ftv-dr small{font-size:1.5em;line-height:1}
-#ftv .ftv-fd span{font-size:1.4em}
-#ftv .ftv-sit b{font-size:1.6em;line-height:1.1}
-#ftv .ftv-dp b{font-size:2.4em}
-#ftv .ftv-hs{font-size:1.5em;white-space:normal;line-height:1.15}
-#ftv .ftv-nota{padding:.7em 1.2em;gap:1.2em}
-#ftv .ftv-nota svg{width:3em;height:3em}
-#ftv .ftv-nota b{font-size:2em}
-#ftv .ftv-nota span{font-size:1.65em}
-#ftv .ftv-ok b{font-size:2.4em}
-#ftv .ftv-deh .ftv-sn b{font-size:4.8em}
-#ftv .ftv-dg h4{font-size:2.6em}
-#ftv .ftv-dh{font-size:1.6em}
-#ftv .ftv-dr{padding:.55em 1em}
-#ftv .ftv-dr b{font-size:2.35em}
-#ftv .ftv-dr small{font-size:1.7em}
-#ftv .ftv-fd span{font-size:1.6em}
-#ftv .ftv-sit b{font-size:1.85em}
-#ftv .ftv-dp b{font-size:2.8em}
-#ftv .ftv-hs{font-size:1.7em}
-#ftv .ftv-nota b{font-size:2.3em}#ftv .ftv-nota span{font-size:1.9em}
-/* informações do detalhe um pouco maiores e com mais destaque (pedido de 08/10) */
-#ftv .ftv-dh{font-size:1.85em}
-#ftv .ftv-dr{padding:.6em 1em}
-#ftv .ftv-dr b{font-size:2.9em;line-height:1.02}
-#ftv .ftv-dr small{font-size:2.05em;line-height:1}
-#ftv .ftv-dr>div:first-child small{font-size:1.95em}
-#ftv .ftv-fd span{font-size:1.9em;padding:.02em .5em}
-#ftv .ftv-sit b{font-size:2.2em;line-height:1.08}
-#ftv .ftv-dp b{font-size:3.3em}
-#ftv .ftv-hs{font-size:2em;padding:.12em .6em}
-#ftv .ftv-dg h4{font-size:3em}
-#ftv .ftv-dg h4 em{font-size:.6em}
-#ftv .ftv-dk b{font-size:3.6em}#ftv .ftv-dk span{font-size:2em}
-#ftv .ftv-nota b{font-size:2.6em}#ftv .ftv-nota span{font-size:2.1em}
-/* ── detalhe: volta ao painel do tamanho original sobre a central operacional; o aumento é só nas letras de dentro ── */
 #ftv .ftv-palco-d{left:50%;top:50%;width:min(100vw,177.68vh);height:min(56.28vw,100vh);transform:translate(-50%,-50%)}
 #ftv .ftv-det{left:13.25%;top:5.4%;right:auto;bottom:auto;width:73.9%;height:72.2%}
 #ftv .ftv-deh{padding:.75em 1.2em .6em;gap:1em}
@@ -578,10 +318,6 @@
 #ftv .ftv-nota svg{width:2.4em;height:2.4em}
 #ftv .ftv-nota b{font-size:1.9em}#ftv .ftv-nota span{font-size:1.6em}
 #ftv .ftv-ok b{font-size:2em}
-
-/* ── detalhe do supervisor: dados em fonte mais legível (Chakra Petch, técnica e limpa); título e grupos seguem em pixel ── */
-@font-face{font-family:"TVLegivel";src:url(/fonts/ChakraPetch500.woff2) format("woff2");font-weight:400 600;font-display:block}
-@font-face{font-family:"TVLegivel";src:url(/fonts/ChakraPetch700.woff2) format("woff2");font-weight:700 900;font-display:block}
 #ftv .ftv-det .ftv-dh,#ftv .ftv-det .ftv-dr,#ftv .ftv-det .ftv-dk span,#ftv .ftv-det .ftv-fl input,#ftv .ftv-det .ftv-fn,#ftv .ftv-det .ftv-nota,#ftv .ftv-det .ftv-deh .ftv-sn span,#ftv .ftv-det .ftv-dg h4 em,#ftv .ftv-det .ftv-ok span{font-family:"TVLegivel","Segoe UI",sans-serif;letter-spacing:.01em;text-transform:none}
 #ftv .ftv-det .ftv-dh{text-transform:uppercase;letter-spacing:.06em;font-weight:700!important;font-size:1.2em}
 #ftv .ftv-det .ftv-dr b{font-weight:700!important;letter-spacing:.005em;font-size:1.85em;line-height:1.1}
@@ -599,42 +335,15 @@
 #ftv .ftv-det .ftv-deh .ftv-sn span{font-weight:500!important;font-size:1.3em;color:#d4e0f5}
 #ftv .ftv-det .ftv-dr b,#ftv .ftv-det .ftv-dr small,#ftv .ftv-det .ftv-fd span,#ftv .ftv-det .ftv-sit b,#ftv .ftv-det .ftv-dp b,#ftv .ftv-det .ftv-dh span{font-family:"TVLegivel","Segoe UI",sans-serif}
 #ftv .ftv-det .ftv-dp small{font-family:"TVLegivel","Segoe UI",sans-serif;font-size:1.25em;font-weight:500!important}
-
-/* ── painel principal na mesma regra do detalhe: dados em fonte legível (Chakra Petch); títulos, nome do supervisor e números grandes seguem em pixel ── */
-#ftv .ftv-pe b,#ftv .ftv-pe span,#ftv .ftv-pe small,#ftv .ftv-pz small,#ftv .ftv-pz b,#ftv .ftv-sn span,#ftv .ftv-tt span,#ftv .ftv-k span:not(.ic),#ftv .ftv-lgd,#ftv .ftv-mais,#ftv .ftv-tk b,#ftv .ftv-mql span:not(.ic),#ftv .ftv-ti span,#ftv .ftv-rg p,#ftv .ftv-rl span,#ftv .ftv-tm,#ftv .ftv-st2>span{font-family:"TVLegivel","Segoe UI",sans-serif;letter-spacing:.01em}
-#ftv .ftv-pe b{font-weight:700!important;text-transform:none;letter-spacing:.005em;font-size:1.8em;line-height:1.1}
-#ftv .ftv-pe span{font-weight:600!important;font-size:1.2em;line-height:1.15;color:#a8dcf5}
-#ftv[data-tema="claro"] .ftv-pe span{color:#1d6a9a}
-#ftv .ftv-pe small{font-weight:500!important;font-size:1.15em;line-height:1.15;color:#c9d7ee;text-transform:none}
-#ftv .ftv-pz small{font-weight:700!important;font-size:1.1em;line-height:1.1;letter-spacing:.02em}
-#ftv .ftv-pz b{font-weight:700!important;font-size:1.75em;letter-spacing:0}
-#ftv .ftv-sn span{font-weight:600!important;font-size:1.2em;line-height:1.05;text-transform:none}
-#ftv .ftv-tt span{font-weight:600!important;font-size:.95em;line-height:1;text-transform:none}
-#ftv .ftv-k span:not(.ic){font-weight:600!important;font-size:.9em;line-height:1;text-transform:none}
-#ftv .ftv-k.fo span:not(.ic){font-family:var(--fj);font-size:.95em}
-#ftv .ftv-tk b{font-weight:700!important;font-size:2.5em;letter-spacing:.01em;text-transform:none}
-#ftv .ftv-mql span:not(.ic){font-weight:700!important;font-size:1.4em;text-transform:uppercase;letter-spacing:.04em}
-#ftv .ftv-ti span{font-weight:600!important;font-size:.95em;text-transform:uppercase;letter-spacing:.04em}
-#ftv .ftv-rl span{font-weight:600!important;font-size:1.1em;letter-spacing:.04em}
-#ftv .ftv-tm{font-weight:700!important;font-size:1.1em}
-#ftv .ftv-mais{font-weight:700!important;font-size:1.4em;text-transform:none}
-#ftv .ftv-rg p{font-weight:600!important;font-size:1.35em;letter-spacing:.02em;text-transform:none}
-#ftv .ftv-rg p b{font-family:inherit;font-weight:800!important;text-transform:uppercase}
-#ftv .ftv-lgd{font-weight:600!important;font-size:1.25em}
-#ftv .ftv-pz small{font-size:.95em}
-#ftv .k-vi .ftv-pz small,#ftv .k-gr .ftv-pz small{font-size:.85em;letter-spacing:0;line-height:1.1}
-#ftv .k-vi .ftv-pz,#ftv .k-gr .ftv-pz{padding:.3em .55em}
-#ftv .ftv-pe b{font-size:1.7em}
-#ftv .k-vi .ftv-pz small,#ftv .k-gr .ftv-pz small{font-size:.97em}
-
-/* letreiro 30% menor (pedido de 08/10) */
-#ftv .ftv-mq{height:4.5em}
-#ftv .ftv-mql{padding:0 1em 0 .7em;gap:.6em}
-#ftv .ftv-mql .ic,#ftv .ftv-mql .ic svg{width:2.5em;height:2.5em}
-#ftv .ftv-mql span:not(.ic){font-size:1em}
-#ftv .ftv-mql b{font-size:1.4em}
-#ftv .ftv-mqt{gap:.9em}
-#ftv .ftv-tk{height:3.5em;gap:.7em;padding:0 .3em 0 .8em}
-#ftv .ftv-tk i{width:1.4em;height:1.4em}
-#ftv .ftv-tk b{font-size:1.75em}
-#ftv .ftv-tk em{font-size:2.5em}
+#ftv .ftv-ov{background:radial-gradient(70% 50% at 50% 0%,rgba(40,110,255,.18),transparent 70%),#050c1c}
+#ftv .ftv-deh .ftv-sn b{font-weight:700;letter-spacing:.02em}#ftv .ftv-dg h4{font-weight:700;letter-spacing:.03em}#ftv .ftv-dx{font-weight:700}#ftv .ftv-deh .ftv-av.g{font-weight:700}
+/* ajustes após comparar com a referência */
+#ftv .ftv-logo{background-position:.9em 52%,0 0;background-size:auto 108%,auto}
+#ftv .ftv-k.fo span:not(.ic){white-space:nowrap;max-width:none}
+#ftv .ftv-dh,#ftv .ftv-dr{grid-template-columns:minmax(0,1.3fr) minmax(0,1.4fr) minmax(0,1fr) minmax(0,1.5fr) minmax(0,1.15fr) minmax(0,1.25fr)}
+#ftv .ftv-det .ftv-hs{white-space:normal;line-height:1.15}
+#ftv .ftv-x{top:auto;bottom:4.2em;right:1.2em}
+#ftv .ftv-it.k-da .ftv-pz,#ftv .ftv-it.k-hj .ftv-pz,#ftv .ftv-it.k-np .ftv-pz,#ftv .ftv-it.k-gr .ftv-pz,#ftv .ftv-it.k-vi .ftv-pz{color:var(--c);border-color:var(--c);background:color-mix(in srgb,var(--c) 13%,#091228)}
+#ftv .ftv-it .ftv-pz b,#ftv .ftv-it .ftv-pz small,#ftv .ftv-it .ftv-pz span{color:inherit}
+#ftv[data-tema="claro"] .ftv-it .ftv-pz{background:color-mix(in srgb,var(--c) 10%,#fff)}
+#ftv .ftv-logo{background-position:1.1em 50%,0 0;background-size:auto 70%,auto}
