@@ -376,3 +376,41 @@
 #ftv .ftv-mql span:not(.ic){font-size:1.15em}
 #ftv .ftv-mql b{font-size:1.45em;line-height:1;color:#7fd8ff}
 #ftv .ftv-mql .ic,#ftv .ftv-mql .ic svg{width:2.9em;height:2.9em}
+/* ── relevo das letras, iniciais e ícones (como na arte: contorno escuro + sombra embaixo) ── */
+#ftv{--sh:#020a22}
+#ftv .ftv-ti b,#ftv .ftv-sn b,#ftv .ftv-pe b,#ftv .ftv-tk b,#ftv .ftv-tk em,#ftv .ftv-tt b,#ftv .ftv-k b,#ftv .ftv-pz,#ftv .ftv-mql,#ftv .ftv-rg p,#ftv .ftv-ti span,#ftv .ftv-dk b,#ftv .ftv-deh .ftv-sn b,#ftv .ftv-dg h4,#ftv .ftv-dr b{
+  text-shadow:.045em 0 0 currentColor,0 .08em 0 var(--sh),.045em .08em 0 var(--sh),-.045em 0 0 var(--sh),.09em 0 0 var(--sh),0 -.045em 0 var(--sh),.045em -.045em 0 var(--sh),-.045em .08em 0 var(--sh),.09em .08em 0 var(--sh)}
+#ftv .ftv-ti b{text-shadow:.045em 0 0 currentColor,0 .1em 0 var(--sh),.045em .1em 0 var(--sh),-.045em 0 0 var(--sh),.09em 0 0 var(--sh),0 -.045em 0 var(--sh),.045em -.045em 0 var(--sh),-.045em .1em 0 var(--sh),.09em .1em 0 var(--sh),0 0 .5em rgba(120,190,255,.35)}
+#ftv .ftv-rl b{text-shadow:.045em 0 0 currentColor,0 .08em 0 #5a3500,.045em .08em 0 #5a3500,-.045em 0 0 #5a3500,.09em 0 0 #5a3500,0 -.045em 0 #5a3500,.045em -.045em 0 #5a3500,0 0 .4em rgba(255,210,63,.55)}
+#ftv .k-da .ftv-pz,#ftv .k-hj .ftv-pz,#ftv .k-np .ftv-pz{text-shadow:.04em 0 0 currentColor,0 .07em 0 rgba(0,0,0,.75),.04em .07em 0 rgba(0,0,0,.75),0 0 .4em color-mix(in srgb,var(--c) 60%,transparent)}
+#ftv .ftv-pe span,#ftv .ftv-pe small,#ftv .ftv-sn span,#ftv .ftv-k span:not(.ic),#ftv .ftv-tt span,#ftv .ftv-lgd,#ftv .ftv-rl span,#ftv .ftv-tm,#ftv .ftv-mais,#ftv .ftv-dr small,#ftv .ftv-dk span{text-shadow:.03em 0 0 currentColor,0 .07em 0 var(--sh),.03em .07em 0 var(--sh)}
+#ftv[data-tema="claro"]{--sh:rgba(255,255,255,.9)}
+/* iniciais: octógono com luz no alto à esquerda, sombra embaixo e letra contornada */
+#ftv .ftv-av::before{background:linear-gradient(135deg,hsl(var(--h) 95% 70%) 0 20%,hsl(var(--h) 85% 52%) 20% 70%,hsl(var(--h) 85% 36%) 70% 100%)}
+#ftv .ftv-av::after{content:"";position:absolute;inset:.16em;z-index:-1;clip-path:var(--oct);box-shadow:inset 0 0 0 .05em hsl(var(--h) 80% 22% / .6)}
+#ftv .ftv-av{text-shadow:.04em 0 0 #fff,0 .07em 0 hsl(var(--h) 80% 16%),.04em .07em 0 hsl(var(--h) 80% 16%),-.04em 0 0 hsl(var(--h) 80% 16%),.08em 0 0 hsl(var(--h) 80% 16%),0 -.04em 0 hsl(var(--h) 80% 16%),.04em -.04em 0 hsl(var(--h) 80% 16%),-.04em .07em 0 hsl(var(--h) 80% 16%),.08em .07em 0 hsl(var(--h) 80% 16%)}
+#ftv .ftv-deh .ftv-av.g{background:linear-gradient(135deg,hsl(var(--h) 95% 68%) 0 22%,hsl(var(--h) 85% 50%) 22% 72%,hsl(var(--h) 85% 36%) 72%);box-shadow:0 0 0 .06em hsl(var(--h) 95% 75%),0 .08em 0 .06em hsl(var(--h) 80% 18%)}
+/* ícones em pixel art */
+#ftv .ftv-k .ic svg,#ftv .ftv-mql .ic svg,#ftv .ftv-dk svg,#ftv .ftv-tm svg{filter:drop-shadow(0 .1em 0 var(--sh))}
+#ftv .ftv-k .ic,#ftv .ftv-k .ic svg{width:2.25em;height:2.25em}
+#ftv .ftv-tm svg{width:1.3em;height:1.3em}
+#ftv .ftv-tk i{width:1.35em;height:1.35em;background:none;box-shadow:none;border-radius:0;--pa:hsl(var(--h) 95% 86%);--pb:hsl(var(--h) 90% 60%);--pc:hsl(var(--h) 80% 38%);--pd:hsl(var(--h) 70% 12%)}
+#ftv .ftv-tk i svg{width:100%;height:100%}
+/* operadores: movimentos mais perceptíveis (cabeça vira, corpo se mexe, mãos digitam) */
+#ftv .ftv-op.olha{animation-name:ftvOlha;animation-duration:6.1s}
+#ftv .ftv-op.olha2{animation-name:ftvOlha2;animation-duration:7.3s}
+#ftv .ftv-op.digita{animation-name:ftvDigita;animation-duration:2.6s}
+#ftv .ftv-op.mouse{animation-name:ftvMouse;animation-duration:4.7s}
+#ftv .ftv-op.le{animation-name:ftvLe;animation-duration:5.3s}
+@keyframes ftvOlha{0%,34%{transform:none}36%,52%{transform:translate(calc(3 * var(--px)),0)}54%,66%{transform:translate(calc(3 * var(--px)),calc(-1 * var(--px)))}68%,100%{transform:none}}
+@keyframes ftvOlha2{0%,28%{transform:none}30%,48%{transform:translate(calc(-3 * var(--px)),0)}50%,60%{transform:translate(calc(-3 * var(--px)),var(--px))}62%,100%{transform:none}}
+@keyframes ftvDigita{0%,18%{transform:none}20%{transform:translateY(calc(2 * var(--px)))}26%{transform:none}32%{transform:translateY(calc(2 * var(--px)))}38%{transform:translate(var(--px),0)}44%{transform:translateY(calc(2 * var(--px)))}50%,100%{transform:none}}
+@keyframes ftvMouse{0%,30%{transform:none}32%,44%{transform:translateX(calc(2 * var(--px)))}46%,62%{transform:translateX(calc(4 * var(--px)))}64%,74%{transform:translate(calc(2 * var(--px)),var(--px))}76%,100%{transform:none}}
+@keyframes ftvLe{0%,22%{transform:none}24%,42%{transform:translateY(calc(2 * var(--px)))}44%,58%{transform:translate(calc(-2 * var(--px)),calc(2 * var(--px)))}60%,100%{transform:none}}
+#ftv .ftv-ch0 .ftv-av{font-size:2.3em;width:1.32em;height:1.32em}
+#ftv .ftv-ch0 .ftv-av::before{inset:.08em}#ftv .ftv-ch0 .ftv-av::after{inset:.13em}
+#ftv .ftv-ch0 .ftv-av{font-size:2.75em;width:1.12em;height:1.12em}
+#ftv .ftv-ch0 .ftv-av::before{inset:.07em}#ftv .ftv-ch0 .ftv-av::after{inset:.11em}
+#ftv .ftv-ti b{font-size:2.15em;letter-spacing:.05em}
+#ftv .ftv-ti span{font-size:.9em}
+#ftv .ftv-ti{padding:.2em 1em .2em 1.1em}
