@@ -3425,16 +3425,16 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       }
       /* ── Modo TV (Acompanhamento de Medidas): tela cheia, tema escuro ou claro, letras em proporção à tela para ler de longe ── */
       body.ftv-on{overflow:hidden}
-      #ftv{position:fixed;inset:0;z-index:100500;display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;gap:.7em;padding:.9em 1.1em .9em;
+      #ftv{position:fixed;inset:0;z-index:100500;display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;gap:.45em;padding:.55em .7em .5em;
         font-family:"Segoe UI",system-ui,sans-serif;font-size:clamp(12px,.98vw,28px);line-height:1.25;color:var(--tx);background:var(--fundo)}
       #ftv[data-tema="escuro"]{--fundo:radial-gradient(120% 90% at 0% 0%,#15274a 0%,#0b1426 50%,#070d19 100%);
         --sf:#0f1a2f;--sf2:#15223b;--sf3:rgba(255,255,255,.045);--ln:rgba(255,255,255,.07);--ln2:rgba(255,255,255,.13);
         --tx:#eef3fb;--tx2:#c3cee0;--mut:#8e9cb4;--marca:#7cc1ff;--marca2:rgba(124,193,255,.14);--sombra:0 .5em 1.6em rgba(0,0,0,.42);--brilho:inset 0 1px 0 rgba(255,255,255,.05);
-        --da:#ff5f56;--hj:#ff9d2a;--np:#f2c544;--gr:#9eabbe;--vi:#b69cff;--ok:#4ade80;--s1:78%;--l1:64%;--l2:22%}
+        --da:#ff5f56;--hj:#ff9d2a;--np:#f2c544;--gr:#9eabbe;--vi:#b69cff;--ok:#4ade80;--s1:48%;--l1:62%;--l2:22%}
       #ftv[data-tema="claro"]{--fundo:linear-gradient(160deg,#f3f6fb 0%,#e8eef7 100%);
         --sf:#ffffff;--sf2:#f5f7fb;--sf3:#f1f4f9;--ln:#e3e9f2;--ln2:#d3dce9;
         --tx:#14213a;--tx2:#3a4a66;--mut:#68778f;--marca:#1f5fbf;--marca2:rgba(31,95,191,.09);--sombra:0 .35em 1.2em rgba(20,40,80,.09);--brilho:none;
-        --da:#d42f24;--hj:#d96a00;--np:#a87b00;--gr:#5f6f86;--vi:#6d45d0;--ok:#16a34a;--s1:66%;--l1:44%;--l2:95%}
+        --da:#d42f24;--hj:#d96a00;--np:#a87b00;--gr:#5f6f86;--vi:#6d45d0;--ok:#16a34a;--s1:42%;--l1:38%;--l2:95%}
       #ftv.sem-cursor,#ftv.sem-cursor *{cursor:none!important}
       #ftv b{font-weight:800}
       #ftv svg{width:1em;height:1em;display:block;flex:none}
@@ -3486,7 +3486,7 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       #ftv .ftv-tk em{font-style:normal;font-weight:900;font-size:1.45em;line-height:1;color:var(--tx);font-variant-numeric:tabular-nums}
       #ftv .ftv-tk small{font-size:.76em;color:var(--tx2)}
       /* cards dos supervisores */
-      #ftv .ftv-grid{display:grid;grid-template-columns:repeat(var(--cols),minmax(0,1fr));grid-auto-rows:minmax(0,1fr);gap:.7em;min-height:0}
+      #ftv .ftv-grid{display:grid;grid-template-columns:repeat(var(--cols),minmax(0,1fr));grid-auto-rows:minmax(0,1fr);gap:.5em;min-height:0}
       #ftv .ftv-card{container-type:inline-size;position:relative;display:flex;flex-direction:column;min-height:0;border-radius:.9em;overflow:hidden;cursor:pointer;
         background:var(--sf);border:1px solid var(--ln2);box-shadow:var(--brilho),var(--sombra);transition:transform .15s,border-color .15s}
       #ftv .ftv-card::before{content:"";position:absolute;left:0;right:0;top:0;height:.28em;background:linear-gradient(90deg,hsl(var(--h) var(--s1) var(--l1)),hsl(var(--h) var(--s1) var(--l1) / .35))}
@@ -3585,7 +3585,7 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       /* avisos e botões */
       #ftv .ftv-vz{grid-row:1/-1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.4em;font-size:1.3em}
       #ftv .ftv-vz span{font-size:.7em;color:var(--mut)}
-      #ftv .ftv-x{position:fixed;left:1.2em;top:1em;z-index:4;display:inline-flex;align-items:center;gap:.35em;font:inherit;font-size:.72em;font-weight:700;color:var(--tx);background:var(--sf);border:1px solid var(--ln2);border-radius:.6em;padding:.4em .8em;cursor:pointer;box-shadow:var(--sombra);opacity:0;transition:opacity .2s}
+      #ftv .ftv-x{position:fixed;right:1.2em;top:7.2em;z-index:4;display:inline-flex;align-items:center;gap:.35em;font:inherit;font-size:.72em;font-weight:700;color:var(--tx);background:var(--sf);border:1px solid var(--ln2);border-radius:.6em;padding:.4em .8em;cursor:pointer;box-shadow:var(--sombra);opacity:0;transition:opacity .2s}
       #ftv:not(.sem-cursor) .ftv-x{opacity:.95}
       #ftv .ftv-x:focus-visible{opacity:1;outline:2px solid var(--marca)}
       #ftv .ftv-fs{position:fixed;left:50%;bottom:3.6em;z-index:4;transform:translateX(-50%);font-size:.72em;font-weight:700;color:var(--tx);background:var(--sf);border:1px solid var(--marca);border-radius:999px;padding:.4em 1em;pointer-events:none;box-shadow:var(--sombra)}
@@ -16240,14 +16240,16 @@ function ftvNome(n){const p=String(n||"").trim().split(/\s+/).filter(Boolean);re
 /* Quem entra e quanto conta: só a folha atual. Todos os supervisores aparecem, mesmo os que estão em dia. */
 function ftvDados(){
   const j=FM.dados,F=ftvFolha(),hoje=j.hoje,por={};
+  const troca=n=>/^RAFAEL\b.*\bANDRADE\b/i.test(String(n||"").trim())?"CARLOS NOGUEIRA":n;
+  const fora=n=>/^(EDUARDO\b.*\bCIPRIANO|JU(LIANA|LIA)?)\b/i.test(String(n||"").trim());
   const sup=n=>por[n]||(por[n]={nome:n,itens:[],faltas:0,n:{}});
-  j.casos.forEach(c=>{if(c.supervisor)sup(c.supervisor);});
-  fmAbonos().forEach(a=>{if(a.supervisor)sup(a.supervisor);});
+  j.casos.forEach(c=>{if(c.supervisor&&!fora(c.supervisor))sup(troca(c.supervisor));});
+  fmAbonos().forEach(a=>{if(a.supervisor&&!fora(a.supervisor))sup(troca(a.supervisor));});
   j.casos.forEach(c=>{
-    if(FM_ABERTAS.indexOf(c.situacao)<0)return;
+    if(FM_ABERTAS.indexOf(c.situacao)<0||fora(c.supervisor))return;
     const fl=[...new Set(c.faltas||[])].filter(d=>d>=F.ini&&d<=F.fim).sort();
     if(!fl.length)return;
-    const x=sup(c.supervisor||"Sem supervisor"),cat=ftvCat(c,hoje);
+    const x=sup(troca(c.supervisor)||"Sem supervisor"),cat=ftvCat(c,hoje);
     x.itens.push({c,fl,cat,p:ftvPrazo(c,cat,hoje)});x.faltas+=fl.length;x.n[cat]=(x.n[cat]||0)+1;
   });
   const lista=Object.values(por);
@@ -16333,7 +16335,7 @@ function ftvDetHtml(D){
     const l=x.itens.filter(i=>i.cat===cat);if(!l.length)return;
     grupos+=`<section class="ftv-dg k-${cat}"><h4><i></i>${_esc(FTV_CAT[cat].tit)}<em>${ftvPl(l.length,"colaborador","colaboradores")}</em></h4>`+
       `<div class="ftv-dt"><div class="ftv-dh"><span>Colaborador</span><span>Posto</span><span>Faltas na folha</span><span>Prazo para a medida</span><span>Histórico</span></div>`+
-      l.map(i=>{const c=i.c,v=fmVinculoRot(c.tipo);return`<div class="ftv-dr"><div><b>${_esc(fmNomeCard(c.nome))}</b><small>RE ${_esc(c.re)}${v.t!=="—"?" · "+_esc(v.t):""}${c.turno==="NOTURNO"?" · noturno":""}${c.escala?" · "+_esc(c.escala):""}</small></div>`+
+      l.map(i=>{const c=i.c;return`<div class="ftv-dr"><div><b>${_esc(fmNomeCard(c.nome))}</b><small>RE ${_esc(c.re)}</small></div>`+
         `<div><b>${_esc(c.posto||"Sem posto")}</b>${c.horario?`<small>vaga ${_esc(c.horario)}</small>`:""}</div>`+
         `<div><b>${ftvPl(i.fl.length,"falta","faltas")}</b><small>${_esc(i.fl.map(fmDdS).join(" · "))}</small></div>`+
         `<div class="ftv-dp"><b>${_esc(i.p.b)}</b><small>${_esc(i.p.s)}</small></div><div>${hist(c.re)}</div></div>`;}).join("")+`</div></section>`;
@@ -16352,7 +16354,7 @@ function ftvHtml(){
   const el=document.getElementById("ftv"),tema=(el&&el.dataset.tema)||ftvTema();
   const tk=D.lista.slice().sort((a,b)=>b.faltas-a.faltas||a.nome.localeCompare(b.nome)).map(x=>`<span class="ftv-tk" style="--h:${x.h}"><i></i><b>${_esc(fmNomeCard(x.nome))}</b><em>${x.faltas}</em><small>${x.faltas===1?"falta injustificada":"faltas injustificadas"}</small></span>`).join("");
   const kpi=(ic,b,s,cls)=>`<div class="ftv-k${cls?" "+cls:""}"><span class="ic">${ic}</span><div><b>${b}</b><span>${s}</span></div></div>`;
-  const logo=typeof BR_LOGO==="string"?BR_LOGO:"<b>Grupo ServCamp</b>";
+  const logo='<svg viewBox="0 0 330 112" xmlns="http://www.w3.org/2000/svg" aria-label="Grupo ServCamp terceirizações"><defs><linearGradient id="fg1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2f6fd6"/><stop offset="1" stop-color="#0b2a73"/></linearGradient></defs><path d="M70 14C42 6 18 20 18 42c0 20 22 24 40 30 16 5 22 10 12 20-8 8-26 9-44 2 14 14 44 16 60-2 12-14 4-28-22-36-22-7-30-12-22-22 7-8 24-8 36 0z" fill="url(#fg1)"/><path d="M96 28c-8-12-24-18-40-14 20 0 32 8 40 14zM20 90c10 14 34 18 50 8-16 6-36 4-50-8z" fill="#0b2a73"/><text x="112" y="34" font-family="Segoe UI,Arial,sans-serif" font-size="22" font-style="italic" fill="#5b6472">Grupo</text><text x="108" y="72" font-family="Segoe UI,Arial,sans-serif" font-size="40" font-weight="900" fill="#4a5362" letter-spacing="-1">SERVCAMP</text><text x="150" y="98" font-family="Segoe UI,Arial,sans-serif" font-size="19" font-style="italic" fill="#5b6472">terceirizações</text></svg>';
   const leg=Object.keys(FTV_CAT).map(k=>`<span class="k-${k}"><i></i>${_esc(FTV_CAT[k].tit)}</span>`).join("");
   return`<header class="ftv-top"><div class="ftv-logo">${logo}</div><div class="ftv-ti"><span class="ftv-lg">${FTV_IC.tv}</span><div><b>Acompanhamento de Medidas</b><span>Supervisão · faltas injustificadas esperando medida disciplinar</span></div></div>`+
     `<div class="ftv-kp">${kpi(FTV_IC.cal,`${fmDd(D.F.ini)} a ${fmDd(D.F.fim)}`,"folha atual","fo")}${kpi(FTV_IC.falta,tot,tot===1?"falta injustificada":"faltas injustificadas")}${kpi(FTV_IC.grupo,pes,pes===1?"colaborador":"colaboradores")}${kpi(FTV_IC.relogio,atr,atr===1?"atrasada":"atrasadas","k-da")}${hj?kpi(FTV_IC.hoje,hj,hj===1?"vence hoje":"vencem hoje","k-hj"):""}</div>`+
@@ -16370,7 +16372,7 @@ function ftvAjusta(){
   const g=el.querySelector(".ftv-grid"),n=el.querySelectorAll(".ftv-card").length;
   if(g)g.style.setProperty("--cols",ftvColunas(n,g.clientWidth,g.clientHeight,parseFloat(getComputedStyle(el).fontSize)||19.6));
   const t=el.querySelector(".ftv-mqt");
-  if(t){const w=t.scrollWidth/2;t.style.animationDuration=Math.max(20,w/70)+"s";}
+  if(t){const w=t.scrollWidth/2;t.style.animationDuration=Math.max(60,w/22)+"s";}
   el.querySelectorAll(".ftv-card").forEach(card=>{
     const ls=card.querySelector(".ftv-ls"),tr=ls&&ls.querySelector(".ftv-tr"),m=card.querySelector(".ftv-mais");if(!tr)return;
     tr.classList.remove("rola");tr.querySelectorAll(".ftv-dup").forEach(x=>x.remove());
@@ -16378,7 +16380,7 @@ function ftvAjusta(){
     if(m){let vis=0;[...tr.children].forEach(li=>{if(li.offsetTop+li.offsetHeight<=ls.clientHeight+2)vis++;});const resto=tr.children.length-vis;m.textContent=cabe||!resto?"":`+${ftvPl(resto,"ocorrência","ocorrências")}`;}
     if(!cabe){
       [...tr.children].forEach(li=>{const d=li.cloneNode(true);d.classList.add("ftv-dup");d.setAttribute("aria-hidden","true");tr.appendChild(d);});
-      tr.style.setProperty("--alt",h+"px");tr.style.animationDuration=Math.max(12,h/26)+"s";tr.classList.add("rola");
+      tr.style.setProperty("--alt",h+"px");tr.style.animationDuration=Math.max(30,h/9)+"s";tr.classList.add("rola");
     }
   });
 }
