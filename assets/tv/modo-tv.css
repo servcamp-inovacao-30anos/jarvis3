@@ -347,3 +347,32 @@
 #ftv .ftv-dg h4{margin:.05em 0 .3em;font-size:1.45em}
 #ftv .ftv-dg{margin-bottom:.45em}
 #ftv .ftv-nota{margin-top:.45em;padding:.45em 1em}
+/* ── visão geral, 2ª passada (comparada lado a lado com a referência 1) ── */
+#ftv[data-tema="escuro"]{--fundo:url(/assets/tv/fundo-arcade.png) 0 0/15.79vw auto repeat,#061128;--pn:#09173a;--pn2:#0c1f4d}
+#ftv{image-rendering:pixelated}
+#ftv .ftv-logo{border:0;padding:0;clip-path:none;background:url(/assets/tv/logo-arcade.png) center/100% 100% no-repeat}
+#ftv .ftv-logo img{opacity:0}
+/* letras mais encorpadas e com leve brilho, como na arte */
+#ftv .ftv-ti b,#ftv .ftv-sn b,#ftv .ftv-pe b,#ftv .ftv-tk b,#ftv .ftv-tk em,#ftv .ftv-tt b,#ftv .ftv-k b,#ftv .ftv-rl b,#ftv .ftv-pz,#ftv .ftv-mql,#ftv .ftv-rg p,#ftv .ftv-ti span,#ftv .ftv-av{text-shadow:.045em 0 0 currentColor,0 0 .35em rgba(120,190,255,.25)}
+#ftv .ftv-ti b{letter-spacing:.07em;text-shadow:.045em 0 0 currentColor,.08em .08em 0 rgba(0,0,0,.6)}
+#ftv .ftv-rl b{text-shadow:.045em 0 0 currentColor,0 0 .3em rgba(255,210,63,.55)}
+#ftv .ftv-pe span,#ftv .ftv-pe small,#ftv .ftv-sn span,#ftv .ftv-k span:not(.ic),#ftv .ftv-tt span,#ftv .ftv-lgd,#ftv .ftv-rl span,#ftv .ftv-tm,#ftv .ftv-mais{text-shadow:.03em 0 0 currentColor}
+/* molduras com brilho (neon) e cantos chanfrados */
+#ftv .ftv-card{clip-path:none;border-radius:.35em;border-width:.18em;box-shadow:0 0 0 .14em #040b1f,0 0 .7em hsl(var(--h) 90% 55% / .45),inset 0 0 0 .1em rgba(0,0,0,.35),inset 0 .12em 0 hsl(var(--h) 95% 75% / .45)}
+#ftv .ftv-ch0{border-radius:.2em .2em 0 0}
+#ftv .ftv-mq{border-radius:.3em;box-shadow:0 0 .6em rgba(45,100,204,.45)}
+#ftv .ftv-top::before{clip-path:none;border-radius:.35em;box-shadow:0 0 .6em rgba(45,100,204,.4)}
+#ftv .ftv-st{box-shadow:0 0 .7em rgba(45,100,204,.45)}
+#ftv .ftv-rg{clip-path:none;border-radius:.3em;box-shadow:0 0 .6em rgba(201,154,46,.4)}
+#ftv .ftv-k,#ftv .ftv-ti{clip-path:none;border-radius:.3em}
+#ftv .ftv-tk{box-shadow:0 0 .5em hsl(var(--h) 90% 55% / .35)}
+#ftv .ftv-pz{box-shadow:0 0 .45em color-mix(in srgb,var(--c) 45%,transparent)}
+#ftv .k-vi .ftv-pz{box-shadow:0 0 .45em rgba(47,116,216,.45)}
+#ftv .ftv-it{border-bottom-color:#16306a}
+#ftv .ftv-mq{margin:0 2.35em}
+#ftv .ftv-mq::before,#ftv .ftv-mq::after{top:-.3em;bottom:-.3em;width:2.2em;box-shadow:none;background:url(/assets/tv/letreiro-esq.png) center/100% 100% no-repeat}
+#ftv .ftv-mq::after{background-image:url(/assets/tv/letreiro-dir.png)}
+#ftv .ftv-mq::before{left:-2.35em}#ftv .ftv-mq::after{right:-2.35em}
+#ftv .ftv-mql span:not(.ic){font-size:1.15em}
+#ftv .ftv-mql b{font-size:1.45em;line-height:1;color:#7fd8ff}
+#ftv .ftv-mql .ic,#ftv .ftv-mql .ic svg{width:2.9em;height:2.9em}
