@@ -347,3 +347,32 @@
 #ftv .ftv-it .ftv-pz b,#ftv .ftv-it .ftv-pz small,#ftv .ftv-it .ftv-pz span{color:inherit}
 #ftv[data-tema="claro"] .ftv-it .ftv-pz{background:color-mix(in srgb,var(--c) 10%,#fff)}
 #ftv .ftv-logo{background-position:1.1em 50%,0 0;background-size:auto 70%,auto}
+/* ── 2ª passada v3 (master prompt): microinterações discretas e detalhes da referência ── */
+#ftv .ftv-card{transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+#ftv .ftv-card:hover,#ftv .ftv-card:focus-visible{transform:translateY(-2px)!important}
+#ftv .ftv-it{transition:background-color .15s ease}
+#ftv .ftv-it:hover{background:hsl(var(--h) 60% 50% / .07)}
+#ftv .ftv-it::before{width:.3em;left:.1em}
+#ftv .ftv-it:hover::before{box-shadow:0 0 .7em var(--c)}
+#ftv .ftv-tk{cursor:pointer;transition:box-shadow .18s ease,filter .18s ease}
+#ftv .ftv-tk:hover{filter:brightness(1.15);box-shadow:0 0 1.1em hsl(var(--h) 95% 60% / .7),inset 0 0 .8em hsl(var(--h) 90% 55% / .2)}
+#ftv .ftv-cf{cursor:pointer;transition:background-color .15s ease}
+#ftv .ftv-cf:hover{background:rgba(35,85,170,.4)}
+#ftv .ftv-cf:hover .ftv-pts{transform:translateX(2px)}
+#ftv .ftv-pts{transition:transform .15s ease}
+#ftv .ftv-logo{border-radius:.8em 0 0 .8em;box-shadow:inset 0 0 0 .1em rgba(60,140,255,.55),inset 0 .15em 0 rgba(150,210,255,.25),inset 0 0 1.4em rgba(30,100,255,.25)}
+@media (prefers-reduced-motion:reduce){#ftv .ftv-card,#ftv .ftv-it,#ftv .ftv-tk,#ftv .ftv-cf,#ftv .ftv-pts{transition:none}#ftv .ftv-card:hover{transform:none!important}#ftv .k-hj .ftv-pz{animation:none}}
+/* tamanhos medidos na referência (1648×928) */
+#ftv .ftv-sn b{font-size:1.62em}
+#ftv .ftv-sn span{font-size:.92em;line-height:1.15;max-width:15em}
+#ftv .ftv-tt b{font-size:2.95em}
+#ftv .ftv-tt span{font-size:.8em;max-width:7.5em}
+#ftv .ftv-ch0 .ftv-av{font-size:2.05em}
+#ftv .ftv-ch0{padding:.65em .9em .65em .75em}
+#ftv .ftv-pe b{font-size:1.32em}
+#ftv .ftv-pe span,#ftv .ftv-pe small{font-size:.98em}
+#ftv .ftv-it{padding:.45em .1em .45em 1em}
+#ftv .ftv-pz small{font-size:.8em}
+#ftv .ftv-pz b{font-size:1.55em}
+#ftv .k-vi .ftv-pz small,#ftv .k-gr .ftv-pz small{font-size:.8em}
+#ftv .ftv-mais{font-size:1.12em}
