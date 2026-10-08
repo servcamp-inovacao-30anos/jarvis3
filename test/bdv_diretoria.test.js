@@ -175,7 +175,9 @@ test("excedentes e treinamentos que o supervisor levou ao posto: só com ida del
 test("Excel por supervisor e por posto: classificação e \"Deixado no posto\" só quando as OS chegam", () => {
   const h = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8").replace(/\r\n/g, "\n");
   const x = h.slice(h.indexOf("async function brXlsxMontar("), h.indexOf("/* ── Imprimir: prévia em folha A4"));
-  ["const OSX=L.some(x=>Array.isArray(x.os));", "const NCX=12+(OSX?2:0);", '"Classificação","Deixado no posto"', "Excedente e treinamento"].forEach(t => assert.ok(x.includes(t), "falta no Excel: " + t));
+  ["const OSX=L.some(x=>Array.isArray(x.os));", "const NCX=12+(OSX?2:0);", '"Classificação","Deixado no posto"', "entradasOs"].forEach(t => assert.ok(x.includes(t), "falta no Excel: " + t));
+  assert.ok(!x.includes("Excedente e treinamento"), "uma pessoa é excedente OU treinamento, nunca os dois");
+  assert.ok(!/MOTIVO[^;]*TREINAMENTO[^;]*cls/.test(x) && !x.includes("classeOs"), "a classificação vem só das OS, não do motivo da cobertura");
 });
 
 test("Excel: Por supervisor e Por posto trazem o detalhamento (cada cobertura) na mesma aba", () => {
