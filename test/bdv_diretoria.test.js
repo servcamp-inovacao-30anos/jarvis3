@@ -132,7 +132,52 @@ test("excedentes e treinamentos saíram: a rota diretoria_os não existe mais e 
   const h = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8").replace(/\r\n/g, "\n");
   const vd = h.slice(h.indexOf("VISÃO DIRETORIA (aba do Relatório de Coberturas)"), h.indexOf("/* ── Excel da diretoria: capa com os números"));
   ["diretoria_os", "xcedente", "reinamento", "Deixado no posto", "vdLig", "osIdx", "cobIdx"].forEach(x => assert.ok(!vd.includes(x), "ainda aparece na tela: " + x));
-  assert.ok(!h.includes("brOsParaExcel") && !h.includes("OSX"), "o Excel não busca nem classifica OS");
+  assert.ok(!h.includes("brOsParaExcel"), "o Excel não busca OS por conta própria: elas vêm junto das idas, pelo servidor");
+});
+
+test("excedentes e treinamentos que o supervisor levou ao posto: só com ida dele no mesmo posto e dia, só com nome, só para a Diretoria", async () => {
+  bdvApi._zerarCache();
+  const t = tabelas();
+  const d = t.dashboard_snapshots[0].data;
+  d.ativos.push({ RE: 77, NOME: "MARIA EXCEDENTE", LOCAL: "POSTO A", JORNADA: "12H 06:00 - 18:00" });
+  d.os = [
+    { DATA: dia(-3), TIPO: "EXCEDENTE", LOCAL: "POSTO A", NOME: "Maria Excedente", CARGO: "VIGIA", TURNO: "DIURNO" },
+    { DATA: dia(-3), TIPO: "TREINAMENTO", LOCAL: "POSTO A", NOME: "JOSE TREINO", CARGO: "VIGIA", TURNO: "DIURNO" },
+    { DATA: dia(-3), TIPO: "EXCEDENTE", LOCAL: "POSTO A", NOME: "", CARGO: "VIGIA", TURNO: "DIURNO" },
+    { DATA: dia(-3), TIPO: "EXCEDENTE", LOCAL: "POSTO B", NOME: "OUTRO POSTO", CARGO: "VIGIA", TURNO: "DIURNO" },
+    { DATA: dia(-4), TIPO: "EXCEDENTE", LOCAL: "POSTO A", NOME: "OUTRO DIA", CARGO: "VIGIA", TURNO: "DIURNO" },
+    { DATA: dia(-3), TIPO: "OUTRO TIPO", LOCAL: "POSTO A", NOME: "NAO CONTA", CARGO: "VIGIA", TURNO: "DIURNO" }
+  ];
+  supabaseFalso(t);
+  for (const rota of ["coberturas", "diretoria"]) {
+    const r = await pedir(rota, "raphaelvictor");
+    const a = r.body.coberturas.find(x => (x.posto || x.destino) === "POSTO A"), b = r.body.coberturas.find(x => (x.posto || x.destino) === "POSTO B");
+    assert.deepEqual(a.os.map(o => [o.tipo, o.nome, o.re]), [["EXCEDENTE", "Maria Excedente", "77"], ["TREINAMENTO", "JOSE TREINO", ""]], rota + ": só os que têm nome, no posto e dia da ida");
+    assert.deepEqual(b.os, [], rota + ": a OS de outro dia ou de outro posto não vem");
+  }
+  // o supervisor voltou ao mesmo posto no mesmo dia: a OS fica só na primeira ida
+  bdvApi._zerarCache();
+  const t2 = tabelas(); const d2 = t2.dashboard_snapshots[0].data;
+  d2.bdvCobertura.push({ ...ida("POSTO A", dia(-3), "9:30:00"), TEMPO: "1/1/00 12:00" });
+  d2.os = [{ DATA: dia(-3), TIPO: "EXCEDENTE", LOCAL: "POSTO A", NOME: "UMA VEZ SO", CARGO: "VIGIA", TURNO: "DIURNO" }];
+  supabaseFalso(t2);
+  const r2 = await pedir("coberturas", "raphaelvictor");
+  const deA = r2.body.coberturas.filter(x => (x.posto || x.destino) === "POSTO A");
+  assert.ok(deA.length >= 1);
+  assert.equal(deA.reduce((n, x) => n + x.os.length, 0), 1, "a mesma OS não conta duas vezes para o mesmo supervisor no mesmo posto e dia");
+  // quem lê o operacional mas não é da Diretoria não recebe as OS
+  bdvApi._zerarCache(); supabaseFalso(t);
+  const o = await pedir("coberturas", "eduardocipriano");
+  assert.equal(o.statusCode, 200);
+  o.body.coberturas.forEach(x => assert.equal(x.os, undefined, "sem OS fora da Diretoria"));
+});
+
+test("Excel por supervisor e por posto: classificação e \"Deixado no posto\" só quando as OS chegam", () => {
+  const h = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8").replace(/\r\n/g, "\n");
+  const x = h.slice(h.indexOf("async function brXlsxMontar("), h.indexOf("/* ── Imprimir: prévia em folha A4"));
+  ["const OSX=L.some(x=>Array.isArray(x.os));", "const NCX=12+(OSX?2:0);", '"Classificação","Deixado no posto"', "entradasOs"].forEach(t => assert.ok(x.includes(t), "falta no Excel: " + t));
+  assert.ok(!x.includes("Excedente e treinamento"), "uma pessoa é excedente OU treinamento, nunca os dois");
+  assert.ok(!/MOTIVO[^;]*TREINAMENTO[^;]*cls/.test(x) && !x.includes("classeOs"), "a classificação vem só das OS, não do motivo da cobertura");
 });
 
 test("Excel: Por supervisor e Por posto trazem o detalhamento (cada cobertura) na mesma aba", () => {

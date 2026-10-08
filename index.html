@@ -13892,7 +13892,14 @@ async function brXlsxMontar(Ex,logo,ctx){
      com filtro em cada coluna (supervisor, posto, data, motivo, situação…); o filtro da tabela de cima continua valendo para ela. */
   const horaX=h=>{const m=bdvHoraMin(h);return m==null?null:m/1440;};
   const dataX=s=>{const d=s.split("-");return new Date(Date.UTC(+d[0],+d[1]-1,+d[2]));};
-  const NCX=12;
+  /* Excedentes e treinamentos que o supervisor levou ao posto (a ida dele àquele posto naquele dia): só chegam para a Visão Diretoria
+     (o servidor manda "os" em cada ida). Sem eles o detalhamento sai como antes, sem as duas colunas. */
+  const OSX=L.some(x=>Array.isArray(x.os));
+  const nomeOs=r=>brNomeCurto(r.nome)+(r.re?" (RE "+r.re+")":"");
+  const entradasOs=i=>{const o=i.os||[];if(!OSX||!o.length)return[{i,cls:"Cobertura",nomes:""}];
+    return["EXCEDENTE","TREINAMENTO"].filter(t=>o.some(r=>r.tipo===t)).map(t=>({i,cls:t==="EXCEDENTE"?"Excedente":"Treinamento",nomes:o.filter(r=>r.tipo===t).map(nomeOs).join("\n")}));};
+  const CLSOS={"Cobertura":[BRX.mudo,"FFFFFFFF"],"Excedente":BRX.am,"Treinamento":["FF1E4D8C","FFE8F1FC"]};
+  const NCX=12+(OSX?2:0);
   const detalhe=(w,dim,gr,r0)=>{
     let r=r0;
     w.getRow(r).height=28;w.mergeCells(r,1,r,NCX);
@@ -13901,22 +13908,22 @@ async function brXlsxMontar(Ex,logo,ctx){
     r++;
     w.mergeCells(r,1,r,NCX);const n=w.getCell(r,1);
     n.value=(dim==="sup"?"Cada supervisor com todas as coberturas que fez no período, uma por linha, na mesma ordem da tabela de cima: o posto, quem faltou, o motivo, o horário da vaga, a chegada e o atraso.":"Cada posto com todas as coberturas que recebeu no período, uma por linha, na mesma ordem da tabela de cima: quem cobriu (supervisor), quem faltou, o motivo, o horário da vaga, a chegada e o atraso.")+
-      " Use as setas dos títulos para filtrar por supervisor, posto, data, motivo ou situação. Valores fixos, da data em que o arquivo foi gerado.";
+      (OSX?" A classificação vem das OS avulsas: Excedente ou Treinamento quando o supervisor levou alguém ao posto naquele dia (com o nome e a RE de quem ficou); sem OS, Cobertura. Se levou um de cada tipo no mesmo dia, a cobertura aparece em uma linha para cada tipo.":"")+" Use as setas dos títulos para filtrar por supervisor, posto, data, motivo ou situação. Valores fixos, da data em que o arquivo foi gerado.";
     n.font=fonte({size:9,italic:true,color:{argb:BRX.mudo}});n.alignment={wrapText:true,vertical:"top",indent:1};w.getRow(r).height=30;r+=2;
-    const cab=[dim==="sup"?"Supervisor":"Posto",dim==="sup"?"Posto":"Supervisor (quem cobriu)","Data","Dia","Quem faltou","RE","Motivo","Início da vaga","Chegada","Atraso","Minutos","Situação"];
+    const cab=[dim==="sup"?"Supervisor":"Posto",dim==="sup"?"Posto":"Supervisor (quem cobriu)","Data","Dia","Quem faltou","RE","Motivo","Início da vaga","Chegada","Atraso","Minutos","Situação"].concat(OSX?["Classificação","Deixado no posto"]:[]);
     const lin=[];
     gr.forEach((x,gi)=>{
-      x.linhas.filter(i=>i.situacao!=="NAO_E_POSTO").slice().sort((a,b)=>a.data.localeCompare(b.data)||String(a.chegada).localeCompare(String(b.chegada))).forEach((i,k)=>lin.push({i,gi,ini:k===0}));
+      x.linhas.filter(i=>i.situacao!=="NAO_E_POSTO").slice().sort((a,b)=>a.data.localeCompare(b.data)||String(a.chegada).localeCompare(String(b.chegada))).forEach(i=>entradasOs(i).forEach(e=>lin.push({i,gi,ini:lin.length===0||lin[lin.length-1].gi!==gi,cls:e.cls,nomes:e.nomes})));
     });
     if(!lin.length)return r;
     const centro=c=>c===3||c===4||c===6||c>=8&&c<=11;
     const hdr=r;
     w.addTable({name:dim==="sup"?"DetalheSupervisor":"DetalhePosto",ref:"A"+hdr,headerRow:true,totalsRow:false,style:{theme:"TableStyleLight1",showRowStripes:false},
       columns:cab.map(c=>({name:c,filterButton:true})),
-      rows:lin.map(({i})=>[dim==="sup"?brNomeCurto(i.supervisor):(i.posto||i.destino),dim==="sup"?(i.posto||i.destino):brNomeCurto(i.supervisor),dataX(i.data),brSemana(i.data),i.falta_nome||"—",i.falta_re||"",brMotivoTxt(i.motivo),horaX(i.inicio),horaX(i.chegada),brDifTxt(i),i.diferenca_min==null?"":i.diferenca_min,(BR_SIT[i.situacao]||["Sem horário"])[0]])});
+      rows:lin.map(({i,cls,nomes})=>[dim==="sup"?brNomeCurto(i.supervisor):(i.posto||i.destino),dim==="sup"?(i.posto||i.destino):brNomeCurto(i.supervisor),dataX(i.data),brSemana(i.data),i.falta_nome||"—",i.falta_re||"",brMotivoTxt(i.motivo),horaX(i.inicio),horaX(i.chegada),brDifTxt(i),i.diferenca_min==null?"":i.diferenca_min,(BR_SIT[i.situacao]||["Sem horário"])[0]].concat(OSX?[cls,nomes]:[]))});
     w.getRow(hdr).height=24;
     cab.forEach((c,j)=>{const ce=w.getCell(hdr,j+1);ce.font=fonte({size:9,bold:true,color:{argb:"FFFFFFFF"}});ce.fill=preenche(BRX.navy);ce.alignment={vertical:"middle",horizontal:centro(j+1)?"center":"left",indent:j===0?1:0,wrapText:true};});
-    lin.forEach(({i,gi,ini},k)=>{
+    lin.forEach(({i,gi,ini,cls,nomes},k)=>{
       const rr=hdr+1+k,cor=brXSit(i.situacao);
       for(let c=1;c<=NCX;c++){
         const ce=w.getCell(rr,c);
@@ -13928,8 +13935,10 @@ async function brXlsxMontar(Ex,logo,ctx){
         if(c===8||c===9)ce.numFmt="hh:mm";
         if(c===10||c===11)ce.font=fonte({size:10,bold:true,color:{argb:cor[0]}});
         if(c===12){ce.font=fonte({size:10,bold:true,color:{argb:cor[0]}});ce.fill=preenche(cor[1]);}
+        if(OSX&&c===13){const cl=CLSOS[cls];ce.font=fonte({size:10,bold:true,color:{argb:cl[0]}});if(cls!=="Cobertura")ce.fill=preenche(cl[1]);ce.alignment={vertical:"middle",horizontal:"center"};}
+        if(OSX&&c===14)ce.alignment={vertical:"middle",horizontal:"left",wrapText:true};
       }
-      w.getRow(rr).height=20;
+      w.getRow(rr).height=OSX&&nomes&&nomes.split("\n").length>1?15*nomes.split("\n").length+5:20;
     });
     return hdr+lin.length+1;
   };
@@ -13938,7 +13947,7 @@ async function brXlsxMontar(Ex,logo,ctx){
   const tabela=(nome,dim,cor)=>{
     const w=wb.addWorksheet(nome,{properties:{tabColor:{argb:cor}},views:[{showGridLines:false,state:"frozen",xSplit:1}]});
     const cab=[dim==="sup"?"Supervisor":"Posto","Coberturas","Chegou em até 1h","Antes do início","Até 1h de atraso","1 a 3h de atraso","Mais de 3h de atraso","Sem horário",dim==="sup"?"Postos":"Supervisores",dim==="sup"?"Horas em campo":"Motivo mais comum",dim==="sup"?"Km":"3 ou mais"];
-    w.columns=[{width:dim==="sup"?30:36},{width:dim==="sup"?32:26},{width:14},{width:12},{width:28},{width:13},{width:22},{width:13},{width:13},{width:22},{width:dim==="sup"?17:22},{width:24}];
+    w.columns=[{width:dim==="sup"?30:36},{width:dim==="sup"?32:26},{width:14},{width:12},{width:28},{width:13},{width:22},{width:13},{width:13},{width:22},{width:dim==="sup"?17:22},{width:24}].concat(OSX?[{width:24},{width:52}]:[]);
     topo(w,dim==="sup"?"Por supervisor":"Por posto",subTxt,Math.max(cab.length,NCX));
     w.getRow(4).height=6;w.getRow(5).height=34;
     cab.forEach((c,i)=>{const ce=w.getCell(5,i+1);ce.value=c;ce.font=fonte({size:9,bold:true,color:{argb:"FFFFFFFF"}});ce.fill=preenche(BRX.navy);ce.alignment={vertical:"middle",horizontal:i?"center":"left",wrapText:true,indent:i?0:1};ce.border={bottom:{style:"medium",color:{argb:BRX.navy}}};});
