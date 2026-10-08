@@ -449,3 +449,36 @@
   filter:drop-shadow(0 .08em 0 rgba(255,255,255,.9))}
 @media (prefers-reduced-motion:reduce){#ftv .ftv-sn b,#ftv .ftv-pe b,#ftv .ftv-tk b{animation:none!important;background-position:-50% 0,0 0}}
 #ftv .ftv-sn b,#ftv .ftv-pe b,#ftv .ftv-tk b{font-weight:700!important;font-synthesis:weight!important;letter-spacing:.06em}
+/* ── letras grandes para ler de longe na TV (pedido de 08/10): letreiro e cards bem maiores; a lista rola quando não cabe ── */
+#ftv .ftv-mq{height:6.4em}
+#ftv .ftv-mql{padding:0 1.4em 0 1em;gap:.8em}
+#ftv .ftv-mql .ic,#ftv .ftv-mql .ic svg{width:3.6em;height:3.6em}
+#ftv .ftv-mql span:not(.ic){font-size:1.5em}
+#ftv .ftv-mql b{font-size:2em}
+#ftv .ftv-mqt{gap:1.3em}
+#ftv .ftv-tk{height:5em;gap:1em;padding:0 .45em 0 1.1em;border-width:.2em;border-radius:.4em}
+#ftv .ftv-tk i{width:2em;height:2em}
+#ftv .ftv-tk b{font-size:3em;letter-spacing:.05em}
+#ftv .ftv-tk em{font-size:3.6em;padding:0 .3em}
+/* cabeçalho do card */
+#ftv .ftv-ch0{padding:.5em .8em .55em .6em;gap:.7em}
+#ftv .ftv-ch0 .ftv-av{font-size:3.4em}
+#ftv .ftv-sn b{font-size:2.05em;letter-spacing:.05em}
+#ftv .ftv-sn span{font-size:1.4em;line-height:.9;max-width:none}
+#ftv .ftv-tt b{font-size:3.9em}
+#ftv .ftv-tt span{font-size:1.15em}
+/* pessoas */
+#ftv .ftv-it{padding:.45em .2em .5em 1.15em;gap:.8em}
+#ftv .ftv-it::before{width:.38em;top:.5em;bottom:.5em}
+#ftv .ftv-pe b{font-size:2.05em;line-height:1.02}
+#ftv .ftv-pe span,#ftv .ftv-pe small{font-size:1.55em;line-height:.95;margin-top:.08em}
+#ftv .ftv-pz{padding:.35em .7em}
+#ftv .ftv-pz small{font-size:1.45em}
+#ftv .ftv-pz b{font-size:2.1em}
+#ftv .k-vi .ftv-pz small,#ftv .k-gr .ftv-pz small{font-size:1.4em}
+#ftv .ftv-mais{font-size:1.6em}
+#ftv .ftv-ok b{font-size:2em}#ftv .ftv-ok span{font-size:1.5em}
+/* rodapé */
+#ftv .ftv-rg{height:3.6em}
+#ftv .ftv-rg p{font-size:1.6em}
+#ftv .ftv-lgd{font-size:1.4em}
