@@ -3638,7 +3638,8 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       #ftv.cheia .ftv-fs{display:none}
       /* card estreito: o prazo desce para baixo do nome, para o nome não ser cortado */
       @container (max-width:17em){#ftv .ftv-it{grid-template-columns:minmax(0,1fr);gap:.3em}#ftv .ftv-pz{justify-self:start;text-align:left;display:flex;align-items:baseline;gap:.5em;min-width:0}#ftv .ftv-pz small{display:none}#ftv .ftv-tt span{display:none}#ftv .ftv-sn b{font-size:1em}#ftv .ftv-toque{display:none}}
-      @media (prefers-reduced-motion:reduce){#ftv .ftv-mqt,#ftv .ftv-tr.rola,#ftv .k-hj .ftv-pz,#ftv .ftv-det{animation-duration:0s!important;animation-iteration-count:1!important}}
+      /* o letreiro e a rolagem das listas são a função da TV: seguem rodando mesmo se o aparelho pedir menos movimento (só os efeitos decorativos param) */
+      @media (prefers-reduced-motion:reduce){#ftv .k-hj .ftv-pz,#ftv .ftv-det{animation-duration:0s!important;animation-iteration-count:1!important}}
       /* ── fiel à referência ── */
       #ftv[data-tema="escuro"]{--fundo:linear-gradient(180deg,#0a1830 0%,#071226 100%);--sf:#0e213f;--sf2:#0e213f;--ln:rgba(140,170,220,.14);--ln2:rgba(140,170,220,.22);--marca:#5aa2ff;--marca2:rgba(90,162,255,.12)}
       #ftv .ftv-logo{padding:.6em 1.6em;border-radius:.5em}
@@ -16571,7 +16572,7 @@ function ftvAjusta(){
     fz*=.97;
   }
   const t=el.querySelector(".ftv-mqt");
-  if(t){const w=t.scrollWidth/2;t.style.animationDuration=Math.max(60,w/(fz*1.15))+"s";}
+  if(t){const w=t.scrollWidth/2;t.style.animationDuration=Math.max(30,w/(fz*2.4))+"s";}
   el.querySelectorAll(".ftv-card").forEach(card=>{
     const ls=card.querySelector(".ftv-ls"),tr=ls&&ls.querySelector(".ftv-tr"),m=card.querySelector(".ftv-mais");if(!tr)return;
     const h=tr.scrollHeight,cabe=h<=ls.clientHeight+2;

@@ -599,3 +599,42 @@
 #ftv .ftv-det .ftv-deh .ftv-sn span{font-weight:500!important;font-size:1.3em;color:#d4e0f5}
 #ftv .ftv-det .ftv-dr b,#ftv .ftv-det .ftv-dr small,#ftv .ftv-det .ftv-fd span,#ftv .ftv-det .ftv-sit b,#ftv .ftv-det .ftv-dp b,#ftv .ftv-det .ftv-dh span{font-family:"TVLegivel","Segoe UI",sans-serif}
 #ftv .ftv-det .ftv-dp small{font-family:"TVLegivel","Segoe UI",sans-serif;font-size:1.25em;font-weight:500!important}
+
+/* ── painel principal na mesma regra do detalhe: dados em fonte legível (Chakra Petch); títulos, nome do supervisor e números grandes seguem em pixel ── */
+#ftv .ftv-pe b,#ftv .ftv-pe span,#ftv .ftv-pe small,#ftv .ftv-pz small,#ftv .ftv-pz b,#ftv .ftv-sn span,#ftv .ftv-tt span,#ftv .ftv-k span:not(.ic),#ftv .ftv-lgd,#ftv .ftv-mais,#ftv .ftv-tk b,#ftv .ftv-mql span:not(.ic),#ftv .ftv-ti span,#ftv .ftv-rg p,#ftv .ftv-rl span,#ftv .ftv-tm,#ftv .ftv-st2>span{font-family:"TVLegivel","Segoe UI",sans-serif;letter-spacing:.01em}
+#ftv .ftv-pe b{font-weight:700!important;text-transform:none;letter-spacing:.005em;font-size:1.8em;line-height:1.1}
+#ftv .ftv-pe span{font-weight:600!important;font-size:1.2em;line-height:1.15;color:#a8dcf5}
+#ftv[data-tema="claro"] .ftv-pe span{color:#1d6a9a}
+#ftv .ftv-pe small{font-weight:500!important;font-size:1.15em;line-height:1.15;color:#c9d7ee;text-transform:none}
+#ftv .ftv-pz small{font-weight:700!important;font-size:1.1em;line-height:1.1;letter-spacing:.02em}
+#ftv .ftv-pz b{font-weight:700!important;font-size:1.75em;letter-spacing:0}
+#ftv .ftv-sn span{font-weight:600!important;font-size:1.2em;line-height:1.05;text-transform:none}
+#ftv .ftv-tt span{font-weight:600!important;font-size:.95em;line-height:1;text-transform:none}
+#ftv .ftv-k span:not(.ic){font-weight:600!important;font-size:.9em;line-height:1;text-transform:none}
+#ftv .ftv-k.fo span:not(.ic){font-family:var(--fj);font-size:.95em}
+#ftv .ftv-tk b{font-weight:700!important;font-size:2.5em;letter-spacing:.01em;text-transform:none}
+#ftv .ftv-mql span:not(.ic){font-weight:700!important;font-size:1.4em;text-transform:uppercase;letter-spacing:.04em}
+#ftv .ftv-ti span{font-weight:600!important;font-size:.95em;text-transform:uppercase;letter-spacing:.04em}
+#ftv .ftv-rl span{font-weight:600!important;font-size:1.1em;letter-spacing:.04em}
+#ftv .ftv-tm{font-weight:700!important;font-size:1.1em}
+#ftv .ftv-mais{font-weight:700!important;font-size:1.4em;text-transform:none}
+#ftv .ftv-rg p{font-weight:600!important;font-size:1.35em;letter-spacing:.02em;text-transform:none}
+#ftv .ftv-rg p b{font-family:inherit;font-weight:800!important;text-transform:uppercase}
+#ftv .ftv-lgd{font-weight:600!important;font-size:1.25em}
+#ftv .ftv-pz small{font-size:.95em}
+#ftv .k-vi .ftv-pz small,#ftv .k-gr .ftv-pz small{font-size:.85em;letter-spacing:0;line-height:1.1}
+#ftv .k-vi .ftv-pz,#ftv .k-gr .ftv-pz{padding:.3em .55em}
+#ftv .ftv-pe b{font-size:1.7em}
+#ftv .k-vi .ftv-pz small,#ftv .k-gr .ftv-pz small{font-size:.97em}
+
+/* letreiro 30% menor (pedido de 08/10) */
+#ftv .ftv-mq{height:4.5em}
+#ftv .ftv-mql{padding:0 1em 0 .7em;gap:.6em}
+#ftv .ftv-mql .ic,#ftv .ftv-mql .ic svg{width:2.5em;height:2.5em}
+#ftv .ftv-mql span:not(.ic){font-size:1em}
+#ftv .ftv-mql b{font-size:1.4em}
+#ftv .ftv-mqt{gap:.9em}
+#ftv .ftv-tk{height:3.5em;gap:.7em;padding:0 .3em 0 .8em}
+#ftv .ftv-tk i{width:1.4em;height:1.4em}
+#ftv .ftv-tk b{font-size:1.75em}
+#ftv .ftv-tk em{font-size:2.5em}
