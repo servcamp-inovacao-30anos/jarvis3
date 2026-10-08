@@ -93,6 +93,18 @@ test("tela: nome novo no menu e no título, botão Modo TV, endereço ?tv=medida
   assert.ok(/function ftvAbrir\(\)\{\s*if\(!fsPermitido\(\)\)return;/.test(H));
 });
 
+test("identidade arcade: estilo, fontes e cena da central são arquivos do próprio sistema", () => {
+  const raiz = path.join(__dirname, "..");
+  assert.ok(H.includes('<link rel="stylesheet" href="/assets/tv/modo-tv.css">'), "estilo do Modo TV ligado no fim da página");
+  const css = fs.readFileSync(path.join(raiz, "assets", "tv", "modo-tv.css"), "utf8");
+  for (const f of ["/fonts/Jersey10.woff2", "/fonts/VT323.woff2", "/assets/tv/central-operacional.webp"]) {
+    assert.ok(css.includes("url(" + f + ")"), f + " usado no estilo");
+    assert.ok(fs.existsSync(path.join(raiz, f)), f + " existe no repositório");
+  }
+  assert.ok(/prefers-reduced-motion:reduce\)\{#ftv \.ftv-op/.test(css), "a cena para de se mexer com reduzir movimento");
+  assert.ok(H.includes('<div class="ftv-palco ftv-cena" aria-hidden="true">'), "cena decorativa escondida do leitor de tela");
+});
+
 test("tela da TV: relógio no topo, tema escuro e claro, card que abre o detalhe da área", () => {
   assert.ok(/class="ftv-rl"><b>\$\{ftvRelTxt\(\)\.h\}/.test(H), "relógio no topo");
   assert.ok(/FTV\.tRel=setInterval\(ftvRelogio,1000\)/.test(H) && /clearInterval\(FTV\.tRel\)/.test(H), "relógio anda e para ao sair");
