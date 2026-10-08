@@ -31,7 +31,7 @@ function folhaDe(d) {
 }
 
 const SIT = { ANTES: "Antes do início da vaga", NO_PRAZO: "Até 1h de atraso", ATRASO: "1 a 3h de atraso", GRAVE: "Mais de 3h de atraso", SEM_HORARIO: "Sem horário" };
-const FONTE = { FALTA: "horário da vaga de quem faltou", JORNADA: "jornada de quem faltou", POSTO: "turno do posto" };
+const FONTE = { FALTA: "Horário de início da vaga", JORNADA: "Horário de início da vaga", POSTO: "Horário de início da vaga" };
 const motivoTxt = m => { if (!m) return "—"; if (m === "FALTA") return "Falta"; const s = String(m).toLowerCase(); return s.charAt(0).toUpperCase() + s.slice(1); };
 const re = v => (/^\d{1,15}$/.test(String(v)) ? Number(v) : String(v == null ? "" : v));
 const hhmm = v => { const m = String(v == null ? "" : v).match(/(\d{1,2}):(\d{2})/); return m ? `${p2(+m[1])}:${p2(+m[2])}` : ""; };

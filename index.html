@@ -13041,7 +13041,7 @@ function vgFmDir(){
    rolagem não pula. */
 const BR={kpi:null,maisK:false,dados:null,de:null,ate:null,atalho:"folha",vis:"sup",sups:[],postos:[],mot:"",aberto:{},mais:{},ord:{c:"n",d:-1},carregando:false,erro:null,pedido:0};
 const BR_SIT={ANTES:["Antes do início da vaga","an"],NO_PRAZO:["Até 1h de atraso","ok"],ATRASO:["1 a 3h de atraso","am"],GRAVE:["Mais de 3h de atraso","da"],SEM_HORARIO:["Sem horário","gr"]};
-const BR_FONTE={FALTA:"horário da vaga de quem faltou",JORNADA:"jornada de quem faltou",POSTO:"turno do posto"};
+const BR_FONTE={FALTA:"Horário de início da vaga",JORNADA:"Horário de início da vaga",POSTO:"Horário de início da vaga"};
 const BR_MAX_COMPARA=200; // períodos maiores vêm sem a comparação (o servidor entrega até 400 dias)
 const BR_MOT={"":"Todos os motivos",FALTA:"Só faltas",OUTROS:"Outros motivos"};
 function brPermitido(){return bdvPermitido();}
@@ -13927,7 +13927,7 @@ async function brXlsxMontar(Ex,logo,ctx){
       const rr=hdr+1+k,cor=brXSit(i.situacao);
       for(let c=1;c<=NCX;c++){
         const ce=w.getCell(rr,c);
-        ce.font=fonte({size:10,bold:(c===1&&ini)||c===9,color:c===1&&ini?{argb:BRX.navy}:(c===1&&!ini?{argb:"FF98A2B3"}:undefined)});
+        ce.font=fonte({size:10,bold:(c===1&&ini)||c===9,color:c===1&&ini?{argb:BRX.navy}:(c===1&&!ini?{argb:"FF475467"}:undefined)});
         ce.alignment={vertical:"middle",horizontal:centro(c)?"center":"left",indent:c===1?1:0,shrinkToFit:c===7||c===10};
         ce.border={top:ini?{style:"thin",color:{argb:BRX.navy}}:undefined,bottom:{style:"thin",color:{argb:BRX.linha}}};
         if(gi%2)ce.fill=preenche(BRX.faixa);
@@ -16156,10 +16156,10 @@ async function brXlsxConectado(Ex,logo,j,k){
     ws.addConditionalFormatting({ref:`L${N0}:L${ULT}`,rules:[regra(SN.A,BRX.an,1),regra(SN.N,BRX.ok,2),regra(SN.T,BRX.am,3),regra(SN.G,BRX.da,4),regra(SN.S,BRX.gr,5)]});
     const txtCor=(txt,cor,p)=>({type:"expression",priority:p,formulae:[`$L${N0}="${txt}"`],style:{font:{bold:true,color:{argb:cor[0]}}}});
     ws.addConditionalFormatting({ref:`J${N0}:J${ULT}`,rules:[txtCor(SN.A,BRX.an,6),txtCor(SN.N,BRX.ok,7),txtCor(SN.T,BRX.am,8),txtCor(SN.G,BRX.da,9)]});
-    /* o primeiro de cada grupo ganha destaque e linha de cima; os seguintes mostram o nome do grupo mais apagado */
+    /* o primeiro de cada grupo ganha destaque e linha de cima; os seguintes mostram o nome do grupo em cinza-escuro (legível) */
     ws.addConditionalFormatting({ref:`A${N0}:K${ULT}`,rules:[
-      {type:"expression",priority:11,formulae:[`AND($A${N0}<>"",$A${N0}<>$A${N0-1})`],style:{fill:dxf("FFEEF0F8"),font:{bold:true,color:{argb:BRX.navy}},border:{top:{style:"thin",color:{argb:BRX.navy}}}}},
-      {type:"expression",priority:12,formulae:[`AND($A${N0}<>"",$A${N0}=$A${N0-1})`],style:{font:{color:{argb:"FF98A2B3"}}}}]});
+      {type:"expression",priority:11,formulae:[`AND($A${N0}<>"",$A${N0}<>$A${N0-1})`],style:{fill:dxf("FFDDE3F5"),font:{bold:true,color:{argb:BRX.navy}},border:{top:{style:"medium",color:{argb:BRX.navy}}}}},
+      {type:"expression",priority:12,formulae:[`AND($A${N0}<>"",$A${N0}=$A${N0-1})`],style:{font:{color:{argb:"FF475467"}}}}]});
     ws.autoFilter={from:{row:5,column:1},to:{row:ULT,column:cols.length}};
     pagina(ws,"5:5",true);
   };
