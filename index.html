@@ -16257,7 +16257,8 @@ function ftvNome(n){const p=String(n||"").trim().split(/\s+/).filter(Boolean);re
 function ftvDados(){
   const j=FM.dados,F=ftvFolha(),hoje=j.hoje,por={};
   const troca=n=>/^RAFAEL\b.*\bANDRADE\b/i.test(String(n||"").trim())?"CARLOS NOGUEIRA":n;
-  const fora=n=>/^(EDUARDO\b.*\bCIPRIANO|JU(LIANA|LIA)?)\b/i.test(String(n||"").trim());
+  const fora=n=>{const t=String(n||"").trim().normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase();
+    return /^EDUARDO\b.*\bCIPRIANO\b/.test(t)||/^JU[SC]+ILENE\b/.test(t)||(/\bRT\b/.test(t)&&/\b(NOTURNO|DIURNO)\b/.test(t));};
   const sup=n=>por[n]||(por[n]={nome:n,itens:[],faltas:0,n:{}});
   j.casos.forEach(c=>{if(c.supervisor&&!fora(c.supervisor))sup(troca(c.supervisor));});
   fmAbonos().forEach(a=>{if(a.supervisor&&!fora(a.supervisor))sup(troca(a.supervisor));});
@@ -16425,20 +16426,37 @@ function ftvHtml(){
     `<div class="ftv-fs">Clique uma vez na tela para ficar em tela cheia (ou aperte F11)</div>`;
 }
 /* Depois de desenhar: arranjo das colunas, velocidade do letreiro, rolagem de cada lista que não cabe e o "+N". */
+/* Tudo na tela sem cortar, em qualquer TV: a letra base sai da largura E da altura da tela (TV mais estreita
+   ou com zoom no navegador), e se ainda sobrar texto cortado ela encolhe aos poucos (até 70%). Só se nem
+   assim couber, a lista daquele card passa a rolar sozinha. */
+function ftvCorta(el){
+  const sai=x=>x&&(x.scrollWidth>x.clientWidth+1||x.scrollHeight>x.clientHeight+1);
+  if(el.scrollWidth>el.clientWidth+1||el.scrollHeight>el.clientHeight+1)return true;
+  if([".ftv-top",".ftv-kp",".ftv-ti",".ftv-mql",".ftv-rg"].some(q=>sai(el.querySelector(q))))return true;
+  if([...el.querySelectorAll(".ftv-k,.ftv-ch0,.ftv-sn")].some(sai))return true;
+  return [...el.querySelectorAll(".ftv-card")].some(card=>{const ls=card.querySelector(".ftv-ls"),tr=ls&&ls.querySelector(".ftv-tr");return tr&&tr.scrollHeight>ls.clientHeight+2;});
+}
 function ftvAjusta(){
   const el=document.getElementById("ftv");if(!el)return;
   const g=el.querySelector(".ftv-grid"),n=el.querySelectorAll(".ftv-card").length;
-  if(g)g.style.setProperty("--cols",ftvColunas(n,g.clientWidth,g.clientHeight,parseFloat(getComputedStyle(el).fontSize)||19.6));
+  el.querySelectorAll(".ftv-tr").forEach(tr=>{tr.classList.remove("rola");tr.querySelectorAll(".ftv-dup").forEach(x=>x.remove());});
+  const base=Math.min(el.clientWidth/100,el.clientHeight/56.25);
+  let fz=base;
+  for(let i=0;i<14;i++){
+    el.style.fontSize=fz.toFixed(2)+"px";
+    if(g)g.style.setProperty("--cols",ftvColunas(n,g.clientWidth,g.clientHeight,fz));
+    if(!ftvCorta(el)||fz<=base*.7)break;
+    fz*=.97;
+  }
   const t=el.querySelector(".ftv-mqt");
-  if(t){const w=t.scrollWidth/2;t.style.animationDuration=Math.max(60,w/22)+"s";}
+  if(t){const w=t.scrollWidth/2;t.style.animationDuration=Math.max(60,w/(fz*1.15))+"s";}
   el.querySelectorAll(".ftv-card").forEach(card=>{
     const ls=card.querySelector(".ftv-ls"),tr=ls&&ls.querySelector(".ftv-tr"),m=card.querySelector(".ftv-mais");if(!tr)return;
-    tr.classList.remove("rola");tr.querySelectorAll(".ftv-dup").forEach(x=>x.remove());
     const h=tr.scrollHeight,cabe=h<=ls.clientHeight+2;
     if(m){let vis=0;[...tr.children].forEach(li=>{if(li.offsetTop+li.offsetHeight<=ls.clientHeight+2)vis++;});const resto=tr.children.length-vis;m.textContent=cabe||!resto?"":`+${ftvPl(resto,"ocorrência","ocorrências")}`;}
     if(!cabe){
       [...tr.children].forEach(li=>{const d=li.cloneNode(true);d.classList.add("ftv-dup");d.setAttribute("aria-hidden","true");tr.appendChild(d);});
-      tr.style.setProperty("--alt",h+"px");tr.style.animationDuration=Math.max(30,h/9)+"s";tr.classList.add("rola");
+      tr.style.setProperty("--alt",h+"px");tr.style.animationDuration=Math.max(30,h/(fz*.47))+"s";tr.classList.add("rola");
     }
   });
 }
@@ -16450,6 +16468,8 @@ function ftvPinta(){
   const nb=el.querySelector(".ftv-db");if(nb&&y)nb.scrollTop=y;
   if(FTV.q)ftvFiltra(FTV.q);
   setTimeout(ftvAjusta,30);
+  // a medida só vale com a fonte da TV carregada (antes dela o texto ocupa outro tamanho)
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{if(FTV.on)ftvAjusta();});
 }
 /* Detalhe de um supervisor: abre por cima e volta sozinho para a visão geral depois de 90 s sem ninguém mexer. */
 function ftvFiltra(v){

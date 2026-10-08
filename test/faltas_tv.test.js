@@ -37,6 +37,20 @@ test("entram todos os casos em aberto; com medida aplicada não entram; atestado
   assert.ok(f && f.itens.length === 0 && f.faltas === 0, "supervisor só com atestado aparece, em dia");
 });
 
+test("fora da TV: Eduardo Cipriano, Jussilene e as áreas Noturno RT e Diurno RT; Rafael Andrade conta para o Carlos", () => {
+  const T = carrega("2026-10-07", [
+    caso(1, "EDUARDO CIPRIANO", "NO_PRAZO", ["2026-10-05"], "2026-10-09"),
+    caso(2, "JUSSILENE SOUZA", "NO_PRAZO", ["2026-10-05"], "2026-10-09"),
+    caso(3, "NOTURNO RT", "NO_PRAZO", ["2026-10-05"], "2026-10-09"),
+    caso(4, "DIURNO RT", "NO_PRAZO", ["2026-10-05"], "2026-10-09"),
+    caso(5, "RAFAEL ANDRADE", "NO_PRAZO", ["2026-10-05"], "2026-10-09"),
+    caso(6, "JULIO CESAR", "NO_PRAZO", ["2026-10-05"], "2026-10-09")
+  ]);
+  const D = T.ftvDados();
+  assert.deepEqual(D.lista.map(x => x.nome), ["CARLOS NOGUEIRA", "JULIO CESAR"]);
+  assert.deepEqual(D.lista[0].itens.map(i => i.c.re), [5]);
+});
+
 test("sempre a folha atual (26 a 25): falta de antes do dia 26 não conta; caso só da folha anterior não aparece", () => {
   const T = carrega("2026-10-07", [
     caso(1, "ANA", "PRAZO_VENCIDO", ["2026-09-24", "2026-09-25", "2026-09-26", "2026-09-27"], "2026-09-28"),
