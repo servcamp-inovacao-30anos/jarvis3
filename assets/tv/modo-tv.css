@@ -578,3 +578,24 @@
 #ftv .ftv-nota svg{width:2.4em;height:2.4em}
 #ftv .ftv-nota b{font-size:1.9em}#ftv .ftv-nota span{font-size:1.6em}
 #ftv .ftv-ok b{font-size:2em}
+
+/* ── detalhe do supervisor: dados em fonte mais legível (Chakra Petch, técnica e limpa); título e grupos seguem em pixel ── */
+@font-face{font-family:"TVLegivel";src:url(/fonts/ChakraPetch500.woff2) format("woff2");font-weight:400 600;font-display:block}
+@font-face{font-family:"TVLegivel";src:url(/fonts/ChakraPetch700.woff2) format("woff2");font-weight:700 900;font-display:block}
+#ftv .ftv-det .ftv-dh,#ftv .ftv-det .ftv-dr,#ftv .ftv-det .ftv-dk span,#ftv .ftv-det .ftv-fl input,#ftv .ftv-det .ftv-fn,#ftv .ftv-det .ftv-nota,#ftv .ftv-det .ftv-deh .ftv-sn span,#ftv .ftv-det .ftv-dg h4 em,#ftv .ftv-det .ftv-ok span{font-family:"TVLegivel","Segoe UI",sans-serif;letter-spacing:.01em;text-transform:none}
+#ftv .ftv-det .ftv-dh{text-transform:uppercase;letter-spacing:.06em;font-weight:700!important;font-size:1.2em}
+#ftv .ftv-det .ftv-dr b{font-weight:700!important;letter-spacing:.005em;font-size:1.85em;line-height:1.1}
+#ftv .ftv-det .ftv-dr small,#ftv .ftv-det .ftv-dr>div:first-child small{font-weight:500!important;font-size:1.3em;line-height:1.15;color:#c3d3ee}
+#ftv .ftv-det .ftv-dr>div:nth-child(2) b{text-transform:uppercase;letter-spacing:.02em;font-size:1.7em}
+#ftv .ftv-det .ftv-fd span{font-weight:600!important;font-size:1.3em}
+#ftv .ftv-det .ftv-sit b{font-weight:600!important;font-size:1.45em;line-height:1.2}
+#ftv .ftv-det .ftv-dp b{font-weight:700!important;font-size:2.2em;letter-spacing:0}
+#ftv .ftv-det .ftv-hs{font-family:"TVLegivel","Segoe UI",sans-serif;font-weight:700!important;font-size:1.3em;letter-spacing:.01em}
+#ftv .ftv-det .ftv-dk span{font-weight:600!important;font-size:1.5em}
+#ftv .ftv-det .ftv-dg h4 em{font-weight:700!important}
+#ftv .ftv-det .ftv-fl input{font-weight:500!important;font-size:1.4em}
+#ftv .ftv-det .ftv-nota b{font-family:"TVLegivel","Segoe UI",sans-serif;font-weight:700!important;font-size:1.7em;letter-spacing:.01em;text-transform:none}
+#ftv .ftv-det .ftv-nota span{font-weight:500!important;font-size:1.45em}
+#ftv .ftv-det .ftv-deh .ftv-sn span{font-weight:500!important;font-size:1.3em;color:#d4e0f5}
+#ftv .ftv-det .ftv-dr b,#ftv .ftv-det .ftv-dr small,#ftv .ftv-det .ftv-fd span,#ftv .ftv-det .ftv-sit b,#ftv .ftv-det .ftv-dp b,#ftv .ftv-det .ftv-dh span{font-family:"TVLegivel","Segoe UI",sans-serif}
+#ftv .ftv-det .ftv-dp small{font-family:"TVLegivel","Segoe UI",sans-serif;font-size:1.25em;font-weight:500!important}
