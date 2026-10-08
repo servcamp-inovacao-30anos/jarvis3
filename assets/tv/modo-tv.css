@@ -6,7 +6,7 @@
 #ftv{--fj:"TVJersey","Segoe UI",sans-serif;--fv:"TVTerm","Consolas",monospace;
   --stp:polygon(0 .4em,.2em .4em,.2em .2em,.4em .2em,.4em 0,calc(100% - .4em) 0,calc(100% - .4em) .2em,calc(100% - .2em) .2em,calc(100% - .2em) .4em,100% .4em,100% calc(100% - .4em),calc(100% - .2em) calc(100% - .4em),calc(100% - .2em) calc(100% - .2em),calc(100% - .4em) calc(100% - .2em),calc(100% - .4em) 100%,.4em 100%,.4em calc(100% - .2em),.2em calc(100% - .2em),.2em calc(100% - .4em),0 calc(100% - .4em));
   --oct:polygon(24% 0,76% 0,100% 24%,100% 76%,76% 100%,24% 100%,0 76%,0 24%);
-  font-family:var(--fj);font-size:clamp(12px,1vw,30px);line-height:1.1;letter-spacing:.04em;text-transform:none;
+  font-family:var(--fj);font-size:min(1vw,1.778vh);line-height:1.1;letter-spacing:.04em;text-transform:none;
   padding:.55em .6em .5em;gap:.5em;grid-template-rows:auto auto minmax(0,1fr) auto}
 #ftv,#ftv *{font-weight:400!important;font-synthesis:none}
 #ftv[data-tema="escuro"]{
@@ -414,3 +414,38 @@
 #ftv .ftv-ti b{font-size:2.15em;letter-spacing:.05em}
 #ftv .ftv-ti span{font-size:.9em}
 #ftv .ftv-ti{padding:.2em 1em .2em 1.1em}
+/* o painel do detalhe fica sempre inteiro dentro da tela (TV mais estreita ou mais quadrada); só a cena cobre tudo */
+#ftv .ftv-palco-d{width:min(100vw,177.68vh);height:min(56.28vw,100vh)}
+/* cena e painel do detalhe na mesma moldura 16:9 (em TV mais quadrada sobra fundo escuro em cima e embaixo, sem mostrar a arte por trás) */
+#ftv .ftv-ov{background:url(/assets/tv/fundo-arcade.png) 0 0/15.79vw auto repeat,#040a1a}
+#ftv .ftv-cena{width:min(100vw,177.68vh);height:min(56.28vw,100vh);--px:calc(min(100vw,177.68vh) / 1672);box-shadow:0 0 3em 1.5em #040a1a}
+/* ── nomes com cara de fliperama: letra em dois tons (metade de cima clara, de baixo tingida), contorno de 1 pixel e um brilho que passa ── */
+#ftv .ftv-sn b,#ftv .ftv-pe b,#ftv .ftv-tk b,#ftv .ftv-deh .ftv-sn b{
+  text-shadow:none;color:transparent;-webkit-text-fill-color:transparent;-webkit-background-clip:text;background-clip:text;
+  background-repeat:no-repeat;background-size:300% 100%,100% 100%;background-position:150% 0,0 0;
+  animation:ftvBrilho var(--bt,9s) linear infinite;animation-delay:var(--bd,0s)}
+#ftv .ftv-sn b{
+  background-image:linear-gradient(100deg,transparent 42%,rgba(255,255,255,.95) 48%,rgba(255,255,255,.95) 52%,transparent 58%),
+    linear-gradient(180deg,#ffffff 0 52%,hsl(var(--h) 100% 80%) 52% 100%);
+  filter:drop-shadow(.06em 0 0 hsl(var(--h) 80% 12%)) drop-shadow(-.06em 0 0 hsl(var(--h) 80% 12%)) drop-shadow(0 -.06em 0 hsl(var(--h) 80% 12%)) drop-shadow(0 .1em 0 hsl(var(--h) 80% 9%));--bt:8s}
+#ftv .ftv-pe b{
+  background-image:linear-gradient(100deg,transparent 42%,rgba(255,255,255,.9) 48%,rgba(255,255,255,.9) 52%,transparent 58%),
+    linear-gradient(180deg,#ffffff 0 52%,color-mix(in srgb,var(--c) 45%,#ffffff) 52% 100%);
+  filter:drop-shadow(.06em 0 0 #020a22) drop-shadow(-.06em 0 0 #020a22) drop-shadow(0 -.06em 0 #020a22) drop-shadow(0 .1em 0 #01061a);--bt:11s}
+#ftv .k-da .ftv-pe b{background-image:linear-gradient(100deg,transparent 42%,rgba(255,255,255,.9) 48%,rgba(255,255,255,.9) 52%,transparent 58%),linear-gradient(180deg,#fff2f5 0 52%,#ff9ab4 52% 100%)}
+#ftv .k-vi .ftv-pe b,#ftv .k-gr .ftv-pe b{background-image:linear-gradient(100deg,transparent 42%,rgba(255,255,255,.9) 48%,rgba(255,255,255,.9) 52%,transparent 58%),linear-gradient(180deg,#f6f0ff 0 52%,#c9b0ff 52% 100%)}
+#ftv .ftv-tk b{
+  background-image:linear-gradient(100deg,transparent 42%,rgba(255,255,255,.95) 48%,rgba(255,255,255,.95) 52%,transparent 58%),
+    linear-gradient(180deg,#ffffff 0 52%,hsl(var(--h) 100% 82%) 52% 100%);
+  filter:drop-shadow(.05em 0 0 hsl(var(--h) 80% 10%)) drop-shadow(-.05em 0 0 hsl(var(--h) 80% 10%)) drop-shadow(0 .08em 0 hsl(var(--h) 80% 8%));--bt:7s}
+#ftv .ftv-deh .ftv-sn b{--bt:6s}
+/* cada card e cada pessoa brilha num momento diferente, para a tela não piscar toda de uma vez */
+#ftv .ftv-card:nth-child(4n+1) .ftv-sn b{--bd:-0s}#ftv .ftv-card:nth-child(4n+2) .ftv-sn b{--bd:-2s}#ftv .ftv-card:nth-child(4n+3) .ftv-sn b{--bd:-4s}#ftv .ftv-card:nth-child(4n) .ftv-sn b{--bd:-6s}
+#ftv .ftv-it:nth-child(5n+1) .ftv-pe b{--bd:-1s}#ftv .ftv-it:nth-child(5n+2) .ftv-pe b{--bd:-3.2s}#ftv .ftv-it:nth-child(5n+3) .ftv-pe b{--bd:-5.4s}#ftv .ftv-it:nth-child(5n+4) .ftv-pe b{--bd:-7.6s}#ftv .ftv-it:nth-child(5n) .ftv-pe b{--bd:-9.8s}
+#ftv .ftv-card:nth-child(odd) .ftv-it .ftv-pe b{--bt:12.5s}
+@keyframes ftvBrilho{0%{background-position:150% 0,0 0}16%{background-position:-50% 0,0 0}100%{background-position:-50% 0,0 0}}
+#ftv[data-tema="claro"] .ftv-sn b,#ftv[data-tema="claro"] .ftv-pe b,#ftv[data-tema="claro"] .ftv-tk b{
+  background-image:linear-gradient(100deg,transparent 42%,rgba(255,255,255,.9) 48%,rgba(255,255,255,.9) 52%,transparent 58%),linear-gradient(180deg,#0b1b4a 0 52%,hsl(var(--h,220) 70% 32%) 52% 100%);
+  filter:drop-shadow(0 .08em 0 rgba(255,255,255,.9))}
+@media (prefers-reduced-motion:reduce){#ftv .ftv-sn b,#ftv .ftv-pe b,#ftv .ftv-tk b{animation:none!important;background-position:-50% 0,0 0}}
+#ftv .ftv-sn b,#ftv .ftv-pe b,#ftv .ftv-tk b{font-weight:700!important;font-synthesis:weight!important;letter-spacing:.06em}
