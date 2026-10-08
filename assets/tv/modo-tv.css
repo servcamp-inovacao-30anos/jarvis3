@@ -626,3 +626,15 @@
 #ftv .k-vi .ftv-pz,#ftv .k-gr .ftv-pz{padding:.3em .55em}
 #ftv .ftv-pe b{font-size:1.7em}
 #ftv .k-vi .ftv-pz small,#ftv .k-gr .ftv-pz small{font-size:.97em}
+
+/* letreiro 30% menor (pedido de 08/10) */
+#ftv .ftv-mq{height:4.5em}
+#ftv .ftv-mql{padding:0 1em 0 .7em;gap:.6em}
+#ftv .ftv-mql .ic,#ftv .ftv-mql .ic svg{width:2.5em;height:2.5em}
+#ftv .ftv-mql span:not(.ic){font-size:1em}
+#ftv .ftv-mql b{font-size:1.4em}
+#ftv .ftv-mqt{gap:.9em}
+#ftv .ftv-tk{height:3.5em;gap:.7em;padding:0 .3em 0 .8em}
+#ftv .ftv-tk i{width:1.4em;height:1.4em}
+#ftv .ftv-tk b{font-size:1.75em}
+#ftv .ftv-tk em{font-size:2.5em}
