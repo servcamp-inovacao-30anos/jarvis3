@@ -80,3 +80,55 @@ self.addEventListener("fetch", e => {
     }
   })());
 });
+
+// ── Avisos de faltas (notificação push) ───────────────────────────────────
+// O servidor (api/_avisos.js) manda { titulo, corpo, tipo, pg, url, tag }.
+// O som da notificação é o do celular: nenhum navegador deixa a página escolher
+// o toque de uma notificação push. O que dá para fazer daqui:
+//   • vibração com um padrão próprio (três toques e um longo), que identifica
+//     o aviso de faltas mesmo com o celular no bolso (Android);
+//   • com o painel aberto, a página toca o som próprio (/assets/som/aviso-faltas.wav);
+//   • no Android, o supervisor pode escolher esse mesmo arquivo como toque das
+//     notificações do app (o painel explica como).
+const VIBRA_FALTAS = [220, 90, 220, 90, 220, 160, 650];
+
+self.addEventListener("push", e => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (err) { d = { corpo: e.data ? e.data.text() : "" }; }
+  const titulo = d.titulo || "ServCamp · faltas injustificadas";
+  const opcoes = {
+    body: d.corpo || "",
+    icon: "/icon-192.png",
+    badge: "/favicon-32.png",
+    tag: d.tag || "faltas",
+    renotify: true,                          // aviso novo com a mesma etiqueta toca e vibra de novo
+    requireInteraction: d.tipo === "RESUMO", // o resumo fica na tela até alguém tocar
+    silent: false,
+    vibrate: VIBRA_FALTAS,
+    timestamp: Date.now(),
+    data: { pg: d.pg || "faltassup", url: d.url || "/?abrir=faltassup", tipo: d.tipo || "" }
+  };
+  e.waitUntil((async () => {
+    await self.registration.showNotification(titulo, opcoes);
+    // painel aberto: a própria página toca o som do aviso de faltas
+    const abas = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    abas.forEach(c => c.postMessage({ tipo: "aviso-faltas", aviso: d.tipo || "" }));
+  })());
+});
+
+self.addEventListener("notificationclick", e => {
+  e.notification.close();
+  const dados = e.notification.data || {};
+  const pg = dados.pg || "faltassup";
+  e.waitUntil((async () => {
+    const abas = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    const aba = abas.find(c => new URL(c.url).origin === self.location.origin);
+    if (aba) {
+      // reaproveita a aba aberta: ela mesma navega, respeitando login e permissões
+      try { await aba.focus(); } catch (err) {}
+      aba.postMessage({ tipo: "abrir", pg });
+      return;
+    }
+    await self.clients.openWindow(dados.url || "/?abrir=" + pg);
+  })());
+});
