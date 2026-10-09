@@ -2570,16 +2570,22 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       #pg-faltasmed .fm-rkb{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin:0 0 14px}
       #pg-faltasmed .fm-rkb p{margin:0;font-size:.78rem;color:var(--fm-muted);flex:1;min-width:220px}
       #pg-faltasmed .fm-rkb-n{margin:6px 2px 0;font-size:.74rem;color:var(--fm-muted)}
-      #pg-faltasmed .fm-rkt{--cols:38px minmax(180px,1.6fr) repeat(8,minmax(72px,.7fr)) 112px 22px;margin:0 0 6px}
+      #pg-faltasmed .fm-rkt{--cols:38px minmax(180px,1.6fr) repeat(9,minmax(68px,.7fr)) 112px 22px;margin:0 0 6px}
       #pg-faltasmed .fm-rkt-h{display:grid;grid-template-columns:var(--cols);gap:12px;align-items:end;padding:0 16px 8px}
       #pg-faltasmed .fm-rkt-h button,#pg-faltasmed .fm-rkt-h span{appearance:none;border:0;background:none;font:inherit;font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--fm-muted);text-align:left;padding:0}
       #pg-faltasmed .fm-rkt-h button{cursor:pointer}
       #pg-faltasmed .fm-rkt-h .n{text-align:right}
       #pg-faltasmed .fm-rkt-h button:hover,#pg-faltasmed .fm-rkt-h button.on{color:var(--fm-brand-tx)}
       #pg-faltasmed .fm-rkt-h i{font-style:normal;margin-left:3px}
-      #pg-faltasmed .fm-rkt-g{background:var(--fm-surface);border:1px solid var(--fm-line);border-radius:10px;box-shadow:var(--fm-sh);margin:0 0 6px;overflow:hidden;transition:border-color .12s}
-      #pg-faltasmed .fm-rkt-g:hover{border-color:var(--g300)}
-      #pg-faltasmed .fm-rkt-g.on{border-color:var(--fm-brand)}
+      #pg-faltasmed .fm-rkt-g{background:var(--fm-surface);border:1.5px solid var(--g300);border-radius:10px;box-shadow:var(--fm-sh);margin:0 0 8px;overflow:hidden;transition:border-color .12s,box-shadow .12s}
+      #pg-faltasmed .fm-rkt-g:hover{border-color:var(--fm-brand);box-shadow:0 2px 10px rgba(37,99,235,.14)}
+      #pg-faltasmed .fm-rkt-g:hover>.fm-rkt-r{background:#f0f6ff}
+      #pg-faltasmed .fm-rkt-g.on{border:2px solid var(--fm-brand);box-shadow:0 0 0 3px var(--fm-ring),0 4px 14px rgba(37,99,235,.18)}
+      #pg-faltasmed .fm-rkt-g.on>.fm-rkt-r{background:#e0ecff;box-shadow:inset 5px 0 0 var(--fm-brand)}
+      #pg-faltasmed .fm-rkt-g.on>.fm-rkt-r .nm b{color:var(--fm-brand-tx)}
+      html[data-theme="dark"] #pg-faltasmed .fm-rkt-g:hover>.fm-rkt-r{background:rgba(59,130,246,.10)}
+      html[data-theme="dark"] #pg-faltasmed .fm-rkt-g.on>.fm-rkt-r{background:rgba(59,130,246,.22)}
+      #pg-faltasmed .fm-rkt-r .c .z,#pg-faltasmed .fm-rkt-tb .z{color:var(--g400);font-weight:400}
       #pg-faltasmed .fm-rkt-r{appearance:none;font:inherit;color:inherit;text-align:left;cursor:pointer;display:grid;grid-template-columns:var(--cols);gap:12px;align-items:center;width:100%;padding:12px 16px;background:none;border:0}
       #pg-faltasmed .fm-rkt-r .rk{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;background:var(--fm-subtle);color:var(--fm-text2);font-size:.76rem;font-weight:800}
       #pg-faltasmed .fm-rkt-r .rk.top{background:var(--fm-brand-soft);color:var(--fm-brand-tx)}
@@ -2658,21 +2664,28 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       #pg-faltasmed .fm-rkt-x{border-top:1px solid var(--fm-line);background:var(--fm-subtle);padding:14px 18px}
       #pg-faltasmed .fm-rkt-xh{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 8px;font-size:.82rem;color:var(--fm-text)}
       #pg-faltasmed .fm-rkt-tb{width:100%;border-collapse:collapse;font-size:.8rem}
-      #pg-faltasmed .fm-rkt-tb th{text-align:left;font-size:.64rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--fm-muted);padding:6px 8px;border-bottom:1px solid var(--fm-line)}
-      #pg-faltasmed .fm-rkt-tb td{padding:7px 8px;border-bottom:1px solid var(--fm-line2);color:var(--fm-text)}
+      #pg-faltasmed .fm-rkt-tb{border:1.5px solid var(--g300);border-radius:8px;border-collapse:separate;border-spacing:0;overflow:hidden;background:var(--fm-surface)}
+      #pg-faltasmed .fm-rkt-tb th{text-align:left;font-size:.64rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--fm-text2);padding:8px 10px;border-bottom:1.5px solid var(--g300);background:var(--fm-subtle)}
+      #pg-faltasmed .fm-rkt-tb td{padding:8px 10px;border-bottom:1px solid var(--fm-line);color:var(--fm-text)}
+      #pg-faltasmed .fm-rkt-tb td.s,#pg-faltasmed .fm-rkt-tb td.r{color:#d92d20;font-weight:700}
       #pg-faltasmed .fm-rkt-tb .n{text-align:right}
       #pg-faltasmed .fm-rkt-tb small{color:var(--fm-muted)}
       #pg-faltasmed .fm-rkt-xh span{font-size:.72rem;color:var(--fm-muted)}
       #pg-faltasmed .fm-rkt-tb tr.clic{cursor:pointer}
-      #pg-faltasmed .fm-rkt-tb tr.clic:hover td{background:var(--fm-surface)}
-      #pg-faltasmed .fm-rkt-tb tr.clic.on td{background:var(--fm-sel);border-bottom-color:transparent}
+      #pg-faltasmed .fm-rkt-tb tr.clic:hover td{background:#f0f6ff}
+      #pg-faltasmed .fm-rkt-tb tr.clic:hover td:first-child{box-shadow:inset 3px 0 0 #93c5fd}
+      #pg-faltasmed .fm-rkt-tb tr.clic.on td{background:#e0ecff;border-bottom-color:transparent;font-weight:600}
+      #pg-faltasmed .fm-rkt-tb tr.clic.on td:first-child{box-shadow:inset 5px 0 0 var(--fm-brand)}
+      #pg-faltasmed .fm-rkt-tb tr.clic.on td b{color:var(--fm-brand-tx)}
+      html[data-theme="dark"] #pg-faltasmed .fm-rkt-tb tr.clic:hover td{background:rgba(59,130,246,.10)}
+      html[data-theme="dark"] #pg-faltasmed .fm-rkt-tb tr.clic.on td{background:rgba(59,130,246,.22)}
       #pg-faltasmed .fm-rkt-tb tr.clic:focus-visible{outline:2px solid var(--fm-brand);outline-offset:-2px}
       #pg-faltasmed .fm-rkt-tb th.ch,#pg-faltasmed .fm-rkt-tb td.ch{width:26px;text-align:right}
       #pg-faltasmed .fm-rkt-tb td.ch svg{width:14px;height:14px;color:var(--fm-muted);transition:transform .2s}
       #pg-faltasmed .fm-rkt-tb tr.clic.on td.ch svg{transform:rotate(180deg);color:var(--fm-brand)}
       #pg-faltasmed .fm-rkt-tb tr.tl>td{padding:8px 0 12px 14px;background:var(--fm-surface);border-left:3px solid var(--fm-brand)}
       #pg-faltasmed .fm-rkt-tb tr.tl .fm-rkt-tb{margin:0}
-      @media (max-width:1280px){#pg-faltasmed .fm-rkt{overflow-x:auto}#pg-faltasmed .fm-rkt>*{min-width:1060px}}
+      @media (max-width:1280px){#pg-faltasmed .fm-rkt{overflow-x:auto}#pg-faltasmed .fm-rkt>*{min-width:1140px}}
       :is(#pg-faltasmed,#pg-faltassup,#vgFmDir,#pg-bdvrel) .fm-pr-t em{font-style:normal;font-weight:500;font-size:.72rem;color:var(--fm-muted);margin-left:6px}
       :is(#pg-faltasmed,#pg-faltassup,#vgFmDir,#pg-bdvrel) .fm-pr{display:flex;flex-direction:column;gap:10px}
       :is(#pg-faltasmed,#pg-faltassup,#vgFmDir,#pg-bdvrel) .fm-pr-c{background:var(--fm-surface);border:1px solid var(--fm-line);border-radius:12px;box-shadow:var(--fm-sh);overflow:hidden;transition:border-color .12s,box-shadow .12s}
@@ -12300,12 +12313,10 @@ function fmHistLer(rows){
   const iCab=(rows||[]).findIndex(r=>(r||[]).map(norm).indexOf("RE")>=0&&temData(r));
   if(iCab<0)return{erro:"Não achei as colunas RE e DTINICIOOCORRENCIA (ou INICIALOC). Use o relatório de ocorrências do SAR2G."};
   const cab=rows[iCab].map(norm),col=n=>cab.indexOf(n);
-  const c={re:col("RE"),nome:col("NOME"),desc:col("DESCRICAO"),dt:col("DTINICIOOCORRENCIA")>=0?col("DTINICIOOCORRENCIA"):col("INICIALOC"),fase:col("FASEATUAL"),cli:col("CLIENTE"),pun:col("PUNICAO"),hist:col("HISTDISCIPLINAR")};
+  const c={re:col("RE"),nome:col("NOME"),desc:col("DESCRICAO"),dt:col("DTINICIOOCORRENCIA")>=0?col("DTINICIOOCORRENCIA"):col("INICIALOC"),fim:col("DTFIMOCORRENCIA")>=0?col("DTFIMOCORRENCIA"):col("FIMALOC"),fase:col("FASEATUAL"),cli:col("CLIENTE"),pun:col("PUNICAO"),hist:col("HISTDISCIPLINAR")};
   if(c.desc<0&&c.pun<0)return{erro:"Não achei as colunas DESCRICAO e PUNICAO."};
   const v=(r,i)=>i<0?"":r[i];
-  /* Sem o número do processo, cada linha é uma medida aplicada (regra do Raphael, 09/10/2026):
-     duas linhas iguais (mesma pessoa, dia e medida) são duas medidas e ganham seq 1, 2, ... */
-  const medidas=[],jaVi={},iguais={};let semData=0;
+  const linhas=[],jaVi={};let semData=0;
   rows.slice(iCab+1).forEach(r=>{
     if(!r||!r.length)return;
     const pun=norm(v(r,c.pun)),t=norm(v(r,c.desc))+" "+pun;
@@ -12318,10 +12329,32 @@ function fmHistLer(rows){
     const md={re:String(v(r,c.re)||"").trim(),nome:String(v(r,c.nome)||"").trim(),data,
       tipo:ehSusp?"SUSPENSÃO":"ADVERTÊNCIA",grau:ehSusp?"SUSPENSÃO":(pun.indexOf("VERBAL")>=0?"VERBAL":"ESCRITA"),
       dias:m?parseInt(m[1],10):0,fase:String(v(r,c.fase)||"").trim(),motivo:String(v(r,c.desc)||"").trim(),local:String(v(r,c.cli)||"").trim(),hist};
-    if(!hist){const k=[md.re,md.data,md.tipo,md.grau,md.dias].join("|");iguais[k]=(iguais[k]||0)+1;md.seq=iguais[k];}
-    medidas.push(md);
+    /* fim do período: o maior entre a data fim da linha e início + dias − 1 (há linhas com o fim antes do início) */
+    const soma=n=>new Date(Date.parse(data+"T12:00:00Z")+n*864e5).toISOString().slice(0,10);
+    const fl=fmHistData(v(r,c.fim)),fc=soma(Math.max(md.dias,1)-1);
+    md._fim=fl&&fl>fc?fl:fc;md._fl=fl&&fl>=data?fl:data;md._i=linhas.length;
+    linhas.push(md);
   });
-  return{medidas,semData};
+  /* O SAR2G repete a MESMA medida em várias linhas: uma por vaga/posto (sem posto, RESERVA TÉCNICA, o condomínio)
+     e, na suspensão, uma por pedaço do período (5 dias = 28/03, 29/03, 30/03, 31/03→01/04). Linhas da mesma pessoa
+     e do mesmo tipo que começam dentro do período de outra são UMA medida: a do 1º dia, com o maior número de dias
+     e o posto de verdade (não a reserva técnica) quando alguma linha traz. Com número do processo, vale o número. */
+  const ehReserva=p=>!p||/RESERVA/i.test(p);
+  const medidas=[],grupo={};
+  linhas.slice().sort((a,b)=>a.data.localeCompare(b.data)).forEach(md=>{
+    const k=md.re+"|"+md.tipo,g=md.hist?null:grupo[k];
+    if(g&&md.data<=g._fim){
+      /* o período conta do 1º dia: cada pedaço repete "5 dias", mas só a data fim real da linha empurra o fim */
+      g.dias=Math.max(g.dias,md.dias);const f2=new Date(Date.parse(g.data+"T12:00:00Z")+(Math.max(g.dias,1)-1)*864e5).toISOString().slice(0,10);
+      if(f2>g._fim)g._fim=f2;if(md._fl>g._fim)g._fim=md._fl;
+      if(ehReserva(g.local)&&!ehReserva(md.local))g.local=md.local;else if(!g.local)g.local=md.local;
+      if(g.tipo==="ADVERTÊNCIA"&&md.grau==="ESCRITA")g.grau="ESCRITA";
+      g.linhas++;return;
+    }
+    const n=Object.assign({},md,{linhas:1});medidas.push(n);if(!md.hist)grupo[k]=n;
+  });
+  medidas.sort((a,b)=>a._i-b._i).forEach(m=>{delete m._fim;delete m._fl;delete m._i;});
+  return{medidas,semData,linhas:linhas.length};
 }
 /*fim fmHistLer*/
 const fmMedCancelada=m=>/CANCEL/i.test(m.fase||"");
@@ -12363,6 +12396,7 @@ function fmHistEnviar(){
         `• ${n(m=>m.grau==="ESCRITA")} advertências escritas\n• ${n(m=>m.grau==="VERBAL")} advertências verbais\n• ${n(m=>m.tipo==="SUSPENSÃO")} suspensões\n`+
         (n(fmMedCancelada)?`(${n(fmMedCancelada)} com cancelamento: ficam no histórico, mas não contam como reincidência)\n`:"")+
         (r.semData?`${r.semData} linha(s) sem data ficaram de fora.\n`:"")+
+        (r.linhas>ms.length?`(${r.linhas} linhas de medida no arquivo: o SAR2G repete a mesma medida para cada posto e para cada pedaço da suspensão; aqui cada uma conta uma vez)\n`:"")+
         `\nO histórico importado de ${fmDd(periodo.de)} a ${fmDdA(periodo.ate)} será trocado por este arquivo (as medidas da planilha diária continuam).\nEnviar para o Painel ServCamp?`;
       if(!confirm(txt))return;
       fmPedir("POST","historico",{medidas:ms,substituir:periodo}).then(j=>{
@@ -12451,8 +12485,8 @@ function fmHistBusca(p,q){
    colaboradores > histórico) se desdobram dentro da própria linha; nenhum botão troca de visão e a
    rolagem não sai do lugar (só a linha mexida é redesenhada). */
 const FM_RK_COLS={
-  posto:[["nome","Posto"],["n","Medidas"],["pes","Pessoas"],["adv","Advertências"],["sus","Suspensões"],["dias","Dias de suspensão"],["rein","Reincidentes"],["ab","Faltas em aberto"],["ult","Última"],["tr","Tendência"]],
-  sup:[["nome","Supervisor"],["n","Medidas"],["pes","Pessoas"],["postos","Postos"],["adv","Advertências"],["sus","Suspensões"],["dias","Dias de suspensão"],["rein","Reincidentes"],["ab","Faltas em aberto"],["tr","Tendência"]]
+  posto:[["nome","Posto"],["n","Medidas"],["pes","Pessoas"],["advE","Adv. escrita"],["advV","Adv. verbal"],["sus","Suspensões"],["dias","Dias de suspensão"],["rein","Reincidentes"],["ab","Faltas em aberto"],["ult","Última"],["tr","Tendência"]],
+  sup:[["nome","Supervisor"],["n","Medidas"],["pes","Pessoas"],["postos","Postos"],["advE","Adv. escrita"],["advV","Adv. verbal"],["sus","Suspensões"],["dias","Dias de suspensão"],["rein","Reincidentes"],["ab","Faltas em aberto"],["tr","Tendência"]]
 };
 function fmMeses6(){
   const [a,m]=FM.dados.hoje.split("-").map(Number),out=[];
@@ -12473,23 +12507,25 @@ function fmRkAgrega(pessoas,tipo,noPosto){
     const s=c.supervisor||"Sem supervisor";abSup[s]=(abSup[s]||0)+1;
   });
   const reinRE=new Set(pessoas.filter(p=>p.val.length>=2).map(p=>p.re));
-  const soma=(q,p,m)=>{q.n++;if(m.tipo==="SUSPENSÃO")q.sus++;else q.adv++;if(m.data>q.ult)q.ult=m.data;};
+  const soma=(q,p,m)=>{q.n++;if(m.tipo==="SUSPENSÃO")q.sus++;else{q.adv++;if(m.grau==="VERBAL")q.advV++;else q.advE++;}if(m.data>q.ult)q.ult=m.data;};
   pessoas.forEach(p=>p.val.forEach(m=>{
     if(!noPosto(m))return;
     const pk=fmHistPosto(m),sp=m.supervisor||p.supervisor||"Sem supervisor",k=tipo==="posto"?pk:sp;
-    const g=por[k]||(por[k]={nome:k,n:0,adv:0,sus:0,diasSus:0,ult:"",tr:meses.map(()=>0),antes:0,itens:[],rein:new Set(),postos:new Set(),sups:{},p:new Map(),pp:new Map()});
-    g.n++;if(m.tipo==="SUSPENSÃO"){g.sus++;g.diasSus+=m.dias||0;}else g.adv++;
+    const g=por[k]||(por[k]={nome:k,n:0,adv:0,advE:0,advV:0,sus:0,diasSus:0,ult:"",tr:meses.map(()=>0),antes:0,itens:[],rein:new Set(),postos:new Set(),sups:{},p:new Map(),pp:new Map()});
+    g.n++;if(m.tipo==="SUSPENSÃO"){g.sus++;g.diasSus+=m.dias||0;}else{g.adv++;if(m.grau==="VERBAL")g.advV++;else g.advE++;}
     g.postos.add(pk);g.sups[sp]=(g.sups[sp]||0)+1;if(reinRE.has(p.re))g.rein.add(p.re);
     if(m.data>g.ult)g.ult=m.data;
     g.itens.push({m,p});
     const mi=idx[String(m.data).slice(0,7)];if(mi!=null)g.tr[mi]++;else if(String(m.data).slice(0,10)<meses[0].k+"-01")g.antes++;
-    const q=g.p.get(p.re)||{p,n:0,adv:0,sus:0,ult:"",rein:reinRE.has(p.re)};soma(q,p,m);g.p.set(p.re,q);
-    const w=g.pp.get(pk)||{posto:pk,n:0,sus:0,pessoas:new Set(),rein:new Set(),ult:"",p:new Map()};
-    w.n++;if(m.tipo==="SUSPENSÃO")w.sus++;w.pessoas.add(p.re);if(reinRE.has(p.re))w.rein.add(p.re);if(m.data>w.ult)w.ult=m.data;
-    const q2=w.p.get(p.re)||{p,n:0,adv:0,sus:0,ult:"",rein:reinRE.has(p.re)};soma(q2,p,m);w.p.set(p.re,q2);g.pp.set(pk,w);
+    const q=g.p.get(p.re)||{p,n:0,adv:0,advE:0,advV:0,sus:0,ult:"",rein:reinRE.has(p.re)};soma(q,p,m);g.p.set(p.re,q);
+    const w=g.pp.get(pk)||{posto:pk,n:0,advE:0,advV:0,sus:0,pessoas:new Set(),rein:new Set(),ult:"",p:new Map()};
+    w.n++;if(m.tipo==="SUSPENSÃO")w.sus++;else if(m.grau==="VERBAL")w.advV++;else w.advE++;w.pessoas.add(p.re);if(reinRE.has(p.re))w.rein.add(p.re);if(m.data>w.ult)w.ult=m.data;
+    const q2=w.p.get(p.re)||{p,n:0,adv:0,advE:0,advV:0,sus:0,ult:"",rein:reinRE.has(p.re)};soma(q2,p,m);w.p.set(p.re,q2);g.pp.set(pk,w);
   }));
   return Object.values(por).map(g=>Object.assign(g,{pes:g.p.size,postosN:g.postos.size,reinN:g.rein.size,ab:(tipo==="posto"?abPosto:abSup)[g.nome]||0,meses}));
 }
+/* zero aparece apagado: o número que importa salta aos olhos */
+function fmRkNum(n){return n?String(n):'<span class="z">0</span>';}
 function fmRkValor(g,c){return c==="dias"?g.diasSus:c==="nome"?g.nome:c==="ult"?g.ult:c==="pes"?g.pes:c==="postos"?g.postosN:c==="rein"?g.reinN:g[c];}
 function fmRkOrdena(c){const st=FM.hs,o=st.rord||(st.rord={c:"n",d:-1});if(o.c===c)o.d=-o.d;else st.rord={c,d:c==="nome"?1:-1};fmRenderCorpo();}
 /* Tendência em palavras: medidas dos últimos 3 meses contra as dos 3 meses antes. */
@@ -12563,12 +12599,12 @@ function fmRkVinculo(m,p,ctx){
 }
 function fmRkPessoasTab(map,pref,ctx){
   const ab=FM.hs.rkAb||{},ps=[...map.values()].sort((a,b)=>b.n-a.n||b.sus-a.sus||b.ult.localeCompare(a.ult));
-  return `<table class="fm-rkt-tb"><thead><tr><th>Colaborador</th><th class="n">Medidas</th><th class="n">Advertências</th><th class="n">Suspensões</th><th class="n">Última</th><th></th><th class="ch"></th></tr></thead><tbody>`+
+  return `<table class="fm-rkt-tb"><thead><tr><th>Colaborador</th><th class="n">Medidas</th><th class="n">Adv. escrita</th><th class="n">Adv. verbal</th><th class="n">Suspensões</th><th class="n">Última</th><th></th><th class="ch"></th></tr></thead><tbody>`+
     ps.map(q=>{const k=pref+"|p|"+q.p.re,on=!!ab[k];
       return `<tr class="clic${on?" on":""}" tabindex="0" role="button" aria-expanded="${on}" data-k="${_esc(k)}" onclick="fmRkToggle(this.dataset.k,this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();fmRkToggle(this.dataset.k,this)}">`+
-        `<td><b>${_esc(q.p.nome)}</b> <small>RE ${_esc(q.p.re)}</small></td><td class="n">${q.n}</td><td class="n">${q.adv}</td><td class="n">${q.sus}</td><td class="n">${fmDd(q.ult)}</td>`+
+        `<td><b>${_esc(q.p.nome)}</b> <small>RE ${_esc(q.p.re)}</small></td><td class="n">${q.n}</td><td class="n">${fmRkNum(q.advE)}</td><td class="n">${fmRkNum(q.advV)}</td><td class="n${q.sus?" s":""}">${fmRkNum(q.sus)}</td><td class="n">${fmDd(q.ult)}</td>`+
         `<td>${q.rein?'<span class="fm-tg rein">Reincidente</span>':""}${q.p.abertos.length?' <span class="fm-tg am">Falta em aberto agora</span>':""}</td><td class="ch">${FM_IC.chev}</td></tr>`+
-        (on?`<tr class="tl"><td colspan="7">${fmHistTimeline(q.p,ctx)}</td></tr>`:"");
+        (on?`<tr class="tl"><td colspan="8">${fmHistTimeline(q.p,ctx)}</td></tr>`:"");
     }).join("")+`</tbody></table>`;
 }
 function fmRkDetalhe(tipo,g){
@@ -12576,11 +12612,11 @@ function fmRkDetalhe(tipo,g){
   if(tipo==="posto")return `<div class="fm-rkt-x">${fmRkMeses(g,"posto|"+g.nome)}${fmRkMesLista("posto|"+g.nome,g.itens,g)}<div class="fm-rkt-xh"><b>Colaboradores com medida neste posto</b><span>clique num colaborador para ver o histórico dele aqui</span></div>${fmRkPessoasTab(g.p,"posto|"+g.nome,fmRkCtx((m)=>fmHistPosto(m)===g.nome))}</div>`;
   const ws=[...g.pp.values()].sort((a,b)=>b.n-a.n||b.pessoas.size-a.pessoas.size||a.posto.localeCompare(b.posto));
   return `<div class="fm-rkt-x">${fmRkMeses(g,"sup|"+g.nome)}${fmRkMesLista("sup|"+g.nome,g.itens,g)}<div class="fm-rkt-xh"><b>Postos deste supervisor com medida</b><span>clique num posto para ver os colaboradores aqui</span></div>`+
-    `<table class="fm-rkt-tb"><thead><tr><th>Posto</th><th class="n">Medidas</th><th class="n">Pessoas</th><th class="n">Suspensões</th><th class="n">Reincidentes</th><th class="n">Última</th><th class="ch"></th></tr></thead><tbody>`+
+    `<table class="fm-rkt-tb"><thead><tr><th>Posto</th><th class="n">Medidas</th><th class="n">Pessoas</th><th class="n">Adv. escrita</th><th class="n">Adv. verbal</th><th class="n">Suspensões</th><th class="n">Reincidentes</th><th class="n">Última</th><th class="ch"></th></tr></thead><tbody>`+
     ws.map(w=>{const k="sup|"+g.nome+"|w|"+w.posto,on=!!ab[k];
       return `<tr class="clic${on?" on":""}" tabindex="0" role="button" aria-expanded="${on}" data-k="${_esc(k)}" onclick="fmRkToggle(this.dataset.k,this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();fmRkToggle(this.dataset.k,this)}">`+
-        `<td><b>${_esc(w.posto)}</b></td><td class="n">${w.n}</td><td class="n">${w.pessoas.size}</td><td class="n">${w.sus}</td><td class="n">${w.rein.size}</td><td class="n">${fmDd(w.ult)}</td><td class="ch">${FM_IC.chev}</td></tr>`+
-        (on?`<tr class="tl"><td colspan="7">${fmRkPessoasTab(w.p,"sup|"+g.nome+"|"+w.posto,fmRkCtx((m,p)=>fmHistPosto(m)===w.posto&&(m.supervisor||p.supervisor||"Sem supervisor")===g.nome))}</td></tr>`:"");
+        `<td><b>${_esc(w.posto)}</b></td><td class="n">${w.n}</td><td class="n">${w.pessoas.size}</td><td class="n">${fmRkNum(w.advE)}</td><td class="n">${fmRkNum(w.advV)}</td><td class="n${w.sus?" s":""}">${fmRkNum(w.sus)}</td><td class="n${w.rein.size?" r":""}">${fmRkNum(w.rein.size)}</td><td class="n">${fmDd(w.ult)}</td><td class="ch">${FM_IC.chev}</td></tr>`+
+        (on?`<tr class="tl"><td colspan="9">${fmRkPessoasTab(w.p,"sup|"+g.nome+"|"+w.posto,fmRkCtx((m,p)=>fmHistPosto(m)===w.posto&&(m.supervisor||p.supervisor||"Sem supervisor")===g.nome))}</td></tr>`:"");
     }).join("")+`</tbody></table></div>`;
 }
 /* Um grupo (linha do ranking + o que ela abriu). */
@@ -12591,7 +12627,8 @@ function fmRkGrupoHtml(c,g,i){
     if(cc==="n")return `<span class="c n"><b>${g.n}</b><span class="bar"><i style="width:${(g.n/max*100).toFixed(1)}%"></i></span></span>`;
     if(cc==="pes")return `<span class="c">${g.pes}</span>`;
     if(cc==="postos")return `<span class="c">${g.postosN}</span>`;
-    if(cc==="adv")return `<span class="c">${g.adv}</span>`;
+    if(cc==="advE")return `<span class="c">${fmRkNum(g.advE)}</span>`;
+    if(cc==="advV")return `<span class="c">${fmRkNum(g.advV)}</span>`;
     if(cc==="sus")return `<span class="c${g.sus?" s":""}">${g.sus}</span>`;
     if(cc==="dias")return `<span class="c" title="Soma dos dias de afastamento das suspensões">${g.diasSus?g.diasSus+(g.diasSus===1?" dia":" dias"):"–"}</span>`;
     if(cc==="rein")return `<span class="c${g.reinN?" r":""}">${g.reinN}</span>`;

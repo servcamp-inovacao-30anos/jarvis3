@@ -505,23 +505,40 @@ function medidaDoHistorico(l) {
     }
   };
 }
-// A mesma medida pode chegar duas vezes: pelo histórico (chave "HIST|...") e
-// pela aba DISCIPLINA (chave = número do processo). Fica uma só, a da planilha.
-// O histórico pode ter várias medidas iguais no mesmo dia (cada linha é uma):
-// cada medida da planilha diária "cobre" uma do histórico, e as que sobram ficam.
+// O relatório de ocorrências do SAR2G repete a MESMA medida em várias linhas: uma por vaga/posto da
+// pessoa (uma sem posto, outra "RESERVA TÉCNICA", outra o condomínio) e, na suspensão, uma linha por
+// pedaço do período (ex.: suspensão de 5 dias em 28/03, 29/03, 30/03 e 31/03→01/04). Por isso, no
+// histórico, linhas da mesma pessoa e do mesmo tipo cujo dia cai dentro do período de uma medida
+// anterior (início + dias − 1) são UMA medida só: fica a do primeiro dia, com o maior número de dias.
+// E a medida da planilha diária (chave = número do processo) vale no lugar da do histórico.
+const diaDe = m => String(m.data).slice(0, 10);
+const fimDaMedida = m => somaDias(diaDe(m), Math.max(Number(m.dias) || 0, 1) - 1);
 function dedupMedidas(lista) {
-  const grupos = new Map();
-  (lista || []).forEach(m => {
-    const k = [m.re, String(m.data).slice(0, 10), m.tipo, m.grau, Number(m.dias) || 0].join("|");
-    if (!grupos.has(k)) grupos.set(k, { planilha: [], hist: [] });
-    grupos.get(k)[String(m.chave).startsWith("HIST|") ? "hist" : "planilha"].push(m);
+  const L = lista || [];
+  const ehHist = m => String(m.chave).startsWith("HIST|");
+  const porPessoa = new Map();
+  L.filter(ehHist).forEach(m => { const k = m.re + "|" + m.tipo; if (!porPessoa.has(k)) porPessoa.set(k, []); porPessoa.get(k).push(m); });
+  const grupoDe = new Map(); // primeira linha da medida → { dias, ini, fim }
+  porPessoa.forEach(l => {
+    l.sort((a, b) => diaDe(a).localeCompare(diaDe(b)) || String(a.chave).localeCompare(String(b.chave)));
+    let g = null;
+    l.forEach(m => {
+      // o período é contado do 1º dia da medida: cada pedaço repete "5 dias", mas não empurra o fim
+      if (g && diaDe(m) <= g.fim) { g.dias = Math.max(g.dias, Number(m.dias) || 0); g.fim = somaDias(g.ini, Math.max(g.dias, 1) - 1); return; }
+      g = { dias: Number(m.dias) || 0, ini: diaDe(m), fim: fimDaMedida(m) };
+      grupoDe.set(m, g);
+    });
   });
-  const ficam = new Set();
-  grupos.forEach(g => {
-    g.planilha.forEach(m => ficam.add(m));
-    g.hist.sort((a, b) => String(a.chave).localeCompare(String(b.chave))).slice(g.planilha.length).forEach(m => ficam.add(m));
+  const daPlanilha = L.filter(m => !ehHist(m));
+  const out = [];
+  L.forEach(m => {
+    if (!ehHist(m)) { out.push(m); return; }
+    const g = grupoDe.get(m);
+    if (!g) return; // outra linha da mesma medida
+    if (daPlanilha.some(p => String(p.re) === String(m.re) && p.tipo === m.tipo && diaDe(p) >= g.ini && diaDe(p) <= g.fim)) return;
+    out.push(g.dias === (Number(m.dias) || 0) ? m : Object.assign({}, m, { dias: g.dias }));
   });
-  return (lista || []).filter(m => ficam.has(m));
+  return out;
 }
 
 module.exports = {
