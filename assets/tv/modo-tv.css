@@ -376,3 +376,175 @@
 #ftv .ftv-pz b{font-size:1.55em}
 #ftv .k-vi .ftv-pz small,#ftv .k-gr .ftv-pz small{font-size:.8em}
 #ftv .ftv-mais{font-size:1.12em}
+
+/* ═════════ 3ª passada: luz, sombras e acabamento conferidos na referência ampliada ═════════ */
+/* fundo: feixes diagonais de luz no canto de cima e linha luminosa sob o cabeçalho */
+#ftv[data-tema="escuro"]{--fundo:linear-gradient(118deg,transparent 0 6%,rgba(60,140,255,.10) 6% 9%,transparent 9% 12%,rgba(60,140,255,.07) 12% 16%,transparent 16% 100%) 0 0/60% 32% no-repeat,radial-gradient(60% 40% at 30% 0%,rgba(40,120,255,.20),transparent 70%),radial-gradient(50% 35% at 80% 100%,rgba(20,90,220,.12),transparent 70%),linear-gradient(180deg,#071733 0%,#050d20 14%,#040a18 100%)}
+#ftv .ftv-top::after{content:"";position:absolute;left:-1em;right:-1em;bottom:-.35em;height:2px;pointer-events:none;
+  background:linear-gradient(90deg,transparent,rgba(60,150,255,.55) 15%,rgba(110,190,255,.9) 50%,rgba(60,150,255,.55) 85%,transparent);box-shadow:0 0 .8em rgba(60,150,255,.7)}
+#ftv[data-tema="claro"] .ftv-top::after{opacity:.35}
+
+/* logo: caixa arredondada com luz no canto de cima e duas barras diagonais luminosas ao lado */
+#ftv .ftv-top{grid-template-columns:17.6em minmax(0,1fr) auto 12.4em;column-gap:.7em}
+#ftv .ftv-logo{clip-path:none;border-radius:.9em;border:1px solid rgba(80,160,255,.55);
+  background:url(/assets/tv/logo-servcamp-claro.png) 1.1em 50%/auto 72% no-repeat,radial-gradient(90% 120% at 0% 0%,rgba(70,150,255,.28),transparent 60%),linear-gradient(160deg,#12305f 0%,#0b1d3f 45%,#08142e 100%);
+  box-shadow:0 0 1.2em rgba(40,120,255,.35),inset 0 1px 0 rgba(170,215,255,.45),inset 1px 0 0 rgba(170,215,255,.25),inset 0 0 1.6em rgba(30,100,255,.22)}
+#ftv .ftv-top::before{left:17.2em;width:3.6em;top:-.4em;bottom:-.4em;
+  background:linear-gradient(112deg,transparent 0 36%,rgba(90,175,255,1) 36% 39%,transparent 39% 53%,rgba(90,175,255,.75) 53% 56%,transparent 56%);
+  filter:drop-shadow(0 0 .35em rgba(70,160,255,.95))}
+#ftv .ftv-ti{padding-left:2.4em}
+/* título com degradê metálico e brilho */
+#ftv .ftv-ti b{font-size:2.55em;letter-spacing:.02em;background:linear-gradient(180deg,#ffffff 0%,#e8f2ff 45%,#9cc6ff 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 0 .25em rgba(90,170,255,.35)) drop-shadow(0 .06em 0 rgba(0,0,0,.6));text-shadow:none}
+#ftv[data-tema="claro"] .ftv-ti b{background:linear-gradient(180deg,#0d1a3a,#1d4e9a);-webkit-background-clip:text;background-clip:text;filter:none}
+#ftv .ftv-ti span{font-size:.86em;color:#33c8ff;text-shadow:0 0 .5em rgba(50,190,255,.35)}
+
+/* indicadores: vidro escuro, borda clara, luz em cima, ícones maiores com brilho */
+#ftv .ftv-k{padding:.45em 1em .45em .75em;gap:.65em;border:1px solid rgba(90,165,255,.5);border-radius:.6em;
+  background:linear-gradient(180deg,rgba(28,62,120,.55) 0%,rgba(12,28,60,.85) 40%,rgba(8,18,40,.95) 100%);
+  box-shadow:0 0 .9em rgba(30,110,255,.25),inset 0 1px 0 rgba(170,215,255,.35),inset 0 0 1em rgba(30,100,255,.12)}
+#ftv .ftv-k .ic{width:2.35em;height:2.35em}
+#ftv .ftv-k b{font-size:2.2em;text-shadow:0 0 .35em rgba(150,200,255,.25)}
+#ftv .ftv-k span:not(.ic){font-size:.8em;color:#d7e2f5}
+#ftv .ftv-k.k-da b{text-shadow:0 0 .45em rgba(255,59,79,.55)}
+#ftv .ftv-k.k-hj b{text-shadow:0 0 .45em rgba(255,201,40,.5)}
+/* relógio: moldura mais acesa, hora em degradê, sol amarelo e texto ciano */
+#ftv .ftv-st{border:1.5px solid rgba(90,170,255,.85);border-radius:.8em;background:linear-gradient(180deg,rgba(28,62,120,.6),rgba(8,18,40,.95));
+  box-shadow:0 0 1.4em rgba(40,130,255,.55),inset 0 1px 0 rgba(170,215,255,.45),inset 0 0 1.3em rgba(30,110,255,.2)}
+#ftv .ftv-rl b{font-size:2.85em;font-weight:700;background:linear-gradient(180deg,#e6f7ff,#7fd2ff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 0 .3em rgba(80,200,255,.55));text-shadow:none}
+#ftv[data-tema="claro"] .ftv-rl b{background:linear-gradient(180deg,#0b5fa8,#0b3f7a);-webkit-background-clip:text;background-clip:text;filter:none}
+#ftv .ftv-rl span{font-size:.92em;color:#3fd0ff}
+#ftv .ftv-tm{color:#3fd0ff;font-size:.95em}
+#ftv .ftv-tm svg{width:1.45em;height:1.45em;color:#ffc928;filter:drop-shadow(0 0 .3em rgba(255,201,40,.7))}
+
+/* letreiro: rótulo em caixa própria com filete aceso à esquerda; chips mais altos e acesos */
+#ftv .ftv-mq{height:4em;padding:.3em;column-gap:.3em;background:linear-gradient(180deg,rgba(18,40,82,.7),rgba(8,18,40,.92));border:1px solid rgba(80,160,255,.45);box-shadow:0 0 1em rgba(30,110,255,.25),inset 0 1px 0 rgba(170,215,255,.2)}
+#ftv .ftv-mql{border:1px solid rgba(80,160,255,.35);border-radius:.5em;padding:0 1.2em 0 1em;background:linear-gradient(90deg,rgba(30,80,170,.35),rgba(10,24,52,.6));
+  box-shadow:inset .22em 0 0 #3d9bff,inset 0 0 .8em rgba(40,120,255,.15),-.1em 0 .6em rgba(61,155,255,.35)}
+#ftv .ftv-mql .ic{width:2.3em;height:2.3em}
+#ftv .ftv-mql span:not(.ic),#ftv .ftv-mql b{font-size:.88em;color:#4fd2ff}
+#ftv .ftv-tk{height:2.85em;border-width:2px;border-radius:.5em;padding:0 .35em 0 .9em;
+  background:linear-gradient(180deg,hsl(var(--h) 80% 40% / .28),hsl(var(--h) 70% 18% / .55) 55%,rgba(6,14,32,.92));
+  box-shadow:0 0 .9em hsl(var(--h) 95% 55% / .55),inset 0 1px 0 hsl(var(--h) 100% 85% / .45),inset 0 0 .9em hsl(var(--h) 90% 55% / .2)}
+#ftv .ftv-tk i{width:1.45em;height:1.45em}
+#ftv .ftv-tk b{font-size:1.3em;font-weight:600}
+#ftv .ftv-tk em{font-size:1.45em;min-width:1.8em;background:rgba(2,6,16,.75);box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}
+
+/* cards: borda fina acesa, luz no topo, reflexo interno e brilho embaixo */
+#ftv .ftv-card{border-width:1.5px;border-radius:.75em;
+  background:linear-gradient(180deg,rgba(14,30,64,.96) 0%,rgba(8,18,40,.98) 30%,rgba(5,12,28,1) 100%);
+  box-shadow:0 0 1.3em hsl(var(--h) 95% 55% / .42),0 .4em 1.4em rgba(0,0,0,.45),inset 0 1px 0 hsl(var(--h) 100% 85% / .55),inset 0 0 1.6em hsl(var(--h) 90% 55% / .08)}
+#ftv .ftv-card::after{content:"";position:absolute;left:12%;right:12%;bottom:-1px;height:2px;pointer-events:none;background:linear-gradient(90deg,transparent,hsl(var(--h) 100% 70% / .9),transparent);box-shadow:0 0 .8em hsl(var(--h) 100% 60% / .8)}
+#ftv .ftv-ch0{background:linear-gradient(90deg,hsl(var(--h) 85% 40% / .62) 0%,hsl(var(--h) 80% 28% / .35) 45%,hsl(var(--h) 70% 18% / .12) 80%,transparent),linear-gradient(180deg,rgba(255,255,255,.06),transparent 60%);
+  border-bottom:1px solid hsl(var(--h) 95% 62% / .6);box-shadow:0 1px 0 rgba(0,0,0,.35)}
+/* emblema: octógono grande, aro claro, chanfro e reflexo, letra branca contornada */
+#ftv .ftv-ch0 .ftv-av{font-size:2.35em;width:1.62em;height:1.62em;
+  background:linear-gradient(160deg,hsl(var(--h) 100% 90%) 0%,hsl(var(--h) 100% 70%) 30%,hsl(var(--h) 90% 45%) 70%,hsl(var(--h) 85% 30%) 100%);
+  filter:drop-shadow(0 0 .25em hsl(var(--h) 100% 60% / .75));
+  text-shadow:0 0 .08em hsl(var(--h) 90% 15%),0 .06em 0 hsl(var(--h) 90% 15%),.04em .04em 0 hsl(var(--h) 90% 15%),-.04em .04em 0 hsl(var(--h) 90% 15%),0 0 .3em rgba(0,0,0,.5)}
+#ftv .ftv-ch0 .ftv-av::before{inset:.075em;background:radial-gradient(120% 95% at 35% 18%,hsl(var(--h) 100% 72%) 0%,hsl(var(--h) 92% 50%) 45%,hsl(var(--h) 88% 34%) 80%,hsl(var(--h) 85% 24%) 100%)}
+#ftv .ftv-ch0 .ftv-av::after{inset:.075em .075em 50% .075em;background:linear-gradient(180deg,rgba(255,255,255,.45),rgba(255,255,255,.08))}
+/* nome do supervisor em degradê claro; total em branco metálico */
+#ftv .ftv-sn b{font-size:1.7em;letter-spacing:.025em;background:linear-gradient(180deg,#ffffff 0%,#ffffff 50%,hsl(var(--h) 60% 86%) 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 .05em 0 rgba(0,0,0,.6))}
+#ftv[data-tema="claro"] .ftv-sn b{background:none;-webkit-text-fill-color:currentColor;filter:none}
+#ftv .ftv-sn span{font-size:1em;color:#dfe8f8}
+#ftv .ftv-tt b{font-size:3.1em;background:linear-gradient(180deg,#ffffff 0%,#f2f6fc 50%,#c4cfdf 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 .06em 0 rgba(0,0,0,.65)) drop-shadow(0 0 .3em hsl(var(--h) 90% 60% / .35));text-shadow:none}
+#ftv[data-tema="claro"] .ftv-tt b{background:none;-webkit-text-fill-color:currentColor;filter:none}
+#ftv .ftv-tt span{font-size:.86em;color:#dfe8f8}
+/* linhas: barra de situação grossa, nome com leve tom da situação, RE azul-claro, separador que some nas pontas */
+#ftv .ftv-it{border-bottom:0;background:linear-gradient(90deg,transparent,rgba(110,150,230,.22) 8%,rgba(110,150,230,.22) 92%,transparent) 0 100%/100% 1px no-repeat}
+#ftv .ftv-it::before{width:.38em;left:.05em;top:.6em;bottom:.6em;border-radius:1px;box-shadow:0 0 .55em var(--c)}
+#ftv .ftv-pe b{color:color-mix(in srgb,var(--c) 18%,#ffffff);text-shadow:0 0 .5em color-mix(in srgb,var(--c) 25%,transparent)}
+#ftv[data-tema="claro"] .ftv-pe b{color:var(--tx);text-shadow:none}
+#ftv .ftv-pe span{color:#a9cbf3}
+#ftv[data-tema="claro"] .ftv-pe span{color:var(--re)}
+#ftv .ftv-pe small{color:#d3dbe8}
+#ftv[data-tema="claro"] .ftv-pe small{color:var(--tx2)}
+/* etiqueta: fundo escuro tingido, borda acesa, brilho por dentro e por fora, data com brilho */
+#ftv .ftv-it.k-da .ftv-pz,#ftv .ftv-it.k-hj .ftv-pz,#ftv .ftv-it.k-np .ftv-pz,#ftv .ftv-it.k-gr .ftv-pz,#ftv .ftv-it.k-vi .ftv-pz{
+  min-width:5em;padding:.35em .65em;border-width:1.5px;border-radius:.45em;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--c) 20%,#0a0f1e),color-mix(in srgb,var(--c) 9%,#060a16));
+  box-shadow:0 0 .8em color-mix(in srgb,var(--c) 45%,transparent),inset 0 0 .7em color-mix(in srgb,var(--c) 22%,transparent),inset 0 1px 0 color-mix(in srgb,var(--c) 45%,transparent)}
+#ftv[data-tema="claro"] .ftv-it .ftv-pz{background:color-mix(in srgb,var(--c) 10%,#fff)!important;box-shadow:none!important}
+#ftv .ftv-pz small{font-size:.82em}
+#ftv .ftv-pz b{font-size:1.8em;text-shadow:0 0 .4em color-mix(in srgb,var(--c) 70%,transparent)}
+/* barra "+N ocorrências": cápsula azul em degradê com borda clara */
+#ftv .ftv-cf{margin:.5em .8em .7em;padding:.35em 1em;border:1px solid rgba(100,175,255,.55);border-radius:.5em;
+  background:linear-gradient(180deg,rgba(40,100,200,.55),rgba(18,52,120,.55));box-shadow:0 0 .7em rgba(40,120,255,.3),inset 0 1px 0 rgba(170,215,255,.35)}
+#ftv .ftv-mais{font-size:1.3em;color:#cfe6ff}
+#ftv .ftv-pts{width:1.15em;height:1.15em;color:#cfe6ff}
+
+/* regra: triângulo grande com brilho, "REGRA:" amarelo forte, texto maior */
+#ftv .ftv-rg{height:3.1em;padding:0 1.2em 0 .9em;background:linear-gradient(180deg,rgba(18,40,82,.7),rgba(8,18,40,.95));border:1px solid rgba(80,160,255,.45);box-shadow:0 0 1em rgba(30,110,255,.25),inset 0 1px 0 rgba(170,215,255,.2)}
+#ftv .ftv-rg .ic{width:2.15em;height:2.15em}
+#ftv .ftv-rg .ic svg{filter:drop-shadow(0 0 .45em rgba(255,201,40,.65))}
+#ftv .ftv-rg p{font-size:1.1em}
+#ftv .ftv-rg p b{color:#ffc928;font-family:var(--fj);font-size:1.12em;letter-spacing:.02em;text-shadow:0 0 .4em rgba(255,201,40,.45)}
+#ftv .ftv-lgd{font-size:.95em}
+#ftv .ftv-lgd i{width:1.15em;height:1.15em;border-radius:.25em}
+/* os enfeites do topo não podem passar da caixa (senão a tela acha que "cortou" e diminui a letra) */
+#ftv .ftv-top::after{left:0;right:0;bottom:0}
+#ftv .ftv-top::before{top:0;bottom:0}
+#ftv .ftv-top{height:auto;min-height:7em}
+#ftv .ftv-rl b{font-size:2.65em}#ftv .ftv-rl span{font-size:.86em}#ftv .ftv-st{padding:.25em .6em}
+/* indicadores mais compactos (como na referência): o título precisa caber inteiro */
+#ftv .ftv-kp{gap:.5em}
+#ftv .ftv-k{padding:.35em .65em .35em .5em;gap:.45em}
+#ftv .ftv-k .ic{width:1.95em;height:1.95em}
+#ftv .ftv-k b{font-size:1.95em}
+#ftv .ftv-k span:not(.ic){font-size:.72em;max-width:6.2em}
+#ftv .ftv-k.fo b{font-size:1.2em}
+#ftv .ftv-k.fo span:not(.ic){font-size:.62em}
+#ftv .ftv-ti{padding-left:1.9em}
+/* proporções do topo como na referência: logo, título largo, indicadores e relógio estreito */
+#ftv .ftv-top{grid-template-columns:16.4em minmax(0,1fr) auto 9.8em;column-gap:.6em}
+#ftv .ftv-top::before{left:16em}
+#ftv .ftv-ti{padding-left:1.7em}
+#ftv .ftv-ti b{font-size:2.35em}
+#ftv .ftv-ti span{font-size:.78em}
+#ftv .ftv-st{padding:.25em .45em}
+#ftv .ftv-rl b{font-size:2.4em}#ftv .ftv-rl span{font-size:.78em}#ftv .ftv-tm{font-size:.85em}
+#ftv .ftv-k.fo b{font-size:1.1em}
+#ftv .ftv-kp{gap:.45em}
+#ftv .ftv-ti{padding-left:1.25em}#ftv .ftv-ti b{font-size:2.18em}#ftv .ftv-kp{gap:.4em}
+#ftv .ftv-rg p{font-size:1.02em}#ftv .ftv-lgd{gap:1.25em;font-size:.86em;min-width:0}
+#ftv .ftv-top{grid-template-columns:15.2em minmax(0,1fr) auto 9.3em}#ftv .ftv-top::before{left:14.75em}#ftv .ftv-logo{background-size:auto 70%,auto,auto;background-position:1em 50%,0 0,0 0}
+/* nome do supervisor inteiro e linhas mais compactas: 3 pessoas + barra de ocorrências por card, como na referência */
+#ftv .ftv-sn b{font-size:1.58em;letter-spacing:0}
+#ftv .ftv-ch0{gap:.6em;padding:.55em .8em .55em .65em}
+#ftv .ftv-ch0 .ftv-av{font-size:2.15em}
+#ftv .ftv-it{padding:.36em .1em .36em .95em}
+#ftv .ftv-pe b{font-size:1.24em;line-height:1.1}
+#ftv .ftv-pe span,#ftv .ftv-pe small{font-size:.9em;line-height:1.15;margin-top:.08em}
+#ftv .ftv-it.k-da .ftv-pz,#ftv .ftv-it.k-hj .ftv-pz,#ftv .ftv-it.k-np .ftv-pz,#ftv .ftv-it.k-gr .ftv-pz,#ftv .ftv-it.k-vi .ftv-pz{padding:.28em .6em;min-width:4.6em}
+#ftv .ftv-pz b{font-size:1.6em}#ftv .ftv-pz small{font-size:.76em}
+#ftv .ftv-cf{margin:.4em .8em .6em;padding:.28em 1em}#ftv .ftv-mais{font-size:1.18em}
+/* emblema maior com aro claro e anel chanfrado; nome e total mais encorpados (traço extra), como na referência */
+#ftv .ftv-ch0 .ftv-av{font-size:2.55em;width:1.58em;height:1.58em;-webkit-text-stroke:.03em hsl(var(--h) 90% 14%);paint-order:stroke fill}
+#ftv .ftv-ch0 .ftv-av::before{inset:.06em;background:linear-gradient(160deg,hsl(var(--h) 85% 30%),hsl(var(--h) 90% 18%))}
+#ftv .ftv-ch0 .ftv-av>i{display:none}
+#ftv .ftv-ch0 .ftv-av::after{inset:.14em;clip-path:var(--oct);background:radial-gradient(120% 100% at 35% 15%,hsl(var(--h) 100% 74%) 0%,hsl(var(--h) 95% 52%) 42%,hsl(var(--h) 90% 36%) 85%);box-shadow:none}
+#ftv .ftv-sn b{-webkit-text-stroke:.035em #ffffff}
+#ftv[data-tema="claro"] .ftv-sn b{-webkit-text-stroke:.03em currentColor}
+#ftv .ftv-tt b{-webkit-text-stroke:.04em #ffffff}
+#ftv[data-tema="claro"] .ftv-tt b{-webkit-text-stroke:.03em currentColor}
+#ftv .ftv-ti b{-webkit-text-stroke:.03em #eaf4ff}
+#ftv[data-tema="claro"] .ftv-ti b{-webkit-text-stroke:0}
+#ftv .ftv-ch0 .ftv-av::before{background:linear-gradient(160deg,hsl(var(--h) 90% 48%),hsl(var(--h) 90% 26%))}#ftv .ftv-ch0 .ftv-av::after{inset:.12em}
+/* tema claro: as superfícies de vidro escuro viram brancas */
+#ftv[data-tema="claro"] .ftv-k,#ftv[data-tema="claro"] .ftv-st,#ftv[data-tema="claro"] .ftv-mq,#ftv[data-tema="claro"] .ftv-rg{background:linear-gradient(180deg,#ffffff,#f1f5fc);border-color:rgba(43,108,230,.35);box-shadow:0 0 .6em rgba(43,108,230,.12),inset 0 1px 0 #fff}
+#ftv[data-tema="claro"] .ftv-mql{background:linear-gradient(90deg,rgba(43,108,230,.10),#fff);border-color:rgba(43,108,230,.3);box-shadow:inset .22em 0 0 #2b6ce6}
+#ftv[data-tema="claro"] .ftv-k b{color:var(--tx);text-shadow:none}
+#ftv[data-tema="claro"] .ftv-k span:not(.ic){color:var(--tx2)}
+#ftv[data-tema="claro"] .ftv-k.k-da b{color:var(--da)}#ftv[data-tema="claro"] .ftv-k.k-hj b{color:var(--am)}
+#ftv[data-tema="claro"] .ftv-k.fo span:not(.ic){color:var(--tx)}
+#ftv[data-tema="claro"] .ftv-rl span,#ftv[data-tema="claro"] .ftv-tm{color:var(--cy)}
+#ftv[data-tema="claro"] .ftv-mql span:not(.ic),#ftv[data-tema="claro"] .ftv-mql b{color:var(--cy)}
+#ftv[data-tema="claro"] .ftv-rg p{color:var(--tx)}
+#ftv[data-tema="claro"] .ftv-rg p b{color:#b07a00;text-shadow:none}
+#ftv[data-tema="claro"] .ftv-lgd{color:var(--tx)}
+#ftv[data-tema="claro"] .ftv-tk{background:linear-gradient(180deg,hsl(var(--h) 85% 95%),#fff);box-shadow:0 0 .5em hsl(var(--h) 80% 50% / .2)}
+#ftv[data-tema="claro"] .ftv-tk em{background:rgba(13,26,58,.07);color:var(--tx)}
+#ftv[data-tema="claro"] .ftv-card{background:linear-gradient(180deg,#fff,#f6f9fe)}
+#ftv[data-tema="claro"] .ftv-cf{background:rgba(43,108,230,.08);border-color:rgba(43,108,230,.3);box-shadow:none}
+#ftv[data-tema="claro"] .ftv-mais,#ftv[data-tema="claro"] .ftv-pts{color:var(--re)}
+#ftv[data-tema="claro"] .ftv-sn span,#ftv[data-tema="claro"] .ftv-tt span{color:var(--tx2)}
