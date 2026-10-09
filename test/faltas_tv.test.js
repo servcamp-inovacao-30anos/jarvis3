@@ -154,3 +154,13 @@ test("filtro de período da tela da supervisão: folha atual, anterior, últimos
   assert.ok(H.includes("&&fsNoPeriodo(c));"), "o filtro vale para a lista em aberto e para as com medida");
   assert.ok(!/function ftvDados\(\)[\s\S]*?fsNoPeriodo/.test(H), "a TV continua sempre na folha atual");
 });
+
+test("indicadores do topo da TV: cada um abre o detalhe dele (folha, faltas, colaboradores, atrasadas, vencem hoje)", () => {
+  const kp = H.match(/<div class="ftv-kp">\$\{(.*?)\}<\/div>`/);
+  assert.ok(kp, "linha dos indicadores encontrada");
+  for (const q of ["fo", "tot", "pes", "da", "hj"]) assert.ok(kp[1].includes(`"${q}")`), "indicador " + q + " abre o detalhe");
+  assert.ok(/onclick="ftvKpi\('\$\{q\}'\)"/.test(H) && /role="button" tabindex="0" title="Toque para ver o detalhe"/.test(H), "indicador clicável e acessível pelo teclado");
+  assert.ok(/function ftvKpi\(q\)\{if\(!FTV_KPI\[q\]\)return;FTV\.kpi=q;FTV\.det="";/.test(H), "abrir um indicador fecha o detalhe do supervisor");
+  assert.ok(/function ftvDetFecha\(\)\{FTV\.det="";FTV\.kpi="";/.test(H), "fechar limpa os dois");
+  assert.ok(/if\(FTV\.det\|\|FTV\.kpi\)FTV\.tDet=setTimeout\(ftvDetFecha,90000\)/.test(H), "volta sozinho para a visão geral em 90 s");
+});
