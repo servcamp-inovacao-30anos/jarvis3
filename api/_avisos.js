@@ -265,7 +265,7 @@ async function faltasDaJanela(db, hoje) {
   const admissao = {};
   adm.forEach(a => { if (a.admissao) admissao[String(a.re)] = String(a.admissao).slice(0, 10); });
   const { ativos: atestados } = R.dobrarAtestados(atest);
-  return faltas.map(f => ({ ...f, data: String(f.data).slice(0, 10) })).filter(f => {
+  return faltas.map(f => ({ ...f, data: String(f.data).slice(0, 10), supervisor: R.supervisorAtual(f.supervisor) })).filter(f => {
     if (String(f.codigo || "").toUpperCase() !== "I") return false;
     const adm = admissao[String(f.re)];
     if (adm && f.data < adm) return false;
@@ -462,7 +462,7 @@ async function verPrevia({ res, db, ator }) {
     };
   });
   // áreas da planilha (últimas semanas) que nenhum cadastro cobre: viram sugestão no formulário
-  const areas = [...new Set(areasRecentes.map(a => String(a.supervisor || "").trim()).filter(Boolean))].sort();
+  const areas = [...new Set(areasRecentes.map(a => String(R.supervisorAtual(a.supervisor) || "").trim()).filter(Boolean))].sort();
   return res.status(200).json({
     ok: true, hoje: P.hoje, configurado: true, auto, contatos,
     semCadastro: P.semCadastro, areasLivres: areas.filter(a => casarArea(a, P.contatos).motivo === "SEM_CADASTRO"),

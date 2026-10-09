@@ -74,7 +74,7 @@ async function materializar(data, opcoes) {
     faltas.push({
       re, data: dia, codigo: String(f.ABONO || "").toUpperCase().trim() || null,
       nome: f.NOME || null, cargo: f.CARGO || null, posto: f.LOCAL || null,
-      supervisor: f.AREA || null, escala: f.ESCALA || null, tipo: f.TIPO || null, atualizado_em: agora
+      supervisor: R.supervisorAtual(f.AREA) || null, escala: f.ESCALA || null, tipo: f.TIPO || null, atualizado_em: agora
     });
   });
   // Dias da ficha interessam de quem faltou nesta planilha e de quem faltou
@@ -187,7 +187,7 @@ async function verCasos({ res, db, ator }) {
     hoje,
     feriados: feriados.map(f => String(f.data).slice(0, 10)),
     admissoes, fichaDias,
-    faltas: faltas.map(f => ({ RE: f.re, DATA: f.data, ABONO: (!R.ABONADAS.has(f.codigo) && cobertura(f.re, String(f.data).slice(0, 10))) ? "A" : f.codigo, NOME: f.nome, CARGO: f.cargo, LOCAL: f.posto, AREA: f.supervisor, ESCALA: f.escala, TIPO: f.tipo, HORARIO: horarioDa(horarios, f) })),
+    faltas: faltas.map(f => ({ RE: f.re, DATA: f.data, ABONO: (!R.ABONADAS.has(f.codigo) && cobertura(f.re, String(f.data).slice(0, 10))) ? "A" : f.codigo, NOME: f.nome, CARGO: f.cargo, LOCAL: f.posto, AREA: R.supervisorAtual(f.supervisor), ESCALA: f.escala, TIPO: f.tipo, HORARIO: horarioDa(horarios, f) })),
     medidas: medidas.map(m => ({ RE: m.re, DATA: m.data, TIPO: m.tipo, GRAU: m.grau, DIAS: m.dias, FASE: m.fase, HIST: m.chave, MOTIVO: m.motivo_sar2g, chave: m.chave, motivo: m.motivo, motivo_editado_por: m.motivo_editado_por, motivo_editado_em: m.motivo_editado_em }))
   });
 
@@ -248,6 +248,7 @@ async function verHistorico({ res, db }) {
   ]);
   // Quem cuida da área hoje: pelo RE (quem faltou há pouco) ou, na falta disso, pelo posto da medida.
   const supDoRE = {}, supDoPosto = {};
+  recentes.forEach(f => { f.supervisor = R.supervisorAtual(f.supervisor); });
   recentes.forEach(f => { if (f.supervisor) { supDoRE[f.re] = f.supervisor; if (f.posto) supDoPosto[f.posto] = f.supervisor; } });
   // Posto da época da medida: a medida da planilha diária não traz o posto; vale o da falta mais próxima (até o dia da medida).
   const faltasDoRE = {};

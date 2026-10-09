@@ -161,6 +161,23 @@ test("envio com 'substituir': o histórico importado antes no período é trocad
   assert.equal(ruim.statusCode, 400);
 });
 
+test("Edney saiu: os casos e o histórico da área dele aparecem com o Jean (inclusive as faltas já guardadas)", async () => {
+  assert.equal(R.supervisorAtual("EDNEY FERRAZ"), "JEAN KLEBER");
+  assert.equal(R.supervisorAtual("Edney"), "JEAN KLEBER");
+  assert.equal(R.supervisorAtual("FRANK PIMENTEL"), "FRANK PIMENTEL");
+  assert.equal(R.supervisorAtual(""), "");
+  const t = tabelas();
+  [-6, -5].forEach(n => t.fm_faltas.push({ re: 800, data: dia(n), codigo: "I", nome: "DANI", cargo: "PORTEIRO (A)", posto: "POSTO E", supervisor: "EDNEY FERRAZ", escala: "5X2 SDF", tipo: "CONTRATO" }));
+  t.fm_medidas.push({ chave: `HIST|800|${dia(-40)}|ADVERTÊNCIA|ESCRITA|0`, re: 800, data: dia(-40), tipo: "ADVERTÊNCIA", grau: "ESCRITA", dias: 0, fase: "CONCLUÍDO", nome: "DANI", local: "" });
+  supabaseFalso(t);
+  const c = await pedir("GET", "casos");
+  assert.deepEqual(c.body.casos.map(x => x.supervisor), ["JEAN KLEBER"]);
+  assert.equal(JSON.stringify(c.body).indexOf("EDNEY"), -1, "o nome do Edney não aparece em lugar nenhum");
+  const h = await pedir("GET", "historico");
+  assert.equal(h.body.medidas[0].supervisor, "JEAN KLEBER");
+  assert.equal(h.body.medidas[0].local, "POSTO E");
+});
+
 test("medida antiga do histórico não fecha caso de agora (a medida tem que ser depois da falta)", async () => {
   const t = tabelas();
   [-6, -5].forEach(n => t.fm_faltas.push({ re: 700, data: dia(n), codigo: "I", nome: "CARLA", cargo: "PORTEIRO (A)", posto: "POSTO A", supervisor: "FRANK", escala: "5X2 SDF", tipo: "CONTRATO" }));

@@ -437,6 +437,14 @@ function dobrarAtestados(eventos) {
 // Turno da noite: os colaboradores dos supervisores abaixo. Todos os demais são
 // diurnos. Regra definida pela coordenação; o turno não vem da planilha.
 const SUPERVISORES_NOTURNOS = ["PAULO", "RONALDO"];
+// Supervisor que saiu: a área dele passa inteira para quem assumiu. Vale para as faltas
+// já guardadas e para as próximas planilhas (que ainda podem trazer o nome antigo).
+// Pedido do Raphael (09/10/2026): Edney saiu de todas as situações, a área foi para o Jean.
+const SUPERVISOR_ASSUMIU = { EDNEY: "JEAN KLEBER" }; // primeiro nome de quem saiu → nome de quem assumiu
+function supervisorAtual(nome) {
+  const primeiro = String(nome || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().trim().split(/\s+/)[0];
+  return SUPERVISOR_ASSUMIU[primeiro] || nome;
+}
 function turnoDoSupervisor(nome) {
   const primeiro = String(nome || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim().split(/\s+/)[0];
   return SUPERVISORES_NOTURNOS.includes(primeiro) ? "NOTURNO" : "DIURNO";
@@ -517,6 +525,6 @@ function dedupMedidas(lista) {
 }
 
 module.exports = {
-  FAMILIAS, SITUACOES, ABONADAS, familiaEscala, ehOperacional, trabalhouNoDia, montarCasos, reDe, competenciaDe, calendario, compactarCalendario, expandirCalendario, periodosDeAbono, dobrarAtestados, turnoDoSupervisor, SUPERVISORES_NOTURNOS,
+  FAMILIAS, SITUACOES, ABONADAS, familiaEscala, ehOperacional, trabalhouNoDia, montarCasos, reDe, competenciaDe, calendario, compactarCalendario, expandirCalendario, periodosDeAbono, dobrarAtestados, turnoDoSupervisor, SUPERVISORES_NOTURNOS, supervisorAtual,
   descreverMedida, somaDias, ddmm, medidaDoHistorico, dedupMedidas
 };
