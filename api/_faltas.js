@@ -8,7 +8,7 @@
 //     PATCH motivo    só aprovadores: motivo da medida (texto livre, com histórico)
 //     POST feriados   só aprovadores: { data, descricao } ou { data, remover: true }
 //     GET  historico  qualquer pessoa logada: advertências e suspensões desde 1º de janeiro
-//     POST historico  só aprovadores: { medidas: [...] } do relatório de ocorrências do SAR2G
+//     POST historico  só aprovadores: { medidas: [...], substituir?: { de, ate } } do relatório de ocorrências do SAR2G
 // E o api/import.js chama materializar() a cada planilha recebida.
 //
 // As regras moram em _faltas_regras.js (puras, testadas). Aqui fica só o que
@@ -274,6 +274,8 @@ async function salvarHistorico({ res, db, ator, body }) {
   const lista = Array.isArray(body.medidas) ? body.medidas : null;
   if (!lista || !lista.length) return erro(res, 400, "Nenhuma medida recebida.", "VAZIO");
   if (lista.length > MAX_HISTORICO) return erro(res, 400, `Arquivo grande demais: no máximo ${MAX_HISTORICO} medidas por envio.`, "GRANDE_DEMAIS");
+  const sub = body.substituir || null;
+  if (sub && (!ehData(sub.de) || !ehData(sub.ate) || sub.de > sub.ate)) return erro(res, 400, "Período para substituir inválido.", "PERIODO");
   const linhas = [], recusadas = {};
   const vistas = new Set();
   const agora = new Date().toISOString();
@@ -285,8 +287,18 @@ async function salvarHistorico({ res, db, ator, body }) {
     linhas.push(Object.assign(r.linha, { atualizado_em: agora }));
   });
   if (linhas.length) await db.upsert("fm_medidas", linhas, "chave");
+  // "substituir": o arquivo é o retrato completo do período. Medida importada antes (chave HIST|) nesse
+  // período que não veio no arquivo sai. As da planilha diária (número do processo) não são tocadas.
+  let removidas = 0;
+  if (sub && linhas.length) {
+    const novas = new Set(linhas.map(l => l.chave));
+    const antes = await db.listar(`fm_medidas?select=chave&data=gte.${sub.de}&data=lte.${sub.ate}&order=chave.asc`);
+    const sair = antes.map(x => String(x.chave)).filter(k => k.startsWith("HIST|") && !novas.has(k));
+    for (let i = 0; i < sair.length; i += 40) await db.remover(`fm_medidas?chave=in.(${sair.slice(i, i + 40).map(encodeURIComponent).join(",")})`);
+    removidas = sair.length;
+  }
   const datas = linhas.map(l => l.data).sort();
-  const resumo = { recebidas: lista.length, gravadas: linhas.length, recusadas, de: datas[0] || null, ate: datas[datas.length - 1] || null };
+  const resumo = { recebidas: lista.length, gravadas: linhas.length, removidas, recusadas, de: datas[0] || null, ate: datas[datas.length - 1] || null };
   await db.inserir("fm_auditoria", [{ ator, acao: ACAO_HISTORICO, entidade: "fm_medidas", chave: "historico", antes: {}, depois: resumo }]);
   return res.status(200).json(Object.assign({ ok: true }, resumo));
 }

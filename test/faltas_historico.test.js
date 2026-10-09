@@ -56,6 +56,40 @@ test("leitura do relatório: arquivo sem as colunas certas é recusado com uma e
   assert.match(fmHistLer([["NOME", "DATA"], ["ANA", "2026-01-01"]]).erro, /RE e DTINICIOOCORRENCIA/);
 });
 
+test("leitura do relatório com INICIALOC (oco.xlsx): cada linha é uma medida, as iguais ganham seq 1, 2, 3", () => {
+  const CAB2 = ["RE", "NOME", "DESCRICAO", "NOMEUSUARIOWF", "CLIENTE", "PUNICAO", "INICIALOC", "FIMALOC", "TPABONO"];
+  const r = fmHistLer([
+    CAB2,
+    [2, "JORGE", "FALTA ABONADA", "CAMILA", "POSTO A", null, 46144, 46144, "ABONO MÉDICO"],
+    [307, "ANA", "ADVERTTENCIA ESCRITA", "PAULO", "POSTO B", null, 46281, 46281, null],
+    [307, "ANA", "ADVERTTENCIA ESCRITA", "PAULO", "POSTO B", null, 46281, 46281, null],
+    [307, "ANA", "ADVERTENCIA ESCRITA", "PAULO", "POSTO B", "ADVERTENCIA ESCRITA", 46281, 46281, null],
+    [545, "ERICA", "FALTA INJUSTIFICADA", "PAULO", "POSTO C", "SUSPENSÃO 05 SERV CAMP", 46200, 46204, "INJUSTIFICADO"]
+  ]);
+  assert.equal(r.erro, undefined);
+  assert.deepEqual(r.medidas.map(m => [m.re, m.data, m.tipo, m.grau, m.dias, m.seq]), [
+    ["307", "2026-09-16", "ADVERTÊNCIA", "ESCRITA", 0, 1],
+    ["307", "2026-09-16", "ADVERTÊNCIA", "ESCRITA", 0, 2],
+    ["307", "2026-09-16", "ADVERTÊNCIA", "ESCRITA", 0, 3],
+    ["545", "2026-06-27", "SUSPENSÃO", "SUSPENSÃO", 5, 1]
+  ]);
+  assert.equal(r.medidas[0].local, "POSTO B");
+});
+
+test("regra: linhas iguais do relatório viram chaves diferentes (a 1ª mantém a chave de antes)", () => {
+  const m = { re: "307", data: "2026-09-16", tipo: "ADVERTÊNCIA", grau: "ESCRITA", dias: 0 };
+  assert.equal(R.medidaDoHistorico({ ...m, seq: 1 }).linha.chave, "HIST|307|2026-09-16|ADVERTÊNCIA|ESCRITA|0");
+  assert.equal(R.medidaDoHistorico(m).linha.chave, "HIST|307|2026-09-16|ADVERTÊNCIA|ESCRITA|0");
+  assert.equal(R.medidaDoHistorico({ ...m, seq: 3 }).linha.chave, "HIST|307|2026-09-16|ADVERTÊNCIA|ESCRITA|0|3");
+  assert.equal(R.medidaDoHistorico({ ...m, seq: 0 }).erro, "sequência inválida");
+});
+
+test("regra: 3 medidas iguais no histórico e 1 na planilha diária = 3 medidas (a da planilha cobre uma)", () => {
+  const h = n => ({ chave: "HIST|5|2026-08-01|ADVERTÊNCIA|ESCRITA|0" + (n > 1 ? "|" + n : ""), re: 5, data: "2026-08-01", tipo: "ADVERTÊNCIA", grau: "ESCRITA", dias: 0 });
+  const l = R.dedupMedidas([h(1), h(2), h(3), { chave: "P-1", re: 5, data: "2026-08-01", tipo: "ADVERTÊNCIA", grau: "ESCRITA", dias: 0 }]);
+  assert.deepEqual(l.map(m => m.chave), ["HIST|5|2026-08-01|ADVERTÊNCIA|ESCRITA|0|2", "HIST|5|2026-08-01|ADVERTÊNCIA|ESCRITA|0|3", "P-1"]);
+});
+
 test("regra: valida a linha e monta a chave do histórico (começa com HIST|)", () => {
   const ok = R.medidaDoHistorico({ re: "0120", data: "2026-03-10", tipo: "SUSPENSÃO", grau: "SUSPENSÃO", dias: 3, fase: "CONCLUÍDO", motivo: "SUSPENSÃO" });
   assert.equal(ok.linha.chave, "HIST|120|2026-03-10|SUSPENSÃO|SUSPENSÃO|3");
@@ -103,6 +137,28 @@ test("envio do histórico grava as medidas, ignora a repetida e conta as recusad
   assert.equal(h.body.desde, ano + "-01-01");
   assert.deepEqual(h.body.medidas.map(x => [x.re, x.data, x.tipo, x.dias, x.origem]), [[30, ano + "-02-09", "ADVERTÊNCIA", 0, "historico"], [30, ano + "-05-20", "SUSPENSÃO", 3, "historico"]]);
   assert.equal(h.body.importacao.por, "aprovador");
+});
+
+test("envio com 'substituir': o histórico importado antes no período é trocado pelo arquivo; o da planilha diária fica", async () => {
+  const t = tabelas();
+  const linha = (chave, re, data, extra) => ({ chave, re, data, tipo: "ADVERTÊNCIA", grau: "ESCRITA", dias: 0, fase: "CONCLUÍDO", ...extra });
+  t.fm_medidas.push(
+    linha(`HIST|50|${ano}-02-10|ADVERTÊNCIA|ESCRITA|0`, 50, `${ano}-02-10`),          // continua no arquivo novo
+    linha(`HIST|51|${ano}-03-10|ADVERTÊNCIA|ESCRITA|0`, 51, `${ano}-03-10`),          // não veio: sai
+    linha("P-9", 52, `${ano}-03-11`),                                                  // planilha diária: fica
+    linha(`HIST|53|${Number(ano) - 1}-12-10|ADVERTÊNCIA|ESCRITA|0`, 53, `${Number(ano) - 1}-12-10`) // fora do período: fica
+  );
+  supabaseFalso(t);
+  const m = { re: 50, nome: "ANA", data: ano + "-02-10", tipo: "ADVERTÊNCIA", grau: "ESCRITA", dias: 0 };
+  const r = await pedir("POST", "historico", { body: { medidas: [m, { ...m, seq: 2 }], substituir: { de: ano + "-01-01", ate: ano + "-09-30" } } });
+  assert.equal(r.statusCode, 200);
+  assert.deepEqual([r.body.gravadas, r.body.removidas], [2, 1]);
+  assert.deepEqual(t.fm_medidas.map(x => x.chave).sort(), [`HIST|50|${ano}-02-10|ADVERTÊNCIA|ESCRITA|0`, `HIST|50|${ano}-02-10|ADVERTÊNCIA|ESCRITA|0|2`, `HIST|53|${Number(ano) - 1}-12-10|ADVERTÊNCIA|ESCRITA|0`, "P-9"].sort());
+  const h = await pedir("GET", "historico", { usuario: "supervisor.fulano" });
+  assert.equal(h.body.medidas.filter(x => x.re === 50).length, 2, "duas linhas iguais = duas medidas = reincidente");
+
+  const ruim = await pedir("POST", "historico", { body: { medidas: [m], substituir: { de: "x", ate: ano + "-09-30" } } });
+  assert.equal(ruim.statusCode, 400);
 });
 
 test("medida antiga do histórico não fecha caso de agora (a medida tem que ser depois da falta)", async () => {
