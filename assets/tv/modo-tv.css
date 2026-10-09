@@ -546,13 +546,11 @@
 #ftv[data-tema="claro"] .ftv-cf{background:rgba(43,108,230,.08);border-color:rgba(43,108,230,.3);box-shadow:none}
 #ftv[data-tema="claro"] .ftv-mais,#ftv[data-tema="claro"] .ftv-pts{color:var(--re)}
 #ftv[data-tema="claro"] :where(.ftv-card) .ftv-sn span,#ftv[data-tema="claro"] .ftv-tt span{color:var(--tx2)}
-/* ── Tela de detalhe: volta à identidade arcade (a mesma da versão anterior), presa dentro do .ftv-det ── */
-@font-face{font-family:"TVJersey";src:url(/fonts/Jersey10.woff2) format("woff2");font-display:block}
-@font-face{font-family:"TVTerm";src:url(/fonts/VT323.woff2) format("woff2");font-display:block}
-#ftv .ftv-det{--fj:"TVJersey","Segoe UI",sans-serif;--fv:"TVTerm","Consolas",monospace;--stp:polygon(0 .4em,.2em .4em,.2em .2em,.4em .2em,.4em 0,calc(100% - .4em) 0,calc(100% - .4em) .2em,calc(100% - .2em) .2em,calc(100% - .2em) .4em,100% .4em,100% calc(100% - .4em),calc(100% - .2em) calc(100% - .4em),calc(100% - .2em) calc(100% - .2em),calc(100% - .4em) calc(100% - .2em),calc(100% - .4em) 100%,.4em 100%,.4em calc(100% - .2em),.2em calc(100% - .2em),.2em calc(100% - .4em),0 calc(100% - .4em));--oct:polygon(24% 0,76% 0,100% 24%,100% 76%,76% 100%,24% 100%,0 76%,0 24%);font-family:var(--fj);line-height:1.1;letter-spacing:.04em;text-transform:none}
+/* ── Tela de detalhe: cores e efeitos da versão anterior, presos dentro do .ftv-det, com as letras e cantos do painel principal (sem 8-bit) ── */
+#ftv .ftv-det{--fj:"TVTitulo","Segoe UI",sans-serif;--fv:"TVLegivel","Segoe UI",sans-serif;--stp:none;--oct:polygon(24% 0,76% 0,100% 24%,100% 76%,76% 100%,24% 100%,0 76%,0 24%);font-family:var(--fj);line-height:1.1;letter-spacing:.04em;text-transform:none}
 
-#ftv .ftv-det *{font-weight:400!important;font-synthesis:none}
-#ftv .ftv-det{font-weight:400!important;font-synthesis:none}
+#ftv .ftv-det *{font-weight:700!important;font-synthesis:none}
+#ftv .ftv-det{font-weight:700!important;font-synthesis:none}
 
 #ftv[data-tema="escuro"] .ftv-det{--fundo:repeating-linear-gradient(0deg,rgba(90,150,255,.045) 0 .1em,transparent .1em .55em),repeating-linear-gradient(90deg,rgba(90,150,255,.035) 0 .1em,transparent .1em .55em),radial-gradient(120% 90% at 50% 40%,#11296f 0%,#0a1c4f 55%,#06123a 100%);--pn:#08173f;--pn2:#0c2257;--pb:#2d64cc;--pb2:#1a3f93;--tx:#ffffff;--tx2:#a9cdf5;--cy:#4fd0ff;--am:#ffd23f;--mut:#8fb0de;--ln:#1b3878;--da:#ff4a3f;--hj:#ff8a1a;--np:#ffd21a;--gr:#9b6cff;--vi:#2f86ff;--ok:#3ddc97;--s1:85%;--l1:55%}
 
@@ -1677,6 +1675,12 @@
 
 #ftv .ftv-det .ftv-tk em{font-size:2.5em}
 
-/* linhas da tabela 30% maiores (a tela é medida no tamanho normal; se não couber, a lista desce sozinha) */
-#ftv .ftv-det.grande .ftv-dr{font-size:1.3em}
+/* linhas da tabela 17% maiores (a tela é medida no tamanho normal; se não couber, a lista desce sozinha) */
+#ftv .ftv-det.grande .ftv-dr{font-size:1.17em}
 #ftv .ftv-det .ftv-db{scroll-behavior:auto}
+/* cantos arredondados como no painel principal (no lugar das quinas em degrau) */
+#ftv .ftv-det{border-radius:.9em}
+#ftv .ftv-det .ftv-dk,#ftv .ftv-det .ftv-dx,#ftv .ftv-det .ftv-nota{border-radius:.5em}
+#ftv .ftv-det .ftv-dt{border-radius:.5em}
+#ftv .ftv-det .ftv-fl input{border-radius:.4em}
+#ftv .ftv-det .ftv-dg h4 em{border-radius:.35em}
