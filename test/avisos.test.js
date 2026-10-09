@@ -117,6 +117,14 @@ test("área da planilha → supervisor: igual, nome inteiro contido, e na dúvid
   assert.equal(avisos.casarArea("RONALDO", c).motivo, "SEM_CADASTRO");
 });
 
+test("área do Edney (saiu) vai para o Jean: o aviso da falta cai no celular do Jean", async () => {
+  const t = base({ faltas: [falta(301, ontem, { supervisor: "EDNEY FERRAZ" })], aparelhos: [[2, SUP2]] });
+  await avisos.aposImportar();
+  assert.equal(enviados.length, 1);
+  assert.equal(enviados[0].user, SUP2);
+  assert.deepEqual(avisadas(t), ["301|" + ontem]);
+});
+
 // ── envio automático ────────────────────────────────────────────────────────
 
 test("automático desligado por padrão: sem registro não envia nada", async () => {

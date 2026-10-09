@@ -12295,13 +12295,17 @@ function fmHistData(v){
 }
 function fmHistLer(rows){
   const norm=x=>String(x==null?"":x).trim().toUpperCase();
-  const iCab=(rows||[]).findIndex(r=>(r||[]).map(norm).indexOf("RE")>=0&&(r||[]).map(norm).indexOf("DTINICIOOCORRENCIA")>=0);
-  if(iCab<0)return{erro:"Não achei as colunas RE e DTINICIOOCORRENCIA. Use o relatório de ocorrências do SAR2G."};
+  /* a data vem em DTINICIOOCORRENCIA (relatório de ocorrências) ou INICIALOC (relatório de afastamentos/ocorrências) */
+  const temData=r=>{const l=(r||[]).map(norm);return l.indexOf("DTINICIOOCORRENCIA")>=0||l.indexOf("INICIALOC")>=0;};
+  const iCab=(rows||[]).findIndex(r=>(r||[]).map(norm).indexOf("RE")>=0&&temData(r));
+  if(iCab<0)return{erro:"Não achei as colunas RE e DTINICIOOCORRENCIA (ou INICIALOC). Use o relatório de ocorrências do SAR2G."};
   const cab=rows[iCab].map(norm),col=n=>cab.indexOf(n);
-  const c={re:col("RE"),nome:col("NOME"),desc:col("DESCRICAO"),dt:col("DTINICIOOCORRENCIA"),fase:col("FASEATUAL"),cli:col("CLIENTE"),pun:col("PUNICAO"),hist:col("HISTDISCIPLINAR")};
+  const c={re:col("RE"),nome:col("NOME"),desc:col("DESCRICAO"),dt:col("DTINICIOOCORRENCIA")>=0?col("DTINICIOOCORRENCIA"):col("INICIALOC"),fase:col("FASEATUAL"),cli:col("CLIENTE"),pun:col("PUNICAO"),hist:col("HISTDISCIPLINAR")};
   if(c.desc<0&&c.pun<0)return{erro:"Não achei as colunas DESCRICAO e PUNICAO."};
   const v=(r,i)=>i<0?"":r[i];
-  const medidas=[],jaVi={};let semData=0;
+  /* Sem o número do processo, cada linha é uma medida aplicada (regra do Raphael, 09/10/2026):
+     duas linhas iguais (mesma pessoa, dia e medida) são duas medidas e ganham seq 1, 2, ... */
+  const medidas=[],jaVi={},iguais={};let semData=0;
   rows.slice(iCab+1).forEach(r=>{
     if(!r||!r.length)return;
     const pun=norm(v(r,c.pun)),t=norm(v(r,c.desc))+" "+pun;
@@ -12311,9 +12315,11 @@ function fmHistLer(rows){
     if(hist){if(jaVi[hist])return;jaVi[hist]=1;}
     const data=fmHistData(v(r,c.dt));if(!data){semData++;return;}
     const m=pun.match(/SUSPENS[ÃA]O\s+(\d+)/);
-    medidas.push({re:String(v(r,c.re)||"").trim(),nome:String(v(r,c.nome)||"").trim(),data,
+    const md={re:String(v(r,c.re)||"").trim(),nome:String(v(r,c.nome)||"").trim(),data,
       tipo:ehSusp?"SUSPENSÃO":"ADVERTÊNCIA",grau:ehSusp?"SUSPENSÃO":(pun.indexOf("VERBAL")>=0?"VERBAL":"ESCRITA"),
-      dias:m?parseInt(m[1],10):0,fase:String(v(r,c.fase)||"").trim(),motivo:String(v(r,c.desc)||"").trim(),local:String(v(r,c.cli)||"").trim(),hist});
+      dias:m?parseInt(m[1],10):0,fase:String(v(r,c.fase)||"").trim(),motivo:String(v(r,c.desc)||"").trim(),local:String(v(r,c.cli)||"").trim(),hist};
+    if(!hist){const k=[md.re,md.data,md.tipo,md.grau,md.dias].join("|");iguais[k]=(iguais[k]||0)+1;md.seq=iguais[k];}
+    medidas.push(md);
   });
   return{medidas,semData};
 }
@@ -12351,14 +12357,17 @@ function fmHistEnviar(){
       if(r.erro){alert(r.erro);return;}
       const ms=r.medidas;if(!ms.length){alert("O arquivo não tem nenhuma advertência ou suspensão.");return;}
       const n=k=>ms.filter(k).length,datas=ms.map(m=>m.data).sort();
+      /* o arquivo é o retrato completo do período: o histórico importado antes, nesse período, é trocado por ele */
+      const periodo={de:datas[0].slice(0,8)+"01",ate:datas[datas.length-1]};
       const txt=`Encontrei ${ms.length} medidas de ${new Set(ms.map(m=>m.re)).size} pessoas, de ${fmDd(datas[0])} a ${fmDdA(datas[datas.length-1])}:\n`+
         `• ${n(m=>m.grau==="ESCRITA")} advertências escritas\n• ${n(m=>m.grau==="VERBAL")} advertências verbais\n• ${n(m=>m.tipo==="SUSPENSÃO")} suspensões\n`+
         (n(fmMedCancelada)?`(${n(fmMedCancelada)} com cancelamento: ficam no histórico, mas não contam como reincidência)\n`:"")+
-        (r.semData?`${r.semData} linha(s) sem data ficaram de fora.\n`:"")+"\nEnviar para o Painel ServCamp?";
+        (r.semData?`${r.semData} linha(s) sem data ficaram de fora.\n`:"")+
+        `\nO histórico importado de ${fmDd(periodo.de)} a ${fmDdA(periodo.ate)} será trocado por este arquivo (as medidas da planilha diária continuam).\nEnviar para o Painel ServCamp?`;
       if(!confirm(txt))return;
-      fmPedir("POST","historico",{medidas:ms}).then(j=>{
+      fmPedir("POST","historico",{medidas:ms,substituir:periodo}).then(j=>{
         const rec=Object.entries(j.recusadas||{}).map(([k,v])=>v+" "+k).join(", ");
-        ptToast(`Histórico recebido: ${j.gravadas} medidas gravadas.`+(rec?` Recusadas: ${rec}.`:""));
+        ptToast(`Histórico recebido: ${j.gravadas} medidas gravadas`+(j.removidas?`, ${j.removidas} antigas retiradas`:"")+"."+(rec?` Recusadas: ${rec}.`:""));
         fmHistCarregar(true);
       }).catch(e=>alert("Não foi possível enviar o histórico.\n"+e.message));
     };

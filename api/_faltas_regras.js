@@ -437,6 +437,14 @@ function dobrarAtestados(eventos) {
 // Turno da noite: os colaboradores dos supervisores abaixo. Todos os demais são
 // diurnos. Regra definida pela coordenação; o turno não vem da planilha.
 const SUPERVISORES_NOTURNOS = ["PAULO", "RONALDO"];
+// Supervisor que saiu: a área dele passa inteira para quem assumiu. Vale para as faltas
+// já guardadas e para as próximas planilhas (que ainda podem trazer o nome antigo).
+// Pedido do Raphael (09/10/2026): Edney saiu de todas as situações, a área foi para o Jean.
+const SUPERVISOR_ASSUMIU = { EDNEY: "JEAN KLEBER" }; // primeiro nome de quem saiu → nome de quem assumiu
+function supervisorAtual(nome) {
+  const primeiro = String(nome || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().trim().split(/\s+/)[0];
+  return SUPERVISOR_ASSUMIU[primeiro] || nome;
+}
 function turnoDoSupervisor(nome) {
   const primeiro = String(nome || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim().split(/\s+/)[0];
   return SUPERVISORES_NOTURNOS.includes(primeiro) ? "NOTURNO" : "DIURNO";
@@ -486,9 +494,12 @@ function medidaDoHistorico(l) {
   if (!Number.isInteger(dias) || dias < 0 || dias > 30) return { erro: "dias de suspensão inválidos" };
   const txt = (v, n) => (v == null || v === "" ? null : String(v).trim().slice(0, n));
   const hist = txt(l.hist, 40);
+  // Sem número do processo, cada linha do relatório é uma medida: a 2ª linha igual (seq 2) é outra medida.
+  const seq = l.seq == null || l.seq === "" ? 1 : Number(l.seq);
+  if (!Number.isInteger(seq) || seq < 1 || seq > 99) return { erro: "sequência inválida" };
   return {
     linha: {
-      chave: hist || ["HIST", re, data, tipo, grau, dias].join("|"),
+      chave: hist || ["HIST", re, data, tipo, grau, dias].join("|") + (seq > 1 ? "|" + seq : ""),
       re: Number(re), data, tipo, grau, dias,
       fase: txt(l.fase, 60), motivo_sar2g: txt(l.motivo, 120), nome: txt(l.nome, 120), local: txt(l.local, 120)
     }
@@ -496,18 +507,24 @@ function medidaDoHistorico(l) {
 }
 // A mesma medida pode chegar duas vezes: pelo histórico (chave "HIST|...") e
 // pela aba DISCIPLINA (chave = número do processo). Fica uma só, a da planilha.
+// O histórico pode ter várias medidas iguais no mesmo dia (cada linha é uma):
+// cada medida da planilha diária "cobre" uma do histórico, e as que sobram ficam.
 function dedupMedidas(lista) {
-  const porDado = new Map();
+  const grupos = new Map();
   (lista || []).forEach(m => {
     const k = [m.re, String(m.data).slice(0, 10), m.tipo, m.grau, Number(m.dias) || 0].join("|");
-    const ja = porDado.get(k);
-    if (!ja || (String(ja.chave).startsWith("HIST|") && !String(m.chave).startsWith("HIST|"))) porDado.set(k, m);
+    if (!grupos.has(k)) grupos.set(k, { planilha: [], hist: [] });
+    grupos.get(k)[String(m.chave).startsWith("HIST|") ? "hist" : "planilha"].push(m);
   });
-  const ficam = new Set(porDado.values());
+  const ficam = new Set();
+  grupos.forEach(g => {
+    g.planilha.forEach(m => ficam.add(m));
+    g.hist.sort((a, b) => String(a.chave).localeCompare(String(b.chave))).slice(g.planilha.length).forEach(m => ficam.add(m));
+  });
   return (lista || []).filter(m => ficam.has(m));
 }
 
 module.exports = {
-  FAMILIAS, SITUACOES, ABONADAS, familiaEscala, ehOperacional, trabalhouNoDia, montarCasos, reDe, competenciaDe, calendario, compactarCalendario, expandirCalendario, periodosDeAbono, dobrarAtestados, turnoDoSupervisor, SUPERVISORES_NOTURNOS,
+  FAMILIAS, SITUACOES, ABONADAS, familiaEscala, ehOperacional, trabalhouNoDia, montarCasos, reDe, competenciaDe, calendario, compactarCalendario, expandirCalendario, periodosDeAbono, dobrarAtestados, turnoDoSupervisor, SUPERVISORES_NOTURNOS, supervisorAtual,
   descreverMedida, somaDias, ddmm, medidaDoHistorico, dedupMedidas
 };
