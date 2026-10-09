@@ -113,10 +113,11 @@ test("visual v3: estilo, fontes, logo e cena da central são arquivos do própri
   const raiz = path.join(__dirname, "..");
   assert.ok(H.includes('<link rel="stylesheet" href="/assets/tv/modo-tv.css">'), "estilo do Modo TV ligado no fim da página");
   const css = fs.readFileSync(path.join(raiz, "assets", "tv", "modo-tv.css"), "utf8");
-  for (const f of ["/fonts/Rajdhani600.woff2", "/fonts/Rajdhani700.woff2", "/fonts/ChakraPetch500.woff2", "/fonts/ChakraPetch700.woff2", "/assets/tv/central-operacional.webp", "/assets/tv/logo-servcamp-claro.png"]) {
+  for (const f of ["/fonts/Rajdhani600.woff2", "/fonts/Rajdhani700.woff2", "/fonts/ChakraPetch500.woff2", "/fonts/ChakraPetch700.woff2", "/assets/tv/central-operacional.webp"]) {
     assert.ok(css.includes("url(" + f + ")"), f + " usado no estilo");
     assert.ok(fs.existsSync(path.join(raiz, f)), f + " existe no repositório");
   }
+  assert.ok(/const logo='<svg class="ftv-lsv"[^']*aria-label="Grupo ServCamp terceirizações"/.test(H), "logo da TV desenhado em vetor (nítido em qualquer tela)");
   assert.ok(/prefers-reduced-motion:reduce\)\{#ftv \.ftv-op/.test(css), "a cena para de se mexer com reduzir movimento");
   assert.ok(H.includes('<div class="ftv-palco ftv-cena" aria-hidden="true">'), "cena decorativa escondida do leitor de tela");
 });
