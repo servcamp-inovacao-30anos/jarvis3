@@ -728,6 +728,7 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
   [style*="grid-template-columns:repeat(5,1fr)"],[style*="grid-template-columns:repeat(4,1fr)"]{grid-template-columns:repeat(2,1fr)!important;}
 }
 </style>
+<link rel="stylesheet" href="/assets/avisos/avisos.css">
 </head>
 <body>
 <div id="intro-overlay" style="display:none">
@@ -825,6 +826,8 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       <div class="sb-perfil-c" id="sbPerfilCargo"></div>
       <div class="sb-perfil-on">Sistema Online</div>
       <a class="sb-perfil-senha" href="#" onclick="showForcePasswordChange(sessionStorage.getItem('userKey'),'voluntaria');return false">🔑 Trocar senha</a>
+      <a class="sb-perfil-senha" id="sbAvAparelho" href="#" style="display:none" onclick="avAparelhoAbrir();return false">🔔 Avisos neste aparelho</a>
+      <a class="sb-perfil-senha" id="sbAvPainel" href="#" style="display:none" onclick="avPainelAbrir();return false">📣 Painel de avisos</a>
     </div>
   </div>
   <nav id="navRoot">
@@ -3972,6 +3975,7 @@ function _abrirSessao(u){
   if(typeof hqBeat==="function")hqBeat(); // já aparece na Sede Virtual
   tvModoChecar(); ftvChecar(); // se abriu a TV sem estar logado ainda, ativa só depois do login
   vgContrato();
+  if(typeof avAposLogin==="function")avAposLogin(); // avisos de faltas: convite para ativar o celular e tela pedida pela notificação
   // A planilha é buscada ao abrir a página; sem login o servidor recusa. Busca de novo agora.
   if(!_dadosDoServidor&&typeof loadFromSupabase==="function")loadFromSupabase().then(function(g){if(g&&typeof renderAfterLoad==="function")renderAfterLoad();}).catch(function(){});
 }
@@ -18742,5 +18746,7 @@ function init(){
 document.addEventListener("DOMContentLoaded",init);
 </script>
 <link rel="stylesheet" href="/assets/tv/modo-tv.css">
+<!-- Avisos de faltas no celular (push): fora do index.html, que está no limite de tamanho -->
+<script src="/assets/avisos/avisos.js"></script>
 </body>
 </html>
