@@ -56,24 +56,42 @@ test("leitura do relatório: arquivo sem as colunas certas é recusado com uma e
   assert.match(fmHistLer([["NOME", "DATA"], ["ANA", "2026-01-01"]]).erro, /RE e DTINICIOOCORRENCIA/);
 });
 
-test("leitura do relatório com INICIALOC (oco.xlsx): cada linha é uma medida, as iguais ganham seq 1, 2, 3", () => {
+test("leitura do relatório com INICIALOC (oco.xlsx): a mesma medida repetida por posto e por pedaço do período conta UMA vez", () => {
   const CAB2 = ["RE", "NOME", "DESCRICAO", "NOMEUSUARIOWF", "CLIENTE", "PUNICAO", "INICIALOC", "FIMALOC", "TPABONO"];
+  const S5 = "SUSPENSÃO 05 SERV CAMP", d = s => 46023 + (Date.parse("2026-" + s + "T12:00:00Z") - Date.parse("2026-01-01T12:00:00Z")) / 864e5;
   const r = fmHistLer([
     CAB2,
     [2, "JORGE", "FALTA ABONADA", "CAMILA", "POSTO A", null, 46144, 46144, "ABONO MÉDICO"],
-    [307, "ANA", "ADVERTTENCIA ESCRITA", "PAULO", "POSTO B", null, 46281, 46281, null],
-    [307, "ANA", "ADVERTTENCIA ESCRITA", "PAULO", "POSTO B", null, 46281, 46281, null],
-    [307, "ANA", "ADVERTENCIA ESCRITA", "PAULO", "POSTO B", "ADVERTENCIA ESCRITA", 46281, 46281, null],
-    [545, "ERICA", "FALTA INJUSTIFICADA", "PAULO", "POSTO C", "SUSPENSÃO 05 SERV CAMP", 46200, 46204, "INJUSTIFICADO"]
+    // advertência repetida 3x no mesmo dia (sem posto, reserva, posto) = 1 advertência
+    [307, "ANA", "ADVERTTENCIA ESCRITA", "PAULO", null, null, d("09-16"), d("09-16"), null],
+    [307, "ANA", "ADVERTTENCIA ESCRITA", "PAULO", "RESERVA TÉCNICA", null, d("09-16"), d("09-16"), null],
+    [307, "ANA", "ADVERTENCIA ESCRITA", "PAULO", "POSTO B", "ADVERTENCIA ESCRITA", d("09-16"), d("09-16"), null],
+    // caso real da Idoroteia (RE 170): 20/01 em 3 linhas (05, 04 e uma com "advertência verbal") = 1 suspensão de 5 dias
+    [170, "IDO", "SUSPENSÃO", "CAMILA", null, S5, d("01-20"), d("01-24"), null],
+    [170, "IDO", "SUSPENSÃO", "JUSSI", "RESERVA TÉCNICA", "SUSPENSÃO 04 SERV CAMP", d("01-20"), d("01-23"), null],
+    [170, "IDO", "SUSPENSÃO", "JUSSI", "RESERVA TÉCNICA", "ADVERTENCIA VERBAL", d("01-20"), d("01-23"), null],
+    // e 28/03 a 01/04 em 4 linhas, uma por posto = 1 suspensão de 5 dias
+    [170, "IDO", "SUSPENSÃO", "RAFAEL", "COND - POEMA", S5, d("03-29"), d("03-29"), null],
+    [170, "IDO", "SUSPENSÃO", "RAFAEL", "RESERVA TÉCNICA", S5, d("03-30"), d("03-30"), null],
+    [170, "IDO", "SUSPENSÃO", "RAFAEL", "COND - SANTOS DUMONT II", S5, d("03-28"), d("03-28"), null],
+    [170, "IDO", "SUSPENSÃO", "RAFAEL", "COND - PORTAL", S5, d("03-31"), d("04-01"), null],
+    // suspensões de verdade separadas no tempo continuam duas
+    [157, "PAULA", "SUSPENSÃO", "X", "RESERVA TÉCNICA", S5, d("04-06"), d("04-10"), null],
+    [157, "PAULA", "SUSPENSÃO", "X", "RESERVA TÉCNICA", S5, d("04-22"), d("04-26"), null],
+    // fim antes do início (erro de lançamento) não quebra: vale início + dias
+    [4583, "CLAUDIO", "SUSPENSÃO", "X", "RESERVA TÉCNICA", "SUSPENSÃO 03 SERV CAMP", d("06-24"), d("06-26"), null],
+    [4583, "CLAUDIO", "SUSPENSÃO", "X", "COND - GIARDINO", "SUSPENSÃO 03 SERV CAMP", d("06-24"), d("06-23"), null]
   ]);
   assert.equal(r.erro, undefined);
-  assert.deepEqual(r.medidas.map(m => [m.re, m.data, m.tipo, m.grau, m.dias, m.seq]), [
-    ["307", "2026-09-16", "ADVERTÊNCIA", "ESCRITA", 0, 1],
-    ["307", "2026-09-16", "ADVERTÊNCIA", "ESCRITA", 0, 2],
-    ["307", "2026-09-16", "ADVERTÊNCIA", "ESCRITA", 0, 3],
-    ["545", "2026-06-27", "SUSPENSÃO", "SUSPENSÃO", 5, 1]
+  assert.equal(r.linhas, 14);
+  assert.deepEqual(r.medidas.map(m => [m.re, m.data, m.tipo, m.dias, m.local]), [
+    ["307", "2026-09-16", "ADVERTÊNCIA", 0, "POSTO B"],
+    ["170", "2026-01-20", "SUSPENSÃO", 5, "RESERVA TÉCNICA"],
+    ["170", "2026-03-28", "SUSPENSÃO", 5, "COND - SANTOS DUMONT II"],
+    ["157", "2026-04-06", "SUSPENSÃO", 5, "RESERVA TÉCNICA"],
+    ["157", "2026-04-22", "SUSPENSÃO", 5, "RESERVA TÉCNICA"],
+    ["4583", "2026-06-24", "SUSPENSÃO", 3, "COND - GIARDINO"]
   ]);
-  assert.equal(r.medidas[0].local, "POSTO B");
 });
 
 test("regra: linhas iguais do relatório viram chaves diferentes (a 1ª mantém a chave de antes)", () => {
@@ -84,10 +102,15 @@ test("regra: linhas iguais do relatório viram chaves diferentes (a 1ª mantém 
   assert.equal(R.medidaDoHistorico({ ...m, seq: 0 }).erro, "sequência inválida");
 });
 
-test("regra: 3 medidas iguais no histórico e 1 na planilha diária = 3 medidas (a da planilha cobre uma)", () => {
+test("regra: linhas repetidas que já estão no banco viram UMA medida na leitura (suspensão em pedaços e por posto)", () => {
+  const s = (data, dias, extra) => ({ chave: `HIST|170|${data}|SUSPENSÃO|SUSPENSÃO|${dias}${extra || ""}`, re: 170, data, tipo: "SUSPENSÃO", grau: "SUSPENSÃO", dias });
+  const l = R.dedupMedidas([s("2026-01-20", 0), s("2026-01-20", 4), s("2026-01-20", 5), s("2026-03-28", 5), s("2026-03-29", 5), s("2026-03-30", 5), s("2026-03-31", 5),
+    s("2026-04-02", 5)]); // começa depois de 01/04: é outra suspensão
+  assert.deepEqual(l.map(m => [m.data, m.dias]), [["2026-01-20", 5], ["2026-03-28", 5], ["2026-04-02", 5]]);
+  // advertência 3x no mesmo dia + a mesma na planilha diária = 1 (a da planilha)
   const h = n => ({ chave: "HIST|5|2026-08-01|ADVERTÊNCIA|ESCRITA|0" + (n > 1 ? "|" + n : ""), re: 5, data: "2026-08-01", tipo: "ADVERTÊNCIA", grau: "ESCRITA", dias: 0 });
-  const l = R.dedupMedidas([h(1), h(2), h(3), { chave: "P-1", re: 5, data: "2026-08-01", tipo: "ADVERTÊNCIA", grau: "ESCRITA", dias: 0 }]);
-  assert.deepEqual(l.map(m => m.chave), ["HIST|5|2026-08-01|ADVERTÊNCIA|ESCRITA|0|2", "HIST|5|2026-08-01|ADVERTÊNCIA|ESCRITA|0|3", "P-1"]);
+  assert.deepEqual(R.dedupMedidas([h(1), h(2), h(3), { chave: "P-1", re: 5, data: "2026-08-01", tipo: "ADVERTÊNCIA", grau: "ESCRITA", dias: 0 }]).map(m => m.chave), ["P-1"]);
+  assert.deepEqual(R.dedupMedidas([h(1), h(2), h(3)]).map(m => m.chave), ["HIST|5|2026-08-01|ADVERTÊNCIA|ESCRITA|0"]);
 });
 
 test("regra: valida a linha e monta a chave do histórico (começa com HIST|)", () => {
@@ -155,7 +178,7 @@ test("envio com 'substituir': o histórico importado antes no período é trocad
   assert.deepEqual([r.body.gravadas, r.body.removidas], [2, 1]);
   assert.deepEqual(t.fm_medidas.map(x => x.chave).sort(), [`HIST|50|${ano}-02-10|ADVERTÊNCIA|ESCRITA|0`, `HIST|50|${ano}-02-10|ADVERTÊNCIA|ESCRITA|0|2`, `HIST|53|${Number(ano) - 1}-12-10|ADVERTÊNCIA|ESCRITA|0`, "P-9"].sort());
   const h = await pedir("GET", "historico", { usuario: "supervisor.fulano" });
-  assert.equal(h.body.medidas.filter(x => x.re === 50).length, 2, "duas linhas iguais = duas medidas = reincidente");
+  assert.equal(h.body.medidas.filter(x => x.re === 50).length, 1, "a mesma medida repetida no relatório conta uma vez (não vira reincidência)");
 
   const ruim = await pedir("POST", "historico", { body: { medidas: [m], substituir: { de: "x", ate: ano + "-09-30" } } });
   assert.equal(ruim.statusCode, 400);

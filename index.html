@@ -12300,12 +12300,10 @@ function fmHistLer(rows){
   const iCab=(rows||[]).findIndex(r=>(r||[]).map(norm).indexOf("RE")>=0&&temData(r));
   if(iCab<0)return{erro:"Não achei as colunas RE e DTINICIOOCORRENCIA (ou INICIALOC). Use o relatório de ocorrências do SAR2G."};
   const cab=rows[iCab].map(norm),col=n=>cab.indexOf(n);
-  const c={re:col("RE"),nome:col("NOME"),desc:col("DESCRICAO"),dt:col("DTINICIOOCORRENCIA")>=0?col("DTINICIOOCORRENCIA"):col("INICIALOC"),fase:col("FASEATUAL"),cli:col("CLIENTE"),pun:col("PUNICAO"),hist:col("HISTDISCIPLINAR")};
+  const c={re:col("RE"),nome:col("NOME"),desc:col("DESCRICAO"),dt:col("DTINICIOOCORRENCIA")>=0?col("DTINICIOOCORRENCIA"):col("INICIALOC"),fim:col("DTFIMOCORRENCIA")>=0?col("DTFIMOCORRENCIA"):col("FIMALOC"),fase:col("FASEATUAL"),cli:col("CLIENTE"),pun:col("PUNICAO"),hist:col("HISTDISCIPLINAR")};
   if(c.desc<0&&c.pun<0)return{erro:"Não achei as colunas DESCRICAO e PUNICAO."};
   const v=(r,i)=>i<0?"":r[i];
-  /* Sem o número do processo, cada linha é uma medida aplicada (regra do Raphael, 09/10/2026):
-     duas linhas iguais (mesma pessoa, dia e medida) são duas medidas e ganham seq 1, 2, ... */
-  const medidas=[],jaVi={},iguais={};let semData=0;
+  const linhas=[],jaVi={};let semData=0;
   rows.slice(iCab+1).forEach(r=>{
     if(!r||!r.length)return;
     const pun=norm(v(r,c.pun)),t=norm(v(r,c.desc))+" "+pun;
@@ -12318,10 +12316,32 @@ function fmHistLer(rows){
     const md={re:String(v(r,c.re)||"").trim(),nome:String(v(r,c.nome)||"").trim(),data,
       tipo:ehSusp?"SUSPENSÃO":"ADVERTÊNCIA",grau:ehSusp?"SUSPENSÃO":(pun.indexOf("VERBAL")>=0?"VERBAL":"ESCRITA"),
       dias:m?parseInt(m[1],10):0,fase:String(v(r,c.fase)||"").trim(),motivo:String(v(r,c.desc)||"").trim(),local:String(v(r,c.cli)||"").trim(),hist};
-    if(!hist){const k=[md.re,md.data,md.tipo,md.grau,md.dias].join("|");iguais[k]=(iguais[k]||0)+1;md.seq=iguais[k];}
-    medidas.push(md);
+    /* fim do período: o maior entre a data fim da linha e início + dias − 1 (há linhas com o fim antes do início) */
+    const soma=n=>new Date(Date.parse(data+"T12:00:00Z")+n*864e5).toISOString().slice(0,10);
+    const fl=fmHistData(v(r,c.fim)),fc=soma(Math.max(md.dias,1)-1);
+    md._fim=fl&&fl>fc?fl:fc;md._fl=fl&&fl>=data?fl:data;md._i=linhas.length;
+    linhas.push(md);
   });
-  return{medidas,semData};
+  /* O SAR2G repete a MESMA medida em várias linhas: uma por vaga/posto (sem posto, RESERVA TÉCNICA, o condomínio)
+     e, na suspensão, uma por pedaço do período (5 dias = 28/03, 29/03, 30/03, 31/03→01/04). Linhas da mesma pessoa
+     e do mesmo tipo que começam dentro do período de outra são UMA medida: a do 1º dia, com o maior número de dias
+     e o posto de verdade (não a reserva técnica) quando alguma linha traz. Com número do processo, vale o número. */
+  const ehReserva=p=>!p||/RESERVA/i.test(p);
+  const medidas=[],grupo={};
+  linhas.slice().sort((a,b)=>a.data.localeCompare(b.data)).forEach(md=>{
+    const k=md.re+"|"+md.tipo,g=md.hist?null:grupo[k];
+    if(g&&md.data<=g._fim){
+      /* o período conta do 1º dia: cada pedaço repete "5 dias", mas só a data fim real da linha empurra o fim */
+      g.dias=Math.max(g.dias,md.dias);const f2=new Date(Date.parse(g.data+"T12:00:00Z")+(Math.max(g.dias,1)-1)*864e5).toISOString().slice(0,10);
+      if(f2>g._fim)g._fim=f2;if(md._fl>g._fim)g._fim=md._fl;
+      if(ehReserva(g.local)&&!ehReserva(md.local))g.local=md.local;else if(!g.local)g.local=md.local;
+      if(g.tipo==="ADVERTÊNCIA"&&md.grau==="ESCRITA")g.grau="ESCRITA";
+      g.linhas++;return;
+    }
+    const n=Object.assign({},md,{linhas:1});medidas.push(n);if(!md.hist)grupo[k]=n;
+  });
+  medidas.sort((a,b)=>a._i-b._i).forEach(m=>{delete m._fim;delete m._fl;delete m._i;});
+  return{medidas,semData,linhas:linhas.length};
 }
 /*fim fmHistLer*/
 const fmMedCancelada=m=>/CANCEL/i.test(m.fase||"");
@@ -12363,6 +12383,7 @@ function fmHistEnviar(){
         `• ${n(m=>m.grau==="ESCRITA")} advertências escritas\n• ${n(m=>m.grau==="VERBAL")} advertências verbais\n• ${n(m=>m.tipo==="SUSPENSÃO")} suspensões\n`+
         (n(fmMedCancelada)?`(${n(fmMedCancelada)} com cancelamento: ficam no histórico, mas não contam como reincidência)\n`:"")+
         (r.semData?`${r.semData} linha(s) sem data ficaram de fora.\n`:"")+
+        (r.linhas>ms.length?`(${r.linhas} linhas de medida no arquivo: o SAR2G repete a mesma medida para cada posto e para cada pedaço da suspensão; aqui cada uma conta uma vez)\n`:"")+
         `\nO histórico importado de ${fmDd(periodo.de)} a ${fmDdA(periodo.ate)} será trocado por este arquivo (as medidas da planilha diária continuam).\nEnviar para o Painel ServCamp?`;
       if(!confirm(txt))return;
       fmPedir("POST","historico",{medidas:ms,substituir:periodo}).then(j=>{
