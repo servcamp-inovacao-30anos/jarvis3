@@ -16628,18 +16628,15 @@ function ftvCorta(el){
   // lista comprida não encolhe a letra: ela rola sozinha (letra grande para ler de longe)
   return [...el.querySelectorAll(".ftv-k,.ftv-ch0")].some(sai);
 }
-/* Detalhe do supervisor: o painel tem tamanho fixo (sobre a central operacional); as letras de dentro são grandes e só
-   diminuem o necessário para a tabela caber inteira, sem barra de rolagem (até 62%; abaixo disso a tabela rola). */
+/* Detalhe (supervisor ou indicador): o painel tem tamanho fixo (sobre a central operacional) e a letra de dentro
+   também — o MESMO tamanho em qualquer área e com qualquer filtro (antes ela crescia quando havia poucos casos e
+   mudava de uma situação para outra, o que incomodava). O que não couber rola sozinho. */
+const FTV_DET_FZ=.8;
 function ftvDetAjusta(){
   const det=document.querySelector("#ftv .ftv-det"),db=det&&det.querySelector(".ftv-db");if(!db)return;
-  // o tamanho da tela é medido com as linhas no tamanho normal; depois as linhas ganham 30% (classe "grande")
-  det.classList.remove("grande");db.scrollTop=0;
-  const cabe=k=>{det.style.fontSize=k.toFixed(3)+"em";return db.scrollHeight<=db.clientHeight+2;};
-  // maior tamanho (entre 62% e 115%) em que a tabela cabe inteira
-  let lo=.62,hi=1.15;
-  if(cabe(hi))lo=hi;
-  else{for(let i=0;i<8;i++){const m=(lo+hi)/2;if(cabe(m))lo=m;else hi=m;}cabe(lo);}
+  det.style.fontSize=FTV_DET_FZ+"em";
   det.classList.add("grande");
+  db.scrollTop=0;
   ftvDetRola();
 }
 // quando as linhas maiores não cabem, a lista desce devagar sozinha, para no fim e volta ao começo
