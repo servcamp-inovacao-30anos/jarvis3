@@ -74,26 +74,31 @@ test("saudação pelo horário de São Paulo", () => {
   assert.equal(avisos.saudacao(new Date("2026-10-10T02:00:00Z")), "boa noite");  // 23h do dia 9
 });
 
-test("formato do aviso, 'chegaram mais' e limite de tamanho", () => {
+test("formato do aviso: data de cada falta, 'chegaram mais', versão completa e limite de tamanho", () => {
   const agora = new Date("2026-10-09T13:00:00Z");
+  const dm = d => d.slice(8, 10) + "/" + d.slice(5, 7);
   const f = [falta(12345, ontem, { nome: "MARIA DA SILVA", posto: "COND - ESTRELA" }), falta(678, ontem, { nome: "JOÃO SOUZA", posto: "" })];
   const t = avisos.montarTexto({ nome: "FRANK PIMENTEL", faltas: f, agora, tipo: "RESUMO" });
   assert.equal(t.titulo, "ServCamp · 2 faltas injustificadas");
   const l = t.corpo.split("\n");
-  assert.equal(l[0], "Muito bom dia, Frank! Hoje temos 2 faltas injustificadas na sua área:");
-  assert.deepEqual(l.slice(1, 3), ["• JOÃO SOUZA — RE 678 — Reserva técnica", "• MARIA DA SILVA — RE 12345 — COND - ESTRELA"]);
+  assert.equal(l[0], "Muito bom dia, Frank! Temos 2 faltas injustificadas na sua área:");
+  assert.deepEqual(l.slice(1, 3), ["• JOÃO SOUZA — RE 678 — Reserva técnica — falta em " + dm(ontem), "• MARIA DA SILVA — RE 12345 — COND - ESTRELA — falta em " + dm(ontem)]);
   assert.equal(l[3], "Por gentileza, verifique se há atestados que justifiquem a ausência. Caso não haja, aplicar medida disciplinar até o próximo plantão.");
   assert.equal(avisos.montarTexto({ nome: "Frank", faltas: f.slice(0, 1), agora, jaAvisou: true }).corpo.split("\n")[0], "Muito bom dia, Frank! Chegou mais 1 falta injustificada na sua área:");
   assert.match(avisos.montarTexto({ nome: "Frank", faltas: f, agora, jaAvisou: true }).corpo, /Chegaram mais 2 faltas injustificadas na sua área:/);
   assert.equal(avisos.montarTexto({ nome: "Frank", faltas: f.slice(0, 1), agora }).titulo, "ServCamp · 1 falta injustificada");
   // a mesma pessoa em dois dias: uma linha só
   const dupla = avisos.montarTexto({ nome: "Frank", faltas: [falta(5, ontem), falta(5, antes)], agora });
-  assert.match(dupla.corpo, /• PESSOA 5 — RE 5 — POSTO 5 \(2 faltas\)/);
+  assert.ok(dupla.corpo.includes("• PESSOA 5 — RE 5 — POSTO 5 — faltas em " + dm(antes) + " e " + dm(ontem)), dupla.corpo);
   // 15 pessoas: 10 linhas e o resto na tela
   const muitas = Array.from({ length: 15 }, (_, i) => falta(1000 + i, ontem));
   const m = avisos.montarTexto({ nome: "Frank", faltas: muitas, agora });
   assert.equal(m.corpo.split("\n").filter(x => x.startsWith("• ")).length, 10);
-  assert.match(m.corpo, /\+ 5 na tela de Faltas da Supervisão/);
+  assert.match(m.corpo, /\+ 5 — toque para ver o aviso completo/);
+  // a versão completa (a que o app mostra) traz todo mundo
+  const mc = avisos.montarTexto({ nome: "Frank", faltas: muitas, agora, completo: true });
+  assert.equal(mc.corpo.split("\n").filter(x => x.startsWith("• ")).length, 15);
+  assert.doesNotMatch(mc.corpo, /toque para ver/);
   // nomes e postos enormes: o push continua abaixo de 4 KB
   const gigantes = Array.from({ length: 12 }, (_, i) => falta(2000 + i, ontem, { nome: "Ç".repeat(400), posto: "Ã".repeat(400) }));
   const g = avisos.montarTexto({ nome: "Frank", faltas: gigantes, agora });
@@ -130,7 +135,7 @@ test("automático ligado: só quem tem aparelho recebe, e a mesma falta não rep
   assert.equal(enviados[0].user, SUP);
   assert.equal(enviados[0].titulo, "ServCamp · 2 faltas injustificadas");
   assert.equal(enviados[0].tipo, "RESUMO");
-  assert.equal(enviados[0].url, "/?abrir=faltassup");
+  assert.equal(enviados[0].url, "/?abrir=faltassup&aviso=" + enviados[0].aviso);
   assert.deepEqual(avisadas(t).sort(), ["101|" + ontem, "102|" + antes].sort(), "a falta do Jean continua na fila até ele ativar");
   assert.equal(r.semAparelho, 1);
   // nova planilha sem falta nova: nada se repete (e já houve aviso hoje: nem "sem faltas")
@@ -211,7 +216,7 @@ test("manual: só os selecionados, exige confirmar, e 'todas' reenvia sem reserv
   enviados = [];
   const r2 = await api("enviar", { method: "POST", usuario: APROV, body: { ids: [1], modo: "todas", confirmar: true } });
   assert.equal(r2.body.avisos, 1);
-  assert.match(enviados[0].corpo, /Hoje temos 2 faltas/);
+  assert.match(enviados[0].corpo, /Temos 2 faltas/);
   assert.equal(avisadas(t).length, 2, "reenvio não duplica");
   assert.equal(t.fm_auditoria.filter(e => e.acao === "AVISO_RESERVA").length, 2, "nem grava reserva de novo");
   // manual "novas" sem nada novo: só manda "sem faltas" se pedir
@@ -404,4 +409,49 @@ test("duas planilhas ao mesmo tempo: a mesma falta sai uma vez só", async () =>
   assert.equal(a.avisos + b.avisos, 1);
   assert.equal(enviados.length, 1);
   assert.equal(avisadas(t).length, 2);
+});
+
+test("tocar na notificação abre o aviso completo: todas as faltas, só para quem recebeu", async () => {
+  const muitas = Array.from({ length: 12 }, (_, i) => falta(5000 + i, ontem));
+  base({ faltas: muitas });
+  await avisos.aposImportar();
+  assert.equal(enviados.length, 1);
+  const p = enviados[0];
+  assert.match(p.aviso, /^[a-f0-9]{16}$/);
+  assert.equal(p.url, "/?abrir=faltassup&aviso=" + p.aviso);
+  assert.equal(p.corpo.split("\n").filter(x => x.startsWith("• ")).length, 10, "a notificação mostra 10");
+  const r = await api("aviso", { usuario: SUP, query: { id: p.aviso } });
+  assert.equal(r.statusCode, 200, JSON.stringify(r.body));
+  assert.equal(r.body.aviso.faltas.length, 12, "o app mostra as 12");
+  assert.equal(r.body.aviso.corpo.split("\n").filter(x => x.startsWith("• ")).length, 12);
+  assert.ok(r.body.aviso.faltas.every(f => f.data === ontem));
+  assert.equal((await api("aviso", { usuario: SUP2, query: { id: p.aviso } })).statusCode, 403, "outro supervisor não vê");
+  assert.equal((await api("aviso", { usuario: APROV, query: { id: p.aviso } })).statusCode, 200, "aprovador vê");
+  assert.equal((await api("aviso", { usuario: SUP, query: { id: "nao-existe" } })).statusCode, 400);
+  assert.equal((await api("aviso", { query: { id: p.aviso } })).statusCode, 401);
+});
+
+test("o aviso de teste também abre completo para quem pediu", async () => {
+  base({ aparelhos: [[5, APROV]] });
+  await api("teste", { method: "POST", usuario: APROV, body: { nome: "Raphael Victor" } });
+  const r = await api("aviso", { usuario: APROV, query: { id: enviados[0].aviso } });
+  assert.equal(r.statusCode, 200);
+  assert.equal(r.body.aviso.faltas.length, 2);
+  assert.match(r.body.aviso.titulo, /^TESTE · /);
+  assert.match(r.body.aviso.corpo, /falta em \d{2}\/\d{2}/);
+});
+
+test("service worker: só ícones e manifesto vêm do cache; scripts, estilos, sons e /api/ vão sempre à rede", () => {
+  const vm = require("vm");
+  const ouvintes = {};
+  const self = { location: { origin: "https://painel.exemplo" }, addEventListener: (t, fn) => { ouvintes[t] = fn; }, skipWaiting() {}, clients: { claim: async () => {} }, registration: {} };
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, "..", "sw.js"), "utf8"), { self, caches: { match: async () => null, open: async () => ({ put() {} }) }, fetch: async () => ({ status: 200, type: "basic", clone() { return this; } }), URL, Response: { error: () => null }, console });
+  const respondeu = (caminho, mode) => { let r = false; ouvintes.fetch({ request: { method: "GET", url: "https://painel.exemplo" + caminho, mode: mode || "no-cors" }, respondWith: () => { r = true; } }); return r; };
+  assert.equal(respondeu("/icon-192.png"), true, "ícone pode vir do cache");
+  assert.equal(respondeu("/site.webmanifest"), true);
+  for (const c of ["/assets/avisos/avisos.js", "/assets/avisos/avisos.css", "/assets/tv/modo-tv.css", "/fonts/Rajdhani700.woff2", "/assets/som/aviso-faltas.wav", "/api/rh?modulo=avisos&t=status"]) {
+    assert.equal(respondeu(c), false, c + " não pode ficar preso no cache");
+  }
+  assert.equal(respondeu("/", "navigate"), true, "a página continua rede primeiro, com o cache só de reserva");
+  assert.match(fs.readFileSync(path.join(__dirname, "..", "sw.js"), "utf8"), /const VERSAO = "jarvis-v2";/, "versão nova apaga o cache antigo (v1)");
 });
