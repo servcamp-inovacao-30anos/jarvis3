@@ -16566,12 +16566,36 @@ function ftvCorta(el){
    diminuem o necessário para a tabela caber inteira, sem barra de rolagem (até 62%; abaixo disso a tabela rola). */
 function ftvDetAjusta(){
   const det=document.querySelector("#ftv .ftv-det"),db=det&&det.querySelector(".ftv-db");if(!db)return;
+  // o tamanho da tela é medido com as linhas no tamanho normal; depois as linhas ganham 30% (classe "grande")
+  det.classList.remove("grande");db.scrollTop=0;
   const cabe=k=>{det.style.fontSize=k.toFixed(3)+"em";return db.scrollHeight<=db.clientHeight+2;};
   // maior tamanho (entre 62% e 115%) em que a tabela cabe inteira
   let lo=.62,hi=1.15;
-  if(cabe(hi))return;
-  for(let i=0;i<8;i++){const m=(lo+hi)/2;if(cabe(m))lo=m;else hi=m;}
-  cabe(lo);
+  if(cabe(hi))lo=hi;
+  else{for(let i=0;i<8;i++){const m=(lo+hi)/2;if(cabe(m))lo=m;else hi=m;}cabe(lo);}
+  det.classList.add("grande");
+  ftvDetRola();
+}
+// quando as linhas maiores não cabem, a lista desce devagar sozinha, para no fim e volta ao começo
+function ftvDetRola(){
+  if(FTV.rola)return;
+  let pausa=performance.now()+4000,ant=performance.now(),voltando=false,y=0;
+  const passo=t=>{
+    const db=document.querySelector("#ftv .ftv-det .ftv-db");
+    if(!db){FTV.rola=0;return;}
+    const dt=Math.min(t-ant,100);ant=t;
+    const max=db.scrollHeight-db.clientHeight;
+    if(Math.abs(db.scrollTop-y)>2)y=db.scrollTop;
+    if(max<=2||db.matches(":hover")||document.activeElement&&document.activeElement.closest&&document.activeElement.closest(".ftv-fl")){pausa=t+4000;}
+    else if(t>=pausa){
+      const fz=parseFloat(getComputedStyle(db).fontSize)||16;
+      if(voltando){y=Math.max(0,y-fz*.12*dt);if(y<=0){voltando=false;pausa=t+4000;}}
+      else{y=Math.min(max,y+fz*.0022*dt);if(y>=max-1){voltando=true;pausa=t+5000;}}
+      db.scrollTop=y;
+    }
+    FTV.rola=requestAnimationFrame(passo);
+  };
+  FTV.rola=requestAnimationFrame(passo);
 }
 function ftvAjusta(){
   const el=document.getElementById("ftv");if(!el)return;
