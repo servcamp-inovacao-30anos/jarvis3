@@ -469,3 +469,5 @@ module.exports = async function faltas(req, res) {
 };
 
 module.exports.materializar = materializar;
+// eventos de atestado registrados à mão: os avisos de faltas (api/_avisos.js) descontam as faltas cobertas, igual à tela
+module.exports.ACOES_ATESTADO = [ACAO_ATESTADO, ACAO_ATESTADO_FIM, ACAO_ATESTADO_LANCADO];

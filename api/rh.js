@@ -55,6 +55,8 @@ module.exports = async function handler(req, res) {
   if (req.query && req.query.modulo === "faltas") return require("./_faltas")(req, res);
   // Relatório de coberturas do supervisor (BDV): mesmo motivo (api/_bdv.js).
   if (req.query && req.query.modulo === "bdv") return require("./_bdv")(req, res);
+  // Avisos de faltas no celular dos supervisores (push): mesmo motivo (api/_avisos.js).
+  if (req.query && req.query.modulo === "avisos") return require("./_avisos")(req, res);
   const SUPABASE_URL = process.env.SUPABASE_URL;
   const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
