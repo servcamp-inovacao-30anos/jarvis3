@@ -10,10 +10,11 @@
 // é o que impede punir duas vezes. Medida anterior à falta não cobre (reset).
 
 const FAMILIAS = {
-  // prazo = quantos dias de trabalho seguidos sem voltar mandam o caso para a coordenação (não é o prazo da medida)
+  // prazo = quantas faltas seguidas DEPOIS da 1ª mandam o caso para a coordenação (não é o prazo da medida).
+  // Regra do Raphael (09/10/2026): 4 faltas injustificadas seguidas, em qualquer escala → 1ª + 3.
   "5X2": { prazo: 3, folgaNaSemana: new Set([0, 6]) }, // folga sábado e domingo
   "6X1": { prazo: 3, folgaNaSemana: new Set([0]) },    // folga domingo (todas as siglas 6x1)
-  "12X36": { prazo: 2, alternado: true }                // dia sim, dia não
+  "12X36": { prazo: 3, alternado: true }                // dia sim, dia não
 };
 
 const ABONADAS = new Set(["A", "J", "L"]); // abonada · justificada · licença
@@ -170,7 +171,6 @@ function montarCasos(entrada) {
     const medidas = medidasPorRE.get(re) || [];
     // supervisor, posto e cargo do caso: os mais recentes da pessoa (quem cuida da área hoje)
     const ref = injust[injust.length - 1] || lista[lista.length - 1];
-    const usadas = new Set(); // medidas que já explicaram um caso anterior desta pessoa
 
     let i = 0;
     while (i < injust.length) {
@@ -228,7 +228,7 @@ function montarCasos(entrada) {
         let k = injust.findIndex(f => f.data > ultimaFalta);
         while (k >= 0 && k < injust.length && !presencaEntre(dia, ultimaFalta, injust[k].data)) { caso.faltas.push(injust[k].data); ultimaFalta = injust[k].data; k++; }
         caso.faltas = [...new Set(caso.faltas)].sort();
-        aplicarMedida(caso, medidas, usadas);
+        aplicarMedida(caso, medidas);
         casos.push(caso);
         if (k < 0 || k >= injust.length) break;
         i = k;
@@ -243,13 +243,14 @@ function montarCasos(entrada) {
         // o prazo para aplicar a medida é até esse próximo plantão
         caso.situacao = caso.retornoPrevisto ? SITUACOES.NO_PRAZO : SITUACOES.AGUARDANDO_RETORNO;
         if (caso.retornoPrevisto) { caso.prazo = [caso.retornoPrevisto]; caso.prazoFim = caso.retornoPrevisto; caso.semRetorno = true; }
-        aplicarMedida(caso, medidas, usadas);
-        // A volta prevista já passou e a planilha não mostra a pessoa de volta: segue faltando, e a coordenação decide.
-        // Quando a planilha for atualizada e mostrar a volta, o caso sai daqui sozinho (tudo é recalculado a cada leitura).
+        aplicarMedida(caso, medidas);
+        // A volta prevista já passou e a planilha não mostra a pessoa de volta: fica aguardando o retorno, e o
+        // prazo da medida passa a ser o plantão em que ela voltar. Coordenação só com 4 faltas injustificadas
+        // seguidas (acima). Quando a planilha mostrar a volta, o caso muda sozinho (tudo é recalculado a cada leitura).
         if (caso.semRetorno && caso.situacao === SITUACOES.NO_PRAZO && hoje && caso.retornoPrevisto && caso.retornoPrevisto < hoje) {
-          caso.situacao = SITUACOES.COORDENACAO;
-          caso.prazo = []; caso.prazoFim = null; caso.semRetorno = false; // sem prazo: quem decide é a coordenação
-          caso.motivo = `Continua faltando: era para ter voltado em ${ddmmSemana(caso.retornoPrevisto)} e a planilha ainda não mostra a volta.`;
+          caso.situacao = SITUACOES.AGUARDANDO_RETORNO;
+          caso.prazo = []; caso.prazoFim = null; caso.semRetorno = false; // o prazo começa quando a pessoa voltar
+          caso.motivo = `Ainda não voltou: era para ter voltado em ${ddmmSemana(caso.retornoPrevisto)} e a planilha ainda não mostra a volta. A medida é aplicada no plantão em que ela voltar.`;
           caso.continua = true;
           caso.deveriaTerVoltado = caso.retornoPrevisto;
           caso.folgas = folgasAte(hoje);
@@ -266,7 +267,7 @@ function montarCasos(entrada) {
       caso.prazo = [retorno];
       caso.prazoFim = retorno;
       caso.situacao = hoje > caso.prazoFim ? SITUACOES.PRAZO_VENCIDO : SITUACOES.NO_PRAZO;
-      aplicarMedida(caso, medidas, usadas);
+      aplicarMedida(caso, medidas);
       casos.push(caso);
       // falta depois do retorno é outro caso, com o prazo do próximo plantão dela
       i = injust.findIndex(f => f.data > retorno);
@@ -281,16 +282,13 @@ function presencaEntre(dia, de, ate) {
   return false;
 }
 
-// A primeira medida válida a partir da 1ª falta decide o caso. Uma medida cobre
-// todas as faltas anteriores a ela (pode resolver mais de um caso). Mas a medida
-// que já resolveu um caso anterior e foi lançada antes de ESTE caso voltar é
-// daquele caso: não vale aqui.
-const chaveMedida = m => m.HIST || m.chave || [m.RE, m.DATA, m.TIPO, m.GRAU].join("|");
-function aplicarMedida(caso, medidas, usadas) {
-  const u = usadas || new Set();
-  const validas = medidas.filter(m => m.DATA >= caso.primeiraFalta && !(u.has(chaveMedida(m)) && (caso.retorno ? m.DATA < caso.retorno : true)));
-  aplicarMedidaValida(caso, validas);
-  if (caso.medida) u.add(chaveMedida(caso.medida));
+// A primeira medida a partir da 1ª falta decide o caso. Uma medida cobre TODAS
+// as faltas em aberto da pessoa até a data dela, inclusive a do próprio dia: a
+// advertência de 29/08 fecha a falta de 29/08 mesmo que também feche uma falta
+// anterior (combinado com o Raphael em 09/10/2026 — antes ela ficava só com a
+// falta mais antiga, e a do dia seguia "em aberto" sem motivo).
+function aplicarMedida(caso, medidas) {
+  aplicarMedidaValida(caso, medidas.filter(m => m.DATA >= caso.primeiraFalta));
 }
 function aplicarMedidaValida(caso, validas) {
   if (!validas.length) {

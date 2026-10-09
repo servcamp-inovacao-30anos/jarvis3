@@ -95,10 +95,17 @@ test("exemplo 7 — 5x2, faltou quarta, quinta, sexta e segunda: coordenação d
   assert.equal(c.motivo, "Continua faltando: faltou em qua 07/10 e em mais 3 dias de trabalho seguidos sem voltar (qui 08/10, sex 09/10 e seg 12/10).");
 });
 
-test("exemplo 8 — 12x36, faltou nos plantões 10, 12 e 14: coordenação decide", () => {
-  const c = unico({ faltas: ["2026-10-10", "2026-10-12", "2026-10-14"].map(d => falta(d, { ESCALA: "12X36" })), hoje: "2026-10-15", dataBase: "2026-10-14" });
+test("exemplo 8 — 12x36, faltou nos plantões 10, 12, 14 e 16 (4 seguidas): coordenação decide", () => {
+  const c = unico({ faltas: ["2026-10-10", "2026-10-12", "2026-10-14", "2026-10-16"].map(d => falta(d, { ESCALA: "12X36" })), hoje: "2026-10-17", dataBase: "2026-10-16" });
   assert.equal(c.situacao, S.COORDENACAO);
-  assert.match(c.motivo, /faltou em sáb 10\/10 e em mais 2 plantões seguidos sem voltar \(seg 12\/10 e qua 14\/10\)/);
+  assert.match(c.motivo, /faltou em sáb 10\/10 e em mais 3 plantões seguidos sem voltar \(seg 12\/10, qua 14\/10 e sex 16\/10\)/);
+});
+
+test("regra da coordenação: 3 faltas injustificadas seguidas ainda não vão para a coordenação (em nenhuma escala)", () => {
+  const doze = unico({ faltas: ["2026-10-10", "2026-10-12", "2026-10-14"].map(d => falta(d, { ESCALA: "12X36" })), hoje: "2026-10-15", dataBase: "2026-10-14" });
+  assert.notEqual(doze.situacao, S.COORDENACAO, "12x36 com 3 plantões seguidos");
+  const cinco = unico({ faltas: ["2026-10-07", "2026-10-08", "2026-10-09"].map(d => falta(d)), hoje: "2026-10-10", dataBase: "2026-10-09" });
+  assert.notEqual(cinco.situacao, S.COORDENACAO, "5x2 com 3 dias seguidos");
 });
 
 test("exemplo 9 — voltou e o prazo acabou sem medida: prazo vencido", async t => {
@@ -299,12 +306,12 @@ test("revisão: uma medida cobre as faltas anteriores de mais de um caso (regra 
   assert.deepEqual(cs.map(c => c.situacao), [S.TRATADA_FORA_DO_PRAZO, S.TRATADA_FORA_DO_PRAZO], "a medida de 12/10 resolve os dois casos (os dois prazos já tinham passado)");
 });
 
-test("revisão: medida atrasada de um caso, lançada no dia da falta do caso seguinte, não vira alerta no caso seguinte", () => {
+test("medida lançada no dia da falta do caso seguinte fecha os dois casos (uma medida cobre todas as faltas até a data dela)", () => {
   const dias = presente("2026-10-02", "2026-10-05", "2026-10-06", "2026-10-07", "2026-10-09");
   const cs = casos({ faltas: [falta("2026-10-01"), falta("2026-10-08")], fichaDias: { 521: dias }, medidas: [medida("2026-10-08")], hoje: "2026-10-15", dataBase: "2026-10-15" });
-  assert.equal(cs[0].situacao, S.TRATADA_FORA_DO_PRAZO, "a medida é do 1º caso");
-  assert.equal(cs[1].situacao, S.PRAZO_VENCIDO, "o 2º caso continua sem medida");
-  assert.equal(cs[1].medida, null);
+  assert.equal(cs[0].situacao, S.TRATADA_FORA_DO_PRAZO, "o 1º caso: medida depois do prazo");
+  assert.equal(cs[1].situacao, S.TRATADA, "o 2º caso: medida no dia da falta, antes do retorno");
+  assert.equal(cs[1].medida.HIST, "P-2026-10-08");
 });
 
 test("revisão: medida lançada com a pessoa ausente, sem caso anterior, conta como medida aplicada", () => {
@@ -351,11 +358,11 @@ test("falta depois da pessoa trabalhar de novo (não é seguida): caso novo", ()
   assert.deepEqual(cs[2].faltas, ["2026-10-14"]);
 });
 
-test("12x36: faltar 3 plantões seguidos depois do retorno vai para a coordenação", () => {
-  const cs = casos({ faltas: ["2026-10-10", "2026-10-14", "2026-10-16", "2026-10-18"].map(d => falta(d, { ESCALA: "12X36" })), fichaDias: { 521: presente("2026-10-12") }, hoje: "2026-10-19", dataBase: "2026-10-19" });
+test("12x36: faltar 4 plantões seguidos depois do retorno vai para a coordenação", () => {
+  const cs = casos({ faltas: ["2026-10-10", "2026-10-14", "2026-10-16", "2026-10-18", "2026-10-20"].map(d => falta(d, { ESCALA: "12X36" })), fichaDias: { 521: presente("2026-10-12") }, hoje: "2026-10-21", dataBase: "2026-10-21" });
   assert.equal(cs.length, 2);
   assert.equal(cs[1].situacao, S.COORDENACAO);
-  assert.deepEqual(cs[1].faltas, ["2026-10-14", "2026-10-16", "2026-10-18"]);
+  assert.deepEqual(cs[1].faltas, ["2026-10-14", "2026-10-16", "2026-10-18", "2026-10-20"]);
 });
 
 test("sequência que fecha coordenação não atrapalha o caso seguinte da pessoa", () => {
@@ -365,7 +372,7 @@ test("sequência que fecha coordenação não atrapalha o caso seguinte da pesso
   assert.deepEqual(cs[2].faltas, ["2026-10-21"]);
 });
 
-test("volta prevista que já passou sem a pessoa aparecer: continua faltando, na coordenação (e sai sozinho quando a planilha mostrar a volta)", async t => {
+test("volta prevista que já passou sem a pessoa aparecer: aguardando retorno, não coordenação (e muda sozinho quando a planilha mostrar a volta)", async t => {
   // faltou sexta 09/10; a volta prevista é segunda 12/10
   await t.test("no dia do próximo plantão ainda está no prazo (vence hoje)", () => {
     const c = unico({ faltas: [falta("2026-10-09")], hoje: "2026-10-12", dataBase: "2026-10-09" });
@@ -374,11 +381,12 @@ test("volta prevista que já passou sem a pessoa aparecer: continua faltando, na
     assert.equal(c.retornoPrevisto, "2026-10-12");
     assert.equal(c.prazoFim, "2026-10-12");
   });
-  await t.test("passou o dia previsto e a planilha não mostra a volta: coordenação, uma situação só", () => {
+  await t.test("passou o dia previsto e a planilha não mostra a volta: aguardando retorno (coordenação só com 4 faltas seguidas)", () => {
     const c = unico({ faltas: [falta("2026-10-09")], hoje: "2026-10-13", dataBase: "2026-10-09" });
-    assert.equal(c.situacao, S.COORDENACAO);
-    assert.match(c.motivo, /^Continua faltando/);
+    assert.equal(c.situacao, S.AGUARDANDO_RETORNO);
+    assert.match(c.motivo, /^Ainda não voltou/);
     assert.match(c.motivo, /seg 12\/10/);
+    assert.equal(c.prazoFim, null, "o prazo começa quando ela voltar");
   });
   await t.test("planilha atualizada mostra a volta: o caso sai da coordenação e ganha prazo", () => {
     const c = unico({ faltas: [falta("2026-10-09")], fichaDias: { 521: presente("2026-10-12") }, hoje: "2026-10-13", dataBase: "2026-10-13" });
@@ -432,9 +440,9 @@ test("continua faltando: calendário mostra as faltas seguidas, as folgas e o di
   assert.equal(t("2026-10-12"), "CONTINUOU");
 });
 
-test("continua faltando por volta que não apareceu: devia ter voltado na volta prevista e os dias seguintes sem volta ficam marcados", () => {
+test("volta que não apareceu: aguardando retorno; devia ter voltado na volta prevista e os dias seguintes sem volta ficam marcados", () => {
   const c = unico({ faltas: [falta("2026-10-07")], hoje: "2026-10-14", dataBase: "2026-10-08" });
-  assert.equal(c.situacao, S.COORDENACAO);
+  assert.equal(c.situacao, S.AGUARDANDO_RETORNO);
   assert.equal(c.continua, true);
   assert.equal(c.deveriaTerVoltado, c.retornoPrevisto);
   const cal = R.calendario(c, { dias: {}, hoje: "2026-10-14" });
@@ -459,4 +467,19 @@ test("calendário: o dia do retorno que é o fim do prazo vai com a marca de ret
   assert.equal(volta[0].fimDoPrazo, true);
   assert.equal(volta[1].retorno, false);
   assert.equal(volta[1].medida, true);
+});
+
+test("medida do mesmo dia da falta fecha a falta, mesmo que também feche uma falta anterior da pessoa", () => {
+  // caso real (Rafaela, 09/10/2026): faltou 20/08 (voltou 21/08) e 29/08 (voltou 31/08); advertência em 29/08
+  const cs = casos({
+    faltas: [falta("2026-08-20"), falta("2026-08-29")],
+    fichaDias: { 521: presente("2026-08-21", "2026-08-31") },
+    medidas: [medida("2026-08-29")],
+    hoje: "2026-10-09", dataBase: "2026-10-09"
+  });
+  assert.equal(cs.length, 2);
+  assert.equal(cs[0].situacao, S.TRATADA_FORA_DO_PRAZO, "a de 20/08 teve a medida depois do prazo");
+  assert.equal(cs[1].primeiraFalta, "2026-08-29");
+  assert.equal(cs[1].situacao, S.TRATADA, "a de 29/08 não pode ficar em aberto");
+  assert.equal(cs[1].medida.HIST, "P-2026-08-29");
 });

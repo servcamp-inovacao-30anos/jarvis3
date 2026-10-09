@@ -14610,7 +14610,7 @@ function frPintaConteudo(){
   h+=frKpis(R,Ab);
   h+=`<section class="br-res"><h4>Resumo <span>${_esc(frEscopo(c))}</span></h4><ul>${frResumo(c).map(x=>`<li>${x}</li>`).join("")}</ul></section>`;
   h+=`<section class="br-tb"><div class="br-tb-h"><h4>Por ${{sup:"supervisor",posto:"posto",sit:"situação"}[FR.vis]}</h4><div class="br-seg sm" id="brVis" role="group" aria-label="Agrupar por">${[["sup","Supervisor"],["posto","Posto"],["sit","Situação"]].map(([v,n])=>`<button type="button" data-v="${v}" class="${FR.vis===v?"on":""}" onclick="frVisao('${v}')">${n}</button>`).join("")}</div></div><div class="br-tw" id="brTab">${frTabelaHtml(L)}</div></section>`;
-  h+=`<details class="br-como"><summary>${BR_IC.info}Como é calculado</summary><p>Cada caso pertence à folha (dia 26 ao dia 25) da primeira falta dele. Casos de folhas anteriores que seguem sem medida aparecem só no resumo. O prazo para aplicar a medida é de 3 dias de trabalho depois do retorno (2 plantões na escala 12x36). "Atrasada" é o caso em aberto cujo prazo terminou; "Medida fora do prazo" é a que foi aplicada depois do fim do prazo. Faltas abonadas (atestado, justificativa ou licença) não geram caso nem medida. Fonte: planilha do SAR2G enviada ao módulo Faltas x Medidas.</p></details>`;
+  h+=`<details class="br-como"><summary>${BR_IC.info}Como é calculado</summary><p>Cada caso pertence à folha (dia 26 ao dia 25) da primeira falta dele. Casos de folhas anteriores que seguem sem medida aparecem só no resumo. O prazo para aplicar a medida é até o próximo plantão do colaborador depois da falta. Com 4 faltas injustificadas seguidas (ou abandono marcado no SAR2G), o caso vai para a coordenação. "Atrasada" é o caso em aberto cujo prazo terminou; "Medida fora do prazo" é a que foi aplicada depois do fim do prazo. Faltas abonadas (atestado, justificativa ou licença) não geram caso nem medida. Fonte: planilha do SAR2G enviada ao módulo Faltas x Medidas.</p></details>`;
   el.innerHTML=h;
   frKpiPinta(false);
 }
@@ -16323,7 +16323,7 @@ function fmIniFolhaAtual(){
    Regras: sempre a folha atual (26 a 25). Entram todos os casos em aberto (sem medida aplicada); atestados
    (faltas abonadas) não são caso e não entram. Conta = dias de falta injustificada dentro da folha atual.
    Os dados são os mesmos da tela da supervisão (FM.dados). Abre pelo botão "Modo TV" ou por ?tv=medidas. */
-const FTV={q:"",on:false,tAtual:0,tDia:0,tRel:0,tCursor:0,tDet:0,carregadoEm:0,erro:"",wake:null,det:"",dia:""};
+const FTV={q:"",on:false,tAtual:0,tDia:0,tRel:0,tCursor:0,tDet:0,carregadoEm:0,erro:"",wake:null,det:"",kpi:"",fc:"",dia:""};
 const FTV_MATIZ=[215,200,45,270,135,355,185,25,300,160,240,80,330,175,60,105];
 /* Cor de cada supervisor: pela ordem alfabética, numa paleta em que vizinhos têm cores bem diferentes (nenhuma se repete na tela). */
 const FTV_COR_FIXA={ADRIANO:215,CARLOS:205,EDNEY:45,FRANK:270,JEAN:135,OSEAS:355,PAULO:188,RONALDO:25};
@@ -16478,10 +16478,9 @@ function ftvCard(x){
   const cats=Object.keys(FTV_CAT).filter(k=>x.n[k]).map(k=>`<span class="ftv-ch k-${k}"><i></i>${x.n[k]} ${_esc(FTV_CAT[k].rot[x.n[k]===1?0:1])}</span>`).join("");
   const corpo=x.itens.length?`<div class="ftv-ls"><ul class="ftv-tr">${x.itens.map(ftvLinha).join("")}</ul></div>`:
     `<div class="ftv-ok">${FTV_IC.ok}<b>Área em dia</b><span>Nenhuma medida pendente nesta folha</span></div>`;
-  const pe=x.itens.length?`<footer class="ftv-cf"><span class="ftv-mais" data-total="${x.itens.length}"></span><span class="ftv-toque">${FTV_IC.mao}Toque para ver a área</span><span class="ftv-pts">${FTV_V3.pontos}</span></footer>`:"";
   return`<section class="ftv-card${x.itens.length?"":" vazio"}" style="--h:${x.h}" role="button" tabindex="0" data-n="${_esc(x.nome)}" aria-label="Ver a área de ${_esc(fmNomeCard(x.nome))}" onclick="ftvDet(this.dataset.n)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();ftvDet(this.dataset.n)}">`+
     `<header class="ftv-ch0"><span class="ftv-av">${_esc(x.nome.charAt(0))}</span><div class="ftv-sn"><b>${_esc(fmNomeCard(x.nome))}</b><span>${ftvPl(x.itens.length,"colaborador aguardando medida","colaboradores aguardando medida")}</span></div><div class="ftv-tt"><b>${x.faltas}</b><span>${x.faltas===1?"falta injustificada":"faltas injustificadas"}</span></div></header>`+
-    ftvBarra(x)+(cats?`<div class="ftv-cs">${cats}</div>`:"")+corpo+pe+`</section>`;
+    ftvBarra(x)+(cats?`<div class="ftv-cs">${cats}</div>`:"")+corpo+`</section>`;
 }
 /* Cena da central operacional atrás do detalhe: a arte (1672x941) cobre a tela e pedaços dela
    ganham vida — cabeça e braços dos operadores mexem 1 pixel de vez em quando, telas e luminárias respiram.
@@ -16497,57 +16496,119 @@ function ftvCena(){
     C.tela.map(t=>`<i class="ftv-tl" style="left:${pc(t[0],C.w)};top:${pc(t[1],C.h)};width:${pc(t[2],C.w)};height:${pc(t[3],C.h)};animation-delay:${t[4]}s"></i>`).join("")+
     C.luz.map(l=>`<i class="ftv-lz" style="left:${pc(l[0],C.w)};top:${pc(l[1],C.h)};animation-delay:${l[2]}s"></i>`).join("");
 }
+/* Peças do detalhe (o do supervisor e o dos indicadores do topo usam as mesmas). */
+const FTV_SIT={da:"Falta injustificada",hj:"Falta injustificada",np:"Falta injustificada",gr:"Falta injustificada · ainda não retornou",vi:"Falta injustificada que foi para a coordenação"};
+const FTV_NOTA_VI=`<div class="ftv-nota">${FTV_IC.regra}<div><b>O que significa "Encaminhado à coordenação"</b><span>Pessoas com 4 faltas injustificadas seguidas sem voltar ao trabalho (ou com abandono marcado no SAR2G). Fica para a coordenação decidir, juntamente com o supervisor da área.</span></div></div>`;
+const ftvNorm=t=>String(t||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+function ftvHist(re){
+  if(!(FM.hist&&!FM.hist.erro&&typeof fmHistDe==="function"))return'<span class="ftv-hs">…</span>';
+  const n=fmHistDe(re).length;
+  return n?`<span class="ftv-hs ${n>=2?"rein":"med"}">${n>=2?"Reincidente · ":""}${ftvPl(n,"medida","medidas")} no ano</span>`:'<span class="ftv-hs zero">Sem medida no ano</span>';
+}
+function ftvPrazoDet(i,hoje){
+  const c=i.c;
+  if(i.cat==="da"){const n=fmDif(c.prazoFim,hoje);return{b:fmDd(c.prazoFim),s:n===1?"1 dia de atraso":n+" dias de atraso"};}
+  if(i.cat==="hj")return{b:"Hoje · "+fmDd(c.prazoFim),s:"último dia"};
+  if(i.cat==="np"){const n=fmDif(hoje,c.prazoFim);return{b:fmDd(c.prazoFim),s:n===1?"falta 1 dia":"faltam "+n+" dias"};}
+  return{b:"—",s:"sem prazo"};
+}
+const ftvDk=(rot,n,cls,ic,f)=>f==null?`<div class="ftv-dk${cls?" k-"+cls:""}">${ic||"<i></i>"}<b>${n}</b><span>${rot}</span></div>`:
+  `<button type="button" class="ftv-dk ftv-dkb${cls?" k-"+cls:""}${(FTV.fc||"")===f?" on":""}" data-f="${f}" aria-pressed="${(FTV.fc||"")===f}" title="${f?"Mostrar só: "+_esc(rot):"Mostrar todos"}" onclick="ftvFiltraCat(this.dataset.f)">${ic||"<i></i>"}<b>${n}</b><span>${rot}</span></button>`;
+/* Uma linha da tabela. sup: mostra o supervisor no lugar do título da coluna Posto (visão de todas as áreas). */
+function ftvDetLinha(i,hoje,sup){
+  const c=i.c,p=ftvPrazoDet(i,hoje);
+  return`<div class="ftv-dr" data-cat="${i.cat}" data-q="${_esc(ftvNorm(c.nome+" "+c.re+(sup?" "+i.sup:"")))}"><div><b>${_esc(fmNomeCard(c.nome))}</b><small>RE ${_esc(c.re)}</small></div>`+
+    (sup?`<div><b>${_esc(fmNomeCard(i.sup))}</b><small>${_esc(c.posto||"Sem posto")}</small></div>`:`<div><b>${_esc(c.posto||"Sem posto")}</b>${c.horario?`<small>vaga ${_esc(c.horario)}</small>`:""}</div>`)+
+    `<div><b>${ftvPl(i.fl.length,"falta","faltas")}</b><div class="ftv-fd">${i.fl.map(d=>`<span>${_esc(fmDdS(d))}</span>`).join("")}</div></div>`+
+    `<div class="ftv-sit"><b>${_esc(FTV_SIT[i.cat])}</b></div>`+
+    `<div class="ftv-dp"><b>${_esc(p.b)}</b><small>${_esc(p.s)}</small></div><div>${ftvHist(c.re)}</div></div>`;
+}
+/* Um grupo (título + tabela). g: { cls, h, tit, em, itens, nota } */
+function ftvDetGrupo(g,hoje,sup){
+  return`<section class="ftv-dg ${g.cls}"${g.h!=null?` style="--hs:${g.h}"`:""}><h4><i></i>${_esc(g.tit)}<em>${_esc(g.em)}</em></h4>`+
+    `<div class="ftv-dt"><div class="ftv-dh"><span>Colaborador</span><span>${sup?"Supervisor · posto":"Posto"}</span><span>Faltas na folha</span><span>Situação</span><span>Prazo da medida</span><span>Histórico</span></div>`+
+    g.itens.map(i=>ftvDetLinha(i,hoje,sup)).join("")+`</div>`+(g.nota||"")+`</section>`;
+}
+/* O painel do detalhe por cima da central operacional (supervisor ou indicador). */
+function ftvDetCaixa(D,o){
+  const filtro=`<div class="ftv-fl"><input id="ftv-q" type="search" autocomplete="off" placeholder="${_esc(o.busca||"Filtrar por nome ou RE do colaborador")}" value="${_esc(FTV.q||"")}" oninput="ftvFiltra(this.value)" aria-label="Filtrar colaboradores"><span class="ftv-fn" hidden>Nenhum colaborador encontrado</span></div>`;
+  return`<div class="ftv-ov" onclick="event.stopPropagation();ftvDetFecha()"><div class="ftv-palco ftv-cena" aria-hidden="true">${ftvCena()}</div></div>`+
+    `<div class="ftv-palco ftv-palco-d"><div class="ftv-det${o.cls?" "+o.cls:""}" role="dialog" aria-modal="true" aria-label="${_esc(o.rotulo)}" style="--h:${o.h}" onclick="event.stopPropagation()">`+
+    `<header class="ftv-deh"><span class="ftv-av g">${o.av}</span><div class="ftv-sn"><small>${_esc(o.sobre)}</small><b>${_esc(o.titulo)}</b><span>${_esc(o.sub)}</span></div>`+
+    `<div class="ftv-dbt"><button type="button" class="ftv-dx" onclick="ftvDetFecha()" aria-label="Fechar o detalhe">${FTV_IC.sair}Fechar</button><button type="button" class="ftv-dx" onclick="event.stopPropagation();ftvFechar()" aria-label="Sair do Modo TV">${FTV_IC.sair}Sair</button></div></header>`+
+    `<div class="ftv-dks">${o.kpis}</div>`+(o.semFiltro?"":filtro)+`<div class="ftv-db">${o.corpo||`<div class="ftv-ok">${FTV_IC.ok}<b>${_esc(o.vazio||"Nada pendente")}</b><span>Nenhuma medida pendente nesta folha</span></div>`}</div>`+
+    `<footer class="ftv-dfo">${FTV_IC.regra}<span>A medida deve ser aplicada no próximo plantão do colaborador após a falta.</span><em>Volta sozinho para a visão geral depois de 90 s sem toque</em></footer></div></div>`;
+}
+/* Detalhe dos indicadores do topo: folha atual, faltas, colaboradores, atrasadas e vencem hoje — de todas as áreas. */
+const FTV_KPI={
+  fo:{tit:"Folha atual",sobre:"Resumo da folha"},
+  tot:{tit:"Faltas injustificadas",sobre:"Todas as áreas"},
+  pes:{tit:"Colaboradores aguardando medida",sobre:"Todas as áreas"},
+  da:{tit:"Prazo vencido",sobre:"Todas as áreas"},
+  hj:{tit:"Vencem hoje",sobre:"Todas as áreas"}
+};
+function ftvKpiHtml(D){
+  const K=FTV_KPI[FTV.kpi];if(!K){FTV.kpi="";return"";}
+  const todos=[];D.lista.forEach(x=>x.itens.forEach(i=>todos.push(Object.assign({sup:x.nome,h:x.h},i))));
+  const tot=todos.reduce((s,i)=>s+i.fl.length,0),n=c=>todos.filter(i=>i.cat===c).length;
+  const resto=fmDif(D.hoje,D.F.fim);
+  const fil=FTV.kpi==="fo"?null:"";
+  const kpis=ftvDk(tot===1?"falta injustificada":"faltas injustificadas",tot,"",FTV_PX.grupo,fil)+ftvDk(todos.length===1?"colaborador":"colaboradores",todos.length,"",FTV_PX.pessoa,fil)+
+    Object.keys(FTV_CAT).filter(c=>n(c)).map(c=>ftvDk(FTV_CAT[c].rot[n(c)===1?0:1],n(c),c,null,fil==null?null:c)).join("");
+  const porCat=l=>Object.keys(FTV_CAT).map(cat=>{const it=l.filter(i=>i.cat===cat);return it.length?{cls:"k-"+cat,tit:FTV_CAT[cat].tit,em:ftvPl(it.length,"colaborador","colaboradores"),itens:it,nota:cat==="vi"?FTV_NOTA_VI:""}:null;}).filter(Boolean);
+  let corpo="",sub="",semFiltro=false,vazio="Nada pendente";
+  if(FTV.kpi==="fo"){
+    // resumo por supervisor: tocar na linha abre a área dele
+    semFiltro=true;
+    const l=D.lista.slice().sort((a,b)=>b.faltas-a.faltas||(b.n.da||0)-(a.n.da||0)||a.nome.localeCompare(b.nome));
+    sub=`De ${fmDdA(D.F.ini)} a ${fmDdA(D.F.fim)} · ${resto>0?(resto===1?"falta 1 dia para fechar":"faltam "+resto+" dias para fechar"):resto===0?"fecha hoje":"fechada"}`;
+    corpo=`<section class="ftv-dg k-sup"><h4><i></i>Por supervisor<em>toque para ver a área</em></h4><div class="ftv-dt ftv-res"><div class="ftv-dh"><span>Supervisor</span><span>Faltas injustificadas</span><span>Colaboradores</span><span>Atrasadas</span><span>Vencem hoje</span><span>No prazo · outros</span></div>`+
+      l.map(x=>`<div class="ftv-dr ftv-dr-sup" role="button" tabindex="0" style="--hs:${x.h}" data-n="${_esc(x.nome)}" onclick="ftvDet(this.dataset.n)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();ftvDet(this.dataset.n)}"><div><b>${_esc(fmNomeCard(x.nome))}</b><small>${x.itens.length?"ver a área":"área em dia"}</small></div>`+
+        `<div class="ftv-dp"><b>${x.faltas}</b></div><div class="ftv-dp"><b>${x.itens.length}</b></div><div class="ftv-dp ftv-v-da"><b>${x.n.da||0}</b></div><div class="ftv-dp ftv-v-hj"><b>${x.n.hj||0}</b></div><div class="ftv-dp"><b>${(x.n.np||0)+(x.n.gr||0)+(x.n.vi||0)}</b></div></div>`).join("")+`</div></section>`;
+  }else if(FTV.kpi==="tot"){
+    sub="Cada colaborador com as faltas da folha, por supervisor (quem tem mais faltas primeiro)";
+    corpo=D.lista.filter(x=>x.itens.length).sort((a,b)=>b.faltas-a.faltas||a.nome.localeCompare(b.nome))
+      .map(x=>ftvDetGrupo({cls:"k-sup",h:x.h,tit:fmNomeCard(x.nome),em:ftvPl(x.faltas,"falta","faltas")+" · "+ftvPl(x.itens.length,"colaborador","colaboradores"),itens:x.itens.map(i=>Object.assign({sup:x.nome},i))},D.hoje,true)).join("");
+  }else if(FTV.kpi==="pes"){
+    sub="Todos os colaboradores com falta esperando medida, pela situação";
+    corpo=porCat(todos).map(g=>ftvDetGrupo(g,D.hoje,true)).join("");
+  }else{
+    const cat=FTV.kpi,l=todos.filter(i=>i.cat===cat).sort((a,b)=>String(a.c.prazoFim||"").localeCompare(String(b.c.prazoFim||""))||a.c.nome.localeCompare(b.c.nome));
+    sub=cat==="da"?"Do mais atrasado para o menos atrasado":"Último dia para aplicar a medida: hoje";
+    vazio=cat==="da"?"Nenhuma medida atrasada":"Nada vence hoje";
+    corpo=l.length?ftvDetGrupo({cls:"k-"+cat,tit:FTV_CAT[cat].tit,em:ftvPl(l.length,"colaborador","colaboradores"),itens:l},D.hoje,true):"";
+  }
+  const ic={fo:FTV_V3.cal,tot:FTV_V3.pessoas,pes:FTV_V3.grupo,da:FTV_V3.relogio,hj:FTV_V3.alerta}[FTV.kpi];
+  return ftvDetCaixa(D,{cls:"ftv-kd k-"+FTV.kpi,h:{da:355,hj:35}[FTV.kpi]!=null?{da:355,hj:35}[FTV.kpi]:210,av:ic,sobre:K.sobre,titulo:K.tit,rotulo:K.tit+" — detalhe",
+    sub:sub||`Folha ${fmDd(D.F.ini)} a ${fmDd(D.F.fim)}`,kpis,corpo,semFiltro,vazio,busca:"Filtrar por nome, RE ou supervisor"});
+}
 /* Detalhe da área de um supervisor: tudo o que está esperando medida, agrupado pela situação, com o histórico da pessoa. */
 function ftvDetHtml(D){
+  if(FTV.kpi)return ftvKpiHtml(D);
   const x=D.lista.find(s=>s.nome===FTV.det);if(!x){FTV.det="";return"";}
-  const hist=re=>{
-    if(!(FM.hist&&!FM.hist.erro&&typeof fmHistDe==="function"))return'<span class="ftv-hs">…</span>';
-    const n=fmHistDe(re).length;
-    return n?`<span class="ftv-hs ${n>=2?"rein":"med"}">${n>=2?"Reincidente · ":""}${ftvPl(n,"medida","medidas")} no ano</span>`:'<span class="ftv-hs zero">Sem medida no ano</span>';
-  };
-  const k=(rot,n,cls,ic)=>`<div class="ftv-dk${cls?" k-"+cls:""}">${ic||"<i></i>"}<b>${n}</b><span>${rot}</span></div>`;
-  const sitTxt={da:"Falta injustificada",hj:"Falta injustificada",np:"Falta injustificada",gr:"Falta injustificada · ainda não retornou",vi:"Falta injustificada que foi para a coordenação"};
-  const prazoDet=(i,hoje)=>{
-    const c=i.c;
-    if(i.cat==="da"){const n=fmDif(c.prazoFim,hoje);return{b:fmDd(c.prazoFim),s:n===1?"1 dia de atraso":n+" dias de atraso"};}
-    if(i.cat==="hj")return{b:"Hoje · "+fmDd(c.prazoFim),s:"último dia"};
-    if(i.cat==="np"){const n=fmDif(hoje,c.prazoFim);return{b:fmDd(c.prazoFim),s:n===1?"falta 1 dia":"faltam "+n+" dias"};}
-    return{b:"—",s:"sem prazo"};
-  };
-  const norm=t=>String(t||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+  const k=ftvDk;
   let grupos="";
   Object.keys(FTV_CAT).forEach(cat=>{
     const l=x.itens.filter(i=>i.cat===cat);if(!l.length)return;
-    grupos+=`<section class="ftv-dg k-${cat}"><h4><i></i>${_esc(FTV_CAT[cat].tit)}<em>${ftvPl(l.length,"colaborador","colaboradores")}</em></h4>`+
-      `<div class="ftv-dt"><div class="ftv-dh"><span>Colaborador</span><span>Posto</span><span>Faltas na folha</span><span>Situação</span><span>Prazo da medida</span><span>Histórico</span></div>`+
-      l.map(i=>{const c=i.c,p=prazoDet(i,D.hoje);return`<div class="ftv-dr" data-q="${_esc(norm(c.nome+" "+c.re))}"><div><b>${_esc(fmNomeCard(c.nome))}</b><small>RE ${_esc(c.re)}</small></div>`+
-        `<div><b>${_esc(c.posto||"Sem posto")}</b>${c.horario?`<small>vaga ${_esc(c.horario)}</small>`:""}</div>`+
-        `<div><b>${ftvPl(i.fl.length,"falta","faltas")}</b><div class="ftv-fd">${i.fl.map(d=>`<span>${_esc(fmDdS(d))}</span>`).join("")}</div></div>`+
-        `<div class="ftv-sit"><b>${_esc(sitTxt[cat])}</b></div>`+
-        `<div class="ftv-dp"><b>${_esc(p.b)}</b><small>${_esc(p.s)}</small></div><div>${hist(c.re)}</div></div>`;}).join("")+`</div>`+
-      (cat==="vi"?`<div class="ftv-nota">${FTV_IC.regra}<div><b>O que significa "Encaminhado à coordenação"</b><span>Pessoas que faltaram mas ainda não retornaram. Fica para a coordenação decidir, juntamente com o supervisor da área.</span></div></div>`:"")+`</section>`;
+    grupos+=ftvDetGrupo({cls:"k-"+cat,tit:FTV_CAT[cat].tit,em:ftvPl(l.length,"colaborador","colaboradores"),itens:l,nota:cat==="vi"?FTV_NOTA_VI:""},D.hoje,false);
   });
-  const filtro=`<div class="ftv-fl"><input id="ftv-q" type="search" autocomplete="off" placeholder="Filtrar por nome ou RE do colaborador" value="${_esc(FTV.q||"")}" oninput="ftvFiltra(this.value)" aria-label="Filtrar colaboradores"><span class="ftv-fn" hidden>Nenhum colaborador encontrado</span></div>`;
-  return`<div class="ftv-ov" onclick="event.stopPropagation();ftvDetFecha()"><div class="ftv-palco ftv-cena" aria-hidden="true">${ftvCena()}</div></div>`+
-    `<div class="ftv-palco ftv-palco-d"><div class="ftv-det" role="dialog" aria-modal="true" aria-label="Área de ${_esc(fmNomeCard(x.nome))}" style="--h:${x.h}" onclick="event.stopPropagation()">`+
-    `<header class="ftv-deh"><span class="ftv-av g">${_esc(x.nome.charAt(0))}</span><div class="ftv-sn"><small>Área do supervisor</small><b>${_esc(fmNomeCard(x.nome))}</b><span>Folha ${fmDd(D.F.ini)} a ${fmDd(D.F.fim)} - faltas injustificadas esperando medida disciplinar</span></div>`+
-    `<div class="ftv-dbt"><button type="button" class="ftv-dx" onclick="ftvDetFecha()" aria-label="Fechar o detalhe">${FTV_IC.sair}Fechar</button><button type="button" class="ftv-dx" onclick="event.stopPropagation();ftvFechar()" aria-label="Sair do Modo TV">${FTV_IC.sair}Sair</button></div></header>`+
-    `<div class="ftv-dks">${k(x.faltas===1?"falta injustificada":"faltas injustificadas",x.faltas,"",FTV_PX.grupo)}${k(x.itens.length===1?"colaborador":"colaboradores",x.itens.length,"",FTV_PX.pessoa)}`+
-    Object.keys(FTV_CAT).filter(c=>x.n[c]).map(c=>k(FTV_CAT[c].rot[x.n[c]===1?0:1],x.n[c],c)).join("")+`</div>`+
-    filtro+`<div class="ftv-db">${grupos||`<div class="ftv-ok">${FTV_IC.ok}<b>Área em dia</b><span>Nenhuma medida pendente nesta folha</span></div>`}</div>`+
-    `<footer class="ftv-dfo">${FTV_IC.regra}<span>A medida deve ser aplicada no próximo plantão do colaborador após a falta.</span><em>Volta sozinho para a visão geral depois de 90 s sem toque</em></footer></div></div>`;
+  const kpis=k(x.faltas===1?"falta injustificada":"faltas injustificadas",x.faltas,"",FTV_PX.grupo,"")+k(x.itens.length===1?"colaborador":"colaboradores",x.itens.length,"",FTV_PX.pessoa,"")+
+    Object.keys(FTV_CAT).filter(c=>x.n[c]).map(c=>k(FTV_CAT[c].rot[x.n[c]===1?0:1],x.n[c],c,null,c)).join("");
+  return ftvDetCaixa(D,{h:x.h,av:_esc(x.nome.charAt(0)),sobre:"Área do supervisor",titulo:fmNomeCard(x.nome),rotulo:"Área de "+fmNomeCard(x.nome),
+    sub:`Folha ${fmDd(D.F.ini)} a ${fmDd(D.F.fim)} - faltas injustificadas esperando medida disciplinar`,kpis,corpo:grupos,vazio:"Área em dia"});
 }
 function ftvHtml(){
   const D=ftvDados(),tot=D.lista.reduce((s,x)=>s+x.faltas,0),pes=D.lista.reduce((s,x)=>s+x.itens.length,0);
   const atr=D.lista.reduce((s,x)=>s+(x.n.da||0),0),hj=D.lista.reduce((s,x)=>s+(x.n.hj||0),0);
   const el=document.getElementById("ftv"),tema=(el&&el.dataset.tema)||ftvTema();
   const tk=D.lista.slice().sort((a,b)=>b.faltas-a.faltas||a.nome.localeCompare(b.nome)).map(x=>`<span class="ftv-tk" style="--h:${x.h}" data-n="${_esc(x.nome)}" onclick="event.stopPropagation();ftvDet(this.dataset.n)"><i>${FTV_V3.pessoa}</i><b>${_esc(fmNomeCard(x.nome))}</b><em>${x.faltas}</em><small>${x.faltas===1?"falta injustificada":"faltas injustificadas"}</small></span>`).join("");
-  const kpi=(ic,b,s,cls)=>`<div class="ftv-k${cls?" "+cls:""}"><span class="ic">${ic}</span><div><b>${b}</b><span>${s}</span></div></div>`;
+  // cada indicador abre o detalhe dele (mesmo painel do detalhe do supervisor)
+  const kpi=(ic,b,s,cls,q)=>`<div class="ftv-k${cls?" "+cls:""}" role="button" tabindex="0" title="Toque para ver o detalhe" aria-label="${_esc(b+" "+s)} — ver o detalhe" onclick="ftvKpi('${q}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();ftvKpi('${q}')}"><span class="ic">${ic}</span><div><b>${b}</b><span>${s}</span></div></div>`;
   // logo ServCamp desenhado em vetor (nítido em qualquer TV), na versão para fundo escuro
   const logo='<svg class="ftv-lsv" viewBox="0 0 400 140" role="img" aria-label="Grupo ServCamp terceirizações"><defs><linearGradient id="ftvLgC" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e3e6ea"/><stop offset="1" stop-color="#9da2aa"/></linearGradient><linearGradient id="ftvLgA" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4f86ff"/><stop offset="1" stop-color="#2148c4"/></linearGradient></defs><clipPath id="ftvLcC"><rect x="-20" y="-20" width="122" height="260"/></clipPath><clipPath id="ftvLcA"><rect x="16" y="-20" width="140" height="260"/></clipPath><g transform="translate(4 2) scale(1 1)"><g clip-path="url(#ftvLcC)"><path d="M103.54 41.46A47 47 0 1 0 55.36 94.97L56.27 68.99A21 21 0 1 1 77.8 45.08Z" fill="#5d636d" transform="translate(-6 3)"/><path d="M103.54 41.46A47 47 0 1 0 55.36 94.97L56.27 68.99A21 21 0 1 1 77.8 45.08Z" fill="url(#ftvLgC)"/></g><g clip-path="url(#ftvLcA)"><path d="M52.84 45.71A47 47 0 1 1 14.46 85.46L40.2 89.08A21 21 0 1 0 57.35 71.32Z" fill="#14307f" transform="translate(-6 3)"/><path d="M52.84 45.71A47 47 0 1 1 14.46 85.46L40.2 89.08A21 21 0 1 0 57.35 71.32Z" fill="url(#ftvLgA)"/></g></g><text x="132" y="44" font-size="25" fill="#dfe6f2" style="font-family:Segoe UI,Arial,sans-serif;font-weight:400">Grupo</text><text x="124" y="96" font-size="54" font-style="italic" textLength="268" lengthAdjust="spacingAndGlyphs" style="font-family:Segoe UI Black,Arial Black,Segoe UI,Arial,sans-serif;font-weight:900;letter-spacing:-1px"><tspan fill="#ffffff">SERV</tspan><tspan fill="#3d7bff">CAMP</tspan></text><text x="390" y="126" font-size="21" fill="#b8c6e2" text-anchor="end" style="font-family:Segoe UI,Arial,sans-serif;font-weight:400">terceirizações</text></svg>';
   const leg=Object.keys(FTV_CAT).map(k=>`<span class="k-${k}"><i></i>${_esc(FTV_CAT[k].tit)}</span>`).join("");
   return`<header class="ftv-top"><div class="ftv-logo">${logo}</div><div class="ftv-ti"><span class="ftv-lg">${FTV_IC.tv}</span><div><b>Acompanhamento de Medidas</b><span>Supervisão - faltas injustificadas esperando medida disciplinar</span></div></div>`+
-    `<div class="ftv-kp">${kpi(FTV_V3.cal,`${fmDd(D.F.ini)} a ${fmDd(D.F.fim)}`,"folha atual","fo")}${kpi(FTV_V3.pessoas,tot,tot===1?"falta injustificada":"faltas injustificadas")}${kpi(FTV_V3.grupo,pes,pes===1?"colaborador":"colaboradores")}${kpi(FTV_V3.relogio,atr,atr===1?"atrasada":"atrasadas","k-da")}${kpi(FTV_V3.alerta,hj,hj===1?"vence hoje":"vencem hoje","k-hj")}</div>`+
+    `<div class="ftv-kp">${kpi(FTV_V3.cal,`${fmDd(D.F.ini)} a ${fmDd(D.F.fim)}`,"folha atual","fo","fo")}${kpi(FTV_V3.pessoas,tot,tot===1?"falta injustificada":"faltas injustificadas","","tot")}${kpi(FTV_V3.grupo,pes,pes===1?"colaborador":"colaboradores","","pes")}${kpi(FTV_V3.relogio,atr,atr===1?"atrasada":"atrasadas","k-da","da")}${kpi(FTV_V3.alerta,hj,hj===1?"vence hoje":"vencem hoje","k-hj","hj")}</div>`+
     `<div class="ftv-st"><div class="ftv-rl"><b>${ftvRelTxt().h}</b><span>${ftvRelTxt().d}<em>${ftvRelTxt().n}</em></span></div><div class="ftv-st2"><button type="button" class="ftv-tm" onclick="event.stopPropagation();ftvTrocaTema()">${tema==="claro"?FTV_IC.lua+"Escuro":FTV_IC.sol+"Claro"}</button><span><i class="${FTV.erro?"off":""}"></i>${FTV.erro?"Sem conexão · mostrando o último dado":"Dados da planilha de "+fmDdA(FM.dados.dataBase)}</span></div></div></header>`+
     `<div class="ftv-mq" aria-label="Faltas injustificadas por supervisor"><div class="ftv-mql"><span class="ic">${FTV_V3.pessoas}</span><div><span>Faltas injustificadas</span><b>por supervisor</b></div></div><div class="ftv-mqv"><div class="ftv-mqt">${tk}${tk}</div></div></div>`+
     `<main class="ftv-grid" style="--cols:1">${D.lista.map(ftvCard).join("")}</main>`+
@@ -16567,18 +16628,15 @@ function ftvCorta(el){
   // lista comprida não encolhe a letra: ela rola sozinha (letra grande para ler de longe)
   return [...el.querySelectorAll(".ftv-k,.ftv-ch0")].some(sai);
 }
-/* Detalhe do supervisor: o painel tem tamanho fixo (sobre a central operacional); as letras de dentro são grandes e só
-   diminuem o necessário para a tabela caber inteira, sem barra de rolagem (até 62%; abaixo disso a tabela rola). */
+/* Detalhe (supervisor ou indicador): o painel tem tamanho fixo (sobre a central operacional) e a letra de dentro
+   também — o MESMO tamanho em qualquer área e com qualquer filtro (antes ela crescia quando havia poucos casos e
+   mudava de uma situação para outra, o que incomodava). O que não couber rola sozinho. */
+const FTV_DET_FZ=.8;
 function ftvDetAjusta(){
   const det=document.querySelector("#ftv .ftv-det"),db=det&&det.querySelector(".ftv-db");if(!db)return;
-  // o tamanho da tela é medido com as linhas no tamanho normal; depois as linhas ganham 30% (classe "grande")
-  det.classList.remove("grande");db.scrollTop=0;
-  const cabe=k=>{det.style.fontSize=k.toFixed(3)+"em";return db.scrollHeight<=db.clientHeight+2;};
-  // maior tamanho (entre 62% e 115%) em que a tabela cabe inteira
-  let lo=.62,hi=1.15;
-  if(cabe(hi))lo=hi;
-  else{for(let i=0;i<8;i++){const m=(lo+hi)/2;if(cabe(m))lo=m;else hi=m;}cabe(lo);}
+  det.style.fontSize=FTV_DET_FZ+"em";
   det.classList.add("grande");
+  db.scrollTop=0;
   ftvDetRola();
 }
 // quando as linhas maiores não cabem, a lista desce devagar sozinha, para no fim e volta ao começo
@@ -16618,16 +16676,15 @@ function ftvAjusta(){
   if(g){
     const cols=+g.style.getPropertyValue("--cols")||1,cards=[...g.querySelectorAll(".ftv-card")],rows=Math.ceil(cards.length/cols);
     if(rows===2||rows===3){
-      const w=[];for(let r=0;r<rows;r++){const m=Math.max(0,...cards.slice(r*cols,r*cols+cols).map(c=>c.querySelectorAll(".ftv-it").length));w.push(1.8+Math.min(Math.max(m,1),3)+(m>3?.6:0));}
+      const w=[];for(let r=0;r<rows;r++){const m=Math.max(0,...cards.slice(r*cols,r*cols+cols).map(c=>c.querySelectorAll(".ftv-it").length));w.push(1.8+Math.min(Math.max(m,1),3));}
       g.style.gridTemplateRows=w.map(x=>"minmax(0,"+x.toFixed(2)+"fr)").join(" ");
     }else g.style.gridTemplateRows="";
   }
   const t=el.querySelector(".ftv-mqt");
   if(t){const w=t.scrollWidth/2;t.style.animationDuration=Math.max(30,w/(fz*2.4))+"s";}
   el.querySelectorAll(".ftv-card").forEach(card=>{
-    const ls=card.querySelector(".ftv-ls"),tr=ls&&ls.querySelector(".ftv-tr"),m=card.querySelector(".ftv-mais");if(!tr)return;
+    const ls=card.querySelector(".ftv-ls"),tr=ls&&ls.querySelector(".ftv-tr");if(!tr)return;
     const h=tr.scrollHeight,cabe=h<=ls.clientHeight+2;
-    if(m){let vis=0;[...tr.children].forEach(li=>{if(li.offsetTop+li.offsetHeight<=ls.clientHeight+2)vis++;});const resto=tr.children.length-vis;m.textContent=cabe||!resto?"":`+${ftvPl(resto,"ocorrência","ocorrências")}`;}
     if(!cabe){
       [...tr.children].forEach(li=>{const d=li.cloneNode(true);d.classList.add("ftv-dup");d.setAttribute("aria-hidden","true");tr.appendChild(d);});
       tr.style.setProperty("--alt",h+"px");tr.style.animationDuration=Math.max(30,h/(fz*.47))+"s";tr.classList.add("rola");
@@ -16640,7 +16697,7 @@ function ftvPinta(){
   const db=el.querySelector(".ftv-db"),y=db?db.scrollTop:0;
   el.innerHTML=ftvHtml();
   const nb=el.querySelector(".ftv-db");if(nb&&y)nb.scrollTop=y;
-  if(FTV.q)ftvFiltra(FTV.q);
+  if(FTV.q||FTV.fc)ftvFiltra(FTV.q);
   setTimeout(ftvAjusta,30);
   // a medida só vale com a fonte da TV carregada (antes dela o texto ocupa outro tamanho)
   if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{if(FTV.on)ftvAjusta();});
@@ -16649,17 +16706,21 @@ function ftvPinta(){
 function ftvFiltra(v){
   FTV.q=v||"";ftvDetTimer();
   const el=document.getElementById("ftv");if(!el)return;
-  const q=FTV.q.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();let tot=0;
+  const q=FTV.q.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim(),fc=FTV.fc||"";let tot=0;
   el.querySelectorAll(".ftv-det .ftv-dg").forEach(g=>{
-    let n=0;g.querySelectorAll(".ftv-dr").forEach(r=>{const ok=!q||r.dataset.q.indexOf(q)>=0;r.hidden=!ok;if(ok)n++;});
+    let n=0;g.querySelectorAll(".ftv-dr").forEach(r=>{const ok=(!q||(r.dataset.q||"").indexOf(q)>=0)&&(!fc||!r.dataset.cat||r.dataset.cat===fc);r.hidden=!ok;if(ok)n++;});
     g.hidden=!n;tot+=n;
   });
-  const m=el.querySelector(".ftv-fn");if(m)m.hidden=!q||tot>0;
+  el.querySelectorAll(".ftv-det .ftv-dkb").forEach(b=>{const on=(b.dataset.f||"")===fc;b.classList.toggle("on",on);b.setAttribute("aria-pressed",on);});
+  const m=el.querySelector(".ftv-fn");if(m)m.hidden=!(q||fc)||tot>0;
   ftvDetAjusta();
 }
-function ftvDet(nome){FTV.det=nome;FTV.q="";ftvPinta();ftvDetTimer();setTimeout(ftvDetAjusta,500);}
-function ftvDetFecha(){FTV.det="";FTV.q="";clearTimeout(FTV.tDet);ftvPinta();}
-function ftvDetTimer(){clearTimeout(FTV.tDet);if(FTV.det)FTV.tDet=setTimeout(ftvDetFecha,90000);}
+/* Quadro do topo do detalhe: mostra só aquela situação; tocar de novo (ou em "faltas"/"colaboradores") volta a mostrar todos. */
+function ftvFiltraCat(f){FTV.fc=f&&FTV.fc!==f?f:"";ftvFiltra(FTV.q);}
+function ftvDet(nome){FTV.det=nome;FTV.kpi="";FTV.q="";FTV.fc="";ftvPinta();ftvDetTimer();setTimeout(ftvDetAjusta,500);}
+function ftvKpi(q){if(!FTV_KPI[q])return;FTV.kpi=q;FTV.det="";FTV.q="";FTV.fc="";ftvPinta();ftvDetTimer();setTimeout(ftvDetAjusta,500);}
+function ftvDetFecha(){FTV.det="";FTV.kpi="";FTV.q="";FTV.fc="";clearTimeout(FTV.tDet);ftvPinta();}
+function ftvDetTimer(){clearTimeout(FTV.tDet);if(FTV.det||FTV.kpi)FTV.tDet=setTimeout(ftvDetFecha,90000);}
 /* Busca os dados de novo sem apagar a tela: se a internet cair, continua mostrando o último dado. */
 function ftvAtualiza(){
   return fmPedir("GET","casos").then(j=>{FM.dados=j;FM.carregadoEm=Date.now();FTV.carregadoEm=Date.now();FTV.erro="";ftvPinta();if(typeof fmHistCarregar==="function")fmHistCarregar();})

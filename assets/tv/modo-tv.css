@@ -1688,3 +1688,31 @@
 #ftv .ftv-top>.ftv-logo{display:flex;align-items:center;justify-content:center;padding:.45em .9em;
   background:radial-gradient(90% 120% at 0% 0%,rgba(70,150,255,.28),transparent 60%),linear-gradient(160deg,#12305f 0%,#0b1d3f 45%,#08142e 100%)}
 #ftv .ftv-top>.ftv-logo .ftv-lsv{display:block;width:100%;height:100%;max-height:5.6em;filter:drop-shadow(0 .12em .25em rgba(0,0,0,.55))}
+
+/* indicadores do topo clicáveis: abrem o detalhe (mesmo painel do supervisor) */
+#ftv .ftv-k{cursor:pointer;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+#ftv .ftv-k:hover,#ftv .ftv-k:focus-visible{outline:none;transform:translateY(-2px);border-color:rgba(140,200,255,.95);box-shadow:0 0 1.2em rgba(60,150,255,.55),inset 0 1px 0 rgba(190,225,255,.5)}
+#ftv .ftv-k.k-da:hover,#ftv .ftv-k.k-da:focus-visible{border-color:#ff6b6b;box-shadow:0 0 1.2em rgba(255,60,70,.5),inset 0 1px 0 rgba(255,200,200,.4)}
+#ftv .ftv-k.k-hj:hover,#ftv .ftv-k.k-hj:focus-visible{border-color:#ffc23d;box-shadow:0 0 1.2em rgba(255,180,40,.5),inset 0 1px 0 rgba(255,235,180,.4)}
+@media (prefers-reduced-motion:reduce){#ftv .ftv-k{transition:none}#ftv .ftv-k:hover{transform:none}}
+/* detalhe de um indicador: ícone no lugar da inicial; grupos por supervisor com a cor dele */
+#ftv .ftv-det.ftv-kd .ftv-av.g svg{width:58%;height:58%;color:#fff}
+#ftv .ftv-det .ftv-dg.k-sup h4 i{background:hsl(var(--hs,210) 85% 60%)}
+#ftv .ftv-det .ftv-dg.k-sup h4 em{background:#0e2a66;border-color:#3d7bff;color:#cfe2ff}
+#ftv .ftv-det .ftv-dg.k-sup .ftv-dr{box-shadow:inset .3em 0 0 hsl(var(--hs,210) 85% 58%)}
+#ftv .ftv-det .ftv-dr-sup{cursor:pointer}
+#ftv .ftv-det .ftv-dr-sup:hover,#ftv .ftv-det .ftv-dr-sup:focus-visible{outline:none;background:rgba(80,150,255,.14)}
+#ftv .ftv-det .ftv-res .ftv-dp b{color:#fff}
+#ftv .ftv-det .ftv-res .ftv-v-da b{color:#ff4a5c}
+#ftv .ftv-det .ftv-res .ftv-v-hj b{color:#ffb020}
+
+/* quadros do topo do detalhe: filtram a lista de baixo */
+#ftv .ftv-det button.ftv-dk{font:inherit;color:inherit;text-align:left;cursor:pointer;transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease,opacity .15s ease}
+#ftv .ftv-det button.ftv-dk:hover,#ftv .ftv-det button.ftv-dk:focus-visible{outline:none;transform:translateY(-2px);border-color:#9fd0ff;box-shadow:0 0 .9em rgba(80,160,255,.55)}
+#ftv .ftv-det .ftv-dks:has(.ftv-dkb.on) .ftv-dkb:not(.on){opacity:.5}
+#ftv .ftv-det button.ftv-dk.on{border-color:#fff;box-shadow:0 0 0 .1em #fff inset,0 0 1em rgba(120,190,255,.7)}
+#ftv .ftv-det button.ftv-dk.k-da.on{box-shadow:0 0 0 .1em #ff6b6b inset,0 0 1em rgba(255,70,80,.6);border-color:#ff6b6b}
+#ftv .ftv-det button.ftv-dk.k-hj.on{box-shadow:0 0 0 .1em #ffb020 inset,0 0 1em rgba(255,170,40,.6);border-color:#ffb020}
+#ftv .ftv-det button.ftv-dk.k-np.on{box-shadow:0 0 0 .1em #ffd21a inset,0 0 1em rgba(255,210,30,.55);border-color:#ffd21a}
+#ftv .ftv-det button.ftv-dk.k-vi.on,#ftv .ftv-det button.ftv-dk.k-gr.on{box-shadow:0 0 0 .1em #b48cff inset,0 0 1em rgba(160,120,255,.6);border-color:#b48cff}
+@media (prefers-reduced-motion:reduce){#ftv .ftv-det button.ftv-dk{transition:none}#ftv .ftv-det button.ftv-dk:hover{transform:none}}
