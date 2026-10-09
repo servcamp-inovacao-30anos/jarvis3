@@ -4,7 +4,8 @@
    • registra o service worker (/sw.js): sem ele nenhum push chega;
    • convite com um toque depois do login, para o supervisor cadastrado ativar o celular;
    • "Avisos neste aparelho" e "Painel de avisos" no menu do perfil;
-   • tocar na notificação abre a tela de Faltas da Supervisão (?abrir=faltassup).
+   • tocar na notificação abre a tela de Faltas da Supervisão (?abrir=faltassup) e,
+     por cima, o aviso completo com todas as faltas (&aviso=id).
    Nada essencial vai para o localStorage: o que vale está no servidor. */
 (function(){
 "use strict";
@@ -33,7 +34,7 @@ if("serviceWorker" in navigator){
   navigator.serviceWorker.register("/sw.js").catch(function(){});
   navigator.serviceWorker.addEventListener("message",function(e){
     const d=e.data||{};
-    if(d.tipo==="abrir")avAbrirPg(d.pg);
+    if(d.tipo==="abrir")avAbrirPg(d.pg,d.aviso);
     else if(d.tipo==="aviso-faltas"){avTocarSom();if(typeof hqToast==="function")hqToast("🔔 Chegou um aviso de faltas");}
   });
 }
@@ -42,24 +43,55 @@ if("serviceWorker" in navigator){
    abre depois do login (e o navTo ainda confere a permissão de quem entrou). */
 (function(){
   try{
-    const q=new URLSearchParams(location.search),pg=q.get("abrir");
+    const q=new URLSearchParams(location.search),pg=q.get("abrir"),aviso=q.get("aviso");
     if(!pg)return;
     sessionStorage.setItem("avAbrir",pg);
-    q.delete("abrir");
+    if(aviso)sessionStorage.setItem("avAviso",aviso);
+    q.delete("abrir");q.delete("aviso");
     const resto=q.toString();
     history.replaceState(null,"",location.pathname+(resto?"?"+resto:"")+location.hash);
   }catch(e){}
 })();
-function avAbrirPg(pg){
+const ID_AVISO=/^[a-f0-9]{16}$/;
+function avAbrirPg(pg,aviso){
   if(AV_PAGINAS.indexOf(pg)<0)return;
-  if(!logado()){try{sessionStorage.setItem("avAbrir",pg);}catch(e){}return;}
+  aviso=ID_AVISO.test(String(aviso||""))?aviso:"";
+  if(!logado()){try{sessionStorage.setItem("avAbrir",pg);if(aviso)sessionStorage.setItem("avAviso",aviso);}catch(e){}return;}
   if(typeof navTo==="function")navTo(pg,null);
+  if(aviso)avMostrarAviso(aviso);
 }
 function avAbrirPendente(){
-  let pg="";
-  try{pg=sessionStorage.getItem("avAbrir")||"";sessionStorage.removeItem("avAbrir");}catch(e){}
-  if(pg)avAbrirPg(pg);
+  let pg="",aviso="";
+  try{pg=sessionStorage.getItem("avAbrir")||"";aviso=sessionStorage.getItem("avAviso")||"";sessionStorage.removeItem("avAbrir");sessionStorage.removeItem("avAviso");}catch(e){}
+  if(pg)avAbrirPg(pg,aviso);
 }
+
+/* ── aviso completo (aberto pelo toque na notificação) ─────────────────
+   A notificação mostra no máximo 10 pessoas; aqui aparecem todas, com o dia de cada falta. */
+const SEMANA=["dom","seg","ter","qua","qui","sex","sáb"];
+function diaCurto(d){const s=String(d||"");if(!/^\d{4}-\d{2}-\d{2}/.test(s))return"—";const w=new Date(s.slice(0,10)+"T12:00:00Z").getUTCDay();return SEMANA[w]+", "+s.slice(8,10)+"/"+s.slice(5,7);}
+function quandoRecebido(iso){const t=Date.parse(iso);if(!t)return"";const sp=new Date(t-3*3600000).toISOString();return sp.slice(8,10)+"/"+sp.slice(5,7)+" às "+sp.slice(11,16);}
+async function avMostrarAviso(id){
+  const corpo=t=>abrirJanela("avAvisoCompleto",'<div class="av-h"><b>🔔 Aviso de faltas</b><button type="button" class="av-x" aria-label="Fechar" onclick="avFechar(\'avAvisoCompleto\')">✕</button></div><div class="av-c">'+t+'</div>');
+  corpo('<p class="av-mut">Carregando o aviso…</p>');
+  let a;
+  try{a=(await api("aviso&id="+encodeURIComponent(id))).aviso;}
+  catch(e){corpo('<div class="av-alerta">'+esc(e.message)+'</div>');return;}
+  const linhas=String(a.corpo||"").split("\n"),abertura=linhas[0]||"",fecho=linhas.length>1?linhas[linhas.length-1]:"";
+  const f=(a.faltas||[]).slice().sort((x,y)=>String(x.nome||"").localeCompare(String(y.nome||""))||String(x.data||"").localeCompare(String(y.data||"")));
+  let h='<div class="av-av-tt"><b>'+esc(a.titulo)+'</b><span>Recebido em '+esc(quandoRecebido(a.enviado_em))+'</span></div>';
+  if(!f.length)h+='<p class="av-av-p">'+esc(a.corpo)+'</p>';
+  else{
+    h+='<p class="av-av-p">'+esc(abertura)+'</p>'+
+      '<div class="av-tab-w"><table class="av-tab"><thead><tr><th>Colaborador</th><th>RE</th><th>Posto</th><th>Data da falta</th></tr></thead><tbody>'+
+      f.map(x=>'<tr><td data-l="Colaborador"><b>'+esc(x.nome||"—")+'</b></td><td data-l="RE">'+esc(x.re)+'</td><td data-l="Posto">'+esc(x.posto||"Reserva técnica")+'</td><td data-l="Data da falta">'+esc(diaCurto(x.data))+'</td></tr>').join("")+
+      '</tbody></table></div>'+
+      '<p class="av-av-p av-av-f">'+esc(fecho)+'</p>';
+  }
+  h+='<div class="av-linha"><button type="button" class="av-b av-pri" onclick="avFechar(\'avAvisoCompleto\')">Ver na tela de Faltas da Supervisão</button></div>';
+  corpo(h);
+}
+window.avMostrarAviso=avMostrarAviso;
 
 /* ── som do aviso ─────────────────────────────────────────────────────────
    A notificação push toca o som do celular (nenhum navegador deixa a página

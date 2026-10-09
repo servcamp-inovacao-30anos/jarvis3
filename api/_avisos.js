@@ -8,6 +8,7 @@
 //       GET  status     se esta pessoa recebe avisos, se aprova e quantos aparelhos tem
 //       POST inscrever  grava o aparelho (só supervisor cadastrado ativo ou aprovador)
 //       POST cancelar   tira aparelhos da própria pessoa (nunca de outra)
+//       GET  aviso      o aviso completo que chegou no celular (só quem recebeu ou aprovador)
 //     só aprovadores:
 //       GET  previa     supervisores, aparelhos, faltas novas e o texto exato de cada aviso
 //       POST contato · editar · remover   cadastro de quem recebe
@@ -84,19 +85,29 @@ const primeiroNome = n => { const p = String(n || "").trim().split(/\s+/)[0] || 
 const corta = (s, n) => { s = String(s == null ? "" : s).trim(); return s.length > n ? s.slice(0, n - 1) + "…" : s; };
 const plural = (n, um, varios) => n + " " + (n === 1 ? um : varios);
 
-// Uma linha por pessoa (quem faltou dois dias aparece uma vez, com "(2 faltas)").
+// Uma linha por pessoa, com o dia de cada falta (quem faltou dois dias aparece uma vez, com as duas datas).
+const ddmm = d => { const s = String(d || ""); return /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(8, 10) + "/" + s.slice(5, 7) : ""; };
+const emLista = l => (l.length <= 1 ? l.join("") : l.slice(0, -1).join(", ") + " e " + l[l.length - 1]);
 function linhasPorPessoa(faltas) {
   const porRE = new Map();
   faltas.forEach(f => {
     const k = String(f.re);
-    if (!porRE.has(k)) porRE.set(k, { re: f.re, nome: f.nome, posto: f.posto, n: 0 });
-    porRE.get(k).n++;
+    if (!porRE.has(k)) porRE.set(k, { re: f.re, nome: f.nome, posto: f.posto, datas: [] });
+    porRE.get(k).datas.push(String(f.data || "").slice(0, 10));
   });
-  return [...porRE.values()].sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || "")));
+  const l = [...porRE.values()];
+  l.forEach(p => { p.datas = [...new Set(p.datas)].sort(); p.n = p.datas.length || 1; });
+  return l.sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || "")));
+}
+function linhaPessoa(p, corte) {
+  const datas = p.datas.map(ddmm).filter(Boolean);
+  const quando = datas.length ? (datas.length === 1 ? " — falta em " + datas[0] : " — faltas em " + emLista(datas)) : "";
+  return `• ${corta(p.nome || "SEM NOME", corte ? 48 : 120)} — RE ${p.re} — ${corta(p.posto || "Reserva técnica", corte ? 40 : 120)}${quando}`;
 }
 
 // tipo: RESUMO | SEM_FALTAS. jaAvisou: já saiu aviso para esta pessoa hoje ("Chegaram mais...").
-function montarTexto({ nome, faltas, jaAvisou, agora, tipo }) {
+// completo: a versão que o app mostra ao tocar na notificação — todo mundo, sem cortar nada.
+function montarTexto({ nome, faltas, jaAvisou, agora, tipo, completo }) {
   const sauda = "Muito " + saudacao(agora) + ", " + (primeiroNome(nome) || "supervisor") + "!";
   if (tipo === "SEM_FALTAS" || !faltas || !faltas.length) {
     return {
@@ -107,25 +118,26 @@ function montarTexto({ nome, faltas, jaAvisou, agora, tipo }) {
   const n = faltas.length;
   const abertura = jaAvisou
     ? (n === 1 ? "Chegou mais 1 falta injustificada na sua área:" : `Chegaram mais ${n} faltas injustificadas na sua área:`)
-    : `Hoje temos ${plural(n, "falta injustificada", "faltas injustificadas")} na sua área:`;
+    : `Temos ${plural(n, "falta injustificada", "faltas injustificadas")} na sua área:`;
   const pessoas = linhasPorPessoa(faltas);
   const fecho = "Por gentileza, verifique se há atestados que justifiquem a ausência. Caso não haja, aplicar medida disciplinar até o próximo plantão.";
   const titulo = "ServCamp · " + plural(n, "falta injustificada", "faltas injustificadas");
+  if (completo) return { titulo, corpo: [sauda + " " + abertura, ...pessoas.map(p => linhaPessoa(p, false)), fecho].join("\n") };
   // Corta nomes e postos e, se ainda passar do limite, lista menos gente: o
   // serviço de push recusa a mensagem inteira acima de 4 KB.
   for (let max = MAX_LINHAS; max >= 1; max--) {
     const vis = pessoas.slice(0, max), resto = pessoas.length - vis.length;
-    const linhas = vis.map(p => `• ${corta(p.nome || "SEM NOME", 48)} — RE ${p.re} — ${corta(p.posto || "Reserva técnica", 40)}${p.n > 1 ? ` (${p.n} faltas)` : ""}`);
-    if (resto > 0) linhas.push(`+ ${resto} na tela de Faltas da Supervisão`);
+    const linhas = vis.map(p => linhaPessoa(p, true));
+    if (resto > 0) linhas.push(`+ ${resto} — toque para ver o aviso completo`);
     const corpo = [sauda + " " + abertura, ...linhas, fecho].join("\n");
     if (Buffer.byteLength(JSON.stringify({ titulo, corpo }), "utf8") <= MAX_PAYLOAD - 300) return { titulo, corpo };
   }
-  return { titulo, corpo: sauda + " " + abertura + "\n+ " + pessoas.length + " na tela de Faltas da Supervisão\n" + fecho };
+  return { titulo, corpo: sauda + " " + abertura + "\n+ " + pessoas.length + " — toque para ver o aviso completo\n" + fecho };
 }
 
 // O que vai para o celular. O service worker (sw.js) monta a notificação com isto.
-function payload(texto, tipo, dia) {
-  const p = { titulo: texto.titulo, corpo: texto.corpo, tipo, pg: PAGINA, url: "/?abrir=" + PAGINA, tag: "faltas-" + dia + (tipo === "TESTE" ? "-teste" : "") };
+function payload(texto, tipo, dia, aviso) {
+  const p = { titulo: texto.titulo, corpo: texto.corpo, tipo, pg: PAGINA, aviso, url: "/?abrir=" + PAGINA + (aviso ? "&aviso=" + aviso : ""), tag: "faltas-" + dia + (tipo === "TESTE" ? "-teste" : "") };
   const s = JSON.stringify(p);
   if (Buffer.byteLength(s, "utf8") > MAX_PAYLOAD) throw new Error("aviso grande demais");
   return s;
@@ -291,8 +303,12 @@ async function panorama(db, agora) {
   return { hoje, contatos, aparelhos, aparelhosDe, porContato, semCadastro: [...semCadastro.values()], envios: doDia };
 }
 
+// O registro guarda o aviso inteiro (texto completo e a lista de faltas): é o
+// que o app mostra quando a pessoa toca na notificação.
+const novoIdAviso = () => require("crypto").randomBytes(8).toString("hex");
+const faltasDoAviso = l => l.map(f => ({ re: f.re, nome: f.nome || null, posto: f.posto || null, data: String(f.data || "").slice(0, 10) || null }));
 async function anotarEnvio(db, ator, d) {
-  await db.inserir("fm_auditoria", [ev(ator, ACAO_ENVIO, d.contato_id == null ? "teste" : d.contato_id, d)]);
+  await db.inserir("fm_auditoria", [ev(ator, ACAO_ENVIO, d.aviso, d)]);
 }
 
 // ── envio (automático e manual) ─────────────────────────────────────────────
@@ -323,15 +339,16 @@ async function processar(db, { origem, ids, modo, semFaltas, ator, agora }) {
       const vai = modo === "todas" ? lista : minhas;
       if (!vai.length) continue; // outra atualização já avisou estas
       const jaAvisou = doDia.some(e => e.tipo === "RESUMO");
-      const texto = montarTexto({ nome: contato.nome, faltas: vai, jaAvisou: modo === "todas" ? false : jaAvisou, agora, tipo: "RESUMO" });
-      const ok = await mandar(db, aps, payload(texto, "RESUMO", P.hoje), v);
+      const opcoesTexto = { nome: contato.nome, faltas: vai, jaAvisou: modo === "todas" ? false : jaAvisou, agora, tipo: "RESUMO" };
+      const texto = montarTexto(opcoesTexto), aviso = novoIdAviso();
+      const ok = await mandar(db, aps, payload(texto, "RESUMO", P.hoje, aviso), v);
       if (!ok) {
         // nenhum aparelho recebeu: as faltas voltam para a fila e saem no próximo envio
         if (minhas.length) await db.inserir("fm_auditoria", minhas.map(f => ev(ator, ACAO_DEVOLVIDA, f.re + "|" + f.data, { lote })));
         tot.falhou++;
         continue;
       }
-      await anotarEnvio(db, ator, { contato_id: contato.id, nome: contato.nome, dia: P.hoje, tipo: "RESUMO", origem, qtd: vai.length, aparelhos: ok });
+      await anotarEnvio(db, ator, { aviso, contato_id: contato.id, nome: contato.nome, user_key: contato.user_key, dia: P.hoje, tipo: "RESUMO", origem, qtd: vai.length, aparelhos: ok, titulo: texto.titulo, corpo: montarTexto({ ...opcoesTexto, completo: true }).corpo, faltas: faltasDoAviso(vai) });
       tot.avisos++; tot.faltas += vai.length; tot.aparelhos += ok;
       continue;
     }
@@ -339,10 +356,10 @@ async function processar(db, { origem, ids, modo, semFaltas, ator, agora }) {
     // ainda não saiu aviso hoje. Manual: só quando o aprovador marcou a opção.
     const querSem = origem === "auto" ? !doDia.length : !!semFaltas || modo === "todas";
     if (!querSem) continue;
-    const texto = montarTexto({ nome: contato.nome, faltas: [], agora, tipo: "SEM_FALTAS" });
-    const ok = await mandar(db, aps, payload(texto, "SEM_FALTAS", P.hoje), v);
+    const texto = montarTexto({ nome: contato.nome, faltas: [], agora, tipo: "SEM_FALTAS" }), aviso = novoIdAviso();
+    const ok = await mandar(db, aps, payload(texto, "SEM_FALTAS", P.hoje, aviso), v);
     if (!ok) { tot.falhou++; continue; }
-    await anotarEnvio(db, ator, { contato_id: contato.id, nome: contato.nome, dia: P.hoje, tipo: "SEM_FALTAS", origem, qtd: 0, aparelhos: ok });
+    await anotarEnvio(db, ator, { aviso, contato_id: contato.id, nome: contato.nome, user_key: contato.user_key, dia: P.hoje, tipo: "SEM_FALTAS", origem, qtd: 0, aparelhos: ok, titulo: texto.titulo, corpo: texto.corpo, faltas: [] });
     tot.semFaltas++; tot.aparelhos += ok;
   }
   return tot;
@@ -411,6 +428,17 @@ async function cancelar({ res, db, ator, body }) {
   const meus = (await aparelhosDoUsuario(db, ator)).filter(a => !body.endpoint || a.endpoint === String(body.endpoint));
   if (meus.length) await db.inserir("fm_auditoria", meus.map(a => ev(ator, ACAO_APARELHO_FIM, a.id, null, { user_key: ator })));
   return res.status(200).json({ ok: true, aparelhos: (await aparelhosDoUsuario(db, ator)).length });
+}
+
+// O aviso completo, aberto pelo toque na notificação. Só quem recebeu (ou um aprovador) vê.
+async function verAviso({ req, res, db, ator }) {
+  const id = String((req.query && req.query.id) || "");
+  if (!/^[a-f0-9]{16}$/.test(id)) return erro(res, 400, "Aviso inválido.", "AVISO_INVALIDO");
+  const [e] = await db.obter(`fm_auditoria?select=depois,criado_em&acao=eq.${ACAO_ENVIO}&chave=eq.${id}&order=id.asc&limit=1`);
+  const d = e && e.depois;
+  if (!d) return erro(res, 404, "Aviso não encontrado.", "NAO_ENCONTRADO");
+  if (!(ator && (d.user_key === ator || ponto.APROVADORES.has(ator)))) return erro(res, 403, "Este aviso é de outra pessoa.", "NAO_AUTORIZADO");
+  return res.status(200).json({ ok: true, aviso: { id, tipo: d.tipo, nome: d.nome, dia: d.dia, enviado_em: e.criado_em, titulo: d.titulo || "", corpo: d.corpo || "", faltas: d.faltas || [] } });
 }
 
 // ── rotas dos aprovadores ───────────────────────────────────────────────────
@@ -497,17 +525,20 @@ async function enviarManual({ res, db, ator, body }) {
   return res.status(200).json({ ok: true, ...t });
 }
 
-const EXEMPLO = [
-  { re: 12345, nome: "MARIA EXEMPLO DA SILVA", posto: "COND - POSTO DE EXEMPLO", data: "" },
-  { re: 67890, nome: "JOÃO EXEMPLO SOUZA", posto: "EDIFÍCIO EXEMPLO", data: "" }
-];
+const EXEMPLO = () => {
+  const ontem = R.somaDias(diaSP(new Date()), -1);
+  return [
+    { re: 12345, nome: "MARIA EXEMPLO DA SILVA", posto: "COND - POSTO DE EXEMPLO", data: ontem },
+    { re: 67890, nome: "JOÃO EXEMPLO SOUZA", posto: "EDIFÍCIO EXEMPLO", data: ontem }
+  ];
+};
 async function enviarTeste({ res, db, ator, body }) {
   // só para os aparelhos de QUEM PEDIU: um teste nunca cai no celular de um supervisor
   const aps = await aparelhosDoUsuario(db, ator);
   if (!aps.length) return erro(res, 409, "Ative os avisos neste aparelho antes de enviar o teste.", "SEM_APARELHO");
   const agora = new Date();
   // exemplo fictício (2 faltas) saudando quem pediu, ou as faltas reais de um supervisor escolhido
-  let faltas = EXEMPLO, nome = String(body.nome || ator || "").slice(0, 60), contatoId = null;
+  let faltas = EXEMPLO(), nome = String(body.nome || ator || "").slice(0, 60), contatoId = null;
   if (body.contato_id != null) {
     const P = await panorama(db, agora);
     const g = [...P.porContato.values()].find(x => Number(x.contato.id) === Number(body.contato_id));
@@ -515,12 +546,13 @@ async function enviarTeste({ res, db, ator, body }) {
     faltas = g.novas.length ? g.novas : g.faltas;
     nome = g.contato.nome; contatoId = g.contato.id;
   }
-  const texto = montarTexto({ nome, faltas, agora, tipo: faltas.length ? "RESUMO" : "SEM_FALTAS" });
+  const opcoesTexto = { nome, faltas, agora, tipo: faltas.length ? "RESUMO" : "SEM_FALTAS" };
+  const texto = montarTexto(opcoesTexto), aviso = novoIdAviso();
   texto.titulo = "TESTE · " + texto.titulo;
-  const ok = await mandar(db, aps, payload(texto, "TESTE", diaSP(agora)), await vapid(db));
+  const ok = await mandar(db, aps, payload(texto, "TESTE", diaSP(agora), aviso), await vapid(db));
   // não reserva nenhuma falta: o teste não tira nada da fila
-  await anotarEnvio(db, ator, { contato_id: contatoId, nome, dia: diaSP(agora), tipo: "TESTE", origem: "manual", qtd: faltas.length, aparelhos: ok });
-  return res.status(200).json({ ok: ok > 0, aparelhos: ok, de: aps.length, texto });
+  await anotarEnvio(db, ator, { aviso, contato_id: contatoId, nome, user_key: ator, dia: diaSP(agora), tipo: "TESTE", origem: "manual", qtd: faltas.length, aparelhos: ok, titulo: texto.titulo, corpo: montarTexto({ ...opcoesTexto, completo: true }).corpo, faltas: faltasDoAviso(faltas) });
+  return res.status(200).json({ ok: ok > 0, aparelhos: ok, de: aps.length, texto, aviso });
 }
 
 async function salvarAuto({ res, db, ator, body }) {
@@ -536,6 +568,7 @@ const ROTAS = {
   "GET status": { fn: verStatus },
   "POST inscrever": { fn: inscrever },
   "POST cancelar": { fn: cancelar },
+  "GET aviso": { fn: verAviso },
   "GET previa": { aprovador: true, fn: verPrevia },
   "POST contato": { aprovador: true, fn: criarContato },
   "POST editar": { aprovador: true, fn: editarContato },

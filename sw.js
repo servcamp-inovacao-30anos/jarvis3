@@ -10,7 +10,10 @@
 // Por isso o HTML é sempre buscado na rede primeiro, e o cache só entra quando
 // a rede falha de fato.
 
-const VERSAO = "jarvis-v1";
+// v2: a v1 guardava QUALQUER arquivo estático para sempre (scripts e estilos em
+// /assets também), e quem já tinha o v1 ficaria preso numa versão velha. Trocar o
+// nome faz o "activate" abaixo apagar esse cache antigo.
+const VERSAO = "jarvis-v2";
 const ESTATICOS = [
   "/icon-192.png",
   "/icon-512.png",
@@ -64,7 +67,10 @@ self.addEventListener("fetch", e => {
     return;
   }
 
-  // Ícones e afins: cache primeiro, porque não mudam e são pequenos.
+  // Só os ícones e o manifesto (a lista fixa acima) vêm do cache: não mudam e são
+  // pequenos. Scripts, estilos, fontes e sons mudam a cada versão do sistema e
+  // vão sempre à rede, pelo caminho normal do navegador.
+  if (ESTATICOS.indexOf(url.pathname) < 0) return;
   e.respondWith((async () => {
     const hit = await caches.match(req);
     if (hit) return hit;
@@ -106,7 +112,7 @@ self.addEventListener("push", e => {
     silent: false,
     vibrate: VIBRA_FALTAS,
     timestamp: Date.now(),
-    data: { pg: d.pg || "faltassup", url: d.url || "/?abrir=faltassup", tipo: d.tipo || "" }
+    data: { pg: d.pg || "faltassup", url: d.url || "/?abrir=faltassup", tipo: d.tipo || "", aviso: d.aviso || "" }
   };
   e.waitUntil((async () => {
     await self.registration.showNotification(titulo, opcoes);
@@ -126,7 +132,7 @@ self.addEventListener("notificationclick", e => {
     if (aba) {
       // reaproveita a aba aberta: ela mesma navega, respeitando login e permissões
       try { await aba.focus(); } catch (err) {}
-      aba.postMessage({ tipo: "abrir", pg });
+      aba.postMessage({ tipo: "abrir", pg, aviso: dados.aviso || "" });
       return;
     }
     await self.clients.openWindow(dados.url || "/?abrir=" + pg);
