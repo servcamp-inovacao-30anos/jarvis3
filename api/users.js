@@ -24,7 +24,7 @@ const USUARIOS = [
   "joaoygor", "paulocampana", "ingridycampana", "amauriantonio", "eduardocipriano",
   "sirleimodesto", "jussilenealmeida", "gabrielaalvarenga", "rosisantos", "fabianalassala",
   "raphaelvictor", "sandraalves", "testejoao", "rafaelandrade", "adrianomacedo",
-  "edneyferraz", "frankpimentel", "carlos", "jeankleber", "paulosergio", "ronaldocimadon"
+  "edneyferraz", "frankpimentel", "carlos", "jeankleber", "paulosergio", "ronaldocimadon", "joyce"
 ];
 
 // Troca pendente: sempre para quem está na senha padrão; para quem já tem
