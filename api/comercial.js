@@ -27,7 +27,7 @@ const TABLES = {
   extras: {
     table: "com_servicos_extras",
     required: ["cliente","data_inicio","data_fim","qtd_colaboradores","tipo_servico"],
-    fields: ["cliente","data_inicio","data_fim","qtd_colaboradores","tipo_servico","observacao","responsavel","criado_por"]
+    fields: ["cliente","data_inicio","data_fim","qtd_colaboradores","tipo_servico","observacao","equipamentos","responsavel","criado_por"]
   },
   // Meta anual de contratos fechados, combinada entre o Comercial e a diretoria.
   // Definida na guia Propostas e Serviços Extras, exibida no Painel Comercial.

@@ -1865,6 +1865,7 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
             <div><label class="rhf-l" for="cpxf-tipo">Tipo de serviço *</label><select class="rhf-i" id="cpxf-tipo" onchange="cpxTipoOutro()"><option value="">Selecione…</option><option>LIMPEZA</option><option>PORTARIA</option><option value="__OUTRO">Outro (escrever)</option></select></div>
             <div id="cpxf-outro-box" hidden><label class="rhf-l" for="cpxf-outro">Qual serviço? *</label><input class="rhf-i" id="cpxf-outro" type="text" placeholder="Ex: Jardinagem, Zeladoria, Recepção"></div>
             <div id="cpxf-obs-box"><label class="rhf-l" for="cpxf-obs">Observações</label><input class="rhf-i" id="cpxf-obs" type="text" placeholder="Ex: evento no salão, cobrir férias, mutirão"></div>
+            <div><label class="rhf-l" for="cpxf-equip">Equipamentos utilizados</label><input class="rhf-i" id="cpxf-equip" type="text" maxlength="500" placeholder="Ex: lavadora de piso, aspirador, escada"></div>
           </div>
           <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
             <button type="submit" class="rh-btn" id="cpxBtnSalvar">💾 Salvar Serviço Extra</button>
@@ -9699,7 +9700,7 @@ function cpxRenderLista(){
   document.getElementById("cpx-lista-filtros").innerHTML=[["TODOS","Todos"],["EM ANDAMENTO","Em andamento"],["AGENDADO","Agendados"],["ENCERRADO","Encerrados"]]
     .map(([k,t])=>'<button type="button" class="cpx-chip'+(CPX_FL===k?" cpx-chip-on":"")+'" aria-pressed="'+(CPX_FL===k)+'" onclick="CPX_FL=\''+k+'\';cpxRenderLista()">'+t+' '+cnt(k)+'</button>').join("");
   const ordem={"EM ANDAMENTO":0,"AGENDADO":1,"ENCERRADO":2};
-  const lista=todos.filter(x=>(CPX_FL==="TODOS"||x.s===CPX_FL)&&(!q||normTxt(x.e.cliente+" "+x.e.tipo_servico+" "+(x.e.observacao||"")).includes(q)))
+  const lista=todos.filter(x=>(CPX_FL==="TODOS"||x.s===CPX_FL)&&(!q||normTxt(x.e.cliente+" "+x.e.tipo_servico+" "+(x.e.observacao||"")+" "+(x.e.equipamentos||"")).includes(q)))
     .sort((a,b)=>ordem[a.s]-ordem[b.s]||(a.s==="ENCERRADO"?(cpxDia(b.e.data_fim)<cpxDia(a.e.data_fim)?-1:1):(cpxDia(a.e.data_inicio)<cpxDia(b.e.data_inicio)?-1:1)));
   document.getElementById("cpx-lista-cnt").textContent=CPX_E.length?"· "+lista.length+" de "+CPX_E.length:"";
   if(!CPX_E.length){el.innerHTML='<div style="padding:26px;text-align:center;color:#94a3b8;font-size:.76rem">Nenhum serviço extra cadastrado ainda.</div>';return;}
@@ -9711,7 +9712,7 @@ function cpxRenderLista(){
       const nRef=refs.filter(r=>normTxt(r.LOCAL)===k&&cpxDia(r.DATA)>=ini&&cpxDia(r.DATA)<=fim).length;
       const p=CPX_SIT_PILL[s];
       return '<tr><td style="font-weight:800;color:#0d1f35">'+cpxEsc(e.cliente)+(e.observacao?'<div style="font-weight:500;color:#94a3b8;font-size:.64rem">'+cpxEsc(e.observacao)+'</div>':'')+'</td>'+
-        '<td>'+cpxEsc(e.tipo_servico)+'</td><td class="n" style="text-align:left">'+cpxBR(e.data_inicio)+'</td><td class="n" style="text-align:left">'+(e.data_fim?cpxBR(e.data_fim):'<span style="color:#94a3b8">sem data</span>')+'</td>'+
+        '<td>'+cpxEsc(e.tipo_servico)+''+(e.equipamentos?'<div style="color:#94a3b8;font-size:.64rem">🔧 '+cpxEsc(e.equipamentos)+'</div>':'')+'</td><td class="n" style="text-align:left">'+cpxBR(e.data_inicio)+'</td><td class="n" style="text-align:left">'+(e.data_fim?cpxBR(e.data_fim):'<span style="color:#94a3b8">sem data</span>')+'</td>'+
         '<td class="n">'+(Number(e.qtd_colaboradores)||"—")+'</td><td><span class="cpx-pill '+p[1]+'">'+p[0]+'</span></td>'+
         '<td class="n">'+(nRef||'<span style="color:#cbd5e1">—</span>')+'</td><td>'+cpxEsc(String(e.responsavel||"—").split(" ")[0])+'</td>'+
         '<td style="white-space:nowrap"><button type="button" class="rh-act" title="Editar" aria-label="Editar serviço extra de '+cpxEsc(e.cliente)+'" onclick="cpxEditar('+Number(e.id)+')">✏️</button><button type="button" class="rh-act" title="Excluir" aria-label="Excluir serviço extra de '+cpxEsc(e.cliente)+'" onclick="cpxExcluir('+Number(e.id)+')">🗑️</button></td></tr>';
@@ -9784,6 +9785,7 @@ function cpxEditar(id){
   document.getElementById("cpxf-qtd").value=e.qtd_colaboradores||"";
   cpxSetTipo(e.tipo_servico);
   document.getElementById("cpxf-obs").value=e.observacao||"";
+  document.getElementById("cpxf-equip").value=e.equipamentos||"";
   document.getElementById("cpx-form-title").textContent="✏️ Editando serviço extra — "+(e.cliente||"");
   document.getElementById("cpxBtnSalvar").textContent="💾 Salvar alterações";
   cpxForm();
@@ -9834,7 +9836,7 @@ function cpxSalvar(ev){
   if(fim<ini){cpxMsg("A data de encerramento não pode ser antes do início.",false);document.getElementById("cpxf-fim").focus();return false;}
   if(!Number.isInteger(qtd)||qtd<1||qtd>999){cpxMsg("Informe a quantidade de colaboradores (número inteiro, a partir de 1).",false);document.getElementById("cpxf-qtd").focus();return false;}
   if(!tipo){cpxMsg(tsel==="__OUTRO"?"Escreva qual é o serviço.":"Escolha o tipo de serviço.",false);document.getElementById(tsel==="__OUTRO"?"cpxf-outro":"cpxf-tipo").focus();return false;}
-  const row={cliente:cli,data_inicio:ini,data_fim:fim,qtd_colaboradores:qtd,tipo_servico:tipo,observacao:document.getElementById("cpxf-obs").value.trim()||null};
+  const row={cliente:cli,data_inicio:ini,data_fim:fim,qtd_colaboradores:qtd,tipo_servico:tipo,observacao:document.getElementById("cpxf-obs").value.trim()||null,equipamentos:document.getElementById("cpxf-equip").value.trim()||null};
   // responsável = quem cadastrou; editar depois não troca o nome
   if(id)row.id=Number(id);
   else{const quem=sessionStorage.getItem("userNome")||null;row.responsavel=quem;row.criado_por=quem;}
@@ -9960,8 +9962,8 @@ function comDet(kind){
       ?String(e.data_inicio).slice(0,10)<=hj&&(!e.data_fim||String(e.data_fim).slice(0,10)>=hj)
       :e.data_fim&&String(e.data_fim).slice(0,10)<hj&&String(e.data_fim).slice(0,7)===mes);
     title=kind==="extrasAnd"?"🧾 Serviços Extras em Andamento — "+arr.length:"✅ Serviços Extras Encerrados no Mês"+_mes+" — "+arr.length;
-    headers=["Cliente","Serviço","Início","Encerramento","Colab.","Observação","Responsável"];
-    rows=arr.map(e=>[e.cliente,e.tipo_servico,rhFmt(e.data_inicio),e.data_fim?rhFmt(e.data_fim):"—",e.qtd_colaboradores,e.observacao||"—",(e.responsavel||"—").split(" ")[0]]);
+    headers=["Cliente","Serviço","Início","Encerramento","Colab.","Equipamentos","Observação","Responsável"];
+    rows=arr.map(e=>[e.cliente,e.tipo_servico,rhFmt(e.data_inicio),e.data_fim?rhFmt(e.data_fim):"—",e.qtd_colaboradores,e.equipamentos||"—",e.observacao||"—",(e.responsavel||"—").split(" ")[0]]);
   }else if(kind==="prevista"){
     const arr=P.filter(p=>COM_ST_ATIVOS.includes(p.status)&&(Number(p.valor)||0)>0);
     title="🔮 Receita Prevista — pipeline ponderado pela chance";
