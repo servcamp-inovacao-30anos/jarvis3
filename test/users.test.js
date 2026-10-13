@@ -110,6 +110,21 @@ test("primeiro acesso: senha padrão, troca obrigatória e depois login com a se
   assert.equal(_auth.verify(r.dados.token, SEGREDO).u, "testejoao");
 });
 
+test("joyce: entra direto com a senha inicial (só o hash está no código), sem a padrão, e o banco manda depois", async () => {
+  let r = await entrar("joyce", "Joycedp123");
+  assert.equal(r.status, 200);
+  assert.deepEqual([r.dados.ok, r.dados.must_change], [true, false]);
+  assert.equal(_auth.verify(r.dados.token, SEGREDO).u, "joyce");
+  assert.equal((await entrar("joyce", PADRAO)).status, 401, "a padrão não abre a conta dela");
+  assert.equal((await entrar("joyce", "errada123")).status, 401);
+  // a senha gravada no banco passa a valer e a inicial deixa de valer
+  sb.semear("joyce", { custom_password: await _senha.hash("nova-do-banco-9"), must_change: false });
+  assert.equal((await entrar("joyce", "Joycedp123")).status, 401);
+  assert.equal((await entrar("joyce", "nova-do-banco-9")).status, 200);
+  // o código guarda só o hash: a senha em texto não aparece no arquivo
+  assert.equal(fs.readFileSync(path.join(__dirname, "..", "api", "users.js"), "utf8").includes("Joycedp123"), false);
+});
+
 test("senha errada ou usuário fora da lista não entram", async () => {
   assert.equal((await entrar("testejoao", "nao-e-a-padrao")).status, 401);
   assert.equal((await entrar("hacker", PADRAO)).status, 401);
