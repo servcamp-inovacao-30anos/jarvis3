@@ -6193,7 +6193,7 @@ const HE_EXTRA=new Set(["EXTRA ENTRADA","EXTRA SAIDA"]);
    nome do mês em que termina: 26/07 a 25/08 = Agosto. */
 function heSupFech(){
   const el=document.getElementById("he-sup-fech");if(!el)return;
-  const D=((typeof DASHBOARD_DATA!=="undefined"&&DASHBOARD_DATA&&DASHBOARD_DATA.hrextra)||[]).filter(r=>/^SUPERVISOR/i.test(String(r.CARGO||""))&&/^\d{4}-\d{2}-\d{2}/.test(String(r.DATA||"")));
+  const D=((typeof DASHBOARD_DATA!=="undefined"&&DASHBOARD_DATA&&DASHBOARD_DATA.hrextra)||[]).filter(r=>/^SUPERVISOR/i.test(String(r.CARGO||""))&&/EXTRA\s+(ENTRADA|SA[I\u00CD]DA)/i.test(String(r.TIPO||""))&&/^\d{4}-\d{2}-\d{2}/.test(String(r.DATA||"")));
   if(!D.length){el.innerHTML='<div style="padding:22px;text-align:center;color:#94a3b8;font-size:.76rem">Sem horas extras de supervisores na base.</div>';return;}
   const dias=D.map(r=>String(r.DATA).slice(0,10)).sort(),ini=dias[0],fimDado=dias[dias.length-1];
   const chave=function(iso){let y=+iso.slice(0,4),m=+iso.slice(5,7);if(+iso.slice(8,10)>=26){m++;if(m>12){m=1;y++;}}return y+"-"+String(m).padStart(2,"0");};
