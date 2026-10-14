@@ -1311,6 +1311,7 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
       <div class="cc"><div class="ch"><div class="chb"></div><span class="ct">Horas Extras por Cliente (Extra Entrada + Saída)</span></div><div class="cw" style="height:320px"><canvas id="cHE1"></canvas></div></div>
       <div class="cc"><div class="ch"><div class="chb"></div><span class="ct">Horas Extras por Supervisor (Extra Entrada + Saída)</span></div><div class="cw" style="height:320px"><canvas id="cHE2"></canvas></div></div>
     </div>
+    <div class="cc" style="margin-top:11px"><div class="ch"><div class="chb"></div><span class="ct">Horas dos Supervisores por Fechamento (dia 26 ao 25)</span></div><div id="he-sup-fech" style="padding:4px 2px 8px"></div></div>
     <div class="cc" style="margin-top:11px"><div class="ch"><div class="chb"></div><span class="ct">Horas Extras por Dia</span></div><div class="cw" style="height:200px"><canvas id="cHE3"></canvas></div></div>
     <div class="ts" style="margin-top:11px"><div class="th2"><div style="display:flex;align-items:center;gap:7px"><div class="chb"></div><span class="ct">Registro de Horas Extras</span></div><div class="tc2"><input class="sb2" type="text" placeholder="Buscar..." id="s-hrextra" oninput="rTbl('hrextra')"></div></div><div id="tbl-hrextra"></div><div class="pag"><div class="pi2" id="pi-hrextra"></div><div class="pbs" id="pb-hrextra"></div></div></div>
 
@@ -5850,7 +5851,7 @@ function updSecCharts(p){
   else if(p==="fts")updFTSC();
   else if(p==="dispo")updDispoC();
   else if(p==="restec")updRestecC();
-  else if(p==="hrextra")updHrExtraC();
+  else if(p==="hrextra"){updHrExtraC();heSupFech();}
   else if(p==="checklist")updChecklistC();
 }
 
@@ -6187,6 +6188,34 @@ function heReportEnviar(){
   }).catch(e=>{msg.style.color="#dc2626";msg.textContent=e.message||"Erro ao enviar.";btn.disabled=false;});
 }
 const HE_EXTRA=new Set(["EXTRA ENTRADA","EXTRA SAIDA"]);
+/* Horas extras dos SUPERVISORES por fechamento (dia 26 ao dia 25). Usa a base
+   inteira (DASHBOARD_DATA.hrextra), sem os filtros da tela. O fechamento leva o
+   nome do mês em que termina: 26/07 a 25/08 = Agosto. */
+function heSupFech(){
+  const el=document.getElementById("he-sup-fech");if(!el)return;
+  const D=((typeof DASHBOARD_DATA!=="undefined"&&DASHBOARD_DATA&&DASHBOARD_DATA.hrextra)||[]).filter(r=>/^SUPERVISOR/i.test(String(r.CARGO||""))&&/^\d{4}-\d{2}-\d{2}/.test(String(r.DATA||"")));
+  if(!D.length){el.innerHTML='<div style="padding:22px;text-align:center;color:#94a3b8;font-size:.76rem">Sem horas extras de supervisores na base.</div>';return;}
+  const dias=D.map(r=>String(r.DATA).slice(0,10)).sort(),ini=dias[0],fimDado=dias[dias.length-1];
+  const chave=function(iso){let y=+iso.slice(0,4),m=+iso.slice(5,7);if(+iso.slice(8,10)>=26){m++;if(m>12){m=1;y++;}}return y+"-"+String(m).padStart(2,"0");};
+  const nomeMes=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+  const inicioPer=function(k){let y=+k.slice(0,4),m=+k.slice(5,7)-1;if(m<1){m=12;y--;}return y+"-"+String(m).padStart(2,"0")+"-26";};
+  const fimPer=function(k){return k+"-25";};
+  // o primeiro fechamento só entra se a base já começava no dia 26 (ou antes)
+  const ks=[...new Set(dias.map(chave))].sort().filter(k=>inicioPer(k)>=ini);
+  const tot={},nomes=new Set();
+  D.forEach(r=>{const k=chave(String(r.DATA).slice(0,10)),n=String(r.NOME||"—").trim();nomes.add(n);(tot[n]=tot[n]||{})[k]=(tot[n][k]||0)+(Number(r.MINUTOS)||0);});
+  const fmt=function(s){if(!s)return "—";const m=Math.round(s/60);return Math.floor(m/60)+"h"+String(m%60).padStart(2,"0");};
+  const parcial=function(k){return fimDado<fimPer(k);};
+  const cab=ks.map(k=>nomeMes[+k.slice(5,7)-1]+(parcial(k)?"*":""));
+  const linhas=[...nomes].map(n=>({n,t:ks.reduce((a,k)=>a+((tot[n]||{})[k]||0),0)})).filter(x=>x.t>0).sort((a,b)=>b.t-a.t);
+  const soma=function(k){return linhas.reduce((a,x)=>a+((tot[x.n]||{})[k]||0),0);};
+  const td='padding:7px 10px;border-bottom:1px solid #eef1f6;text-align:right;font-variant-numeric:tabular-nums';
+  el.innerHTML='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.78rem;color:#0d1f35"><thead><tr><th style="padding:8px 10px;text-align:left;border-bottom:2px solid #dfe5ee">Supervisor</th>'+cab.map(c=>'<th style="padding:8px 10px;text-align:right;border-bottom:2px solid #dfe5ee">'+c+'</th>').join("")+'<th style="padding:8px 10px;text-align:right;border-bottom:2px solid #dfe5ee">Total</th></tr></thead><tbody>'+
+    linhas.map(x=>'<tr><td style="padding:7px 10px;border-bottom:1px solid #eef1f6;font-weight:700">'+_esc(x.n)+'</td>'+ks.map(k=>'<td style="'+td+'">'+fmt((tot[x.n]||{})[k])+'</td>').join("")+'<td style="'+td+';font-weight:800">'+fmt(x.t)+'</td></tr>').join("")+
+    '<tr><td style="padding:8px 10px;font-weight:800">Total</td>'+ks.map(k=>'<td style="padding:8px 10px;text-align:right;font-weight:800">'+fmt(soma(k))+'</td>').join("")+'<td style="padding:8px 10px;text-align:right;font-weight:800">'+fmt(linhas.reduce((a,x)=>a+x.t,0))+'</td></tr></tbody></table></div>'+
+    (ks.some(parcial)?'<div style="margin-top:8px;font-size:.66rem;color:#94a3b8">*Fechamento em andamento, dados até '+fimDado.slice(8,10)+'/'+fimDado.slice(5,7)+'</div>':'')+
+    '<div style="margin-top:4px;font-size:.66rem;color:#94a3b8">Fechamento: dia 26 ao dia 25 · só cargos de Supervisor</div>';
+}
 function updHrExtraC(){
   const d=F.hrextra;
   // KPIs dinâmicos por TIPOEXTRA
