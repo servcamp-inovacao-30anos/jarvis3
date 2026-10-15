@@ -24,8 +24,15 @@ const USUARIOS = [
   "joaoygor", "paulocampana", "ingridycampana", "amauriantonio", "eduardocipriano",
   "sirleimodesto", "jussilenealmeida", "gabrielaalvarenga", "rosisantos", "fabianalassala",
   "raphaelvictor", "sandraalves", "testejoao", "rafaelandrade", "adrianomacedo",
-  "edneyferraz", "frankpimentel", "carlos", "jeankleber", "paulosergio", "ronaldocimadon"
+  "edneyferraz", "frankpimentel", "carlos", "jeankleber", "paulosergio", "ronaldocimadon", "joyce"
 ];
+
+// Senha inicial própria de quem ainda não tem senha no banco (entra no lugar da padrão e sem troca
+// obrigatória). Fica aqui só o HASH, nunca a senha. Quando a senha for gravada no banco
+// (app_users.custom_password), ela passa a valer e esta linha pode sair. Pedido do Raphael, 13/10/2026.
+const SENHA_INICIAL = {
+  joyce: "scrypt:16384:8:1:aWeD1J+f4aMK+N3kJ1L9oA==:taSS/EJ8t6D2hWaAbbeg0sAb650fIg3K/xAXIKjpA+g="
+};
 
 // Troca pendente: sempre para quem está na senha padrão; para quem já tem
 // senha própria, só se must_change estiver marcado no banco.
@@ -66,6 +73,7 @@ module.exports = async function handler(req, res) {
       return { erro: "Não foi possível conferir a senha agora. Tente novamente.", status: 502 };
     }
     if (row && row.custom_password) return { ok: await _senha.verify(senha, row.custom_password), row };
+    if (SENHA_INICIAL[userKey]) return { ok: await _senha.verify(senha, SENHA_INICIAL[userKey]), row, inicial: true };
     const padrao = process.env.DEFAULT_PASSWORD_HASH;
     if (!_senha.isHash(padrao)) {
       return { erro: "Primeiro acesso indisponível: a senha padrão não está configurada no servidor (DEFAULT_PASSWORD_HASH).", status: 503 };
@@ -144,7 +152,7 @@ module.exports = async function handler(req, res) {
         emTextoClaro ? converterParaHash(userKey, password) : null,
         registrarAcesso(userKey, c.row)
       ]);
-      const mustChange = precisaTrocar(c.row);
+      const mustChange = c.inicial ? false : precisaTrocar(c.row);
       const secret = process.env.AUTH_SECRET;
       return res.status(200).json({
         ok: true,

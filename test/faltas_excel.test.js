@@ -80,10 +80,13 @@ test("HTML escapa o que vier do banco", () => {
   assert.ok(h.includes("&lt;b&gt;&amp;&quot;x&quot;&lt;/b&gt;"));
 });
 
-test("chave do Excel: só aprovador gera; vale na planilha e em nenhuma outra rota", async () => {
+test("chave do Excel: qualquer pessoa logada gera (sem login não); vale na planilha e em nenhuma outra rota", async () => {
   supabaseFalso(tabelas());
-  const negada = await chamar(rh, { method: "POST", query: { modulo: "faltas", t: "chave_excel" }, usuario: "supervisor.fulano" });
-  assert.equal(negada.statusCode, 403);
+  const semLogin = await chamar(rh, { method: "POST", query: { modulo: "faltas", t: "chave_excel" } });
+  assert.equal(semLogin.statusCode, 401);
+  const comum = await chamar(rh, { method: "POST", query: { modulo: "faltas", t: "chave_excel" }, usuario: "supervisor.fulano" });
+  assert.equal(comum.statusCode, 200, "quem não é aprovador também gera");
+  assert.equal(_auth.verify(comum.body.chave, process.env.AUTH_SECRET).u, "supervisor.fulano");
   const g = await chamar(rh, { method: "POST", query: { modulo: "faltas", t: "chave_excel" }, usuario: "aprovador" });
   assert.equal(g.statusCode, 200);
   const chave = g.body.chave;

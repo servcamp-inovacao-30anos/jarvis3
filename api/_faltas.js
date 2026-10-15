@@ -344,6 +344,7 @@ async function verPlanilha({ req, res, db }) {
 async function criarChaveExcel({ res, db, ator }) {
   const secret = process.env.AUTH_SECRET;
   if (!secret) return erro(res, 400, "O login por token não está ativo; não há como emitir a chave do Excel.", "SEM_SEGREDO");
+  if (!ator) return erro(res, 401, "Entre no Painel ServCamp para gerar o arquivo.", "NAO_AUTENTICADO");
   const agora = Date.now(), jti = require("crypto").randomBytes(6).toString("hex");
   const chave = _auth.sign(ator, secret, DIAS_CHAVE_XL * 24, { s: "xl", i: agora, j: jti });
   const validaAte = new Date(agora + DIAS_CHAVE_XL * 86400000).toISOString();
@@ -461,7 +462,7 @@ const ROTAS = {
   "POST feriados": { aprovador: true, fn: salvarFeriado },
   "POST atestado": { aprovador: true, fn: salvarAtestado },
   "GET planilha": { fn: verPlanilha },
-  "POST chave_excel": { aprovador: true, fn: criarChaveExcel },
+  "POST chave_excel": { fn: criarChaveExcel }, // qualquer pessoa logada que abre a tela (pedido do Raphael, 15/10/2026); cancelar todas as chaves segue só dos aprovadores
   "POST revogar_excel": { aprovador: true, fn: revogarChavesExcel }
 };
 
