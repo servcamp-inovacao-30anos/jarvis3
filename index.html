@@ -6268,7 +6268,7 @@ function apBase(){
     const re=String(f.RE||"").trim(),ch=re+"|"+d;
     if(re&&vistos[ch])return;vistos[ch]=1;
     if(tipo[re]!=="EFETIVO"){fora++;return;}
-    ok.push({d,re,nome:f.NOME||"—",cargo:f.CARGO||"—",serv:apServico(f.CARGO),local:f.LOCAL||"—"});
+    ok.push({d,re,nome:f.NOME||"—",cargo:f.CARGO||"—",serv:apServico(f.CARGO),local:f.LOCAL||"—",tur:String(f.TURNO||"DIURNO").toUpperCase()});
   });
   todos.sort();
   return {ok,fora,ini:todos[0]||"",fim:todos[todos.length-1]||""};
@@ -6285,6 +6285,7 @@ function apMontar(){
     '<div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;background:#fff;border:1px solid #e5e9f0;border-radius:14px;padding:16px 20px;margin-bottom:14px">'+
       '<div><label class="rhf-l" for="ap-dia">Dia</label><select class="rhf-i" id="ap-dia" onchange="apRender()" style="min-width:300px">'+
         '<option value="ALL">Todos os sábados, domingos e feriados do período</option>'+opt+'</select></div>'+
+      '<div><label class="rhf-l" for="ap-tur">Turno</label><select class="rhf-i" id="ap-tur" onchange="apRender()"><option value="DIURNO">Diurno</option><option value="NOTURNO">Noturno</option><option value="TODOS">Todos</option></select></div>'+
       '<div style="font-size:.7rem;color:#94a3b8;max-width:420px">Só faltas de efetivos. Portaria e Limpeza pelo cargo.'+(AP.ferErro?' <b style="color:#b45309">Os feriados não carregaram: só sábados e domingos aparecem.</b>':'')+'</div>'+
     '</div>'+
     '<div id="ap-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:14px"></div>'+
@@ -6293,13 +6294,13 @@ function apMontar(){
       '<div class="cc"><div class="ch"><div class="chb"></div><span class="ct">Por cliente</span></div><div id="ap-lista" style="max-height:540px;overflow:auto"></div></div>'+
     '</div>';
   // abre no sábado/domingo/feriado mais recente que já tem falta de efetivo
-  const comFalta=dias.find(d=>B.ok.some(r=>r.d===d));
+  const comFalta=dias.find(d=>B.ok.some(r=>r.d===d&&r.tur==="DIURNO"));
   document.getElementById("ap-dia").value=comFalta||"ALL";
   apRender();
 }
 function apRender(){
   const B=AP.base,sel=document.getElementById("ap-dia");if(!B||!sel)return;
-  const dia=sel.value,rows=B.ok.filter(r=>dia==="ALL"||r.d===dia);
+  const dia=sel.value,tur=(document.getElementById("ap-tur")||{}).value||"DIURNO",rows=B.ok.filter(r=>(dia==="ALL"||r.d===dia)&&(tur==="TODOS"||r.tur===tur));
   const por={};
   rows.forEach(r=>{const o=por[r.local]||(por[r.local]={local:r.local,p:0,l:0,o:0,gente:[]});if(r.serv==="PORTARIA")o.p++;else if(r.serv==="LIMPEZA")o.l++;else o.o++;o.gente.push(r);});
   const nP=rows.filter(r=>r.serv==="PORTARIA").length,nL=rows.filter(r=>r.serv==="LIMPEZA").length,nO=rows.length-nP-nL;
