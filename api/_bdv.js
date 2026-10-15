@@ -18,7 +18,7 @@ const _auth = require("./_auth");
 
 // Quem lê o relatório: os mesmos do painel Faltas x Medidas. A checagem é no
 // servidor sempre que o login emite token (AUTH_SECRET definida).
-const LEITORES = new Set(["joaoygor", "raphaelvictor", "ingridycampana", "paulocampana", "jussilenealmeida", "amauriantonio", "eduardocipriano"]);
+const LEITORES = new Set(["joaoygor", "raphaelvictor", "ingridycampana", "paulocampana", "jussilenealmeida", "amauriantonio", "eduardocipriano", "joyce"]);
 // Visão Diretoria: só estas quatro contas (chaves do login, nunca o nome de exibição):
 // Raphael Victor, João Ygor, Ingridy Campana e Paulo Campana. Sem AUTH_SECRET não há como saber quem pede: nega.
 const DIRETORIA = new Set(["raphaelvictor", "joaoygor", "ingridycampana", "paulocampana"]);

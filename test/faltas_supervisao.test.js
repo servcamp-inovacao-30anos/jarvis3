@@ -73,10 +73,10 @@ test("limite para a medida: o texto certo para cada situação", () => {
   assert.equal(f({ situacao: "TRATADA", medida: { DATA: "2026-09-30" } }, "2026-10-01").t, "Medida aplicada");
 });
 
-test("painel operacional Faltas x Medidas: só João (admin), Raphael, Ingridy, Campana, Jussilene e Amauri", () => {
+test("painel operacional Faltas x Medidas: só João (admin), Raphael, Ingridy, Campana, Jussilene, Amauri e Joyce (Inovação, vê tudo)", () => {
   const U = usuarios();
   const com = Object.entries(U).filter(([, u]) => u.fm).map(([k]) => k).sort();
-  assert.deepEqual(com, ["amauriantonio", "ingridycampana", "jussilenealmeida", "paulocampana", "raphaelvictor"]);
+  assert.deepEqual(com, ["amauriantonio", "ingridycampana", "joyce", "jussilenealmeida", "paulocampana", "raphaelvictor"]);
   assert.equal(U.joaoygor.admin, true, "o João entra por ser administrador");
   Object.entries(U).filter(([, u]) => u.cargo === "Supervisor").forEach(([k, u]) => assert.ok(!u.fm, k + " (supervisor) não vê o painel operacional"));
 });
