@@ -6280,11 +6280,13 @@ function apMontar(){
   const dias=[];
   for(let t=new Date(B.fim+"T12:00:00Z");t>=new Date(B.ini+"T12:00:00Z");t=new Date(t.getTime()-86400000)){const d=t.toISOString().slice(0,10);if(apDiaTipo(d))dias.push(d);}
   AP.dias=dias;
-  const opt=dias.map(d=>{const x=apDiaTipo(d);return '<option value="'+d+'">'+x.sem+" "+apBR(d)+(x.t==="Feriado"?" · Feriado — "+_esc(x.n):"")+'</option>';}).join("");
+  const chip='display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border:1px solid #dfe5ee;border-radius:999px;font-size:.72rem;color:#0d1f35;cursor:pointer;background:#f8fafc';
+  const opt=dias.map(d=>{const x=apDiaTipo(d);return '<label style="'+chip+'"><input type="checkbox" value="'+d+'" onchange="apRender()">'+x.sem+" "+apBR(d).slice(0,5)+(x.t==="Feriado"?" · "+_esc(x.n):"")+'</label>';}).join("");
   box.innerHTML=
     '<div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;background:#fff;border:1px solid #e5e9f0;border-radius:14px;padding:16px 20px;margin-bottom:14px">'+
-      '<div><label class="rhf-l" for="ap-dia">Dia</label><select class="rhf-i" id="ap-dia" onchange="apRender()" style="min-width:300px">'+
-        '<option value="ALL">Todos os sábados, domingos e feriados do período</option>'+opt+'</select></div>'+
+      '<div style="flex:1 1 100%"><div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><span class="rhf-l" style="margin:0">Dias (marque um ou vários)</span>'+
+        '<button type="button" class="rh-act" onclick="apMarcar(\'todos\')">Todos</button><button type="button" class="rh-act" onclick="apMarcar(\'sab\')">Só sábados</button><button type="button" class="rh-act" onclick="apMarcar(\'dom\')">Só domingos</button><button type="button" class="rh-act" onclick="apMarcar(\'nenhum\')">Limpar</button></div>'+
+        '<div id="ap-dias" style="display:flex;flex-wrap:wrap;gap:6px;max-height:120px;overflow:auto">'+opt+'</div></div>'+
       '<div><label class="rhf-l" for="ap-tur">Turno</label><select class="rhf-i" id="ap-tur" onchange="apRender()"><option value="DIURNO">Diurno</option><option value="NOTURNO">Noturno</option><option value="TODOS">Todos</option></select></div>'+
       '<div style="font-size:.7rem;color:#94a3b8;max-width:420px">Só faltas de efetivos. Portaria e Limpeza pelo cargo.'+(AP.ferErro?' <b style="color:#b45309">Os feriados não carregaram: só sábados e domingos aparecem.</b>':'')+'</div>'+
     '</div>'+
@@ -6295,12 +6297,12 @@ function apMontar(){
     '</div>';
   // abre no sábado/domingo/feriado mais recente que já tem falta de efetivo
   const comFalta=dias.find(d=>B.ok.some(r=>r.d===d&&r.tur==="DIURNO"));
-  document.getElementById("ap-dia").value=comFalta||"ALL";
+  if(comFalta){const cb=document.querySelector('#ap-dias input[value="'+comFalta+'"]');if(cb)cb.checked=true;}
   apRender();
 }
 function apRender(){
-  const B=AP.base,sel=document.getElementById("ap-dia");if(!B||!sel)return;
-  const dia=sel.value,tur=(document.getElementById("ap-tur")||{}).value||"DIURNO",rows=B.ok.filter(r=>(dia==="ALL"||r.d===dia)&&(tur==="TODOS"||r.tur===tur));
+  const B=AP.base;if(!B||!document.getElementById("ap-dias"))return;
+  const dsel=apSel(),tur=(document.getElementById("ap-tur")||{}).value||"DIURNO",rows=B.ok.filter(r=>dsel.indexOf(r.d)>=0&&(tur==="TODOS"||r.tur===tur));
   const por={};
   rows.forEach(r=>{const o=por[r.local]||(por[r.local]={local:r.local,p:0,l:0,o:0,gente:[]});if(r.serv==="PORTARIA")o.p++;else if(r.serv==="LIMPEZA")o.l++;else o.o++;o.gente.push(r);});
   const nP=rows.filter(r=>r.serv==="PORTARIA").length,nL=rows.filter(r=>r.serv==="LIMPEZA").length,nO=rows.length-nP-nL;
@@ -6316,8 +6318,16 @@ function apRender(){
     '<table style="width:100%;border-collapse:collapse;font-size:.76rem;color:#0d1f35"><thead><tr><th style="text-align:left;'+th+'">Cliente</th><th style="text-align:right;'+th+'">Portaria</th><th style="text-align:right;'+th+'">Limpeza</th><th style="text-align:right;'+th+'">Total</th></tr></thead><tbody>'+
       lin.map((o,i)=>'<tr style="cursor:pointer" onclick="apFoco('+i+')"><td style="'+tdc+'font-weight:700">'+_esc(o.local)+'</td><td style="'+tdc+'text-align:right">'+(o.p||"—")+'</td><td style="'+tdc+'text-align:right">'+(o.l||"—")+'</td><td style="'+tdc+'text-align:right;font-weight:800">'+(o.p+o.l+o.o)+'</td></tr>').join("")+'</tbody></table>'+
       (B.fora?'<div style="margin-top:8px;font-size:.64rem;color:#94a3b8">'+B.fora+' falta(s) de reservas ou de quem não está na lista de ativos ficaram de fora.</div>':'')
-    :'<div style="padding:26px;text-align:center;color:#94a3b8;font-size:.76rem">Nenhuma falta de efetivo neste dia.</div>';
+    :'<div style="padding:26px;text-align:center;color:#94a3b8;font-size:.76rem">Nenhuma falta de efetivo nos dias selecionados.</div>';
   apMapa();
+}
+function apSel(){return [...document.querySelectorAll("#ap-dias input:checked")].map(i=>i.value);}
+function apMarcar(m){
+  document.querySelectorAll("#ap-dias input").forEach(i=>{
+    const w=new Date(i.value+"T12:00:00Z").getUTCDay();
+    i.checked=m==="todos"?true:m==="sab"?w===6:m==="dom"?w===0:false;
+  });
+  apRender();
 }
 function apAchaPino(local){
   const k=apNorm(local);if(!k||!AP.pinos)return null;let b=null;
@@ -6335,7 +6345,7 @@ function apMapa(){
   el.innerHTML="";if(AP.mapa){AP.mapa.remove();AP.mapa=null;}
   AP.mapa=L.map("ap-mapa",{scrollWheelZoom:false});
   const tile=mapaTile();L.tileLayer(tile.url,{maxZoom:tile.maxZoom,attribution:tile.attr}).addTo(AP.mapa);
-  const pts=[],sem=[],todosDias=document.getElementById("ap-dia").value==="ALL";
+  const pts=[],sem=[],todosDias=apSel().length>1;
   AP.lin.forEach(o=>{
     const p=apAchaPino(o.local);o.m=null;
     if(!p||p.lat==null||p.lon==null){sem.push(o);return;}
