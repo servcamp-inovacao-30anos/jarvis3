@@ -206,7 +206,8 @@ body.tv-mode .main{margin-right:38vw;}
    (.leaflet-tile-pane) do OpenStreetMap — pinos e popups ficam noutra camada
    do Leaflet e não são afetados, continuam com as cores reais. */
 .tv-map-panel .leaflet-tile-pane,
-html[data-theme="dark"] #sau-mapa .leaflet-tile-pane{
+html[data-theme="dark"] #sau-mapa .leaflet-tile-pane,
+html[data-theme="dark"] #ap-mapa .leaflet-tile-pane{
   filter:invert(1) hue-rotate(180deg) brightness(.95) contrast(.9);
 }
 /* Atribuição do Leaflet discreta em fundo escuro: o padrão dele (caixa clara)
@@ -869,6 +870,7 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
     <div class="nav-cat-b">
       <div class="ni" data-pg="supdesemp" data-perm="admin" onclick="navTo('supdesemp',this)"><span class="ni-ic">🧭</span><span>Desempenho do Supervisor</span><span class="nib nib-novo">NOVO</span></div>
       <div class="ni" data-pg="saude" data-perm="admin" onclick="navTo('saude',this)"><span class="ni-ic">🩺</span><span>Sa&uacute;de do Cliente</span><span class="nib nib-novo">NOVO</span></div>
+      <div class="ni" data-pg="apres" data-perm="apres" onclick="navTo('apres',this)"><span class="ni-ic">🎤</span><span>Apresentação</span><span class="nib nib-novo">NOVO</span></div>
       <!-- DESATIVADA 17/08 a pedido do Joao: nao ha responsavel definido pela auditoria.
            A pagina e o codigo continuam existindo; para religar, descomente esta linha.
       <div class="ni" data-pg="audqual" data-perm="qual" onclick="navTo('audqual',this)"><span class="ni-ic">✅</span><span>Auditoria de Qualidade</span></div>
@@ -1968,6 +1970,10 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
   <div class="page" id="pg-supdesemp">
     <div class="sec-hd"><div class="sec-ic">🧭</div><div><div class="sec-t">Desempenho do Supervisor</div><div class="sec-s">Cada supervisor comparado com o próprio período anterior — nunca com os colegas.</div></div></div>
     <div id="sup-content"><div style="padding:40px;text-align:center;color:#94a3b8;font-size:.85rem">Carregando…</div></div>
+  </div>
+  <div class="page" id="pg-apres">
+    <div class="sec-hdr"><span class="sec-hdr-ic">🎤</span><div><div class="sec-hdr-t">Apresentação</div><div class="sec-hdr-sub">Faltas de efetivos de Portaria e Limpeza em sábados, domingos e feriados</div></div></div>
+    <div id="ap-corpo"></div>
   </div>
   <div class="page" id="pg-saude">
     <div class="sec-hd"><div class="sec-ic">🩺</div><div><div class="sec-t">Saúde do Cliente</div><div class="sec-s">Quem está em risco — e por quê. Faltas de contrato, postos descobertos e visita do supervisor nos últimos 30 dias.</div></div></div>
@@ -4063,7 +4069,7 @@ function applyUserUI(){
     const isSup=sessionStorage.getItem("userSup")==="1";
     const isFm=sessionStorage.getItem("userFm")==="1";
     const isBdv=sessionStorage.getItem("userBdv")==="1";
-    const navOk={bdv:isAdmin||isFm||isBdv,rh:isAdmin||isRh,rhdash:isAdmin||isRh||isRhDash,com:isAdmin||isCom,comdash:isAdmin||isComDash,prj:isAdmin||isPrj,admin:isAdmin,qual:isAdmin||isQual,lig:isAdmin||isLig,metas:isAdmin||isMetas,fm:isAdmin||isFm,sup:isAdmin||isSup||isLig};
+    const navOk={bdv:isAdmin||isFm||isBdv,rh:isAdmin||isRh,rhdash:isAdmin||isRh||isRhDash,com:isAdmin||isCom,comdash:isAdmin||isComDash,prj:isAdmin||isPrj,admin:isAdmin,qual:isAdmin||isQual,lig:isAdmin||isLig,metas:isAdmin||isMetas,fm:isAdmin||isFm,sup:isAdmin||isSup||isLig,apres:(sessionStorage.getItem("userKey")==="joaoygor")};
   document.querySelectorAll('#navRoot [data-perm]').forEach(function(el){el.style.display=navOk[el.dataset.perm]?"":"none";});
   if(typeof navCatsAtualiza==="function")navCatsAtualiza(); // categoria sem itens visíveis some
   if(typeof sbPerfilRender==="function")sbPerfilRender();
@@ -4674,7 +4680,7 @@ function setTurno(t,btn){document.querySelectorAll("#trnoPg .pi").forEach(b=>b.c
 function setArea(){ST.area=document.getElementById("areaS").value;rpg();refresh();}
 function rpg(){Object.keys(ST.tpg).forEach(k=>ST.tpg[k]=1);}
 
-const PTITLES={fmrel:"Relatório de Faltas x Medidas",metas:"Metas da Diretoria",visao:"Visão Geral",ativos:"Funcionários Ativos",clientes:"Clientes",faltas:"Faltas & Top 10",coberturas:"Coberturas",postos:"Justificativa de Postos Descobertos",os:"OS Avulsos",fts:"FTS",dispo:"Sem Alocação",restec:"Reservas Técnicas",hrextra:"Horas Extras",checklist:"Check List",rhvagas:"RH — Controle de Vagas",rhentrev:"RH — Entrevistas & Funil",rhdesl:"RH — Desligamentos",rhres:"RH — Reservas → Efetivação",rhtrein:"RH — Treinamentos",rhdash:"Painel RH — Diretoria",compro:"Comercial — Propostas e Serviços Extras",comdash:"Painel Comercial",config:"Configurações — Acessos & Usuários",sede:"Base Virtual — Equipe",prj:"Projetos — Evolução & Inovação",audqual:"Auditoria de Qualidade",ligacoes:"Feedback de Faltas",faltasmed:"Faltas x Medidas",bdvrel:"Relatório de Coberturas do Supervisor",faltassup:"Acompanhamento de Medidas (Supervisão)"};
+const PTITLES={fmrel:"Relatório de Faltas x Medidas",metas:"Metas da Diretoria",visao:"Visão Geral",ativos:"Funcionários Ativos",clientes:"Clientes",faltas:"Faltas & Top 10",coberturas:"Coberturas",postos:"Justificativa de Postos Descobertos",os:"OS Avulsos",fts:"FTS",dispo:"Sem Alocação",restec:"Reservas Técnicas",hrextra:"Horas Extras",checklist:"Check List",rhvagas:"RH — Controle de Vagas",rhentrev:"RH — Entrevistas & Funil",rhdesl:"RH — Desligamentos",rhres:"RH — Reservas → Efetivação",rhtrein:"RH — Treinamentos",rhdash:"Painel RH — Diretoria",compro:"Comercial — Propostas e Serviços Extras",comdash:"Painel Comercial",config:"Configurações — Acessos & Usuários",sede:"Base Virtual — Equipe",prj:"Projetos — Evolução & Inovação",audqual:"Auditoria de Qualidade",ligacoes:"Feedback de Faltas",faltasmed:"Faltas x Medidas",bdvrel:"Relatório de Coberturas do Supervisor",faltassup:"Acompanhamento de Medidas (Supervisão)",apres:"Apresentação"};
 
 /* ── Sidebar 2.0: accordion com estado salvo + busca de módulos ── */
 function navCatToggle(k){
@@ -4793,6 +4799,7 @@ function fsPermitido(){return sessionStorage.getItem("userAdmin")==="1"||session
 function navTo(p,btn){
   if(p==="faltasmed"&&!fmPermitido()){p=fsPermitido()?"faltassup":"visao";btn=null;}
   if(p==="faltassup"&&!fsPermitido()){p="visao";btn=null;}
+  if(p==="apres"&&!apPermitido()){p="visao";btn=null;}
   if(p==="bdvrel"&&!bdvPermitido()){p="coberturas";btn=null;}
   if(p==="fmrel"&&!fmPermitido()){p="visao";btn=null;}
   ST.pg=p;
@@ -4819,6 +4826,7 @@ function navTo(p,btn){
   else if(p==="rhdash"){rhDashLoad();}
   else if(p==="compro"){comLoad();cpxLoad();}
   else if(p==="metas"){mtLoad();}
+  else if(p==="apres"){apLoad();}
   else if(p==="comdash"){comDashLoad();}
   else if(p==="config"){cfgLoad();}
   else if(p==="sede"){hqLoad();chkLoad();}
@@ -6215,6 +6223,138 @@ function heSupFech(){
     '<tr><td style="padding:8px 10px;font-weight:800">Total</td>'+ks.map(k=>'<td style="padding:8px 10px;text-align:right;font-weight:800">'+fmt(soma(k))+'</td>').join("")+'<td style="padding:8px 10px;text-align:right;font-weight:800">'+fmt(linhas.reduce((a,x)=>a+x.t,0))+'</td></tr></tbody></table></div>'+
     (ks.some(parcial)?'<div style="margin-top:8px;font-size:.66rem;color:#94a3b8">*Fechamento em andamento, dados até '+fimDado.slice(8,10)+'/'+fimDado.slice(5,7)+'</div>':'')+
     '<div style="margin-top:4px;font-size:.66rem;color:#94a3b8">Fechamento: dia 26 ao dia 25 · só cargos de Supervisor</div>';
+}
+/* ═════════ Guia "Apresentação" (só João Ygor) ═════════
+   Faltas de EFETIVOS de Portaria e Limpeza em sábado, domingo e feriado, com o
+   mapa dos clientes que tiveram falta. Dados: DASHBOARD_DATA.faltas (planilha do
+   dia) cruzados pelo RE com os Funcionários Ativos (só TIPO = EFETIVO). Feriados:
+   os mesmos cadastrados em Faltas x Medidas (fm_feriados). Portaria/Limpeza vêm
+   do cargo. O mapa usa os mesmos endereços da Saúde do Cliente (/api/hq?mapa=1). */
+var AP={fer:null,ferErro:false,pinos:null,mapa:null,lin:[],base:null,dias:[]};
+function apPermitido(){return sessionStorage.getItem("userKey")==="joaoygor";}
+function apNorm(s){return String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase().replace(/\s+/g," ").trim();}
+function apServico(cargo){
+  const c=apNorm(cargo);
+  if(/PORTEIR|VIGIA|RECEPCION|CONTROLADOR DE ACESSO/.test(c))return "PORTARIA";
+  if(/SERVICOS GERAIS|LIMPEZA|FAXINEIR/.test(c))return "LIMPEZA";
+  return "";
+}
+function apBR(iso){return iso.slice(8,10)+"/"+iso.slice(5,7)+"/"+iso.slice(0,4);}
+function apDiaTipo(d){
+  const w=new Date(d+"T12:00:00Z").getUTCDay(),f=(AP.fer||{})[d];
+  const sem=["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"][w];
+  if(f)return {t:"Feriado",n:f,sem};
+  if(w===6||w===0)return {t:w===6?"Sábado":"Domingo",n:"",sem};
+  return null;
+}
+function apLoad(){
+  const box=document.getElementById("ap-corpo");if(!box)return;
+  if(!apPermitido()){box.innerHTML="";return;}
+  if(AP.fer!==null){apMontar();return;}
+  box.innerHTML='<div style="padding:30px;text-align:center;color:#94a3b8;font-size:.78rem">Carregando…</div>';
+  fetch("/api/rh?modulo=faltas&t=feriados").then(r=>r.json()).then(j=>{
+    AP.fer={};(j.feriados||[]).forEach(f=>{AP.fer[String(f.data).slice(0,10)]=f.descricao||"Feriado";});
+    apMontar();
+  }).catch(()=>{AP.fer={};AP.ferErro=true;apMontar();});
+}
+function apBase(){
+  const D=(typeof DASHBOARD_DATA!=="undefined"&&DASHBOARD_DATA)||{};
+  const tipo={};(D.ativos||[]).forEach(a=>{const k=String(a.RE||"").trim();if(k)tipo[k]=String(a.TIPO||"").toUpperCase();});
+  const ok=[],vistos={},todos=[];let fora=0;
+  (D.faltas||[]).forEach(f=>{
+    const d=String(f.DATA||"").slice(0,10);if(!/^\d{4}-\d{2}-\d{2}$/.test(d))return;
+    todos.push(d);
+    if(!apDiaTipo(d))return;
+    const re=String(f.RE||"").trim(),ch=re+"|"+d;
+    if(re&&vistos[ch])return;vistos[ch]=1;
+    if(tipo[re]!=="EFETIVO"){fora++;return;}
+    ok.push({d,re,nome:f.NOME||"—",cargo:f.CARGO||"—",serv:apServico(f.CARGO),local:f.LOCAL||"—"});
+  });
+  todos.sort();
+  return {ok,fora,ini:todos[0]||"",fim:todos[todos.length-1]||""};
+}
+function apMontar(){
+  const box=document.getElementById("ap-corpo");if(!box)return;
+  const B=AP.base=apBase();
+  if(!B.ini){box.innerHTML='<div style="padding:30px;text-align:center;color:#94a3b8;font-size:.78rem">Sem faltas na base carregada.</div>';return;}
+  const dias=[];
+  for(let t=new Date(B.fim+"T12:00:00Z");t>=new Date(B.ini+"T12:00:00Z");t=new Date(t.getTime()-86400000)){const d=t.toISOString().slice(0,10);if(apDiaTipo(d))dias.push(d);}
+  AP.dias=dias;
+  const opt=dias.map(d=>{const x=apDiaTipo(d);return '<option value="'+d+'">'+x.sem+" "+apBR(d)+(x.t==="Feriado"?" · Feriado — "+_esc(x.n):"")+'</option>';}).join("");
+  box.innerHTML=
+    '<div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;background:#fff;border:1px solid #e5e9f0;border-radius:14px;padding:16px 20px;margin-bottom:14px">'+
+      '<div><label class="rhf-l" for="ap-dia">Dia</label><select class="rhf-i" id="ap-dia" onchange="apRender()" style="min-width:300px">'+
+        '<option value="ALL">Todos os sábados, domingos e feriados do período</option>'+opt+'</select></div>'+
+      '<div style="font-size:.7rem;color:#94a3b8;max-width:420px">Só faltas de efetivos. Portaria e Limpeza pelo cargo.'+(AP.ferErro?' <b style="color:#b45309">Os feriados não carregaram: só sábados e domingos aparecem.</b>':'')+'</div>'+
+    '</div>'+
+    '<div id="ap-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:14px"></div>'+
+    '<div style="display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:14px;align-items:start">'+
+      '<div class="cc"><div class="ch"><div class="chb"></div><span class="ct">Clientes com falta</span></div><div id="ap-mapa" style="height:520px;border-radius:10px;overflow:hidden"></div><div id="ap-leg" style="display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:.68rem;color:#475569"></div></div>'+
+      '<div class="cc"><div class="ch"><div class="chb"></div><span class="ct">Por cliente</span></div><div id="ap-lista" style="max-height:540px;overflow:auto"></div></div>'+
+    '</div>';
+  // abre no sábado/domingo/feriado mais recente que já tem falta de efetivo
+  const comFalta=dias.find(d=>B.ok.some(r=>r.d===d));
+  document.getElementById("ap-dia").value=comFalta||"ALL";
+  apRender();
+}
+function apRender(){
+  const B=AP.base,sel=document.getElementById("ap-dia");if(!B||!sel)return;
+  const dia=sel.value,rows=B.ok.filter(r=>dia==="ALL"||r.d===dia);
+  const por={};
+  rows.forEach(r=>{const o=por[r.local]||(por[r.local]={local:r.local,p:0,l:0,o:0,gente:[]});if(r.serv==="PORTARIA")o.p++;else if(r.serv==="LIMPEZA")o.l++;else o.o++;o.gente.push(r);});
+  const nP=rows.filter(r=>r.serv==="PORTARIA").length,nL=rows.filter(r=>r.serv==="LIMPEZA").length,nO=rows.length-nP-nL;
+  const card=(t,v,c,s)=>'<div style="background:#fff;border:1px solid #e5e9f0;border-radius:14px;padding:14px 18px"><div style="font-size:.7rem;color:#64748b;font-weight:700">'+t+'</div><div style="font-size:2rem;font-weight:800;color:'+c+';line-height:1.15">'+v+'</div>'+(s?'<div style="font-size:.64rem;color:#94a3b8">'+s+'</div>':'')+'</div>';
+  const lin=Object.values(por).sort((a,b)=>(b.p+b.l+b.o)-(a.p+a.l+a.o)||(a.local<b.local?-1:1));
+  document.getElementById("ap-kpis").innerHTML=
+    card("Portaria",nP,"#2e8fef","faltas de efetivos")+card("Limpeza",nL,"#16a34a","faltas de efetivos")+
+    card("Total",rows.length,"#0d1f35",nO?(nO+" de outro cargo incluída(s)"):"Portaria + Limpeza")+
+    card("Clientes com falta",lin.length,"#f59e0b","");
+  AP.lin=lin;
+  const th='padding:7px 8px;border-bottom:2px solid #dfe5ee;',tdc='padding:6px 8px;border-bottom:1px solid #eef1f6;';
+  document.getElementById("ap-lista").innerHTML=lin.length?
+    '<table style="width:100%;border-collapse:collapse;font-size:.76rem;color:#0d1f35"><thead><tr><th style="text-align:left;'+th+'">Cliente</th><th style="text-align:right;'+th+'">Portaria</th><th style="text-align:right;'+th+'">Limpeza</th><th style="text-align:right;'+th+'">Total</th></tr></thead><tbody>'+
+      lin.map((o,i)=>'<tr style="cursor:pointer" onclick="apFoco('+i+')"><td style="'+tdc+'font-weight:700">'+_esc(o.local)+'</td><td style="'+tdc+'text-align:right">'+(o.p||"—")+'</td><td style="'+tdc+'text-align:right">'+(o.l||"—")+'</td><td style="'+tdc+'text-align:right;font-weight:800">'+(o.p+o.l+o.o)+'</td></tr>').join("")+'</tbody></table>'+
+      (B.fora?'<div style="margin-top:8px;font-size:.64rem;color:#94a3b8">'+B.fora+' falta(s) de reservas ou de quem não está na lista de ativos ficaram de fora.</div>':'')
+    :'<div style="padding:26px;text-align:center;color:#94a3b8;font-size:.76rem">Nenhuma falta de efetivo neste dia.</div>';
+  apMapa();
+}
+function apAchaPino(local){
+  const k=apNorm(local);if(!k||!AP.pinos)return null;let b=null;
+  for(const p of AP.pinos){const c=p._n||(p._n=apNorm(p.cliente));if(c===k)return p;if(!b&&c.length>=6&&k.length>=6&&(k.indexOf(c)>=0||c.indexOf(k)>=0))b=p;}
+  return b;
+}
+function apMapa(){
+  const el=document.getElementById("ap-mapa");if(!el)return;
+  if(typeof L==="undefined"){el.innerHTML='<div style="padding:40px;text-align:center;color:#dc2626;font-size:.78rem">A biblioteca do mapa não carregou. Recarregue a página (Ctrl+Shift+R).</div>';return;}
+  if(!AP.pinos){
+    el.innerHTML='<div style="padding:40px;text-align:center;color:#94a3b8;font-size:.78rem">Carregando endereços…</div>';
+    fetch("/api/hq?mapa=1").then(r=>r.json()).then(j=>{AP.pinos=(j&&j.pinos)||[];apMapa();}).catch(()=>{el.innerHTML='<div style="padding:40px;text-align:center;color:#dc2626;font-size:.78rem">Erro ao carregar os endereços.</div>';});
+    return;
+  }
+  el.innerHTML="";if(AP.mapa){AP.mapa.remove();AP.mapa=null;}
+  AP.mapa=L.map("ap-mapa",{scrollWheelZoom:false});
+  const tile=mapaTile();L.tileLayer(tile.url,{maxZoom:tile.maxZoom,attribution:tile.attr}).addTo(AP.mapa);
+  const pts=[],sem=[],todosDias=document.getElementById("ap-dia").value==="ALL";
+  AP.lin.forEach(o=>{
+    const p=apAchaPino(o.local);o.m=null;
+    if(!p||p.lat==null||p.lon==null){sem.push(o);return;}
+    const n=o.p+o.l+o.o,cor=o.p&&o.l?"#f59e0b":(o.p?"#2e8fef":(o.l?"#16a34a":"#64748b"));
+    const m=L.circleMarker([p.lat,p.lon],{radius:Math.min(8+n*2,20),color:"#fff",weight:2,fillColor:cor,fillOpacity:.92}).addTo(AP.mapa);
+    m.bindPopup('<div style="font-weight:800;font-size:.8rem;color:#0d1f35;margin-bottom:3px">'+_esc(p.cliente||o.local)+'</div>'+
+      '<div style="font-size:.72rem"><b>Portaria '+o.p+'</b> · <b>Limpeza '+o.l+'</b>'+(o.o?' · outro '+o.o:'')+'</div>'+
+      '<div style="font-size:.66rem;color:#475569;margin-top:4px">'+o.gente.slice(0,8).map(g=>_esc(g.nome)+(todosDias?" ("+apBR(g.d).slice(0,5)+")":"")).join("<br>")+(o.gente.length>8?"<br>+"+(o.gente.length-8):"")+'</div>',{maxWidth:280});
+    o.m=m;pts.push([p.lat,p.lon]);
+  });
+  if(pts.length)AP.mapa.fitBounds(pts,{padding:[30,30],maxZoom:14});else AP.mapa.setView([-22.9,-47.06],9);
+  setTimeout(()=>{try{AP.mapa.invalidateSize();}catch(e){}},60);
+  const bola=c=>'<span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:'+c+';border:2px solid #fff;box-shadow:0 0 0 1px '+c+';vertical-align:-1px;margin-right:4px"></span>';
+  document.getElementById("ap-leg").innerHTML='<span>'+bola("#2e8fef")+'só Portaria</span><span>'+bola("#16a34a")+'só Limpeza</span><span>'+bola("#f59e0b")+'Portaria e Limpeza</span><span style="color:#94a3b8">· bola maior = mais faltas</span>'+
+    (sem.length?'<span style="margin-left:auto;color:#b45309">'+sem.length+' cliente(s) sem endereço no mapa: '+sem.slice(0,4).map(o=>_esc(o.local)).join("; ")+(sem.length>4?"…":"")+'</span>':"");
+}
+function apFoco(i){
+  const o=AP.lin[i];if(!o||!o.m||!AP.mapa)return;
+  AP.mapa.setView(o.m.getLatLng(),15);o.m.openPopup();
+  document.getElementById("ap-mapa").scrollIntoView({behavior:"smooth",block:"center"});
 }
 function updHrExtraC(){
   const d=F.hrextra;
