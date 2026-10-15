@@ -15392,7 +15392,7 @@ function frConectadoAbrir(){
     `<h4>Como usar, passo a passo</h4><ol class="fc-ol">${FRC_PASSOS.map(([t,d])=>`<li><b>${_esc(t)}</b><span>${_esc(d)}</span></li>`).join("")}</ol>`+
     `<div class="fc-av"><b>De onde vem cada coisa:</b> casos, prazos, medidas e históricos vêm sempre do Painel ServCamp (planilha do SAR2G), então nunca divergem do painel. Só as anotações da aba Anotações ficam apenas neste arquivo e não voltam para o Painel ServCamp. Uma medida só aparece como aplicada depois que o RH lança no SAR2G e a planilha nova é enviada.</div>`+
     `<p class="fc-s" id="frConAviso">A chave gerada vale 90 dias e só serve para ler estas tabelas.</p></div>`+
-    `<div class="fc-f"><button type="button" class="br-btn" onclick="frConectadoCancelar(this)">Cancelar chaves antigas</button><span style="flex:1"></span><button type="button" class="br-btn" onclick="frConectadoFechar()">Fechar</button><button type="button" class="br-btn pri" onclick="frConectadoGerar(this)">${BR_IC.xls}Gerar arquivo conectado</button></div></div>`;
+    `<div class="fc-f">${FM.dados&&FM.dados.pode_editar?`<button type="button" class="br-btn" onclick="frConectadoCancelar(this)">Cancelar chaves antigas</button>`:""}<span style="flex:1"></span><button type="button" class="br-btn" onclick="frConectadoFechar()">Fechar</button><button type="button" class="br-btn pri" onclick="frConectadoGerar(this)">${BR_IC.xls}Gerar arquivo conectado</button></div></div>`;
   document.body.appendChild(o);
   document.addEventListener("keydown",frConectadoTecla);
 }
