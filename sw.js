@@ -13,7 +13,9 @@
 // v2: a v1 guardava QUALQUER arquivo estático para sempre (scripts e estilos em
 // /assets também), e quem já tinha o v1 ficaria preso numa versão velha. Trocar o
 // nome faz o "activate" abaixo apagar esse cache antigo.
-const VERSAO = "jarvis-v2";
+// v3: troca dos ícones de instalação (logo nova). Trocar o nome faz o cache
+// antigo, com os ícones velhos, ser apagado no "activate".
+const VERSAO = "jarvis-v3";
 const ESTATICOS = [
   "/icon-192.png",
   "/icon-512.png",
