@@ -743,7 +743,7 @@ aside.sb#sidebar.sb-mini .sb-perfil{margin:10px 8px;padding:8px 0;}
 aside.sb#sidebar.sb-mini #navRoot .ni{margin:2px 8px;padding:9px 0;}
 @media(max-width:768px){aside.sb#sidebar{width:240px;min-width:240px;}}
 </style>
-<link rel="stylesheet" href="/assets/avisos/avisos.css">
+<link rel="stylesheet" href="/assets/faltas-email/faltas-email.css">
 </head>
 <body>
 <div id="intro-overlay" style="display:none">
@@ -818,8 +818,7 @@ aside.sb#sidebar.sb-mini #navRoot .ni{margin:2px 8px;padding:9px 0;}
       <div class="sb-perfil-c" id="sbPerfilCargo"></div>
       <div class="sb-perfil-on">Sistema Online</div>
       <a class="sb-perfil-senha" href="#" onclick="showForcePasswordChange(sessionStorage.getItem('userKey'),'voluntaria');return false">🔑 Trocar senha</a>
-      <a class="sb-perfil-senha" id="sbAvAparelho" href="#" style="display:none" onclick="avAparelhoAbrir();return false">🔔 Avisos neste aparelho</a>
-      <a class="sb-perfil-senha" id="sbAvPainel" href="#" style="display:none" onclick="avPainelAbrir();return false">📣 Painel de avisos</a>
+      <a class="sb-perfil-senha" id="sbFeEmail" href="#" style="display:none" onclick="feAbrir();return false">✉️ Aviso semanal por e-mail</a>
     </div>
   </div>
   <nav id="navRoot">
@@ -2834,7 +2833,7 @@ aside.sb#sidebar.sb-mini #navRoot .ni{margin:2px 8px;padding:9px 0;}
 
     </style>
     <div class="sec-hdr"><span class="fm-ic-tile" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5v16.5M8 20h8"/><path d="M5 7h14"/><circle cx="12" cy="4.2" r=".9"/><path d="M5 7l-2.8 6.2a3 3 0 0 0 5.6 0z"/><path d="M19 7l-2.8 6.2a3 3 0 0 0 5.6 0z"/></svg></span><div><div class="sec-hdr-t">Faltas x Medidas</div><div class="sec-hdr-sub">Faltas injustificadas e prazo para aplicar a medida disciplinar</div></div>
-      <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap"><div class="fm-seg fm-vista" role="group" aria-label="Tela"><button type="button" id="fm-v-lista" class="on" onclick="FM.aba='AGIR';fmRender()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Lista de casos</button><button type="button" id="fm-v-quadro" onclick="FM.aba='QUADRO';fmRender()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h5v16H4zM10 4h5v10h-5zM16 4h4v13h-4z"/></svg>Quadro por supervisor</button><button type="button" id="fm-v-painel" onclick="FM.animar=true;FM.aba='PAINEL';fmRender()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Painel dos supervisores</button><button type="button" id="fm-v-hist" onclick="FM.aba='HIST';fmRender()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>Histórico</button></div><button class="fm-btn" id="fm-bt-rel" onclick="navTo('fmrel')" title="Relatório com período, filtros, impressão e Excel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>Relatório</button><button class="fm-btn" id="fm-bt-envio" style="display:none" onclick="fmEnviarPlanilha()" title="Envia o arquivo .xlsx do SAR2G, como o botão Novo arquivo Excel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>Enviar planilha</button><button class="fm-btn" onclick="fmLoad(true)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>Atualizar</button></div></div>
+      <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap"><div class="fm-seg fm-vista" role="group" aria-label="Tela"><button type="button" id="fm-v-lista" class="on" onclick="FM.aba='AGIR';fmRender()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Lista de casos</button><button type="button" id="fm-v-quadro" onclick="FM.aba='QUADRO';fmRender()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h5v16H4zM10 4h5v10h-5zM16 4h4v13h-4z"/></svg>Quadro por supervisor</button><button type="button" id="fm-v-painel" onclick="FM.animar=true;FM.aba='PAINEL';fmRender()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Painel dos supervisores</button><button type="button" id="fm-v-hist" onclick="FM.aba='HIST';fmRender()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>Histórico</button></div><button class="fm-btn" id="fm-bt-rel" onclick="navTo('fmrel')" title="Relatório com período, filtros, impressão e Excel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>Relatório</button><button class="fm-btn" id="fm-bt-email" style="display:none" onclick="feAbrir()" title="Aviso semanal de faltas injustificadas por e-mail para os supervisores"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>Aviso por e-mail</button><button class="fm-btn" id="fm-bt-envio" style="display:none" onclick="fmEnviarPlanilha()" title="Envia o arquivo .xlsx do SAR2G, como o botão Novo arquivo Excel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>Enviar planilha</button><button class="fm-btn" onclick="fmLoad(true)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>Atualizar</button></div></div>
     <div id="fm-sec"><div class="fm-empty"><b>Carregando…</b></div></div>
   </div>
 
@@ -3988,7 +3987,7 @@ function _abrirSessao(u){
   if(typeof hqBeat==="function")hqBeat(); // já aparece na Sede Virtual
   tvModoChecar(); ftvChecar(); // se abriu a TV sem estar logado ainda, ativa só depois do login
   vgContrato();
-  if(typeof avAposLogin==="function")avAposLogin(); // avisos de faltas: convite para ativar o celular e tela pedida pela notificação
+  if(typeof feAposLogin==="function")feAposLogin(); // aviso semanal por e-mail: o botão só aparece para a conta do responsável
   // A planilha é buscada ao abrir a página; sem login o servidor recusa. Busca de novo agora.
   if(!_dadosDoServidor&&typeof loadFromSupabase==="function")loadFromSupabase().then(function(g){if(g&&typeof renderAfterLoad==="function")renderAfterLoad();}).catch(function(){});
 }
@@ -19027,7 +19026,10 @@ function init(){
 document.addEventListener("DOMContentLoaded",init);
 </script>
 <link rel="stylesheet" href="/assets/tv/modo-tv.css">
-<!-- Avisos de faltas no celular (push): fora do index.html, que está no limite de tamanho -->
-<script src="/assets/avisos/avisos.js"></script>
+<!-- Service worker: deixa instalar o sistema no celular e abre sem sinal (sw.js). Os avisos no celular (push)
+     saíram em 23/10/2026; quem tinha ativado perde a inscrição aqui, e o servidor não manda mais nada. -->
+<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("/sw.js").catch(function(){});navigator.serviceWorker.ready.then(function(r){return r.pushManager&&r.pushManager.getSubscription();}).then(function(s){if(s)s.unsubscribe();}).catch(function(){});}</script>
+<!-- Aviso semanal de faltas por e-mail: fora do index.html, que está no limite de tamanho -->
+<script src="/assets/faltas-email/faltas-email.js"></script>
 </body>
 </html>

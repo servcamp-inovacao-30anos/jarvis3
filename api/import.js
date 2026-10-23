@@ -263,20 +263,10 @@ module.exports = async function handler(req, res) {
     faltasMedidas = { ok: false, erro: String(e && e.message ? e.message : e).slice(0, 200) };
   }
 
-  // ── Avisos de faltas no celular dos supervisores ──────────────────────────
-  // Logo depois de guardar as faltas, para o aviso sair com a planilha nova.
-  // Não usa cron: o plano Hobby já gasta os 2 agendamentos permitidos. Nasce
-  // desligado (chave no painel). Falha aqui nunca derruba a importação, e a
-  // resposta leva só contagens — nenhum nome de colaborador.
-  let avisosFaltas = null;
-  if (faltasMedidas && faltasMedidas.ok && !faltasMedidas.ignorado) {
-    try { avisosFaltas = await require("./_avisos").aposImportar(); }
-    catch (e) { console.error("[avisos] " + (e && e.message ? e.message : e)); avisosFaltas = { ok: false, erro: "FALHA_NO_ENVIO" }; }
-  } else {
-    avisosFaltas = { ok: true, ignorado: "FALTAS_NAO_ATUALIZADAS" };
-  }
+  // Os avisos de faltas no celular (push) saíram em 23/10/2026: o aviso agora é o
+  // e-mail semanal (api/_faltas_email.js), agendado, e não depende da importação.
 
   const row = inserted[0] || null;
   if (row) delete row.data; // não devolve o snapshot inteiro de volta
-  return res.status(200).json({ ok: true, origem, row_count: rowCount, row, faltas_medidas: faltasMedidas, avisos_faltas: avisosFaltas });
+  return res.status(200).json({ ok: true, origem, row_count: rowCount, row, faltas_medidas: faltasMedidas });
 };

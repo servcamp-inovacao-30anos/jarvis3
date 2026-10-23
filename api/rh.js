@@ -44,6 +44,10 @@ module.exports = async function handler(req, res) {
   // Excel conectado do Faltas x Medidas: aceita a chave de escopo "xl" (no cabeçalho ou em ?k=);
   // as demais rotas recusam essa chave. A validade e o cancelamento da chave são conferidos em api/_faltas.js.
   const _q = req.query || {};
+  // Agendamento do aviso semanal de faltas por e-mail (vercel.json): a Vercel não manda
+  // login de usuário, então passa antes da exigência de token. A própria função confere o
+  // CRON_SECRET (quando existe) e só age na segunda a partir das 14h (api/_faltas_email.js).
+  if (_q.modulo === "faltasemail" && _q.t === "cron") return require("./_faltas_email").cron(req, res);
   // O do Relatório de Coberturas (modulo=bdv) usa o escopo "xlb": a chave de um não abre o outro.
   const _planilha = (_q.modulo === "faltas" || _q.modulo === "bdv") && _q.t === "planilha";
   const _ga = _planilha ? _auth.requireAuth(req, _q.modulo === "bdv" ? "xlb" : "xl", true) : _auth.requireAuth(req);
@@ -55,8 +59,8 @@ module.exports = async function handler(req, res) {
   if (req.query && req.query.modulo === "faltas") return require("./_faltas")(req, res);
   // Relatório de coberturas do supervisor (BDV): mesmo motivo (api/_bdv.js).
   if (req.query && req.query.modulo === "bdv") return require("./_bdv")(req, res);
-  // Avisos de faltas no celular dos supervisores (push): mesmo motivo (api/_avisos.js).
-  if (req.query && req.query.modulo === "avisos") return require("./_avisos")(req, res);
+  // Aviso semanal de faltas injustificadas por e-mail: mesmo motivo (api/_faltas_email.js).
+  if (req.query && req.query.modulo === "faltasemail") return require("./_faltas_email")(req, res);
   const SUPABASE_URL = process.env.SUPABASE_URL;
   const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 

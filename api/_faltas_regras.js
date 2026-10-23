@@ -440,7 +440,8 @@ const SUPERVISORES_NOTURNOS = ["PAULO", "RONALDO"];
 // Supervisor que saiu: a área dele passa inteira para quem assumiu. Vale para as faltas
 // já guardadas e para as próximas planilhas (que ainda podem trazer o nome antigo).
 // Pedido do Raphael (09/10/2026): Edney saiu de todas as situações, a área foi para o Jean.
-const SUPERVISOR_ASSUMIU = { EDNEY: "JEAN KLEBER" }; // primeiro nome de quem saiu → nome de quem assumiu
+// Pedido do Raphael (23/10/2026): Rafael Andrade foi desligado, a área foi para o Carlos Nogueira.
+const SUPERVISOR_ASSUMIU = { EDNEY: "JEAN KLEBER", RAFAEL: "CARLOS NOGUEIRA" }; // primeiro nome de quem saiu → nome de quem assumiu
 function supervisorAtual(nome) {
   const primeiro = String(nome || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().trim().split(/\s+/)[0];
   return SUPERVISOR_ASSUMIU[primeiro] || nome;
