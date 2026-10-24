@@ -123,20 +123,44 @@ function secAssinatura(p){
       '<p class="fe-mut" style="margin:6px 0 0">'+a.largura+' × '+a.altura+' px · '+kb(a.bytes)+(a.em?' · enviada em '+esc(quando(a.em)):'')+'</p>'
       :'<p class="fe-mut" style="margin:0">Nenhuma assinatura cadastrada: o e-mail fecha com "Atenciosamente, Servcamp".</p>')+
     '<div class="fe-linha"><label class="fe-b sm" for="feAssArq" style="cursor:pointer">'+(a?"Trocar imagem":"Enviar imagem")+'</label>'+
-    '<input id="feAssArq" type="file" accept="image/png,image/jpeg" data-fe="ass-arquivo" style="display:none">'+
+    '<input id="feAssArq" type="file" accept="image/*" data-fe="ass-arquivo" style="display:none">'+
     (a?'<button class="fe-b sm" data-fe="ass-remover"'+(FE.ocupado?" disabled":"")+'>Remover</button>':'')+
-    '<span class="fe-mut">PNG ou JPG, até 500 KB.</span></div></div>';
+    '<span class="fe-mut">PNG ou JPG de qualquer tamanho: imagem grande é reduzida sozinha.</span></div></div>';
 }
-// Lê a imagem escolhida e manda para o servidor com a largura e a altura reais.
+// A assinatura vai em todo e-mail e o servidor aceita até 500 KB. Imagem maior, larga demais
+// ou em outro formato que o navegador abra é reduzida aqui, sem pedir nada a ninguém: no
+// e-mail ela aparece com até 600 px, então 1200 px (o dobro, para tela de alta resolução) basta.
+const ASS_MAX_BYTES=450*1024,ASS_MAX_LARGURA=1200;
+function bytesDe(dataUrl){const b=dataUrl.slice(dataUrl.indexOf(",")+1);return Math.floor(b.length*3/4)-(b.endsWith("==")?2:b.endsWith("=")?1:0);}
+function reduzirAssinatura(img){
+  for(const limite of [ASS_MAX_LARGURA,1000,800,600]){
+    const w=Math.min(limite,img.naturalWidth),h=Math.max(1,Math.round(img.naturalHeight*w/img.naturalWidth));
+    const c=document.createElement("canvas");c.width=w;c.height=h;
+    const g=c.getContext("2d");
+    g.fillStyle="#ffffff";g.fillRect(0,0,w,h); // fundo branco, como o do e-mail (o JPG não tem transparência)
+    g.imageSmoothingQuality="high";g.drawImage(img,0,0,w,h);
+    const png=c.toDataURL("image/png");
+    if(bytesDe(png)<=ASS_MAX_BYTES)return{dados:png,largura:w,altura:h};
+    for(const q of [0.92,0.85,0.75]){const jpg=c.toDataURL("image/jpeg",q);if(bytesDe(jpg)<=ASS_MAX_BYTES)return{dados:jpg,largura:w,altura:h};}
+  }
+  return null;
+}
+// Lê a imagem escolhida, reduz se precisar e manda para o servidor com a largura e a altura finais.
 function enviarAssinatura(arq){
   if(!arq)return;
-  if(!/^image\/(png|jpeg)$/.test(arq.type)){msg("er","Escolha uma imagem PNG ou JPG.");render();return;}
-  if(arq.size>500*1024){msg("er","A imagem passa de 500 KB. Diminua e envie de novo.");render();return;}
+  if(!/^image\//.test(arq.type)){msg("er","Escolha um arquivo de imagem (PNG ou JPG).");render();return;}
   const leitor=new FileReader();
   leitor.onload=function(){
     const img=new Image();
-    img.onload=function(){acao(()=>api("assinatura","POST",{imagem:leitor.result,largura:img.naturalWidth,altura:img.naturalHeight}),"Assinatura salva. Ela já entra nos próximos e-mails.",true);};
-    img.onerror=function(){msg("er","Não deu para ler essa imagem.");render();};
+    img.onload=function(){
+      const original=leitor.result;
+      const pronta=/^data:image\/(png|jpeg);/.test(original)&&bytesDe(original)<=ASS_MAX_BYTES&&img.naturalWidth<=ASS_MAX_LARGURA;
+      const r=pronta?{dados:original,largura:img.naturalWidth,altura:img.naturalHeight}:reduzirAssinatura(img);
+      if(!r){msg("er","Não consegui reduzir essa imagem. Salve a assinatura como PNG ou JPG e tente de novo.");render();return;}
+      const ajuste=pronta?"":" (reduzida para "+r.largura+" × "+r.altura+" px, "+Math.round(bytesDe(r.dados)/1024)+" KB)";
+      acao(()=>api("assinatura","POST",{imagem:r.dados,largura:r.largura,altura:r.altura}),"Assinatura salva"+ajuste+". Ela já entra nos próximos e-mails.",true);
+    };
+    img.onerror=function(){msg("er","Não deu para abrir essa imagem aqui. Salve a assinatura como PNG ou JPG e tente de novo.");render();};
     img.src=leitor.result;
   };
   leitor.readAsDataURL(arq);
@@ -216,7 +240,7 @@ function secTeste(p){
       '<label class="fe-chip"><input type="checkbox" data-fe="t-sup"'+(t.sup?" checked":"")+(a&&a.email?"":" disabled")+'> <b>Supervisor da área</b> <span class="fe-mut">'+esc(a&&a.email?a.email:"sem e-mail")+'</span></label>'+
       ccs+
     '</div>'+
-    '<div class="fe-linha"><input class="fe-in l" type="email" data-fe-campo="t.outro" placeholder="Outro e-mail @gruposervcamp.com.br (opcional)" value="'+esc(t.outro)+'"></div>'+
+    '<div class="fe-linha"><input class="fe-in l" type="text" inputmode="email" autocomplete="off" data-fe-campo="t.outro" placeholder="Outros e-mails, de qualquer domínio (opcional; separe por vírgula)" value="'+esc(t.outro)+'"></div>'+
     '<div class="fe-linha"><button class="fe-b" data-fe="previa-teste">Ver prévia</button><button class="fe-b fe-pri" data-fe="enviar-teste"'+(FE.ocupado||!p.configurado?" disabled":"")+'>'+(FE.ocupado?"Enviando…":"Enviar teste")+'</button></div></div>';
 }
 
@@ -294,7 +318,7 @@ function clique(e){
     if(t.eu)para.push("@eu");
     if(t.sup)para.push("@supervisor");
     t.cc.forEach(e=>para.push(e));
-    if(String(t.outro||"").trim())para.push(String(t.outro).trim());
+    String(t.outro||"").split(/[,;\s]+/).map(x=>x.trim()).filter(Boolean).forEach(x=>para.push(x));
     if(!para.length){msg("er","Escolha ao menos um destinatário para o teste.");render();return;}
     acao(()=>api("teste","POST",{area:t.area,de:t.de,ate:t.ate,para:para}),r=>"Teste enviado para "+r.para+" destinatário(s), com "+r.faltas+" falta(s) no período.",true);
     return;
