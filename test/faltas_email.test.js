@@ -489,6 +489,9 @@ test("assinatura: imagem do painel no corpo do e-mail, abaixo do cartão; confer
   assert.equal((await envia({ imagem: "data:image/png;base64," + grande, largura: 86, altura: 120 })).body.codigo, "IMAGEM_GRANDE");
   assert.equal((await envia({ imagem: png, largura: 0, altura: 120 })).body.codigo, "IMAGEM_INVALIDA");
   assert.equal((await api("assinatura", { method: "POST", usuario: "joaoygor", body: { imagem: png, largura: 86, altura: 120 } })).statusCode, 403);
+  // o painel reduz imagem grande para JPG de até 1200 px antes de enviar: o servidor aceita
+  const jpg = "data:image/jpeg;base64," + Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(200 * 1024, 7)]).toString("base64");
+  assert.equal((await envia({ imagem: jpg, largura: 1200, altura: 380 })).statusCode, 200);
   assert.equal((await envia({ imagem: png, largura: 86, altura: 120 })).statusCode, 200);
   const p = await api("painel", { usuario: RESP });
   assert.equal(p.body.assinatura.largura, 86);
