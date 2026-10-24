@@ -20,6 +20,7 @@ const _auth = require("./_auth");
 const XL = require("./_faltas_excel");
 
 const ACAO_ABONO_TARDIO = "FALTA_ABONADA_DEPOIS";
+const ACAO_VIROU_I = "FALTA_VIROU_INJUSTIFICADA"; // tinha outro código e passou a "I" (veja anotarViradasInjustificada)
 const ACAO_ATESTADO = "ATESTADO_REGISTRADO";
 const ACAO_ATESTADO_FIM = "ATESTADO_REMOVIDO";
 const ACAO_ATESTADO_LANCADO = "ATESTADO_LANCADO_SAR2G"; // o usuário marcou que já lançou no SAR2G
@@ -111,6 +112,7 @@ async function materializar(data, opcoes) {
   }
   if (faltas.length) await db.upsert("fm_faltas", faltas, "re,data");
   await anotarAbonosTardios(db, faltas, codigoAntes);
+  await anotarViradasInjustificada(db, faltas, codigoAntes);
   if (dias.length) await db.upsert("fm_dias", dias, "re,data");
 
   // Medidas: o motivo editado no Painel ServCamp não vai no upsert, então nunca é sobrescrito.
@@ -148,6 +150,19 @@ async function anotarAbonosTardios(db, faltas, codigoAntes) {
   }).map(f => ({ ator: "sistema", acao: ACAO_ABONO_TARDIO, entidade: "fm_faltas", chave: f.re + "|" + f.data, antes: { codigo: codigoAntes.get(f.re + "|" + f.data) }, depois: { codigo: f.codigo } }));
   if (!trocas.length) return;
   try { await db.inserir("fm_auditoria", trocas); } catch (e) { console.error("faltas: não anotou abono tardio:", e && e.message); }
+}
+
+// O aviso semanal por e-mail (api/_faltas_email.js) só leva a falta que já era
+// injustificada até domingo às 23h59. Falta nova tem o criado_em da linha; a que
+// já existia com outro código e virou "I" depois precisa desta anotação, porque a
+// linha guarda só o código de agora.
+async function anotarViradasInjustificada(db, faltas, codigoAntes) {
+  const viradas = faltas.filter(f => {
+    const k = f.re + "|" + f.data;
+    return f.codigo === "I" && codigoAntes.has(k) && codigoAntes.get(k) !== "I";
+  }).map(f => ({ ator: "sistema", acao: ACAO_VIROU_I, entidade: "fm_faltas", chave: f.re + "|" + f.data, antes: { codigo: codigoAntes.get(f.re + "|" + f.data) }, depois: { codigo: "I" } }));
+  if (!viradas.length) return;
+  try { await db.inserir("fm_auditoria", viradas); } catch (e) { console.error("faltas: não anotou falta que virou injustificada:", e && e.message); }
 }
 
 // ── leituras ────────────────────────────────────────────────────────────────
@@ -483,5 +498,6 @@ module.exports = async function faltas(req, res) {
 };
 
 module.exports.materializar = materializar;
-// eventos de atestado registrados à mão: os avisos de faltas (api/_avisos.js) descontam as faltas cobertas, igual à tela
+// eventos de atestado registrados à mão: o aviso semanal por e-mail (api/_faltas_email.js) desconta as faltas cobertas, igual à tela
 module.exports.ACOES_ATESTADO = [ACAO_ATESTADO, ACAO_ATESTADO_FIM, ACAO_ATESTADO_LANCADO];
+module.exports.ACAO_VIROU_I = ACAO_VIROU_I;

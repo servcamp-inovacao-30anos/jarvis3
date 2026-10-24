@@ -1,8 +1,14 @@
 {
   "crons": [
     { "path": "/api/comercial-cron?respostas=1", "schedule": "0 11 * * *" },
-    { "path": "/api/comercial-cron", "schedule": "0 12 * * *" }
+    { "path": "/api/comercial-cron", "schedule": "0 12 * * *" },
+    { "path": "/api/rh?modulo=faltasemail&t=cron", "schedule": "0 17 * * 1" },
+    { "path": "/api/rh?modulo=faltasemail&t=cron&rodada=16h", "schedule": "0 19 * * 1" },
+    { "path": "/api/rh?modulo=faltasemail&t=cron&rodada=18h", "schedule": "0 21 * * 1" }
   ],
+  "functions": {
+    "api/rh.js": { "maxDuration": 60 }
+  },
   "headers": [
     {
       "source": "/(.*)",
