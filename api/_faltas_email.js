@@ -63,7 +63,6 @@ const DIAS_AREAS = 45;              // áreas que aparecem no painel: as das fal
 const MAX_DIAS_TESTE = 31;
 const MAX_DESTINOS = 10;
 const MAX_COPIAS = 10;
-const DOMINIO = "@gruposervcamp.com.br"; // endereço digitado à mão no teste: só da empresa
 const CID_LOGO = "logo-servcamp@aviso-semanal";
 const CID_ASSINATURA = "assinatura@aviso-semanal";
 const HOST_PADRAO = "email-ssl.com.br", PORTA_PADRAO = 465; // e-mail do domínio da empresa (Locaweb)
@@ -608,7 +607,9 @@ async function enviarManual({ res, db, ator, body }) {
 
 // Teste: qualquer período (até 31 dias), para quem ele escolher na hora. "@eu" é a
 // própria conta de envio e "@supervisor" o e-mail da área, para a tela não precisar
-// conhecer esses endereços; o resto precisa estar nas cópias ou ser da empresa.
+// conhecer esses endereços; o resto pode ser qualquer e-mail válido, de dentro ou de fora
+// da empresa (pedido do Raphael, 24/10/2026). O envio oficial continua só para o
+// supervisor da área e as cópias da lista.
 async function enviarTeste({ res, db, ator, body }) {
   const conta = await lerConta(db);
   if (!pronta(conta)) return erro(res, 409, SEM_CONTA, "SEM_CONTA");
@@ -617,8 +618,7 @@ async function enviarTeste({ res, db, ator, body }) {
   if (!a) return erro(res, 404, "Área não encontrada.", "AREA_DESCONHECIDA");
   const p = periodoDe(body.de, body.ate, agora);
   if (p.erro) return erro(res, 400, p.erro[0], p.erro[1]);
-  const [copiasLidas, assinatura] = await Promise.all([lerCopias(db), lerAssinatura(db)]);
-  const copias = new Set(copiasLidas.map(c => c.email));
+  const assinatura = await lerAssinatura(db);
   const pedidos = Array.isArray(body.para) ? body.para : [];
   const para = [];
   for (const x of pedidos) {
@@ -628,7 +628,6 @@ async function enviarTeste({ res, db, ator, body }) {
     else {
       e = emailLimpo(e);
       if (!emailValido(e)) return erro(res, 400, "E-mail inválido: " + String(x).slice(0, 80), "EMAIL_INVALIDO");
-      if (!copias.has(e) && !e.endsWith(DOMINIO)) return erro(res, 400, "No teste, endereço digitado precisa ser " + DOMINIO + ".", "FORA_DA_EMPRESA");
     }
     if (e && !para.includes(e)) para.push(e);
   }

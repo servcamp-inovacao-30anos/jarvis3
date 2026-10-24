@@ -216,7 +216,7 @@ function secTeste(p){
       '<label class="fe-chip"><input type="checkbox" data-fe="t-sup"'+(t.sup?" checked":"")+(a&&a.email?"":" disabled")+'> <b>Supervisor da área</b> <span class="fe-mut">'+esc(a&&a.email?a.email:"sem e-mail")+'</span></label>'+
       ccs+
     '</div>'+
-    '<div class="fe-linha"><input class="fe-in l" type="email" data-fe-campo="t.outro" placeholder="Outro e-mail @gruposervcamp.com.br (opcional)" value="'+esc(t.outro)+'"></div>'+
+    '<div class="fe-linha"><input class="fe-in l" type="text" inputmode="email" autocomplete="off" data-fe-campo="t.outro" placeholder="Outros e-mails, de qualquer domínio (opcional; separe por vírgula)" value="'+esc(t.outro)+'"></div>'+
     '<div class="fe-linha"><button class="fe-b" data-fe="previa-teste">Ver prévia</button><button class="fe-b fe-pri" data-fe="enviar-teste"'+(FE.ocupado||!p.configurado?" disabled":"")+'>'+(FE.ocupado?"Enviando…":"Enviar teste")+'</button></div></div>';
 }
 
@@ -294,7 +294,7 @@ function clique(e){
     if(t.eu)para.push("@eu");
     if(t.sup)para.push("@supervisor");
     t.cc.forEach(e=>para.push(e));
-    if(String(t.outro||"").trim())para.push(String(t.outro).trim());
+    String(t.outro||"").split(/[,;\s]+/).map(x=>x.trim()).filter(Boolean).forEach(x=>para.push(x));
     if(!para.length){msg("er","Escolha ao menos um destinatário para o teste.");render();return;}
     acao(()=>api("teste","POST",{area:t.area,de:t.de,ate:t.ate,para:para}),r=>"Teste enviado para "+r.para+" destinatário(s), com "+r.faltas+" falta(s) no período.",true);
     return;

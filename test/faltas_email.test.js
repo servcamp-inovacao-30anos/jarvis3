@@ -295,16 +295,17 @@ test("envio manual: exige confirmar, só a semana anterior, cópias escolhidas d
   assert.equal((await api("enviar", { method: "POST", usuario: "joaoygor", body: { areas: ["JEAN KLEBER"], confirmar: true } })).statusCode, 403);
 });
 
-test("teste: qualquer período, destinatários escolhidos na hora, nunca fora da empresa, e não bloqueia o oficial", async () => {
+test("teste: qualquer período, destinatários escolhidos na hora (qualquer e-mail válido), e não bloqueia o oficial", async () => {
   const t = base();
   const corpo = extra => ({ area: "JEAN KLEBER", de: "2026-10-01", ate: "2026-10-25", para: ["@eu"], ...extra });
-  assert.equal((await api("teste", { method: "POST", usuario: RESP, body: corpo({ para: ["alguem@gmail.com"] }) })).body.codigo, "FORA_DA_EMPRESA");
+  assert.equal((await api("teste", { method: "POST", usuario: RESP, body: corpo({ para: ["não é e-mail"] }) })).body.codigo, "EMAIL_INVALIDO");
+  assert.equal((await api("teste", { method: "POST", usuario: RESP, body: corpo({ para: Array.from({ length: 11 }, (_, i) => "p" + i + "@exemplo.com.br") }) })).body.codigo, "MUITOS_DESTINOS");
   assert.equal((await api("teste", { method: "POST", usuario: RESP, body: corpo({ de: "2026-09-01" }) })).body.codigo, "PERIODO_LONGO");
   assert.equal((await api("teste", { method: "POST", usuario: RESP, body: corpo({ para: [] }) })).body.codigo, "SEM_DESTINO");
-  const r = await api("teste", { method: "POST", usuario: RESP, body: corpo({ para: ["@eu", "@supervisor", "copia2@exemplo.com.br", "alguem@gruposervcamp.com.br"] }) });
+  const r = await api("teste", { method: "POST", usuario: RESP, body: corpo({ para: ["@eu", "@supervisor", "copia2@exemplo.com.br", "Alguem@Gmail.com"] }) });
   assert.equal(r.statusCode, 200, JSON.stringify(r.body));
   assert.equal(enviados.length, 1);
-  assert.deepEqual(enviados[0].para, ["remetente@gruposervcamp.com.br", "jean@exemplo.com.br", "copia2@exemplo.com.br", "alguem@gruposervcamp.com.br"]);
+  assert.deepEqual(enviados[0].para, ["remetente@gruposervcamp.com.br", "jean@exemplo.com.br", "copia2@exemplo.com.br", "alguem@gmail.com"], "e-mail de fora da empresa vale no teste");
   assert.match(enviados[0].assunto, /^\[TESTE\] Aviso semanal de faltas injustificadas — Jean Kleber$/);
   assert.match(enviados[0].html, /Envio de teste\./);
   assert.match(enviados[0].html, /Gil Semana Passada/, "período escolhido: entra a falta de 18/10");
