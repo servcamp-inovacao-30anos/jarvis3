@@ -89,6 +89,73 @@ function numeros(o, faltas, pessoas) {
 </td></tr>`;
 }
 
+// Embaixo do nome, só o resumo do ano; o detalhe vai na tabela "Reincidência no ano".
+// Com 2 ou mais medidas, o selo "Reincidente" (o mesmo corte da tela).
+const pl = (n, um, v) => n + " " + (n === 1 ? um : v);
+const SELO_REIN = `<span style="display:inline-block;padding:2px 8px;border:1px solid #f4b4ad;border-radius:10px;background:#fdecea;color:#b42318;font-size:10px;line-height:14px;font-weight:700;letter-spacing:.5px;white-space:nowrap">REINCIDENTE</span>`;
+function noAno(h) {
+  if (!h) return "";
+  return `<div style="font-size:11px;line-height:16px;font-weight:400;color:${CINZA};padding-top:5px">${h.reincidente ? SELO_REIN + "<br>" : ""}No ano: ${pl(h.faltasAno, "falta", "faltas")} · ${pl(h.medidas, "medida", "medidas")}</div>`;
+}
+function medidaTxt(m) {
+  if (!m) return "";
+  const t = String(m.tipo || "").toUpperCase(), g = String(m.grau || "").toUpperCase();
+  if (t.startsWith("SUSPENS")) return "Suspensão" + (m.dias ? " de " + pl(m.dias, "dia", "dias") : "");
+  return "Advertência" + (g === "VERBAL" ? " verbal" : g === "ESCRITA" ? " escrita" : "");
+}
+// Uma linha por colaborador do aviso: faltas injustificadas e medidas desde 01/01, a última medida
+// e a situação. Primeiro quem tem mais medidas: é onde o supervisor precisa olhar com mais cuidado.
+function tabelaReincidencia(linhas) {
+  const com = linhas.filter(l => l.hist);
+  if (!com.length) return "";
+  const ord = [...com].sort((a, b) => b.hist.medidas - a.hist.medidas || b.hist.faltasAno - a.hist.faltasAno || String(a.nome).localeCompare(String(b.nome)));
+  const ano = String((com[0].datas || [])[0] || "").slice(0, 4);
+  const th = (rot, w, alin, raio) => `<th align="${alin}" width="${w}" bgcolor="#eef3f9" style="background:#eef3f9;${raio ? "border-radius:" + raio + ";" : ""}padding:11px 10px;font-size:10px;line-height:14px;font-weight:700;letter-spacing:.8px;color:#3a4a5e;text-transform:uppercase;font-family:${FONTE}">${rot}</th>`;
+  const lbl = t => `<span class="lbl" style="display:none">${t}</span>`;
+  const corpo = ord.map((l, i) => {
+    const h = l.hist, ult = i === ord.length - 1, b = ult ? "" : `border-bottom:1px solid ${LINHA};`;
+    const sit = h.reincidente ? SELO_REIN
+      : h.medidas ? `<span style="display:inline-block;padding:2px 8px;border:1px solid #fedf89;border-radius:10px;background:#fffaeb;color:#93370d;font-size:10px;line-height:14px;font-weight:700;letter-spacing:.5px;white-space:nowrap">1 MEDIDA</span>`
+      : `<span style="display:inline-block;padding:2px 8px;border:1px solid #d3dbe6;border-radius:10px;background:#f4f7fb;color:#3a4a5e;font-size:10px;line-height:14px;font-weight:700;letter-spacing:.5px;white-space:nowrap">SEM MEDIDA</span>`;
+    const td = (cls, alin, estilo, html) => `<td${cls ? ` class="${cls}"` : ""} align="${alin}" valign="top" style="padding:12px 10px;${b}${estilo};font-family:${FONTE}">${html}</td>`;
+    return `<tr>
+      ${td("nome", "left", `font-weight:700;color:${MARINHO}`, esc(l.nome) + `<div style="font-size:11px;line-height:16px;font-weight:400;color:${CLARO}">RE ${esc(l.re)}</div>`)}
+      ${td("", "center", `font-weight:700;color:${MARINHO};font-size:15px`, lbl("Faltas no ano") + h.faltasAno)}
+      ${td("", "left", "", lbl("Medidas") + (h.medidas ? `<b style="color:${MARINHO}">${h.medidas}</b> · ${esc(h.txt)}` : `<span style="color:${CLARO}">Nenhuma</span>`))}
+      ${td("", "left", "white-space:nowrap", lbl("Última") + (h.ultima ? esc(medidaTxt(h.ultima)) + `<div style="font-size:11px;line-height:16px;color:${CLARO}">${esc(ddmmaaaa(h.ultima.data))}</div>` : "—"))}
+      ${td("ult", "right", "", sit)}
+    </tr>`;
+  }).join("\n");
+  return `<tr><td class="px" style="padding:30px 40px 0;font-family:${FONTE}">
+  <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0">
+    <tr><td style="font-size:11px;line-height:14px;font-weight:700;letter-spacing:2px;color:${CINZA};text-transform:uppercase;padding-bottom:4px;font-family:${FONTE}">Reincidência no ano</td></tr>
+    <tr><td style="font-size:12px;line-height:18px;color:#6b7e96;padding-bottom:12px;font-family:${FONTE}">Faltas injustificadas e medidas disciplinares de cada colaborador desde 01/01${ano ? "/" + esc(ano) : ""} (abonos, afastamentos e medidas canceladas não contam).</td></tr>
+  </table>
+  <table role="presentation" class="rt" width="100%" border="0" cellpadding="0" cellspacing="0" style="border:1px solid ${LINHA};border-radius:12px;border-collapse:separate;font-size:12.5px;line-height:19px;color:#3a4a5e">
+    <thead><tr>${th("Colaborador", "28%", "left", "12px 0 0 0")}${th("Faltas", "11%", "center", "")}${th("Medidas no ano", "31%", "left", "")}${th("Última", "16%", "left", "")}${th("Situação", "14%", "right", "0 12px 0 0")}</tr></thead>
+    <tbody>
+${corpo}
+    </tbody>
+  </table>
+</td></tr>`;
+}
+
+// Botão para o painel: lá o supervisor vê as mesmas faltas e gera a medida de cada uma.
+function botaoPainel(link) {
+  if (!link) return "";
+  return `<tr><td class="px" style="padding:26px 40px 0;font-family:${FONTE}">
+  <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="#f4f7fb" style="background:#f4f7fb;border:1px solid #e3eaf3;border-radius:12px"><tr>
+    <td style="padding:18px 22px;font-family:${FONTE}">
+      <div style="font-size:14px;line-height:20px;font-weight:700;color:${MARINHO}">Gerar a medida disciplinar no Painel ServCamp</div>
+      <div style="font-size:12.5px;line-height:19px;color:${CINZA};padding-top:3px">As mesmas faltas, com o histórico de cada colaborador. Escolha a medida, escreva o motivo, confira o documento e imprima. Depois, lance no SAR2G.</div>
+      <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin-top:14px"><tr>
+        <td bgcolor="${AZUL}" style="background:${AZUL};border-radius:8px"><a href="${esc(link)}" target="_blank" style="display:inline-block;padding:11px 22px;font-size:14px;line-height:18px;font-weight:700;color:#ffffff;text-decoration:none;font-family:${FONTE}">Abrir no Painel ServCamp</a></td>
+      </tr></table>
+    </td>
+  </tr></table>
+</td></tr>`;
+}
+
 function tabela(linhas) {
   const th = (rot, w, alin, raio, pad) => `<th align="${alin}" width="${w}" bgcolor="#14304f" style="background:#14304f;${raio ? "border-radius:" + raio + ";" : ""}padding:14px ${pad};font-size:10px;line-height:14px;font-weight:700;letter-spacing:.8px;color:#ffffff;text-transform:uppercase;font-family:${FONTE}">${rot}</th>`;
   const lbl = t => `<span class="lbl" style="display:none">${t}</span>`;
@@ -98,7 +165,7 @@ function tabela(linhas) {
     const qtd = l.datas.length;
     const datas = l.datas.map(d => `<div style="white-space:nowrap">${esc(ddmmaaaa(d))} <span style="font-size:11px;font-weight:400;color:${CLARO}">· ${diaDaSemana(d)}</span></div>`).join("");
     return `<tr>
-      ${td("nome", "", `padding:16px 12px;border-left:1px solid ${LINHA};border-bottom:1px solid ${LINHA};font-weight:700;color:${MARINHO}`, esc(l.nome) + (qtd > 1 ? `<div style="font-size:11px;line-height:16px;font-weight:700;color:${AZUL};padding-top:3px">${qtd} faltas na semana</div>` : ""))}
+      ${td("nome", "", `padding:16px 12px;border-left:1px solid ${LINHA};border-bottom:1px solid ${LINHA};font-weight:700;color:${MARINHO}`, esc(l.nome) + (qtd > 1 ? `<div style="font-size:11px;line-height:16px;font-weight:700;color:${AZUL};padding-top:3px">${qtd} faltas na semana</div>` : "") + noAno(l.hist))}
       ${td("", "", `padding:16px 6px;border-bottom:1px solid ${LINHA};white-space:nowrap`, lbl("RE") + esc(l.re))}
       ${td("", "", `padding:16px 6px;border-bottom:1px solid ${LINHA}`, lbl("Posto") + esc(l.posto))}
       ${td("", "", `padding:16px 6px;border-bottom:1px solid ${LINHA}`, lbl("Cargo") + esc(l.cargo))}
@@ -228,7 +295,7 @@ function montar(o) {
   const cartao = [
     cabecalho({ ...o, inicio: o.inicio, fim: o.fim }),
     tituloArea({ ...o, area }),
-    linhas.length ? numeros(o, faltas, linhas.length) + tabela(linhas) : semOcorrencia(o),
+    linhas.length ? numeros(o, faltas, linhas.length) + tabela(linhas) + tabelaReincidencia(linhas) + botaoPainel(o.link) : semOcorrencia(o),
     quadroAtualizacoes(atual),
     `<tr><td class="px" style="padding:30px 40px 26px;font-family:${FONTE};font-size:11px;line-height:17px;color:${CLARO}">${esc(rodape)}</td></tr>`,
     `<tr><td height="5" bgcolor="${AZUL}" style="height:5px;line-height:5px;font-size:0;background:${AZUL};border-radius:0 0 18px 18px">&nbsp;</td></tr>`
@@ -276,8 +343,12 @@ ${fecho(o.assinatura)}
     t.push(`Segue o aviso das faltas injustificadas registradas na sua área, referentes ao período de ${periodo}.`, "");
     t.push("Por gentileza, analise cada situação e avalie se cabe a aplicação de medida disciplinar, conforme os procedimentos da empresa.", "");
     t.push(`FALTAS INJUSTIFICADAS — ÁREA ${area.toUpperCase()}`, `Período: ${periodo}`, `Ocorrências: ${faltas} · Colaboradores: ${linhas.length}`, "");
-    linhas.forEach(l => t.push(`- ${l.nome} · RE ${l.re} · ${l.posto} · ${l.cargo} · ${l.escala} · ${l.datas.length > 1 ? "Faltas" : "Falta"}: ${l.datas.map(d => ddmmaaaa(d) + " (" + diaDaSemana(d) + ")").join(", ")}`));
+    linhas.forEach(l => {
+      t.push(`- ${l.nome} · RE ${l.re} · ${l.posto} · ${l.cargo} · ${l.escala} · ${l.datas.length > 1 ? "Faltas" : "Falta"}: ${l.datas.map(d => ddmmaaaa(d) + " (" + diaDaSemana(d) + ")").join(", ")}`);
+      if (l.hist) t.push(`  No ano: ${l.hist.faltasAno} ${l.hist.faltasAno === 1 ? "falta injustificada" : "faltas injustificadas"} · ${l.hist.medidas ? l.hist.medidas + (l.hist.medidas === 1 ? " medida" : " medidas") + " (" + l.hist.txt + ")" : "nenhuma medida"}${l.hist.ultima ? " · última em " + ddmmaaaa(l.hist.ultima.data) : ""}${l.hist.reincidente ? " · REINCIDENTE" : ""}`);
+    });
     t.push("");
+    if (o.link) t.push(`Gerar a medida disciplinar no Painel ServCamp: ${o.link}`, "");
   } else {
     t.push(`Não foram identificadas faltas injustificadas na sua área no período de ${periodo}.`, "");
   }

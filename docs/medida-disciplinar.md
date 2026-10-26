@@ -1,6 +1,22 @@
 # Medida disciplinar pelo JARVIS: plano
 
-Proposta do Raphael (26/10/2026), discutida e decidida nesta conversa. Nada aqui está implementado ainda: este documento é o ponto de partida para continuar o trabalho.
+Proposta do Raphael (26/10/2026), discutida e decidida nesta conversa.
+
+## Onde estamos (26/10/2026, à noite)
+
+Feito nesta branch (`feature/medida-disciplinar`), com testes em `test/medida.test.js`:
+
+- **E-mail semanal** (Fase 1): embaixo de cada colaborador, o resumo do ano; depois da tabela, a tabela **"Reincidência no ano"** (faltas injustificadas e medidas desde 01/01, última medida e o selo Reincidente / 1 medida / Sem medida) e o botão **"Abrir no Painel ServCamp"**. O endereço do botão vem de `PAINEL_URL` na Vercel ou é guardado sozinho quando o Raphael abre o painel do aviso (só https). Sem endereço, o e-mail sai sem o botão.
+- **Gerar medida** (Fase 2), na tela Faltas da Supervisão: botão em cada falta em aberto → editor com o histórico do colaborador, tipo (advertência verbal, advertência escrita, suspensão + dias), datas, empresa (vem da última planilha), as faltas da ocorrência e as situações (o motivo se monta sozinho e pode ser reescrito) e o **documento A4 mudando ao vivo**. Confirma, recebe o número `MD-AAAA-NNNN` e imprime ou salva em PDF.
+- **Rastreio**: cada medida gerada é registrada em nome de quem gerou (`fm_auditoria`, entidade `fm_medida_gerada`). Aba **"Medidas geradas"**: falta lançar / lançadas / canceladas, separadas por supervisor; a coordenação vê todas. A medida sai de "falta lançar" sozinha quando a planilha diária trouxer a medida do mesmo colaborador (a partir de 3 dias antes da geração), ou quando alguém marca "Já lancei no SAR2G". Cancelar exige motivo e o registro fica.
+- **Lembrete no perfil**: quem gerou e ainda não lançou vê "N medidas para lançar no SAR2G" no menu (a coordenação vê o total) e um aviso ao entrar.
+- **Quem gera** (decidido): Raphael, Jussilene e João (todas as áreas) e os supervisores (só a área deles). A checagem é no servidor (`api/_medida_regras.js`).
+- A interface fica em `assets/medida/` (o `index.html` está no limite de tamanho) e se encaixa nas funções da tela dos supervisores.
+
+Falta:
+
+1. **Modelo oficial de advertência** (o Raphael manda em 27/10). Até lá, advertência escrita e verbal saem num modelo provisório no mesmo formato da suspensão (`docHtml` em `assets/medida/medida.js`).
+2. **Importar as faltas desde 01/01** (o arquivo `faltas injustificadas desde 01-01.xlsx` ainda não está na PR). Enquanto isso, a contagem de faltas do ano no e-mail e no editor começa em 01/06/2026, quando o módulo passou a guardar as faltas.
 
 Contexto: o aviso semanal por e-mail (`api/_faltas_email.js`) já manda a cada supervisor as faltas injustificadas da área. A apuração já tira demitidos, abonos, declarações e afastamentos (`docs/faltas-apuracao.md`). O que falta é ajudar o supervisor a decidir **qual** medida aplicar e a gerar o documento.
 
@@ -31,7 +47,7 @@ O e-mail leva um link para a tela dos supervisores (já existe: `#pg-faltassup`,
 3. Ao gerar, grava um registro (sugestão: `fm_auditoria`, ação `MEDIDA_GERADA`, sem tabela nova, mesmo padrão dos atestados em `salvarAtestado`): `{ re, nome, tipo, grau, dias, inicio, motivo, posto, caso (re|primeiraFalta), supervisor }`.
 4. A coordenação vê a lista **"Medidas geradas, falta lançar no SAR2G"** (quem gerou, colaborador, tipo, dias, data, motivo, posto). A medida sai da lista sozinha quando a planilha diária traz uma medida do mesmo RE com data a partir da geração (aba DISCIPLINA → `fm_medidas`). Também dá para marcar "lançada" à mão.
 
-Quem pode gerar: o supervisor da área (e aprovadores). A confirmar.
+Quem pode gerar (confirmado pelo Raphael em 26/10/2026): ele, a coordenadora Jussilene, o João e os supervisores, cada supervisor só para a área dele.
 
 ## Modelo oficial (transcrito do PDF enviado em 26/10/2026)
 

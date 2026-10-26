@@ -41,6 +41,7 @@ const ponto = require("./_ponto");
 const faltasMod = require("./_faltas");
 const HTML = require("./_faltas_email_html");
 const LOGO = require("./_faltas_email_logo");
+const MD = require("./_medida_regras");
 
 // Só a conta do Raphael envia à mão, cadastra e-mails e liga o automático (pedido dele).
 // A checagem é AQUI, no servidor: esconder o botão na tela é conveniência, não segurança.
@@ -56,6 +57,7 @@ const ACAO_AUTO = "FALTAS_EMAIL_AUTO";
 const ACAO_CONTA = "FALTAS_EMAIL_CONTA";       // conta de e-mail que envia (senha criptografada)
 const ACAO_ASSINATURA = "FALTAS_EMAIL_ASSINATURA"; // imagem da assinatura, no corpo do e-mail abaixo do cartão
 const ACAO_AREA = "FALTAS_EMAIL_AREA";         // e-mail e nome da saudação de uma área (o e-mail vai também para a jv_supervisores)
+const ACAO_LINK = "FALTAS_EMAIL_LINK";         // endereço do painel para o botão "Abrir no Painel ServCamp" (guardado ao abrir o painel)
 const ACOES_ENVIO = [ACAO_RESERVA, ACAO_ENVIADO, ACAO_FALHOU];
 
 const RESERVA_VALE_MS = 15 * 60000; // função que caiu no meio do envio não trava a área para sempre
@@ -218,10 +220,39 @@ async function faltasDoPeriodo(db, inicio, fim, corteMs) {
     .filter(f => !areaFora(f.area)); // RT de turno, Coordenação e RH: fora do aviso
 }
 
+// Histórico do ano de todos os colaboradores, lido uma vez por rodada de envio: medidas desde
+// 01/01 (sem repetir a que veio no histórico importado e na planilha diária) e faltas que
+// continuam injustificadas (a apuração já tirou demitido, abono e afastamento).
+async function historicoDoAno(db, hoje) {
+  const desde = String(hoje).slice(0, 4) + "-01-01";
+  const [medidas, faltasI] = await Promise.all([
+    db.listar(`fm_medidas?select=chave,re,data,tipo,grau,dias,fase,nome&data=gte.${desde}&order=re.asc,data.asc,chave.asc`),
+    db.listar(`fm_faltas?select=re,data,nome&codigo=eq.I&data=gte.${desde}&order=re.asc,data.asc`)
+  ]);
+  return { medidas: R.dedupMedidas(medidas).map(m => ({ ...m, data: iso(m.data) })), faltasI };
+}
+function historicoDaLinha(hist, re, nome) {
+  if (!hist) return null;
+  const h = MD.historicoDe(re, nome, hist.medidas, hist.faltasI);
+  return { ...h, txt: MD.historicoTxt(h) };
+}
+
+// Endereço do painel para o botão do e-mail: PAINEL_URL na Vercel ou o que o painel guardou
+// (o endereço em que o Raphael abre o painel do aviso). Sem nenhum dos dois, o e-mail sai sem o botão.
+const LINK_OK = /^https:\/\/[a-z0-9.-]+(:\d+)?$/i;
+async function lerLink(db) {
+  const e = String(process.env.PAINEL_URL || "").trim().replace(/\/+$/, "");
+  if (LINK_OK.test(e)) return e;
+  const [ev] = await db.obter(`fm_auditoria?select=depois&acao=eq.${ACAO_LINK}&order=id.desc&limit=1`);
+  const v = ev && ev.depois && ev.depois.link;
+  return v && LINK_OK.test(v) ? v : null;
+}
+const linkDaTela = base => (base ? base + "/?pg=faltassup" : null); // abre as faltas em aberto da área, onde fica "Gerar medida"
+
 // Uma linha por colaborador, com todas as datas de falta dele (pedido do Raphael);
 // os dados do posto/cargo/escala são os da falta mais recente.
 const semPosto = p => { const t = String(p == null ? "" : p).trim(); return !t || t === "—" || t === "-"; };
-function agrupar(faltas) {
+function agrupar(faltas, hist) {
   const porRE = new Map();
   [...faltas].sort((a, b) => a.data.localeCompare(b.data)).forEach(f => {
     const k = String(f.re);
@@ -234,7 +265,7 @@ function agrupar(faltas) {
     p.escala = f.escala || p.escala;
   });
   return [...porRE.values()]
-    .map(p => ({ ...p, datas: [...new Set(p.datas)].sort() }))
+    .map(p => ({ ...p, datas: [...new Set(p.datas)].sort(), hist: historicoDaLinha(hist, p.re, p.nome) }))
     .sort((a, b) => a.datas[0].localeCompare(b.datas[0]) || String(a.nome || "").localeCompare(String(b.nome || "")));
 }
 
@@ -282,11 +313,13 @@ async function atualizacoesDa(db, area, inicio, agoraMs) {
 // O e-mail de uma área. Só entram as faltas desta área: nenhum supervisor recebe dado de outra.
 async function montarEmail(db, o) {
   const minhas = o.faltas.filter(f => f.area === o.area.area);
-  const linhas = agrupar(minhas);
+  const hist = o.hist || (minhas.length ? await historicoDoAno(db, diaSP(new Date(o.agoraMs || Date.now()))) : null);
+  const linhas = agrupar(minhas, hist);
   const atualizacoes = o.comAtualizacoes ? await atualizacoesDa(db, o.area.area, o.inicio, o.agoraMs) : null;
+  const link = o.link === undefined ? linkDaTela(await lerLink(db)) : o.link;
   const m = HTML.montar({
     area: o.area.nome, saudacao: o.area.saudacao || o.area.nome, inicio: o.inicio, fim: o.fim, linhas, atualizacoes,
-    teste: !!o.teste, logo: o.logo || "cid:" + CID_LOGO, assinatura: o.assinatura || null
+    teste: !!o.teste, logo: o.logo || "cid:" + CID_LOGO, assinatura: o.assinatura || null, link
   });
   return { ...m, linhas, faltas: minhas, atualizacoes };
 }
@@ -352,8 +385,9 @@ const eventosDoEnvio = (db, chave) => eventos(db, ACOES_ENVIO, `&chave=eq.${enco
 async function enviarSemana(db, { semana, escolhidas, copias, origem, ator, agora }) {
   agora = agora || agoraAtual();
   const agoraMs = agora.getTime();
-  const [areas, faltas, conta, assinatura] = await Promise.all([lerAreas(db, diaSP(agora)), faltasDoPeriodo(db, semana.inicio, semana.fim, fimDoDiaSP(semana.fim)), lerConta(db), lerAssinatura(db)]);
+  const [areas, faltas, conta, assinatura, hist, base] = await Promise.all([lerAreas(db, diaSP(agora)), faltasDoPeriodo(db, semana.inicio, semana.fim, fimDoDiaSP(semana.fim)), lerConta(db), lerAssinatura(db), historicoDoAno(db, diaSP(agora)), lerLink(db)]);
   if (!pronta(conta)) throw new Error("conta de envio não cadastrada");
+  const link = linkDaTela(base);
   // "Responder" volta para o Raphael com as cópias junto (pedido dele): todos no Reply-To.
   const responderPara = [...new Set([conta.user, ...copias])];
   const alvo = escolhidas ? new Set(escolhidas) : null;
@@ -374,7 +408,7 @@ async function enviarSemana(db, { semana, escolhidas, copias, origem, ator, agor
       if (est.enviado || est.dono !== lote) { tot.emAndamento++; continue; } // outra chamada chegou antes
       let m = null, r;
       try {
-        m = await montarEmail(db, { area: a, inicio: semana.inicio, fim: semana.fim, faltas, comAtualizacoes: true, agoraMs, assinatura: assinaturaNoEmail(assinatura) });
+        m = await montarEmail(db, { area: a, inicio: semana.inicio, fim: semana.fim, faltas, comAtualizacoes: true, agoraMs, assinatura: assinaturaNoEmail(assinatura), hist, link });
         r = await correio.enviar({ para: [a.email], cc: copias, responderPara, assinatura, assunto: m.assunto, html: m.html, texto: m.texto });
       } catch (e) {
         r = { ok: false, erro: String((e && e.message) || e).slice(0, 200) };
@@ -428,8 +462,14 @@ async function cron(req, res) {
 }
 
 // ── painel (só a conta do Raphael) ──────────────────────────────────────────
-async function verPainel({ res, db }) {
+async function verPainel({ req, res, db, ator }) {
   const agora = agoraAtual(), hoje = diaSP(agora), semana = semanaAnterior(agora);
+  // O endereço em que o painel foi aberto vira o do botão do e-mail (só https; localhost não serve).
+  const origem = String((req && req.query && req.query.origem) || "").trim().replace(/\/+$/, "").toLowerCase();
+  if (LINK_OK.test(origem) && !/localhost|127\.0\.0\.1/.test(origem) && !process.env.PAINEL_URL) {
+    const [u] = await db.obter(`fm_auditoria?select=depois&acao=eq.${ACAO_LINK}&order=id.desc&limit=1`);
+    if (!(u && u.depois && u.depois.link === origem)) await db.inserir("fm_auditoria", [ev(ator, ACAO_LINK, "link", { link: origem }, u ? u.depois : null)]);
+  }
   const [areas, faltas, copias, auto, envios, historico, conta, assinatura] = await Promise.all([
     lerAreas(db, hoje),
     faltasDoPeriodo(db, semana.inicio, semana.fim, fimDoDiaSP(semana.fim)),
