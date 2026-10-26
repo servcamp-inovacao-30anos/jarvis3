@@ -12527,7 +12527,7 @@ function fmHistLer(rows){
   const iCab=(rows||[]).findIndex(r=>(r||[]).map(norm).indexOf("RE")>=0&&temData(r));
   if(iCab<0)return{erro:"Não achei as colunas RE e DTINICIOOCORRENCIA (ou INICIALOC). Use o relatório de ocorrências do SAR2G."};
   const cab=rows[iCab].map(norm),col=n=>cab.indexOf(n);
-  const c={re:col("RE"),nome:col("NOME"),desc:col("DESCRICAO"),dt:col("DTINICIOOCORRENCIA")>=0?col("DTINICIOOCORRENCIA"):col("INICIALOC"),fim:col("DTFIMOCORRENCIA")>=0?col("DTFIMOCORRENCIA"):col("FIMALOC"),fase:col("FASEATUAL"),cli:col("CLIENTE"),pun:col("PUNICAO"),hist:col("HISTDISCIPLINAR")};
+  const c={re:col("RE"),nome:col("NOME"),desc:col("DESCRICAO"),dt:col("DTINICIOOCORRENCIA")>=0?col("DTINICIOOCORRENCIA"):col("INICIALOC"),fim:col("DTFIMOCORRENCIA")>=0?col("DTFIMOCORRENCIA"):col("FIMALOC"),fase:col("FASEATUAL"),cli:col("CLIENTE"),pun:col("PUNICAO"),hist:col("HISTDISCIPLINAR"),obs:col("OBSDOCUMENTO"),obs2:col("OBSDOCUMENTO_CONTINUACAO")};
   if(c.desc<0&&c.pun<0)return{erro:"Não achei as colunas DESCRICAO e PUNICAO."};
   const v=(r,i)=>i<0?"":r[i];
   const linhas=[],jaVi={};let semData=0;
@@ -12542,7 +12542,9 @@ function fmHistLer(rows){
     const m=pun.match(/SUSPENS[ÃA]O\s+(\d+)/);
     const md={re:String(v(r,c.re)||"").trim(),nome:String(v(r,c.nome)||"").trim(),data,
       tipo:ehSusp?"SUSPENSÃO":"ADVERTÊNCIA",grau:ehSusp?"SUSPENSÃO":(pun.indexOf("VERBAL")>=0?"VERBAL":"ESCRITA"),
-      dias:m?parseInt(m[1],10):0,fase:String(v(r,c.fase)||"").trim(),motivo:String(v(r,c.desc)||"").trim(),local:String(v(r,c.cli)||"").trim(),hist};
+      dias:m?parseInt(m[1],10):0,fase:String(v(r,c.fase)||"").trim(),motivo:String(v(r,c.desc)||"").trim(),local:String(v(r,c.cli)||"").trim(),hist,
+      /* o motivo escrito da medida (o que a pessoa fez) */
+      obs:String((v(r,c.obs)||"")+" "+(v(r,c.obs2)||"")).replace(/\s+/g," ").trim().slice(0,400)};
     /* fim do período: o maior entre a data fim da linha e início + dias − 1 (há linhas com o fim antes do início) */
     const soma=n=>new Date(Date.parse(data+"T12:00:00Z")+n*864e5).toISOString().slice(0,10);
     const fl=fmHistData(v(r,c.fim)),fc=soma(Math.max(md.dias,1)-1);
@@ -12588,8 +12590,8 @@ function fmHistCarregar(forcar){
     const porRE={};
     (j.medidas||[]).forEach(m=>{(porRE[m.re]=porRE[m.re]||[]).push(m);});
     Object.values(porRE).forEach(l=>l.sort((a,b)=>b.data.localeCompare(a.data)));
-    FM.hist={em:Date.now(),desde:j.desde,medidas:j.medidas||[],porRE,importacao:j.importacao,erro:null};
-  }).catch(e=>{FM.hist={em:Date.now(),porRE:{},medidas:[],erro:e.message};})
+    FM.hist={em:Date.now(),desde:j.desde,medidas:j.medidas||[],porRE,faltas:j.faltas||[],importacao:j.importacao,erro:null};
+  }).catch(e=>{FM.hist={em:Date.now(),porRE:{},medidas:[],faltas:[],erro:e.message};})
     .finally(()=>{FM.histCarregando=false;if(document.querySelector("#pg-faltasmed.active"))fmRenderCorpo();if(document.querySelector("#pg-faltassup.active"))fsRender();});
 }
 /* Medidas válidas (não canceladas) de uma pessoa desde janeiro. */
@@ -12647,7 +12649,7 @@ function fmHistTela(){
   const comAb=pessoas.filter(p=>p.val.length&&p.abertos.length);
   const kp=(rot,val,sub,mostrar,cls)=>`<button type="button" class="fm-kpi ${cls||""}${mostrar&&st.mostrar===mostrar?" sel":""}" onclick="FM.hs.mostrar=${mostrar?`FM.hs.mostrar==='${mostrar}'?'':'${mostrar}'`:"''"};FM.hs.lim=60;fmRenderCorpo()"><div class="fm-kpi-l">${rot}</div><div class="fm-kpi-v"><b>${val}</b><span>${sub}</span></div></button>`;
   const desde=fmDdA(H.desde);
-  let h=`<div class="fm-hh"><div><h4>Histórico de medidas</h4><p>Advertências e suspensões de cada colaborador desde ${desde}. Serve para ver quem é reincidente antes de aplicar a próxima medida.</p></div>`+
+  let h=`<div class="fm-hh"><div><h4>Histórico de medidas</h4><p>Advertências, suspensões (com os dias) e faltas injustificadas de cada colaborador desde ${desde}, com o motivo de cada medida. Serve para ver quem é reincidente antes de aplicar a próxima medida.</p></div>`+
     (j.pode_editar?`<div class="fm-hh-a"><button type="button" class="fm-btn" onclick="fmHistEnviar()">${FM_IC.cal}Enviar histórico (.xlsx)</button>${H.importacao?`<span>Último envio: ${fmDdA(String(H.importacao.em).slice(0,10))} por ${_esc(H.importacao.por||"—")}</span>`:""}</div>`:"")+`</div>`;
   if(!H.medidas.length)return h+fmVazio("Nenhuma medida desde "+desde,j.pode_editar?"Use o botão Enviar histórico com o relatório de ocorrências do SAR2G (advertências e suspensões).":"Peça a um aprovador para enviar o histórico do SAR2G.");
   h+=`<div class="fm-hv"><div class="fm-seg" role="group" aria-label="Ver"><button type="button" class="${st.vis==="pessoas"?"on":""}" onclick="FM.hs.vis='pessoas';fmRenderCorpo()">Colaboradores</button><button type="button" class="${st.vis==="rank"?"on":""}" onclick="FM.hs.vis='rank';FM.hs.rkLim=0;fmRenderCorpo()">Rankings</button></div></div>`;
@@ -12663,12 +12665,13 @@ function fmHistTela(){
   let lista=pessoas.filter(passa);
   if(st.ordem==="nome")lista.sort((a,b)=>a.nome.localeCompare(b.nome));
   else if(st.ordem==="recente")lista.sort((a,b)=>b.ult.localeCompare(a.ult)||b.val.length-a.val.length);
+  else if(st.ordem==="faltas")lista.sort((a,b)=>b.faltasI.length-a.faltasI.length||b.val.length-a.val.length);
   else lista.sort((a,b)=>b.val.length-a.val.length||b.sus.length-a.sus.length||b.ult.localeCompare(a.ult));
   const sel=(rot,campo,ops)=>`<div class="fm-selb${st[campo]&&!(campo==="ordem"&&st[campo]==="mais")?" on":""}"><label><span class="t">${rot}:</span><select onchange="FM.hs.${campo}=this.value;FM.hs.lim=60;fmRenderCorpo()">${ops.map(([v,l])=>`<option value="${v}"${v===st[campo]?" selected":""}>${l}</option>`).join("")}</select><span class="chv">${FM_IC.chev}</span></label></div>`;
   h+=`<div class="fm-fbar fm-oc-bar"><label class="fm-search">${FM_IC.busca}<input class="fm-in" id="fm-hs-busca" placeholder="Buscar por nome, RE ou posto" value="${_esc(st.busca)}" oninput="const v=this.value;fmDeb(()=>{FM.hs.busca=v;FM.hs.lim=60;fmRenderCorpo();const i=document.getElementById('fm-hs-busca');if(i){i.focus();i.setSelectionRange(v.length,v.length);}})"></label>`+
     brMulti("hspos","Postos",fmHistPostosOpc(noPer),()=>FM.hs.postos,()=>{FM.hs.lim=60;fmRenderCorpo();brMultiAbre("hspos");})+
     sel("Mostrar","mostrar",[["","Todos"],["rein","Só reincidentes ("+rein.length+")"],["ab","Com falta em aberto agora ("+comAb.length+")"],["reinab","Reincidentes com falta agora ("+reinAb.length+")"]])+
-    (st.vis==="rank"?"":sel("Ordenar","ordem",[["mais","Mais medidas"],["recente","Mais recentes"],["nome","Nome"]]))+
+    (st.vis==="rank"?"":sel("Ordenar","ordem",[["mais","Mais medidas"],["faltas","Mais faltas injustificadas"],["recente","Mais recentes"],["nome","Nome"]]))+
     `<div class="fm-selb dt${st.de?" on":""}"><label><span class="t">De:</span><input type="date" aria-label="Medidas a partir de" value="${_esc(st.de)}" min="${H.desde}" onchange="if(!fmDataOk(this.value))return;FM.hs.de=this.value;FM.hs.lim=60;fmRenderCorpo()"></label></div>`+
     `<div class="fm-selb dt${st.ate?" on":""}"><label><span class="t">até:</span><input type="date" aria-label="Medidas até" value="${_esc(st.ate)}" min="${H.desde}" onchange="if(!fmDataOk(this.value))return;FM.hs.ate=this.value;FM.hs.lim=60;fmRenderCorpo()"></label></div>`+
     (st.busca||st.mostrar||comPer||posSel.length?`<button type="button" class="fm-lnk" onclick="Object.assign(FM.hs,{busca:'',mostrar:'',de:'',ate:'',lim:60});FM.hs.postos.length=0;fmRenderCorpo()">Limpar</button>`:"")+`</div>`;
@@ -12786,7 +12789,7 @@ function fmRkMesLista(chave,itens,d,opcoes){
   const cab=`<div class="fm-ml-c${o.semNome?" sn":""}"><span>Data</span>${o.semNome?"":"<span>Colaborador</span>"}<span>Ocorrência</span><span>Motivo no SAR2G</span><span>Posto</span><span>Situação</span></div>`;
   const linhas=l.map(({m,p})=>{
     const el=/ELABORA/i.test(m.fase||""),posto=fmHistPosto(m)==="Sem posto informado"?fmPostoVazio(p&&p.supervisor):fmHistPosto(m);
-    return `<div class="fm-ml-r${o.semNome?" sn":""}"><span class="d">${fmDd(m.data)}</span>${o.semNome?"":`<span class="n"><b>${_esc(p?p.nome:"")}</b><small>RE ${_esc(p?p.re:"")}</small></span>`}<span class="m">${_esc(fmMedTxtH(m))}</span><span class="mo">${_esc(m.motivo||"—")}</span><span class="p">${_esc(posto)}</span><span class="f">${el?'<span class="fm-tg am">Em elaboração</span>':'<span class="fm-tg ok">Concluída</span>'}</span></div>`;
+    return `<div class="fm-ml-r${o.semNome?" sn":""}"><span class="d">${fmDd(m.data)}</span>${o.semNome?"":`<span class="n"><b>${_esc(p?p.nome:"")}</b><small>RE ${_esc(p?p.re:"")}</small></span>`}<span class="m">${_esc(fmMedTxtH(m))}</span><span class="mo">${_esc(m.obs||m.motivo||"—")}</span><span class="p">${_esc(posto)}</span><span class="f">${el?'<span class="fm-tg am">Em elaboração</span>':'<span class="fm-tg ok">Concluída</span>'}</span></div>`;
   }).join("");
   return `<div class="fm-ml"><div class="fm-ml-h"><b>${_esc(tit)}</b><span>${l.length} ${l.length===1?"medida":"medidas"}${sel==="antes"?" · não entram nos números dos 6 meses":""}</span></div>${l.length?cab+linhas:'<p class="fm-ml-v">Nenhuma medida neste período.</p>'}</div>`;
 }
@@ -12915,39 +12918,45 @@ function fmHistPessoas(noPer){
   const abertosRE={};
   j.casos.filter(c=>FM_ABERTAS.indexOf(c.situacao)>=0).forEach(c=>{(abertosRE[c.re]=abertosRE[c.re]||[]).push(c);});
   const quem={};j.casos.concat(fmAbonos()).forEach(c=>{if(!quem[c.re])quem[c.re]={nome:c.nome,posto:c.posto,sup:c.supervisor};});
-  return Object.entries(H.porRE).map(([re,l0])=>{
-    const l=l0.filter(ok),val=l.filter(m=>!fmMedCancelada(m));
-    return{re,l,val,nome:(l.find(m=>m.nome&&m.nome!=="—")||{}).nome||(quem[re]||{}).nome||"RE "+re,local:(l.find(m=>m.local&&m.local!=="—")||{}).local||(quem[re]||{}).posto||"",
-      supervisor:(quem[re]||{}).sup||(l0.find(m=>m.supervisor)||{}).supervisor||"",
+  /* faltas injustificadas do ano (já sem demitido, abono e afastamento), por RE */
+  const faltasRE={};((H.faltas)||[]).forEach(f=>{const x=faltasRE[f.re]||(faltasRE[f.re]={re:f.re,nome:f.nome,posto:f.posto,supervisor:f.supervisor,datas:[]});x.datas=x.datas.concat(f.datas||[]);});
+  const res=[...new Set(Object.keys(H.porRE).concat(Object.keys(faltasRE)))];
+  return res.map(re=>{
+    const l0=H.porRE[re]||[],l=l0.filter(ok),val=l.filter(m=>!fmMedCancelada(m)),fx=faltasRE[re]||{},fi=(fx.datas||[]).filter(d=>ok({data:d})).sort();
+    return{re,l,val,nome:(l.find(m=>m.nome&&m.nome!=="—")||{}).nome||(quem[re]||{}).nome||fx.nome||"RE "+re,local:(l.find(m=>m.local&&m.local!=="—")||{}).local||(quem[re]||{}).posto||fx.posto||"",
+      supervisor:(quem[re]||{}).sup||(l0.find(m=>m.supervisor)||{}).supervisor||fx.supervisor||"",
       esc:val.filter(m=>m.grau==="ESCRITA").length,ver:val.filter(m=>m.grau==="VERBAL").length,
-      sus:val.filter(m=>m.tipo==="SUSPENSÃO"),ult:((val[0]||l[0])||{}).data||"",abertos:abertosRE[re]||[]};
-  }).filter(p=>p.l.length);
+      sus:val.filter(m=>m.tipo==="SUSPENSÃO"),ult:((val[0]||l[0])||{}).data||"",abertos:abertosRE[re]||[],faltasI:fi};
+  }).filter(p=>p.l.length||p.faltasI.length);
 }
 /* Linha do tempo de uma pessoa: faltas em aberto agora + todas as medidas do período. */
 function fmHistTimeline(p,ctx,op){
+  const fi=p.faltasI||[];
+  const linhaFi=fi.length?`<div class="fm-ht-r"><span class="d">${fmDd(fi[0])}</span><span class="m">${fi.length} ${fi.length===1?"falta injustificada":"faltas injustificadas"} no ano</span><span class="mo">${_esc(fmLista(fi.map(fmDdS)))}</span><span class="p"></span><span class="f"><span class="fm-tg">já sem abonadas, afastamentos e demitidos</span></span></div>`:"";
   const linhasAb=p.abertos.map(c=>{const a=fmAcao(c);return `<div class="fm-ht-r agora"><span class="d">${fmDd(c.primeiraFalta)}</span><span class="m">Falta injustificada${(c.faltas||[]).length>1?` (${c.faltas.length} faltas)`:""}</span><span class="mo">${_esc(a.t)}${a.s?` · ${_esc(a.s)}`:""}</span><span class="p">${_esc(c.posto||fmPostoVazio(c.supervisor))}</span><span class="f"><span class="fm-tg am">Em aberto agora</span></span></div>`;}).join("");
   const linhas=p.l.map(m=>{const canc=fmMedCancelada(m),el=/ELABORA/i.test(m.fase||""),v=fmRkVinculo(m,p,ctx);
-    return `<div class="fm-ht-r${canc?" canc":""}${v?" v-"+v:""}"${v==='no'?' title="Medida neste posto, nos últimos 6 meses"':v==='fora'?' title="Medida neste posto, há mais de 6 meses"':''}><span class="d">${fmDd(m.data)}</span><span class="m">${_esc(fmMedTxtH(m))}</span><span class="mo">${_esc(m.motivo||"—")}</span><span class="p">${_esc(fmHistPosto(m)==="Sem posto informado"?fmPostoVazio(p.supervisor):fmHistPosto(m))}</span><span class="f">${canc?'<span class="fm-tg">Cancelada · não conta</span>':el?'<span class="fm-tg am">Em elaboração</span>':'<span class="fm-tg ok">Concluída</span>'}</span></div>`;}).join("");
+    return `<div class="fm-ht-r${canc?" canc":""}${v?" v-"+v:""}"${v==='no'?' title="Medida neste posto, nos últimos 6 meses"':v==='fora'?' title="Medida neste posto, há mais de 6 meses"':''}><span class="d">${fmDd(m.data)}</span><span class="m">${_esc(fmMedTxtH(m))}</span><span class="mo">${_esc(m.obs||m.motivo||"—")}</span><span class="p">${_esc(fmHistPosto(m)==="Sem posto informado"?fmPostoVazio(p.supervisor):fmHistPosto(m))}</span><span class="f">${canc?'<span class="fm-tg">Cancelada · não conta</span>':el?'<span class="fm-tg am">Em elaboração</span>':'<span class="fm-tg ok">Concluída</span>'}</span></div>`;}).join("");
   const leg=ctx?`<div class="fm-ht-leg"><span><i class="no"></i>Neste posto, nos últimos 6 meses</span><span><i class="fora"></i>Neste posto, há mais de 6 meses</span><span><i class="out"></i>Em outro posto</span></div>`:"";
   if(op&&op.mes){
     const d=fmRkMesDe(p.val),chave="col|"+p.re,sel=(FM.rkMes||{})[chave];
     const topo=`<div class="fm-pr-m">${fmRkMeses(d,chave)}${sel?fmRkMesLista(chave,p.val.map(m=>({m,p})),d,{semNome:true}):""}</div>`;
-    return `<div class="fm-pr-l">${topo}${sel?(linhasAb?`<div class="fm-ht"><div class="fm-ht-c"><span>Data</span><span>Ocorrência</span><span>Motivo no SAR2G</span><span>Posto</span><span>Situação</span></div>${linhasAb}</div>`:""):`<div class="fm-ht"><div class="fm-ht-c"><span>Data</span><span>Ocorrência</span><span>Motivo no SAR2G</span><span>Posto</span><span>Situação</span></div>${linhasAb}${linhas}</div>`}</div>`;
+    return `<div class="fm-pr-l">${topo}${sel?(linhasAb?`<div class="fm-ht"><div class="fm-ht-c"><span>Data</span><span>Ocorrência</span><span>Motivo no SAR2G</span><span>Posto</span><span>Situação</span></div>${linhasAb}</div>`:""):`<div class="fm-ht"><div class="fm-ht-c"><span>Data</span><span>Ocorrência</span><span>Motivo no SAR2G</span><span>Posto</span><span>Situação</span></div>${linhaFi}${linhasAb}${linhas}</div>`}</div>`;
   }
-  return `<div class="fm-pr-l"><div class="fm-ht">${leg}<div class="fm-ht-c"><span>Data</span><span>Ocorrência</span><span>Motivo no SAR2G</span><span>Posto</span><span>Situação</span></div>${linhasAb}${linhas}</div></div>`;
+  return `<div class="fm-pr-l"><div class="fm-ht">${leg}<div class="fm-ht-c"><span>Data</span><span>Ocorrência</span><span>Motivo no SAR2G</span><span>Posto</span><span>Situação</span></div>${linhaFi}${linhasAb}${linhas}</div></div>`;
 }
 /* Cartão de uma pessoa (histórico). cfg: {abrir:"funçãoQueAbre", ab:{re:true}, max, pos:número (ranking) , mostraSup:bool} */
 function fmPessoaCard(p,cfg){
   const on=!!cfg.ab[p.re],n=p.val.length,diasS=p.sus.reduce((s,m)=>s+(m.dias||0),0);
   const chips=[p.ver?`<span class="fm-pr-b"><i class="cat-hj"></i>${p.ver} advert. verbal</span>`:"",p.esc?`<span class="fm-pr-b"><i class="cat-hj"></i>${p.esc} advert. escrita</span>`:"",
-    p.sus.length?`<span class="fm-pr-b"><i class="cat-da"></i>${p.sus.length} ${p.sus.length===1?"suspensão":"suspensões"}${diasS?` · ${diasS} ${diasS===1?"dia":"dias"}`:""}</span>`:""].join("");
+    p.sus.length?`<span class="fm-pr-b"><i class="cat-da"></i>${p.sus.length} ${p.sus.length===1?"suspensão":"suspensões"}${diasS?` · ${diasS} ${diasS===1?"dia":"dias"}`:""}</span>`:"",
+    (p.faltasI||[]).length?`<span class="fm-pr-b" title="Faltas injustificadas no ano, já sem as abonadas, afastamentos e demitidos"><i class="cat-da"></i>${p.faltasI.length} ${p.faltasI.length===1?"falta injustificada":"faltas injustificadas"}</span>`:""].join("");
   const tags=(n>=2?'<span class="fm-tg rein">Reincidente</span>':"")+(p.abertos.length?`<span class="fm-tg am">Falta em aberto agora</span>`:"")+(p.l.length>n?`<span class="fm-tg">${p.l.length-n} cancelada${p.l.length-n===1?"":"s"}</span>`:"");
   const sup=cfg.mostraSup&&p.supervisor?" · Sup. "+fmNomeCard(p.supervisor):"";
   return `<div class="fm-pr-c${on?" on":""}"><button type="button" class="fm-pr-h" aria-expanded="${on}" data-re="${_esc(p.re)}" onclick="${cfg.abrir}(this.dataset.re)">`+
     `<span class="rk${cfg.pos?(cfg.pos<=3?" top":""):(n>=2?" rein":"")}">${cfg.pos?cfg.pos+"º":n}</span>`+
     `<span class="nm"><b title="${_esc(p.nome)}">${_esc(p.nome)}</b><em>RE ${_esc(p.re)}${p.local?" · "+_esc(p.local):""}${_esc(sup)}</em></span>`+
     `<span class="sit">${chips}${tags}</span>`+
-    `<span class="qt"><span class="v"><b>${n}</b> ${n===1?"medida":"medidas"}<em>última ${fmDd(p.ult)}</em></span><span class="br"><i style="width:${(n/cfg.max*100).toFixed(1)}%"></i></span></span>`+
+    `<span class="qt"><span class="v"><b>${n}</b> ${n===1?"medida":"medidas"}<em>${n?"última "+fmDd(p.ult):"sem medida no ano"}</em></span><span class="br"><i style="width:${(n/cfg.max*100).toFixed(1)}%"></i></span></span>`+
     `<span class="chv">${FM_IC.chev}</span></button>${on?fmHistTimeline(p,null,{mes:true}):""}</div>`;
 }
 /* Ranking dos colaboradores com mais medidas (os mais problemáticos). */

@@ -429,10 +429,12 @@ async function verCasos({ res, db, ator }) {
 // Histórico: todas as advertências e suspensões desde 1º de janeiro (importadas + planilha diária).
 async function verHistorico({ res, db }) {
   const hoje = hojeSP(), desde = hoje.slice(0, 4) + "-01-01";
-  const [lidas, ult, recentes] = await Promise.all([
-    db.listar(`fm_medidas?select=chave,re,data,tipo,grau,dias,fase,motivo_sar2g,nome,local&data=gte.${desde}&order=re.asc,data.asc,chave.asc`),
+  const [lidas, ult, recentes, injust] = await Promise.all([
+    db.listar(`fm_medidas?select=chave,re,data,tipo,grau,dias,fase,motivo_sar2g,obs,nome,local&data=gte.${desde}&order=re.asc,data.asc,chave.asc`),
     db.obter(`fm_auditoria?select=ator,depois,criado_em&acao=eq.${ACAO_HISTORICO}&order=criado_em.desc,id.desc&limit=1`),
-    db.listar(`fm_faltas?select=re,data,posto,supervisor&data=gte.${R.somaDias(hoje, -JANELA_DIAS)}&order=data.asc,re.asc`)
+    db.listar(`fm_faltas?select=re,data,posto,supervisor&data=gte.${R.somaDias(hoje, -JANELA_DIAS)}&order=data.asc,re.asc`),
+    // faltas que continuam injustificadas no ano (já sem demitido, abono e afastamento), para o histórico de cada colaborador
+    db.listar(`fm_faltas?select=re,data,nome,posto,supervisor&codigo=eq.I&data=gte.${desde}&order=re.asc,data.asc`)
   ]);
   // Quem cuida da área hoje: pelo RE (quem faltou há pouco) ou, na falta disso, pelo posto da medida.
   const supDoRE = {}, supDoPosto = {};
@@ -453,11 +455,21 @@ async function verHistorico({ res, db }) {
     const local = semPosto(m.local) ? postoOuReserva(f && f.posto, sup) : m.local;
     return {
       re: m.re, data: dia, tipo: m.tipo, grau: m.grau, dias: Number(m.dias) || 0, fase: m.fase || "",
-      motivo: m.motivo_sar2g || "", nome: m.nome || "", local, supervisor: sup, origem: String(m.chave).startsWith("HIST|") ? "historico" : "planilha"
+      motivo: m.motivo_sar2g || "", obs: m.obs || "", nome: m.nome || "", local, supervisor: sup, origem: String(m.chave).startsWith("HIST|") ? "historico" : "planilha"
     };
   });
+  // Faltas injustificadas do ano por colaborador (RE + primeiro nome: o RE se repete entre as empresas do grupo)
+  const porPessoa = new Map();
+  injust.forEach(f => {
+    const k = f.re + "|" + R.primeiroNome(f.nome);
+    if (!porPessoa.has(k)) porPessoa.set(k, { re: String(f.re), nome: f.nome || "", posto: "", supervisor: "", datas: [] });
+    const p = porPessoa.get(k);
+    p.datas.push(iso10(f.data));
+    p.nome = f.nome || p.nome; p.supervisor = R.supervisorAtual(f.supervisor) || p.supervisor; p.posto = postoOuReserva(f.posto, p.supervisor);
+  });
+  const faltas = [...porPessoa.values()];
   const u = (ult || [])[0];
-  return res.status(200).json({ ok: true, hoje, desde, medidas, importacao: u ? { por: u.ator, em: u.criado_em, linhas: (u.depois || {}).gravadas || 0 } : null });
+  return res.status(200).json({ ok: true, hoje, desde, medidas, faltas, importacao: u ? { por: u.ator, em: u.criado_em, linhas: (u.depois || {}).gravadas || 0 } : null });
 }
 async function salvarHistorico({ res, db, ator, body }) {
   const lista = Array.isArray(body.medidas) ? body.medidas : [];

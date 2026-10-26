@@ -368,6 +368,18 @@ test("Enviar histórico também confere os demitidos com a lista de ativos da ú
   assert.deepEqual(codigos(t), { "555|2026-08-04": "D", "1001|2026-08-04": "I" });
 });
 
+test("histórico: cada medida traz o motivo escrito e cada colaborador as faltas injustificadas do ano", async () => {
+  const t = tabelasVazias();
+  const ano = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 4);
+  t.fm_faltas.push(reg(129, ano + "-03-10", "I", { nome: "KAROLYNE AMARAL" }), reg(129, ano + "-04-02", "I", { nome: "KAROLYNE AMARAL" }), reg(129, ano + "-04-05", "A", { nome: "KAROLYNE AMARAL" }), reg(555, ano + "-03-11", "D", { nome: "FULANO" }), reg(129, (Number(ano) - 1) + "-12-20", "I", { nome: "KAROLYNE AMARAL" }));
+  supabaseFalso(t);
+  const env = await chamar(rh, { method: "POST", query: { modulo: "faltas", t: "historico" }, usuario: "aprovador", body: { medidas: [{ re: 129, nome: "KAROLYNE AMARAL", data: ano + "-04-03", tipo: "ADVERTÊNCIA", grau: "ESCRITA", dias: 0, fase: "Concluido", motivo: "ADVERTTENCIA ESCRITA", obs: "POR FALTA NÃO JUSTIFICADA EM 02/04" }] } });
+  assert.equal(env.statusCode, 200);
+  const r = await chamar(rh, { method: "GET", query: { modulo: "faltas", t: "historico" }, usuario: "aprovador" });
+  assert.equal(r.body.medidas[0].obs, "POR FALTA NÃO JUSTIFICADA EM 02/04");
+  assert.deepEqual(r.body.faltas.map(p => [p.re, p.datas]), [["129", [ano + "-03-10", ano + "-04-02"]]], "só as injustificadas do ano: a abonada, a de demitido e a do ano passado não contam");
+});
+
 // ── leitura e e-mail ────────────────────────────────────────────────────────
 const hoje = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
 const dia = n => { const x = new Date(hoje + "T12:00:00Z"); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };

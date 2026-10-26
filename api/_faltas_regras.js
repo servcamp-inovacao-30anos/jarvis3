@@ -575,7 +575,7 @@ function medidaDoHistorico(l) {
     linha: {
       chave: hist || ["HIST", re, data, tipo, grau, dias].join("|") + (seq > 1 ? "|" + seq : ""),
       re: Number(re), data, tipo, grau, dias,
-      fase: txt(l.fase, 60), motivo_sar2g: txt(l.motivo, 120), nome: txt(l.nome, 120), local: txt(l.local, 120)
+      fase: txt(l.fase, 60), motivo_sar2g: txt(l.motivo, 120), obs: txt(l.obs, 400), nome: txt(l.nome, 120), local: txt(l.local, 120)
     }
   };
 }
