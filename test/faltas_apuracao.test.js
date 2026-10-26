@@ -358,6 +358,16 @@ test("Enviar histórico com o relatório de ocorrências: dá baixa nas faltas j
   assert.equal((await chamar(rh, { method: "POST", query: { modulo: "faltas", t: "historico" }, usuario: "aprovador", body: {} })).statusCode, 400);
 });
 
+test("Enviar histórico também confere os demitidos com a lista de ativos da última planilha recebida", async () => {
+  const t = tabelasVazias();
+  t.fm_faltas.push(reg(555, "2026-08-04", "I", { nome: "FULANO SILVA" }), reg(1001, "2026-08-04", "I", { nome: "PESSOA 1001" }));
+  t.dashboard_snapshots.push({ created_at: "2026-10-23T15:00:00Z", data: { ativos: ativosDoTeste() } });
+  supabaseFalso(t);
+  const r = await chamar(rh, { method: "POST", query: { modulo: "faltas", t: "historico" }, usuario: "aprovador", body: { ocorrencias: [{ HIST: "X1", RE: "9999", NOME: "QUALQUER", COD: "A", INI: "2026-01-01", FIM: "2026-01-02" }] } });
+  assert.equal(r.statusCode, 200);
+  assert.deepEqual(codigos(t), { "555|2026-08-04": "D", "1001|2026-08-04": "I" });
+});
+
 // ── leitura e e-mail ────────────────────────────────────────────────────────
 const hoje = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
 const dia = n => { const x = new Date(hoje + "T12:00:00Z"); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };

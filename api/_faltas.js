@@ -236,7 +236,19 @@ async function reapurarComBanco(db) {
   const agora = new Date().toISOString();
   const base = await lerBaseDemitidos(db);
   const diasPorRE = new Map();
-  const cobertura = { ativos: null, demitidos: new Set(base.map(b => b.re + "|" + b.nome1)), ocorrencias: R.indexarOcorrencias([...(await lerOcorrencias(db)).values()]), dias: re => diasPorRE.get(re) };
+  // A lista de ativos é a da última planilha recebida: assim quem saiu da empresa também dá baixa aqui,
+  // sem esperar a planilha de amanhã.
+  const ativos = new Map();
+  try {
+    const r = await db.obter("dashboard_snapshots?select=ativos:data->ativos&order=created_at.desc&limit=1");
+    ((Array.isArray(r) && r[0] && Array.isArray(r[0].ativos)) ? r[0].ativos : []).forEach(a => {
+      if (!a || a.RE == null || String(a.RE).trim() === "") return;
+      const re = R.reDe(a.RE);
+      if (!ativos.has(re)) ativos.set(re, []);
+      ativos.get(re).push(a.NOME || "");
+    });
+  } catch (e) { /* sem planilha anterior: só a base e as ocorrências */ }
+  const cobertura = { ativos, demitidos: new Set(base.map(b => b.re + "|" + b.nome1)), ocorrencias: R.indexarOcorrencias([...(await lerOcorrencias(db)).values()]), dias: re => diasPorRE.get(re) };
   const mudou = [];
   const n = await reapurarInjustificadasGuardadas(db, cobertura, f => R.classificarFalta(f, cobertura), diasPorRE, agora, mudou);
   await anotarReapuradas(db, mudou);
