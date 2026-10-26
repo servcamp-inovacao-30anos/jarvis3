@@ -115,6 +115,28 @@ function sheetRows(ws){
 function normNome(v){
   return String(v==null?"":v).trim().toUpperCase().replace(/\s+/g," ");
 }
+// Uma linha da aba DISCIPLINA (ou do relatorio de ocorrencias do SAR2G) -> ocorrencia que explica a ausencia, ou null.
+// g(coluna) devolve o valor da coluna na linha. Medida disciplinar (advertencia, suspensao) e ocorrencia de
+// COD: A atestado/abono medico, J justificada, L abono legal (obito, casamento...), AF afastamento ou
+// licenca (INSS, doenca, acidente...). Atraso, saida antecipada e declaracao de horas tambem contam (PARCIAL:
+// cobrem so parte do dia, mas quem apresentou a declaracao nao esta em falta injustificada naquele dia).
+// So o que o SAR2G marca como INJUSTIFICADO fica de fora.
+// Cancelada tambem sai (com a FASE), para quem guardou a ocorrencia saber que ela caiu.
+function ocorrenciaDaLinha(g){
+  const desc=String(g("DESCRICAO")||"").toUpperCase();
+  if((desc+" "+String(g("PUNICAO")||"").toUpperCase()).search(/SUSPEN|ADVER/)>=0)return null;
+  const tpa=String(g("TPABONO")||"").toUpperCase();
+  const parcial=/ATRASO|SA[I\u00cd]DA|DECLARA[C\u00c7]/.test(desc);
+  const afast=!parcial&&/AFAST|LICEN|DOEN[C\u00c7]A/.test(desc);
+  const cod=afast?"AF":(tpa.indexOf("INJUST")>=0?"":(tpa.indexOf("DICO")>=0?"A":(tpa.indexOf("JUSTIF")>=0?"J":(tpa.indexOf("LEGAL")>=0?"L":((/TREINAMENTO|ALINHAMENTO/.test(desc)||parcial)?"J":"")))));
+  const re=String(g("RE")||"").trim();
+  const ini=afast?(isoDate(g("DTINICIOAFASTAMENTO"))||isoDate(g("DTINICIOOCORRENCIA"))):isoDate(g("DTINICIOOCORRENCIA"));
+  let fim=afast?isoDate(g("DTFIMAFASTAMENTO")):(isoDate(g("DTFIMOCORRENCIA"))||ini);
+  if(!cod||!re||!ini)return null;
+  // o SAR2G grava o fim um dia antes do inicio enquanto o afastamento esta aberto
+  if(fim&&fim<ini)fim=afast?null:ini;
+  return{RE:re,NOME:g("NOME")||"",COD:cod,INI:ini,FIM:fim||null,PARCIAL:parcial,FASE:String(g("FASEATUAL")||""),DESC:desc.slice(0,60),HIST:String(g("HISTDISCIPLINAR")||"").trim()};
+}
 function buildDataFromWorkbook(wb){
   const data={};
   // Linha "vazia" nao e so array sem itens: uma linha do Excel que tem apenas
@@ -468,17 +490,29 @@ function buildDataFromWorkbook(wb){
   // por isso o teste procura apenas "ADVER".
   const wsDIS=findSheet(wb,"DISCIPLINA")||findSheet(wb,"INDISCIPLINA");
   data.disciplina=[];
+  // Ocorrencias que explicam a ausencia sem serem medida: falta abonada, atestado, justificada, abono
+  // legal (obito, casamento...), afastamento (INSS, doenca, acidente) e licenca. Ficam em data.ocorrencias
+  // (COD A, J, L ou AF, com INI e FIM) e a apuracao de faltas confere cada "I" da Ficha com elas.
+  data.ocorrencias=[];
   if(wsDIS){
     const dRows=sheetRows(wsDIS);
     const iD=dRows.idx;
     const tipoPorRE={};
     (data.ativos||[]).forEach(a=>{const k=String(a.RE||"").trim();if(k)tipoPorRE[k]=String(a.TIPO||"").toUpperCase();});
     const jaVi={};
+    const jaViOc={};
     (dRows.body||[]).filter(r=>!_linhaVazia(r)).forEach(r=>{
       const pun=String(r[iD["PUNICAO"]]||"").toUpperCase();
       const t=String(r[iD["DESCRICAO"]]||"").toUpperCase()+" "+pun;
       const ehSusp=t.indexOf("SUSPEN")>=0, ehAdv=t.indexOf("ADVER")>=0;
-      if(!ehSusp&&!ehAdv)return;
+      if(!ehSusp&&!ehAdv){
+        const oc=ocorrenciaDaLinha(k=>r[iD[k]]);
+        if(!oc)return;
+        const chO=oc.HIST||[oc.RE,oc.COD,oc.INI,oc.FIM||""].join("|");
+        if(jaViOc[chO])return;jaViOc[chO]=1;
+        data.ocorrencias.push(oc);
+        return;
+      }
       const hid=String(r[iD["HISTDISCIPLINAR"]]||"").trim();
       if(hid){if(jaVi[hid])return;jaVi[hid]=1;}
       const m=pun.match(/SUSPENS[\u00c3A]O\s+(\d+)/);
@@ -506,4 +540,4 @@ function buildDataFromWorkbook(wb){
   return data;
 }
 
-module.exports = { fmHoraDe, fmHorarioDe, buildDataFromWorkbook, isoDate, turnoFromEscala, normTxt, normNome, horaDaCelula, findSheet, sheetRows };
+module.exports = { ocorrenciaDaLinha, fmHoraDe, fmHorarioDe, buildDataFromWorkbook, isoDate, turnoFromEscala, normTxt, normNome, horaDaCelula, findSheet, sheetRows };

@@ -7677,6 +7677,28 @@ function sheetRows(ws){
   hdr.forEach((h,i)=>{if(h!==null&&h!==undefined)idx[String(h).trim()]=i;});
   return{idx,body:rows.slice(1)};
 }
+// Uma linha da aba DISCIPLINA (ou do relatorio de ocorrencias do SAR2G) -> ocorrencia que explica a ausencia, ou null.
+// g(coluna) devolve o valor da coluna na linha. Medida disciplinar (advertencia, suspensao) e ocorrencia de
+// COD: A atestado/abono medico, J justificada, L abono legal (obito, casamento...), AF afastamento ou
+// licenca (INSS, doenca, acidente...). Atraso, saida antecipada e declaracao de horas tambem contam (PARCIAL:
+// cobrem so parte do dia, mas quem apresentou a declaracao nao esta em falta injustificada naquele dia).
+// So o que o SAR2G marca como INJUSTIFICADO fica de fora.
+// Cancelada tambem sai (com a FASE), para quem guardou a ocorrencia saber que ela caiu.
+function ocorrenciaDaLinha(g){
+  const desc=String(g("DESCRICAO")||"").toUpperCase();
+  if((desc+" "+String(g("PUNICAO")||"").toUpperCase()).search(/SUSPEN|ADVER/)>=0)return null;
+  const tpa=String(g("TPABONO")||"").toUpperCase();
+  const parcial=/ATRASO|SA[I\u00cd]DA|DECLARA[C\u00c7]/.test(desc);
+  const afast=!parcial&&/AFAST|LICEN|DOEN[C\u00c7]A/.test(desc);
+  const cod=afast?"AF":(tpa.indexOf("INJUST")>=0?"":(tpa.indexOf("DICO")>=0?"A":(tpa.indexOf("JUSTIF")>=0?"J":(tpa.indexOf("LEGAL")>=0?"L":((/TREINAMENTO|ALINHAMENTO/.test(desc)||parcial)?"J":"")))));
+  const re=String(g("RE")||"").trim();
+  const ini=afast?(isoDate(g("DTINICIOAFASTAMENTO"))||isoDate(g("DTINICIOOCORRENCIA"))):isoDate(g("DTINICIOOCORRENCIA"));
+  let fim=afast?isoDate(g("DTFIMAFASTAMENTO")):(isoDate(g("DTFIMOCORRENCIA"))||ini);
+  if(!cod||!re||!ini)return null;
+  // o SAR2G grava o fim um dia antes do inicio enquanto o afastamento esta aberto
+  if(fim&&fim<ini)fim=afast?null:ini;
+  return{RE:re,NOME:g("NOME")||"",COD:cod,INI:ini,FIM:fim||null,PARCIAL:parcial,FASE:String(g("FASEATUAL")||""),DESC:desc.slice(0,60),HIST:String(g("HISTDISCIPLINAR")||"").trim()};
+}
 function buildDataFromWorkbook(wb){
   const data={};
   // Linha "vazia" nao e so array sem itens: uma linha do Excel que tem apenas
@@ -8030,17 +8052,29 @@ function buildDataFromWorkbook(wb){
   // por isso o teste procura apenas "ADVER".
   const wsDIS=findSheet(wb,"DISCIPLINA")||findSheet(wb,"INDISCIPLINA");
   data.disciplina=[];
+  // Ocorrencias que explicam a ausencia sem serem medida: falta abonada, atestado, justificada, abono
+  // legal (obito, casamento...), afastamento (INSS, doenca, acidente) e licenca. Ficam em data.ocorrencias
+  // (COD A, J, L ou AF, com INI e FIM) e a apuracao de faltas confere cada "I" da Ficha com elas.
+  data.ocorrencias=[];
   if(wsDIS){
     const dRows=sheetRows(wsDIS);
     const iD=dRows.idx;
     const tipoPorRE={};
     (data.ativos||[]).forEach(a=>{const k=String(a.RE||"").trim();if(k)tipoPorRE[k]=String(a.TIPO||"").toUpperCase();});
     const jaVi={};
+    const jaViOc={};
     (dRows.body||[]).filter(r=>!_linhaVazia(r)).forEach(r=>{
       const pun=String(r[iD["PUNICAO"]]||"").toUpperCase();
       const t=String(r[iD["DESCRICAO"]]||"").toUpperCase()+" "+pun;
       const ehSusp=t.indexOf("SUSPEN")>=0, ehAdv=t.indexOf("ADVER")>=0;
-      if(!ehSusp&&!ehAdv)return;
+      if(!ehSusp&&!ehAdv){
+        const oc=ocorrenciaDaLinha(k=>r[iD[k]]);
+        if(!oc)return;
+        const chO=oc.HIST||[oc.RE,oc.COD,oc.INI,oc.FIM||""].join("|");
+        if(jaViOc[chO])return;jaViOc[chO]=1;
+        data.ocorrencias.push(oc);
+        return;
+      }
       const hid=String(r[iD["HISTDISCIPLINAR"]]||"").trim();
       if(hid){if(jaVi[hid])return;jaVi[hid]=1;}
       const m=pun.match(/SUSPENS[\u00c3A]O\s+(\d+)/);
@@ -12068,7 +12102,9 @@ const FM_DIA_L=["domingo","segunda-feira","terça-feira","quarta-feira","quinta-
 const FM_MES=["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
 const FM_MES_L=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 // o que cobriu a falta abonada, pelo código da Ficha de Presença
-const FM_ABONO={A:"Atestado",J:"Justificativa",L:"Licença"};
+const FM_ABONO={A:"Atestado",J:"Justificativa",L:"Licença",AF:"Afastamento"};
+/* Situação de hoje de quem tem caso aberto (vem da planilha, não muda o caso). Férias e INSS só servem para não contar o afastamento como falta. */
+const FM_SITFUNC={AVISO_PREVIO:"Em aviso prévio"};
 // palavra escrita dentro de cada dia do calendário (assim não precisa de legenda)
 const FM_PALAVRA={TRABALHOU:"trabalhou",FOLGA:"folga",FERIADO:"feriado",FALTA:"faltou",ABONADA:"abonada",RETORNO:"voltou",RETORNO_PREVISTO:"deve voltar",PRAZO:"prazo",MEDIDA:"medida aplicada",CONTINUOU:"continuou",DEVIA_VOLTAR:"devia voltar",ABANDONO:"abandono"};
 const _fmSvg=p=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
@@ -12171,7 +12207,7 @@ function fmItemAbono(a){
 function fmItemCaso(c,pref,ini,mes){
   const aberto=FM_ABERTAS.indexOf(c.situacao)>=0,ref=ini||fmIniFolhaAtual();
   const ant=aberto&&c.primeiraFalta<ref?`${mes?"Mês anterior":"Folha anterior"} · desde ${fmDd(c.primeiraFalta)}`:"";
-  return{k:(pref||"")+fmChave(c),caso:c,tipo:c.tipo,folhaIni:(c.folha||{}).inicio||"",folhaFim:(c.folha||{}).fim||"",nome:c.nome,re:c.re,cargo:c.cargo,posto:c.posto,supervisor:c.supervisor,turno:c.turno,ant,faltas:c.faltas,acao:fmAcao(c)};
+  return{k:(pref||"")+fmChave(c),caso:c,tipo:c.tipo,folhaIni:(c.folha||{}).inicio||"",folhaFim:(c.folha||{}).fim||"",nome:c.nome,re:c.re,cargo:c.cargo,posto:c.posto,supervisor:c.supervisor,turno:c.turno,ant,faltas:c.faltas,acao:fmAcao(c),tag:FM_SITFUNC[c.situacaoFunc]||"",tagAm:!!FM_SITFUNC[c.situacaoFunc]};
 }
 /* Itens da aba: casos (clicáveis) e, em Resolvidas, as abonadas. */
 function fmItens(aba){
@@ -12401,7 +12437,7 @@ function fmDetalhe(c){
     (ct?`<div><i style="background:#fee4e2;border:1.5px solid #d92d20"></i><b>Continuou faltando</b><span>Faltas depois da primeira, sem voltar</span></div><div><i style="background:var(--m-falta-bg);border:2px dashed #d92d20"></i><b>Devia voltar</b><span>Dia em que deveria ter retornado</span></div><div><i style="background:var(--m-folga)"></i><b>Folga</b><span>Dia sem trabalho: folga da escala ou feriado</span></div>`:"")+
     (ab?`<div><i style="background:#ebe9fe;border:1.5px solid #7a5af8"></i><b>Abandono</b><span>Dias desde que o SAR2G marcou o abandono (antes disso são faltas)</span></div>`:"")+`</div>`;
   return `<div class="fm-det"><div><h4 class="fm-h3">Detalhes da ocorrência</h4>${fmAviso(c)}<p class="fm-frase">${_esc(frase)}</p>${big}`+
-    `<dl class="fm-kv">${kv.map(([l,v])=>`<dt>${l}</dt><dd>${_esc(v)}</dd>`).join("")}</dl>${fmAtCaso(c)}${med}${leg}</div>`+
+    `<dl class="fm-kv">${kv.map(([l,v])=>`<dt>${l}</dt><dd>${_esc(v)}</dd>`).join("")}</dl>${fmAtCaso(c)}${med}${j.pode_editar?`<div class="fm-md-f" style="margin-top:10px"><span class="fm-edit">Já saiu da empresa? As faltas dele deixam de ser cobradas.</span><button class="fm-btn sm" data-re="${_esc(c.re)}" data-nome="${_esc(c.nome)}" onclick="fmMarcarDemitido(this.dataset.re,this.dataset.nome)">Marcar como demitido</button></div>`:""}${leg}</div>`+
     `<div><h4 class="fm-h3">Calendário da ocorrência</h4>${fmMes(c)}</div></div>`;
 }
 /* O servidor manda o calendário compacto (um número por dia); aqui vira a lista de dias. */
@@ -12527,7 +12563,16 @@ function fmHistLer(rows){
     const n=Object.assign({},md,{linhas:1});medidas.push(n);if(!md.hist)grupo[k]=n;
   });
   medidas.sort((a,b)=>a._i-b._i).forEach(m=>{delete m._fim;delete m._fl;delete m._i;});
-  return{medidas,semData,linhas:linhas.length};
+  /* Atestados, abonos, afastamentos e licenças do mesmo relatório (mesma leitura da aba DISCIPLINA): dão baixa nas faltas já abonadas. */
+  const ocorrencias=[],jaOc={};
+  rows.slice(iCab+1).forEach(r=>{
+    if(!r||!r.length)return;
+    const oc=ocorrenciaDaLinha(k=>{const i=cab.indexOf(k);return i<0?null:r[i];});
+    if(!oc)return;
+    const ch=oc.HIST||[oc.RE,oc.COD,oc.INI,oc.FIM||""].join("|");
+    if(jaOc[ch])return;jaOc[ch]=1;ocorrencias.push(oc);
+  });
+  return{medidas,semData,linhas:linhas.length,ocorrencias};
 }
 /*fim fmHistLer*/
 const fmMedCancelada=m=>/CANCEL/i.test(m.fase||"");
@@ -12561,20 +12606,20 @@ function fmHistEnviar(){
       try{const wb=XLSX.read(new Uint8Array(rd.result),{type:"array"}); /* datas como número do Excel: sem efeito de fuso horário */r=fmHistLer(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:null}));}
       catch(e){alert("Não consegui ler o arquivo.\n"+e.message);return;}
       if(r.erro){alert(r.erro);return;}
-      const ms=r.medidas;if(!ms.length){alert("O arquivo não tem nenhuma advertência ou suspensão.");return;}
-      const n=k=>ms.filter(k).length,datas=ms.map(m=>m.data).sort();
+      const ms=r.medidas,ocs=r.ocorrencias||[];if(!ms.length&&!ocs.length){alert("O arquivo não tem advertência, suspensão, atestado nem afastamento.");return;}
+      const n=k=>ms.filter(k).length,datas=ms.length?ms.map(m=>m.data).sort():[ocs.map(o=>o.INI).sort()[0]];
       /* o arquivo é o retrato completo do período: o histórico importado antes, nesse período, é trocado por ele */
-      const periodo={de:datas[0].slice(0,8)+"01",ate:datas[datas.length-1]};
-      const txt=`Encontrei ${ms.length} medidas de ${new Set(ms.map(m=>m.re)).size} pessoas, de ${fmDd(datas[0])} a ${fmDdA(datas[datas.length-1])}:\n`+
+      const periodo=ms.length?{de:datas[0].slice(0,8)+"01",ate:datas[datas.length-1]}:null;
+      const txt=(ms.length?`Encontrei ${ms.length} medidas de ${new Set(ms.map(m=>m.re)).size} pessoas, de ${fmDd(datas[0])} a ${fmDdA(datas[datas.length-1])}:\n`:"")+
         `• ${n(m=>m.grau==="ESCRITA")} advertências escritas\n• ${n(m=>m.grau==="VERBAL")} advertências verbais\n• ${n(m=>m.tipo==="SUSPENSÃO")} suspensões\n`+
         (n(fmMedCancelada)?`(${n(fmMedCancelada)} com cancelamento: ficam no histórico, mas não contam como reincidência)\n`:"")+
         (r.semData?`${r.semData} linha(s) sem data ficaram de fora.\n`:"")+
         (r.linhas>ms.length?`(${r.linhas} linhas de medida no arquivo: o SAR2G repete a mesma medida para cada posto e para cada pedaço da suspensão; aqui cada uma conta uma vez)\n`:"")+
-        `\nO histórico importado de ${fmDd(periodo.de)} a ${fmDdA(periodo.ate)} será trocado por este arquivo (as medidas da planilha diária continuam).\nEnviar para o Painel ServCamp?`;
+        (ocs.length?`\nTambém achei ${ocs.length} ocorrências de atestado, abono e afastamento. Elas dão baixa nas faltas injustificadas que já foram abonadas.\n`:"")+(periodo?`\nO histórico importado de ${fmDd(periodo.de)} a ${fmDdA(periodo.ate)} será trocado por este arquivo (as medidas da planilha diária continuam).`:"")+"\nEnviar para o Painel ServCamp?";
       if(!confirm(txt))return;
-      fmPedir("POST","historico",{medidas:ms,substituir:periodo}).then(j=>{
+      fmPedir("POST","historico",{medidas:ms,ocorrencias:ocs,substituir:periodo}).then(j=>{
         const rec=Object.entries(j.recusadas||{}).map(([k,v])=>v+" "+k).join(", ");
-        ptToast(`Histórico recebido: ${j.gravadas} medidas gravadas`+(j.removidas?`, ${j.removidas} antigas retiradas`:"")+"."+(rec?` Recusadas: ${rec}.`:""));
+        ptToast(`Histórico recebido: ${j.gravadas} medidas gravadas`+(j.removidas?`, ${j.removidas} antigas retiradas`:"")+(j.ocorrencias?`, ${j.ocorrencias} ocorrências guardadas`:"")+(j.reapuradas?`, ${j.reapuradas} faltas deram baixa`:"")+"."+(rec?` Recusadas: ${rec}.`:""));fmLoad(true);
         fmHistCarregar(true);
       }).catch(e=>alert("Não foi possível enviar o histórico.\n"+e.message));
     };
@@ -17446,6 +17491,11 @@ function fmSalvarMotivo(chave,btn){
     FM.dados.casos.forEach(c=>{if(c.medida&&c.medida.chave===chave){c.medida.motivo=r.motivo;if(r.alterado){c.medida.motivo_editado_por=r.motivo_editado_por;c.medida.motivo_editado_em=r.motivo_editado_em;}}});
     ptToast(r.alterado?"Motivo salvo":"Nada mudou no motivo");fmRenderCorpo();
   }).catch(e=>{alert(e.message);btn.disabled=false;});
+}
+/* Demitido registrado à mão: entra na base de demitidos e as faltas dele deixam de ser cobradas na hora. */
+function fmMarcarDemitido(re,nome){
+  if(!confirm("Marcar "+nome+" (RE "+re+") como demitido?\n\nAs faltas dele deixam de aparecer como injustificadas, hoje e nas próximas planilhas."))return;
+  fmPedir("POST","demitido",{re,nome}).then(r=>{ptToast("Demitido registrado: "+r.faltas+(r.faltas===1?" falta saiu":" faltas saíram")+" da cobrança");fmLoad(true);}).catch(e=>alert(e.message));
 }
 function fmFeriadoSalvar(){
   const d=(document.getElementById("fm-fer-d")||{}).value,t=(document.getElementById("fm-fer-t")||{}).value;

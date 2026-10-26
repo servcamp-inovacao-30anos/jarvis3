@@ -18,6 +18,13 @@ const FAMILIAS = {
 };
 
 const ABONADAS = new Set(["A", "J", "L"]); // abonada · justificada · licença
+// Códigos do JARVIS (não vêm do SAR2G): a falta fica guardada, mas deixa de ser cobrada.
+const CODIGO_DEMITIDO = "D";   // quem já saiu da empresa: não há mais medida a aplicar
+const CODIGO_AFASTADO = "AF";  // dia coberto por afastamento ou licença lançado no SAR2G (INSS, doença, acidente, maternidade...)
+const NAO_COBRADAS = new Set([CODIGO_DEMITIDO, CODIGO_AFASTADO]);
+// A lista de ativos só vale para dizer quem saiu se vier completa (a de verdade tem ~550). Planilha
+// com a aba cortada ou quase vazia não pode transformar todo mundo em demitido.
+const MIN_ATIVOS_PARA_DEMITIDOS = 100;
 
 const SITUACOES = {
   AGUARDANDO_RETORNO: "AGUARDANDO_RETORNO",
@@ -113,6 +120,69 @@ function descreverMedida(m) {
 }
 const cancelada = m => String(m && m.FASE || "").toUpperCase().includes("CANCEL");
 
+// ── o que NÃO é falta injustificada ──────────────────────────────────────────
+// A Ficha de Presença marca "I" em toda falta até o SAR2G concluir o abono, e não mostra afastamento
+// nem demissão. A apuração confere cada "I" com o que o SAR2G já sabe (ocorrências lançadas e lista
+// de ativos) antes de gravar. Funções puras; quem grava é materializar (api/_faltas.js).
+const semAcento = s => String(s == null ? "" : s).normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().trim();
+const primeiroNome = s => semAcento(s).split(/\s+/)[0];
+// O RE se repete entre as empresas do grupo e é reaproveitado depois de uma demissão: RE igual com
+// primeiro nome diferente é outra pessoa. Sem nome de um dos lados, vale o RE.
+const mesmaPessoa = (a, b) => { const x = primeiroNome(a), y = primeiroNome(b); return !x || !y || x === y; };
+
+// ocorrencias: data.ocorrencias do parser [{ RE, NOME, COD (A|J|L|AF), INI, FIM }].
+function indexarOcorrencias(ocorrencias) {
+  const porRE = new Map();
+  (ocorrencias || []).forEach(o => {
+    const re = reDe(o.RE), ini = iso(o.INI), fim = iso(o.FIM) || null, cod = String(o.COD || "").toUpperCase();
+    if (!re || !ini || (fim && fim < ini) || !(ABONADAS.has(cod) || cod === CODIGO_AFASTADO)) return;
+    if (/CANCEL/i.test(String(o.FASE || ""))) return; // ocorrência cancelada no SAR2G não cobre nada
+    if (!porRE.has(re)) porRE.set(re, []);
+    porRE.get(re).push({ nome: o.NOME || "", cod, ini, fim, parcial: !!o.PARCIAL });
+  });
+  return porRE;
+}
+
+// Lacuna máxima (em dias) entre dois atestados/afastamentos da mesma pessoa, sem nenhum dia trabalhado no
+// meio, para os dias da lacuna contarem como parte do mesmo afastamento (atestado ainda não lançado).
+const MAX_LACUNA_AFASTAMENTO = 15;
+
+// Código que a falta deve ter depois de conferida. Só mexe em "I": o que o SAR2G já abonou (A, J, L)
+// ou deixou sem classificar fica como veio.
+//   demitidos: Set "RE|PRIMEIRONOME" da base de demitidos (planilha + registro manual)
+//   ativos: Map RE → nome ou lista de nomes (o mesmo RE existe em mais de uma empresa do grupo);
+//           null/ausente = lista não confiável, ninguém vira demitido por ela
+//   ocorrencias: indexarOcorrencias(...)
+//   dias: RE → { "AAAA-MM-DD": situação da Ficha } (para saber se a pessoa voltou a trabalhar); opcional
+function classificarFalta(f, ctx) {
+  const c = ctx || {};
+  const codigo = String(f.codigo == null ? "" : f.codigo).toUpperCase().trim();
+  if (codigo !== "I") return codigo || null;
+  const re = reDe(f.re == null ? f.RE : f.re), data = iso(f.data == null ? f.DATA : f.data), nome = f.nome == null ? f.NOME : f.nome;
+  if (c.demitidos && c.demitidos.has(re + "|" + primeiroNome(nome))) return CODIGO_DEMITIDO;
+  if (c.ativos && c.ativos.size >= MIN_ATIVOS_PARA_DEMITIDOS && !(c.ativos.has(re) && [].concat(c.ativos.get(re)).some(n => mesmaPessoa(n, nome)))) return CODIGO_DEMITIDO;
+  const lista = ((c.ocorrencias && c.ocorrencias.get(re)) || []).filter(o => mesmaPessoa(o.nome, nome));
+  if (!lista.length) return "I";
+  const dias = (c.dias && c.dias(re)) || null;
+  const trabalhou = d => trabalhouNoDia((dias || {})[d]) === true;
+  const diasFicha = (de, ate) => Object.keys(dias || {}).filter(d => d > de && d < ate);
+  const doDia = lista.filter(o => data >= o.ini && (!o.fim || data <= o.fim));
+  const abono = doDia.find(o => ABONADAS.has(o.cod));
+  if (abono) return abono.cod;
+  // Afastamento com fim: vale o período que o RH lançou. Sem fim: vale enquanto a Ficha não mostra a pessoa
+  // trabalhando depois do início (quem voltou e deixou a ocorrência aberta não esconde as faltas da volta).
+  if (doDia.some(o => o.cod === CODIGO_AFASTADO && (o.fim || !diasFicha(o.ini, data).some(trabalhou)))) return CODIGO_AFASTADO;
+  // Lacuna entre dois atestados/afastamentos sem nenhum dia trabalhado: continua o mesmo afastamento.
+  // (atraso, saída antecipada e declaração de horas cobrem o dia da falta, mas não marcam ausência contínua)
+  const antes = lista.filter(o => !o.parcial && o.fim && o.fim < data).map(o => o.fim).sort().pop();
+  const depois = lista.filter(o => !o.parcial && o.ini > data).map(o => o.ini).sort()[0];
+  if (antes && depois && dias && diasEntre(antes, depois) - 1 <= MAX_LACUNA_AFASTAMENTO) {
+    const meio = diasFicha(antes, depois);
+    if (meio.length && !meio.some(trabalhou)) return CODIGO_AFASTADO;
+  }
+  return "I";
+}
+
 // ── os casos ─────────────────────────────────────────────────────────────────
 // entrada:
 //   faltas     [{ RE, NOME, DATA, ABONO, CARGO, LOCAL, AREA, ESCALA, TIPO }]
@@ -158,7 +228,7 @@ function montarCasos(entrada) {
   });
   medidasPorRE.forEach(l => l.sort((a, b) => (a.DATA < b.DATA ? -1 : a.DATA > b.DATA ? 1 : 0)));
 
-  const casos = [], abonadas = [], semCodigo = [];
+  const casos = [], abonadas = [], semCodigo = [], demitidas = [], afastadas = [];
   for (const [re, lista] of porRE) {
     lista.sort((a, b) => (a.data < b.data ? -1 : 1));
     const faltasPorDia = {};
@@ -166,7 +236,10 @@ function montarCasos(entrada) {
     // Só A, J e L são abonadas. Falta sem código ainda não foi classificada no
     // SAR2G: não vira caso nem entra nas abonadas; conta em semCodigo.
     lista.filter(f => ABONADAS.has(f.codigo)).forEach(f => abonadas.push(pessoa(f, { data: f.data, codigo: f.codigo })));
-    lista.filter(f => f.codigo !== "I" && !ABONADAS.has(f.codigo)).forEach(f => semCodigo.push(pessoa(f, { data: f.data })));
+    lista.filter(f => f.codigo === CODIGO_DEMITIDO).forEach(f => demitidas.push(pessoa(f, { data: f.data })));
+    // afastamento aparece junto das abonadas (tudo o que o SAR2G diz que não é falta injustificada)
+    lista.filter(f => f.codigo === CODIGO_AFASTADO).forEach(f => { afastadas.push(pessoa(f, { data: f.data })); abonadas.push(pessoa(f, { data: f.data, codigo: f.codigo })); });
+    lista.filter(f => f.codigo !== "I" && !ABONADAS.has(f.codigo) && !NAO_COBRADAS.has(f.codigo)).forEach(f => semCodigo.push(pessoa(f, { data: f.data })));
     const injust = lista.filter(f => f.codigo === "I");
     const medidas = medidasPorRE.get(re) || [];
     // supervisor, posto e cargo do caso: os mais recentes da pessoa (quem cuida da área hoje)
@@ -274,7 +347,7 @@ function montarCasos(entrada) {
       if (i < 0) break;
     }
   }
-  return { casos, abonadas, semCodigo, foraDoModulo, dataBase };
+  return { casos, abonadas, semCodigo, demitidas, afastadas, foraDoModulo, dataBase };
 }
 
 function presencaEntre(dia, de, ate) {
@@ -543,6 +616,6 @@ function dedupMedidas(lista) {
 }
 
 module.exports = {
-  FAMILIAS, SITUACOES, ABONADAS, familiaEscala, ehOperacional, trabalhouNoDia, montarCasos, reDe, competenciaDe, calendario, compactarCalendario, expandirCalendario, periodosDeAbono, dobrarAtestados, turnoDoSupervisor, SUPERVISORES_NOTURNOS, supervisorAtual,
+  FAMILIAS, SITUACOES, ABONADAS, CODIGO_DEMITIDO, CODIGO_AFASTADO, NAO_COBRADAS, MIN_ATIVOS_PARA_DEMITIDOS, MAX_LACUNA_AFASTAMENTO, indexarOcorrencias, classificarFalta, primeiroNome, familiaEscala, ehOperacional, trabalhouNoDia, montarCasos, reDe, competenciaDe, calendario, compactarCalendario, expandirCalendario, periodosDeAbono, dobrarAtestados, turnoDoSupervisor, SUPERVISORES_NOTURNOS, supervisorAtual,
   descreverMedida, somaDias, ddmm, medidaDoHistorico, dedupMedidas
 };
