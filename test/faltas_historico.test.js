@@ -27,7 +27,8 @@ const tabelas = () => ({ fm_faltas: [], fm_dias: [], fm_medidas: [], fm_admissoe
 const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8").replace(/\r\n/g, "\n");
 const ini = html.indexOf("function fmHistData("), fim = html.indexOf("/*fim fmHistLer*/");
 assert.ok(ini > 0 && fim > ini, "fmHistLer não encontrada no index.html");
-const fmHistLer = new Function(html.slice(ini, fim) + "\nreturn fmHistLer;")();
+// a leitura das ocorrências é a função ocorrenciaDaLinha, igual nos dois lados (faltas_parser.test.js confere)
+const fmHistLer = new Function("ocorrenciaDaLinha", html.slice(ini, fim) + "\nreturn fmHistLer;")(require("../api/_parse").ocorrenciaDaLinha);
 
 const CAB = ["RE", "NOME", "DESCRICAO", "DTINICIOOCORRENCIA", "DTFIMOCORRENCIA", "FASEATUAL", "CLIENTE", "PUNICAO"];
 

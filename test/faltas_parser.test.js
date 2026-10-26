@@ -20,6 +20,12 @@ test("o leitor do navegador e o do servidor são a mesma função", () => {
   assert.equal(semNormNome(corpo(lerArquivo("index.html"))), semNormNome(corpo(lerArquivo("api/_parse.js"))));
 });
 
+test("a leitura das ocorrências do navegador e a do servidor são a mesma função", () => {
+  const ini = "function ocorrenciaDaLinha(g){", fim = "\n}\n";
+  const corpo = t => { const a = t.indexOf(ini); assert.ok(a >= 0, "função não encontrada"); return t.slice(a, t.indexOf(fim, a) + fim.length); };
+  assert.equal(corpo(lerArquivo("index.html")), corpo(lerArquivo("api/_parse.js")));
+});
+
 // Datas entram como número serial com formato de data, como o Excel grava.
 function aba(linhas) {
   const ws = XLSX.utils.aoa_to_sheet(linhas);

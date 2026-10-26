@@ -21,6 +21,10 @@ const XL = require("./_faltas_excel");
 
 const ACAO_ABONO_TARDIO = "FALTA_ABONADA_DEPOIS";
 const ACAO_VIROU_I = "FALTA_VIROU_INJUSTIFICADA"; // tinha outro código e passou a "I" (veja anotarViradasInjustificada)
+const ACAO_REAPURADA = "FALTA_REAPURADA"; // "I" que passou a D (demitido), AF (afastado) ou A/J/L (abono lançado no SAR2G)
+const ACAO_OCORRENCIA = "OCORRENCIA_SAR2G"; // atestado, abono, afastamento... lido do SAR2G (um registro por ocorrência nova ou alterada)
+const ACAO_DEMITIDO = "DEMITIDO_REGISTRADO";
+const ACAO_DEMITIDO_FIM = "DEMITIDO_DESFEITO";
 const ACAO_ATESTADO = "ATESTADO_REGISTRADO";
 const ACAO_ATESTADO_FIM = "ATESTADO_REMOVIDO";
 const ACAO_ATESTADO_LANCADO = "ATESTADO_LANCADO_SAR2G"; // o usuário marcou que já lançou no SAR2G
@@ -29,6 +33,7 @@ const ACAO_XL_CHAVE = "XL_CHAVE";       // alguém gerou um Excel conectado
 const ACAO_XL_REVOGAR = "XL_REVOGAR";   // cancelou todas as chaves do Excel emitidas até aquele momento
 const DIAS_CHAVE_XL = 90;
 const MAX_HISTORICO = 5000; // linhas por envio
+const MAX_OCORRENCIAS = 20000; // ocorrências por envio (o relatório completo tem ~3 mil linhas)
 const JANELA_DIAS = 150; // o que a tela carrega: casos mais antigos já se encerraram
 const DIAS_ACOMPANHADOS = 45; // quem faltou nesse período ainda tem os dias da ficha guardados
 
@@ -54,6 +59,21 @@ async function horariosDaUltimaPlanilha(db) {
   } catch (e) { /* sem registro ou sem o campo: a tela mostra "—" */ }
   return { porDia, porRE };
 }
+// Situação de cada pessoa hoje (aba de presença da última planilha): é de onde sai a marca "aviso prévio" do card.
+// Férias e INSS não viram marca: só servem para não contar o afastamento como falta. Sem registro, sem marca.
+const SITUACAO_FUNC = { "AVISO TRAB.": "AVISO_PREVIO" };
+async function situacoesDaUltimaPlanilha(db) {
+  const porRE = {};
+  try {
+    const r = await db.obter("dashboard_snapshots?select=presenca:data->presenca&order=created_at.desc&limit=1");
+    const lista = (Array.isArray(r) && r[0] && Array.isArray(r[0].presenca)) ? r[0].presenca : [];
+    lista.forEach(p => {
+      const re = R.reDe(p.RE), s = SITUACAO_FUNC[String(p.DESCSITUACAO || "").toUpperCase().trim()];
+      if (re && s) porRE[re + "|" + R.primeiroNome(p.NOME)] = s; // RE + primeiro nome: o RE se repete entre empresas do grupo
+    });
+  } catch (e) { /* sem registro: sem marca */ }
+  return porRE;
+}
 // O do dia da falta; se esse dia não está no registro, o efetivo mantém o horário da vaga dele (a reserva técnica muda de vaga).
 const horarioDa = (h, f) => h.porDia[f.re + "|" + String(f.data).slice(0, 10)] || (String(f.tipo || "").toUpperCase() === "CONTRATO" ? h.porRE[f.re] : "") || "";
 
@@ -67,13 +87,43 @@ async function materializar(data, opcoes) {
   if (!data || !Array.isArray(data.faltas)) return { ok: true, ignorado: "SEM_FALTAS_NA_PLANILHA" };
   const agora = new Date().toISOString();
 
+  // O que a Ficha não diz: quem já saiu da empresa (não está mais na lista de ativos) e quem tem
+  // atestado, abono ou afastamento lançado como ocorrência no SAR2G. A falta "I" de uma dessas
+  // pessoas é guardada com outro código (D, A/J/L, AF) e deixa de ser cobrada. Como o aviso por
+  // e-mail e a tela só cobram "I", os dois já refletem a correção sem mudar nada neles.
+  const ativos = new Map(); // RE → nomes (o mesmo RE existe em mais de uma empresa do grupo)
+  (data.ativos || []).forEach(a => {
+    if (!a || a.RE == null || String(a.RE).trim() === "") return;
+    const re = R.reDe(a.RE);
+    if (!ativos.has(re)) ativos.set(re, []);
+    ativos.get(re).push(a.NOME || "");
+  });
+  // Base de demitidos: quem foi registrado à mão (a planilha pode demorar a tirar a pessoa da lista de ativos).
+  // Quem a planilha dá como fora dos ativos é conferido a cada envio, sem precisar guardar.
+  const demitidos = new Set((await lerBaseDemitidos(db)).map(b => b.re + "|" + b.nome1));
+  const diasPorRE = new Map(); // RE → { dia: situação da Ficha }: serve para ver se a pessoa voltou a trabalhar
+  Object.entries(data.fichaDias || {}).forEach(([reTxt, porDia]) => diasPorRE.set(R.reDe(reTxt), porDia || {}));
+  // Ocorrências: as desta planilha mais todas as já guardadas (a aba DISCIPLINA só mostra uma janela de
+  // tempo; o que já foi visto não pode deixar de dar baixa na falta). A desta planilha vale sobre a guardada.
+  const ocorrenciasDaPlanilha = (data.ocorrencias || []).filter(x => x && x.RE != null);
+  const guardadasOc = await lerOcorrencias(db); // Map chave → ocorrência
+  const novasOc = await gravarOcorrencias(db, ocorrenciasDaPlanilha, guardadasOc);
+  novasOc.forEach(x => guardadasOc.set(chaveOcorrencia(x), x));
+  const cobertura = { ativos, demitidos, ocorrencias: R.indexarOcorrencias([...guardadasOc.values()]), dias: re => diasPorRE.get(re) };
+  const classificar = f => R.classificarFalta(f, cobertura);
+  const codigoDaPlanilha = new Map(); // o que o SAR2G mandou, antes da conferência
+  const classificadas = [];           // faltas cujo código mudou na conferência
+
   // Só entra quem é do módulo: operacional, em 5x2, 6x1 ou 12x36.
   const faltas = [];
   data.faltas.forEach(f => {
     const re = reNum(f.RE), dia = String(f.DATA || "").slice(0, 10);
     if (re == null || !ehData(dia) || !R.familiaEscala(f.ESCALA) || !R.ehOperacional(f.TIPO)) return;
+    const doSar2g = String(f.ABONO || "").toUpperCase().trim() || null;
+    const codigo = classificar({ re, data: dia, codigo: doSar2g, nome: f.NOME });
+    codigoDaPlanilha.set(re + "|" + dia, doSar2g);
     faltas.push({
-      re, data: dia, codigo: String(f.ABONO || "").toUpperCase().trim() || null,
+      re, data: dia, codigo,
       nome: f.NOME || null, cargo: f.CARGO || null, posto: f.LOCAL || null,
       supervisor: R.supervisorAtual(f.AREA) || null, escala: f.ESCALA || null, tipo: f.TIPO || null, atualizado_em: agora
     });
@@ -113,6 +163,14 @@ async function materializar(data, opcoes) {
   if (faltas.length) await db.upsert("fm_faltas", faltas, "re,data");
   await anotarAbonosTardios(db, faltas, codigoAntes);
   await anotarViradasInjustificada(db, faltas, codigoAntes);
+  faltas.forEach(f => {
+    const k = f.re + "|" + f.data;
+    if (f.codigo !== codigoDaPlanilha.get(k) && codigoAntes.get(k) !== f.codigo) classificadas.push({ re: f.re, data: f.data, de: codigoDaPlanilha.get(k) || null, para: f.codigo });
+  });
+  // Falta "I" de um dia que já saiu da planilha nunca volta a ser enviada: sem esta conferência, o
+  // atestado lançado depois, o afastamento e a demissão não chegariam a ela.
+  const reapuradas = await reapurarInjustificadasGuardadas(db, cobertura, classificar, diasPorRE, agora, classificadas);
+  await anotarReapuradas(db, classificadas);
   if (dias.length) await db.upsert("fm_dias", dias, "re,data");
 
   // Medidas: o motivo editado no Painel ServCamp não vai no upsert, então nunca é sobrescrito.
@@ -135,7 +193,106 @@ async function materializar(data, opcoes) {
     .filter(a => a.re != null && ehData(a.admissao));
   if (admissoes.length) await db.upsert("fm_admissoes", admissoes, "re");
 
-  return { ok: true, faltas: faltas.length, removidas, dias: dias.length, medidas: medidas.length, admissoes: admissoes.length };
+  return { ok: true, faltas: faltas.length, removidas, dias: dias.length, medidas: medidas.length, admissoes: admissoes.length, reapuradas, ocorrencias: (data.ocorrencias || []).length };
+}
+
+// ── ocorrências do SAR2G ─────────────────────────────────────────────────────
+// Atestado, abono, justificativa, afastamento e licença, com período e fase. A planilha diária só mostra uma
+// janela; o que já foi visto fica guardado no log de registros (fm_auditoria, sem tabela nova), um registro por
+// ocorrência e só quando ela é nova ou mudou (fase, datas). O relatório completo ("Enviar histórico") preenche o resto.
+// Sem acesso ao log, vale só o que veio na planilha de hoje.
+const chaveOcorrencia = x => String(x.HIST || "").trim() || [x.RE, x.COD, x.INI, x.FIM || ""].join("|");
+const normOc = x => ({ HIST: String(x.HIST || "").trim(), RE: String(R.reDe(x.RE)), NOME: x.NOME ? String(x.NOME).slice(0, 120) : "", COD: String(x.COD || "").toUpperCase(), INI: String(x.INI || "").slice(0, 10), FIM: x.FIM ? String(x.FIM).slice(0, 10) : null, PARCIAL: !!x.PARCIAL, FASE: x.FASE ? String(x.FASE).slice(0, 60) : "", DESC: x.DESC ? String(x.DESC).slice(0, 60) : "" });
+async function lerOcorrencias(db) {
+  const m = new Map();
+  try {
+    const l = await db.listar(`fm_auditoria?select=chave,depois&acao=eq.${ACAO_OCORRENCIA}&order=id.asc`);
+    l.forEach(e => { if (e.depois) m.set(e.chave, normOc(e.depois)); });
+  } catch (e) { console.error("faltas: ocorrências guardadas indisponíveis:", e && e.message); }
+  return m;
+}
+// Guarda só o que é novo ou mudou. Devolve as ocorrências gravadas.
+async function gravarOcorrencias(db, lista, atuais) {
+  const novas = [], vistas = new Set();
+  (lista || []).forEach(x => {
+    const re = reNum(x.RE), o = normOc(x);
+    if (re == null || !ehData(o.INI) || (o.FIM && !ehData(o.FIM)) || !(R.ABONADAS.has(o.COD) || o.COD === R.CODIGO_AFASTADO)) return;
+    const chave = chaveOcorrencia(o).slice(0, 80);
+    if (vistas.has(chave)) return; vistas.add(chave);
+    const antes = atuais && atuais.get(chave);
+    if (antes && JSON.stringify(antes) === JSON.stringify(o)) return;
+    novas.push({ chave, o });
+  });
+  if (!novas.length) return [];
+  try {
+    await db.inserir("fm_auditoria", novas.map(n => ({ ator: "sistema", acao: ACAO_OCORRENCIA, entidade: "fm_ocorrencias", chave: n.chave, antes: null, depois: n.o })));
+    return novas.map(n => ({ ...n.o, HIST: n.chave }));
+  } catch (e) { console.error("faltas: não guardou as ocorrências:", e && e.message); return []; }
+}
+
+// Confere de novo todas as faltas "I" guardadas com a base de demitidos e as ocorrências guardadas
+// (sem esperar uma planilha): é o que roda depois de "Enviar histórico" com o relatório de ocorrências.
+async function reapurarComBanco(db) {
+  const agora = new Date().toISOString();
+  const base = await lerBaseDemitidos(db);
+  const diasPorRE = new Map();
+  const cobertura = { ativos: null, demitidos: new Set(base.map(b => b.re + "|" + b.nome1)), ocorrencias: R.indexarOcorrencias([...(await lerOcorrencias(db)).values()]), dias: re => diasPorRE.get(re) };
+  const mudou = [];
+  const n = await reapurarInjustificadasGuardadas(db, cobertura, f => R.classificarFalta(f, cobertura), diasPorRE, agora, mudou);
+  await anotarReapuradas(db, mudou);
+  return n;
+}
+
+// ── base de demitidos ────────────────────────────────────────────────────────
+// Quem foi registrado à mão como demitido (RE + primeiro nome: o RE se repete entre as empresas do grupo).
+// O último registro de cada pessoa vale (registrado ou desfeito); fica no log de registros, sem tabela nova.
+async function lerBaseDemitidos(db) {
+  const m = new Map();
+  try {
+    const l = await db.listar(`fm_auditoria?select=chave,acao,depois&acao=in.(${ACAO_DEMITIDO},${ACAO_DEMITIDO_FIM})&order=id.asc`);
+    l.forEach(e => m.set(e.chave, e));
+  } catch (e) { console.error("faltas: base de demitidos indisponível:", e && e.message); }
+  return [...m.values()].filter(e => e.acao === ACAO_DEMITIDO && e.depois).map(e => ({ re: String(e.depois.re), nome1: e.depois.nome1 }));
+}
+
+const MOTIVO_CODIGO = { [R.CODIGO_DEMITIDO]: "demitido", [R.CODIGO_AFASTADO]: "afastamento" };
+const motivoDoCodigo = c => MOTIVO_CODIGO[c] || (R.ABONADAS.has(c) ? "abono lançado no SAR2G" : "");
+
+// Confere as faltas "I" que já estão no banco (de qualquer data) e troca o código das que não
+// são injustificadas. Devolve quantas mudaram; "mudou" recebe { re, data, de, para } de cada uma.
+async function reapurarInjustificadasGuardadas(db, cobertura, classificar, diasPorRE, agora, mudou) {
+  const guardadas = await db.listar("fm_faltas?select=re,data,codigo,nome&codigo=eq.I&order=re.asc,data.asc");
+  // Os dias da Ficha de quem tem atestado ou afastamento lançado e ainda não estão na planilha de hoje
+  // vêm do banco: sem eles não dá para saber se a pessoa voltou a trabalhar no meio.
+  // A planilha de hoje manda: o do banco só preenche os dias que ela não trouxe.
+  const faltam = [...new Set(guardadas.map(f => R.reDe(f.re)).filter(re => cobertura.ocorrencias.has(re)))];
+  for (let i = 0; i < faltam.length; i += 40) {
+    const lote = faltam.slice(i, i + 40);
+    const lidos = await db.listar(`fm_dias?select=re,data,situacao&re=in.(${lote.join(",")})&order=re.asc,data.asc`);
+    lidos.forEach(d => {
+      const re = R.reDe(d.re), dia = String(d.data).slice(0, 10);
+      if (!diasPorRE.has(re)) diasPorRE.set(re, {});
+      const m = diasPorRE.get(re);
+      if (m[dia] === undefined) m[dia] = d.situacao;
+    });
+  }
+  const trocas = [];
+  guardadas.forEach(f => {
+    const dia = String(f.data).slice(0, 10);
+    const para = classificar({ re: f.re, data: dia, codigo: f.codigo, nome: f.nome });
+    if (para !== "I") trocas.push({ re: f.re, data: dia, codigo: para, atualizado_em: agora });
+  });
+  if (!trocas.length) return 0;
+  await db.upsert("fm_faltas", trocas, "re,data");
+  trocas.forEach(t => mudou.push({ re: t.re, data: t.data, de: "I", para: t.codigo }));
+  return trocas.length;
+}
+
+// Cada falta que mudou de código fica anotada (antes, depois e o motivo) na tabela de registros.
+async function anotarReapuradas(db, mudou) {
+  if (!mudou.length) return;
+  const linhas = mudou.map(m => ({ ator: "sistema", acao: ACAO_REAPURADA, entidade: "fm_faltas", chave: m.re + "|" + m.data, antes: { codigo: m.de }, depois: { codigo: m.para, motivo: motivoDoCodigo(m.para) } }));
+  try { await db.inserir("fm_auditoria", linhas); } catch (e) { console.error("faltas: não anotou a reapuração:", e && e.message); }
 }
 
 // Quando o atestado chega depois, o SAR2G troca a falta de injustificada para
@@ -173,7 +330,7 @@ const postoOuReserva = (posto, sup) => (semPosto(posto) ? (sup ? "Reserva técni
 
 async function verCasos({ res, db, ator }) {
   const hoje = hojeSP(), desde = R.somaDias(hoje, -JANELA_DIAS);
-  const [faltas, dias, medidasLidas, adm, feriados, trocas, eventosAtestado, horarios] = await Promise.all([
+  const [faltas, dias, medidasLidas, adm, feriados, trocas, eventosAtestado, horarios, situacoes] = await Promise.all([
     db.listar(`fm_faltas?select=re,data,codigo,nome,cargo,posto,supervisor,escala,tipo&data=gte.${desde}&order=re.asc,data.asc`),
     db.listar(`fm_dias?select=re,data,situacao&data=gte.${desde}&order=re.asc,data.asc`),
     db.listar(`fm_medidas?select=chave,re,data,tipo,grau,dias,fase,motivo_sar2g,obs,motivo,motivo_editado_por,motivo_editado_em&data=gte.${desde}&order=re.asc,data.asc,chave.asc`),
@@ -181,7 +338,8 @@ async function verCasos({ res, db, ator }) {
     db.listar("fm_feriados?select=data,descricao&order=data.asc"),
     db.listar(`fm_auditoria?select=id,chave,criado_em&acao=eq.${ACAO_ABONO_TARDIO}&order=criado_em.asc,id.asc`),
     db.listar(`fm_auditoria?select=id,ator,acao,chave,depois,criado_em&acao=in.(${ACAO_ATESTADO},${ACAO_ATESTADO_FIM},${ACAO_ATESTADO_LANCADO})&order=criado_em.asc,id.asc`),
-    horariosDaUltimaPlanilha(db)
+    horariosDaUltimaPlanilha(db),
+    situacoesDaUltimaPlanilha(db)
   ]);
   // a mesma medida pode estar no histórico importado e na planilha diária: conta uma vez só
   const medidas = R.dedupMedidas(medidasLidas);
@@ -202,7 +360,7 @@ async function verCasos({ res, db, ator }) {
     hoje,
     feriados: feriados.map(f => String(f.data).slice(0, 10)),
     admissoes, fichaDias,
-    faltas: faltas.map(f => ({ RE: f.re, DATA: f.data, ABONO: (!R.ABONADAS.has(f.codigo) && cobertura(f.re, String(f.data).slice(0, 10))) ? "A" : f.codigo, NOME: f.nome, CARGO: f.cargo, LOCAL: f.posto, AREA: R.supervisorAtual(f.supervisor), ESCALA: f.escala, TIPO: f.tipo, HORARIO: horarioDa(horarios, f) })),
+    faltas: faltas.map(f => ({ RE: f.re, DATA: f.data, ABONO: (!R.ABONADAS.has(f.codigo) && !R.NAO_COBRADAS.has(f.codigo) && cobertura(f.re, String(f.data).slice(0, 10))) ? "A" : f.codigo, NOME: f.nome, CARGO: f.cargo, LOCAL: f.posto, AREA: R.supervisorAtual(f.supervisor), ESCALA: f.escala, TIPO: f.tipo, HORARIO: horarioDa(horarios, f) })),
     medidas: medidas.map(m => ({ RE: m.re, DATA: m.data, TIPO: m.tipo, GRAU: m.grau, DIAS: m.dias, FASE: m.fase, HIST: m.chave, MOTIVO: m.motivo_sar2g, chave: m.chave, motivo: m.motivo, motivo_editado_por: m.motivo_editado_por, motivo_editado_em: m.motivo_editado_em }))
   });
 
@@ -211,6 +369,9 @@ async function verCasos({ res, db, ator }) {
     a.manual = cob ? cob.chave : null;
     a.noSar2g = R.ABONADAS.has(codigoSar[a.re + "|" + dia]) || !!(cob && cob.lancadoSar2g);
   });
+  // Quem está hoje de aviso prévio, férias ou INSS continua com o caso aberto (a falta é de antes), mas o
+  // card mostra a situação. A marca é achada por RE + primeiro nome: o RE se repete entre as empresas do grupo.
+  r.casos.forEach(c => { c.situacaoFunc = situacoes[c.re + "|" + R.primeiroNome(c.nome)] || ""; });
   r.casos.forEach(c => { c.turno = R.turnoDoSupervisor(c.supervisor); });
   r.abonadas.forEach(a => { a.turno = R.turnoDoSupervisor(a.supervisor); });
   r.casos.forEach(c => { c.posto = postoOuReserva(c.posto, c.supervisor); });
@@ -287,9 +448,11 @@ async function verHistorico({ res, db }) {
   return res.status(200).json({ ok: true, hoje, desde, medidas, importacao: u ? { por: u.ator, em: u.criado_em, linhas: (u.depois || {}).gravadas || 0 } : null });
 }
 async function salvarHistorico({ res, db, ator, body }) {
-  const lista = Array.isArray(body.medidas) ? body.medidas : null;
-  if (!lista || !lista.length) return erro(res, 400, "Nenhuma medida recebida.", "VAZIO");
+  const lista = Array.isArray(body.medidas) ? body.medidas : [];
+  const ocorrencias = Array.isArray(body.ocorrencias) ? body.ocorrencias : [];
+  if (!lista.length && !ocorrencias.length) return erro(res, 400, "Nenhuma medida nem ocorrência recebida.", "VAZIO");
   if (lista.length > MAX_HISTORICO) return erro(res, 400, `Arquivo grande demais: no máximo ${MAX_HISTORICO} medidas por envio.`, "GRANDE_DEMAIS");
+  if (ocorrencias.length > MAX_OCORRENCIAS) return erro(res, 400, `Arquivo grande demais: no máximo ${MAX_OCORRENCIAS} ocorrências por envio.`, "GRANDE_DEMAIS");
   const sub = body.substituir || null;
   if (sub && (!ehData(sub.de) || !ehData(sub.ate) || sub.de > sub.ate)) return erro(res, 400, "Período para substituir inválido.", "PERIODO");
   const linhas = [], recusadas = {};
@@ -313,8 +476,11 @@ async function salvarHistorico({ res, db, ator, body }) {
     for (let i = 0; i < sair.length; i += 40) await db.remover(`fm_medidas?chave=in.(${sair.slice(i, i + 40).map(encodeURIComponent).join(",")})`);
     removidas = sair.length;
   }
+  // Ocorrências (atestados, abonos, afastamentos): ficam guardadas e já dão baixa nas faltas "I" que elas cobrem.
+  const oc = (await gravarOcorrencias(db, ocorrencias, await lerOcorrencias(db))).length;
+  const reapuradas = ocorrencias.length ? await reapurarComBanco(db) : 0;
   const datas = linhas.map(l => l.data).sort();
-  const resumo = { recebidas: lista.length, gravadas: linhas.length, removidas, recusadas, de: datas[0] || null, ate: datas[datas.length - 1] || null };
+  const resumo = { recebidas: lista.length, gravadas: linhas.length, removidas, recusadas, de: datas[0] || null, ate: datas[datas.length - 1] || null, ocorrencias: oc, reapuradas };
   await db.inserir("fm_auditoria", [{ ator, acao: ACAO_HISTORICO, entidade: "fm_medidas", chave: "historico", antes: {}, depois: resumo }]);
   return res.status(200).json(Object.assign({ ok: true }, resumo));
 }
@@ -401,6 +567,31 @@ async function salvarFeriado({ res, db, ator, body }) {
   return res.status(200).json({ ok: true, data: dia, descricao });
 }
 
+// Demitido registrado à mão: entra na base de demitidos e as faltas "I" dele deixam de ser cobradas
+// na hora, sem esperar a planilha tirar a pessoa da lista de ativos. Com { remover: true }, sai da base e
+// as faltas voltam a "I" (a próxima planilha confere de novo, com a lista de ativos).
+async function marcarDemitido({ res, db, ator, body }) {
+  const re = reNum(body.re), nome = String(body.nome == null ? "" : body.nome).trim().slice(0, 120), nome1 = R.primeiroNome(nome);
+  if (re == null || !nome1) return erro(res, 400, "Informe o colaborador (RE e nome).", "SEM_COLABORADOR");
+  const agora = new Date().toISOString();
+  const doColaborador = codigo => db.listar(`fm_faltas?select=re,data,nome&re=eq.${re}&codigo=eq.${codigo}&order=data.asc`).then(l => l.filter(f => !f.nome || R.primeiroNome(f.nome) === nome1));
+  const trocar = async (lista, de, para) => {
+    if (!lista.length) return;
+    await db.upsert("fm_faltas", lista.map(f => ({ re, data: String(f.data).slice(0, 10), codigo: para, atualizado_em: agora })), "re,data");
+    await db.inserir("fm_auditoria", lista.map(f => ({ ator, acao: ACAO_REAPURADA, entidade: "fm_faltas", chave: re + "|" + String(f.data).slice(0, 10), antes: { codigo: de }, depois: { codigo: para, motivo: para === R.CODIGO_DEMITIDO ? "demitido (registrado por " + ator + ")" : "demissão desfeita por " + ator } })));
+  };
+  if (body.remover === true) {
+    await db.inserir("fm_auditoria", [{ ator, acao: ACAO_DEMITIDO_FIM, entidade: "fm_demitidos", chave: re + "|" + nome1, antes: null, depois: { re, nome1, nome } }]);
+    const lista = await doColaborador(R.CODIGO_DEMITIDO);
+    await trocar(lista, R.CODIGO_DEMITIDO, "I");
+    return res.status(200).json({ ok: true, removido: true, faltas: lista.length });
+  }
+  await db.inserir("fm_auditoria", [{ ator, acao: ACAO_DEMITIDO, entidade: "fm_demitidos", chave: re + "|" + nome1, antes: null, depois: { re, nome1, nome } }]);
+  const lista = await doColaborador("I");
+  await trocar(lista, "I", R.CODIGO_DEMITIDO);
+  return res.status(200).json({ ok: true, faltas: lista.length });
+}
+
 // Registro do atestado à mão. Fica como evento na tabela de registros: o último
 // evento de cada atestado é o que vale; quem registrou e quando já ficam anotados.
 async function salvarAtestado({ res, db, ator, body }) {
@@ -476,6 +667,7 @@ const ROTAS = {
   "PATCH motivo": { aprovador: true, fn: editarMotivo },
   "POST feriados": { aprovador: true, fn: salvarFeriado },
   "POST atestado": { aprovador: true, fn: salvarAtestado },
+  "POST demitido": { aprovador: true, fn: marcarDemitido },
   "GET planilha": { fn: verPlanilha },
   "POST chave_excel": { fn: criarChaveExcel }, // qualquer pessoa logada que abre a tela (pedido do Raphael, 15/10/2026); cancelar todas as chaves segue só dos aprovadores
   "POST revogar_excel": { aprovador: true, fn: revogarChavesExcel }
@@ -501,3 +693,4 @@ module.exports.materializar = materializar;
 // eventos de atestado registrados à mão: o aviso semanal por e-mail (api/_faltas_email.js) desconta as faltas cobertas, igual à tela
 module.exports.ACOES_ATESTADO = [ACAO_ATESTADO, ACAO_ATESTADO_FIM, ACAO_ATESTADO_LANCADO];
 module.exports.ACAO_VIROU_I = ACAO_VIROU_I;
+module.exports.ACAO_REAPURADA = ACAO_REAPURADA;
