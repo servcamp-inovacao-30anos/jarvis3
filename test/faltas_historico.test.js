@@ -32,6 +32,13 @@ const fmHistLer = new Function("ocorrenciaDaLinha", html.slice(ini, fim) + "\nre
 
 const CAB = ["RE", "NOME", "DESCRICAO", "DTINICIOOCORRENCIA", "DTFIMOCORRENCIA", "FASEATUAL", "CLIENTE", "PUNICAO"];
 
+test("leitura do relatório: guarda o motivo escrito da medida (OBSDOCUMENTO)", () => {
+  const r = fmHistLer([CAB.concat(["OBSDOCUMENTO"]), [12, "LENISVALDO", "SUSPENSÃO", "2026-08-31", "2026-09-04", "Concluido", "POSTO X", "SUSPENSÃO 05 SERV CAMP", "MAL DESEMPENHO  DE SUAS FUNÇÕES"]]);
+  assert.equal(r.medidas.length, 1);
+  assert.equal(r.medidas[0].dias, 5);
+  assert.equal(r.medidas[0].obs, "MAL DESEMPENHO DE SUAS FUNÇÕES");
+});
+
 test("leitura do relatório: só advertências e suspensões, olhando DESCRICAO e PUNICAO juntas", () => {
   const r = fmHistLer([
     ["Relatório de ocorrências"],
