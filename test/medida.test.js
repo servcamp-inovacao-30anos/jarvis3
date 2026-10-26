@@ -202,6 +202,115 @@ test("e-mail: o endereço do painel é guardado ao abrir o painel do aviso (só 
   assert.deepEqual(l.map(e => e.depois.link), ["https://painel.exemplo.com.br"], "o mesmo endereço não é gravado de novo");
 });
 
+// ── documento assinado ──────────────────────────────────────────────────────
+const PNG = "data:image/png;base64," + Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]).toString("base64");
+const JPG = "data:image/jpeg;base64," + Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]).toString("base64");
+const PDF = "data:application/pdf;base64," + Buffer.from("%PDF-1.4 teste").toString("base64");
+
+test("anexo: só foto JPG/PNG ou PDF de verdade, até 2,5 MB", () => {
+  assert.equal(MD.validarAnexo(PNG).tipo, "image/png");
+  assert.equal(MD.validarAnexo(JPG).tipo, "image/jpeg");
+  assert.equal(MD.validarAnexo(PDF).tipo, "application/pdf");
+  assert.equal(MD.validarAnexo("data:application/pdf;base64," + Buffer.from("nao sou pdf").toString("base64")).erro[1], "ARQUIVO_INVALIDO", "o nome do tipo não basta: confere os bytes");
+  assert.equal(MD.validarAnexo("data:text/html;base64,PGI+").erro[1], "ARQUIVO_INVALIDO");
+  assert.equal(MD.validarAnexo("data:image/jpeg;base64," + Buffer.concat([Buffer.from([0xff, 0xd8, 0xff]), Buffer.alloc(MD.MAX_ANEXO)]).toString("base64")).erro[1], "ARQUIVO_GRANDE");
+});
+
+test("anexo: quem gerou, a coordenação ou o supervisor da área anexa; a lista mostra só os dados, o arquivo desce à parte", async () => {
+  base();
+  const g = (await api("medida", { method: "POST", usuario: "jussilenealmeida", body: corpo() })).body.medida;
+  assert.equal(g.assinado, null);
+  assert.equal((await api("medida_assinado", { method: "POST", usuario: "jeankleber", body: { chave: g.chave, arquivo: JPG } })).statusCode, 403, "outra área");
+  assert.equal((await api("medida_assinado", { method: "POST", usuario: "frankpimentel", body: { chave: g.chave, arquivo: "data:image/jpeg;base64,AAAA" } })).body.codigo, "ARQUIVO_INVALIDO");
+  const a = await api("medida_assinado", { method: "POST", usuario: "frankpimentel", body: { chave: g.chave, arquivo: JPG, nome: "foto.jpg" } });
+  assert.equal(a.statusCode, 200, JSON.stringify(a.body));
+  assert.deepEqual([a.body.medida.assinado.por, a.body.medida.assinado.tipo, a.body.medida.assinado.nome], ["frankpimentel", "image/jpeg", "foto.jpg"]);
+  const lista = (await api("medidas_geradas", { usuario: "frankpimentel" })).body;
+  assert.ok(!JSON.stringify(lista).includes(JPG.split(",")[1]), "a lista não carrega o arquivo");
+  const v = (await api("medida_assinado", { usuario: "jussilenealmeida", query: { chave: g.chave } })).body;
+  assert.deepEqual([v.tipo, "data:" + v.tipo + ";base64," + v.base64, v.numero], ["image/jpeg", JPG, g.numero]);
+  assert.equal((await api("medida_assinado", { usuario: "jeankleber", query: { chave: g.chave } })).statusCode, 404, "outra área não vê");
+  // trocar e tirar
+  await api("medida_assinado", { method: "POST", usuario: "frankpimentel", body: { chave: g.chave, arquivo: PDF } });
+  assert.equal((await api("medida_assinado", { usuario: "frankpimentel", query: { chave: g.chave } })).body.tipo, "application/pdf", "vale o último");
+  const r = await api("medida_assinado", { method: "POST", usuario: "jussilenealmeida", body: { chave: g.chave, remover: true } });
+  assert.equal(r.body.medida.assinado, null);
+  assert.equal((await api("medida_assinado", { usuario: "frankpimentel", query: { chave: g.chave } })).body.codigo, "SEM_ANEXO");
+});
+
+// ── resumo semanal da coordenação ───────────────────────────────────────────
+const FE = require("../api/_faltas_email");
+const HTML = require("../api/_faltas_email_html");
+process.env.FALTAS_MAIL_USER = "remetente@gruposervcamp.com.br";
+process.env.FALTAS_MAIL_PASS = "senha-de-teste";
+let enviados = [];
+FE.definirCorreio(async m => { enviados.push(m); return { ok: true, id: "<x@teste>" }; });
+
+test("resumo: pendentes no SAR2G da mais antiga para a mais nova, por supervisor, e o que está sem assinatura", () => {
+  const g = (n, extra) => ({ chave: "c" + n, numero: "MD-2026-000" + n, re: String(n), nome: "PESSOA " + n, tipoId: "SUSPENSAO", tipo: "SUSPENSÃO", dias: 1, supervisor: "FRANK PIMENTEL", geradaPor: "frankpimentel", geradaEm: "2026-10-21T13:00:00Z", status: "PENDENTE", diasPendente: 5, assinado: null, ...extra });
+  const m = HTML.montarResumo({
+    semana: { inicio: "2026-10-19", fim: "2026-10-25" }, hoje: "2026-10-26", nomes: MD.NOMES, logo: "x", link: "https://painel.exemplo.com.br/?pg=faltassup&aba=MEDIDA", saudacao: "Jussilene",
+    geradas: [
+      g(1, { diasPendente: 1, geradaEm: "2026-10-25T13:00:00Z" }),
+      g(2, { supervisor: "JEAN KLEBER", geradaPor: "jussilenealmeida", assinado: { por: "x" } }),
+      g(3, { status: "LANCADA", lancadaPor: "planilha", lancadaEm: "2026-10-23", diasPendente: null, assinado: { por: "x" } }),
+      g(4, { status: "CANCELADA" })
+    ]
+  });
+  assert.deepEqual([m.pendentes, m.atrasadas, m.geradasSemana, m.lancadasSemana, m.semAssinatura], [2, 1, 3, 1, 1]);
+  assert.match(m.assunto, /2 medidas faltam lançar no SAR2G/);
+  assert.ok(m.html.indexOf("MD-2026-0002") < m.html.indexOf("MD-2026-0001"), "a mais antiga primeiro");
+  assert.doesNotMatch(m.html, /MD-2026-0004/, "cancelada não entra");
+  assert.match(m.html, /por Jussilene Almeida/);
+  assert.match(m.html, /Olá, Jussilene\./);
+  assert.match(m.html, /aba=MEDIDA/);
+  const nada = HTML.montarResumo({ semana: { inicio: "2026-10-19", fim: "2026-10-25" }, hoje: "2026-10-26", geradas: [], logo: "x" });
+  assert.match(nada.assunto, /nada pendente no SAR2G/);
+  assert.match(nada.html, /Nada pendente no SAR2G/);
+});
+
+test("resumo: o painel cadastra quem recebe; ligado, sai com o aviso automático da segunda, uma vez por semana", async () => {
+  const t = base();
+  FE.definirRelogio(() => new Date("2026-10-26T17:10:00Z")); // segunda, 14h10 em São Paulo
+  t.fm_auditoria.push({ id: 9000, ator: "raphaelvictor", acao: "FALTAS_EMAIL_AUTO", entidade: "fm_email", chave: "auto", depois: { ligado: true }, criado_em: "2026-10-01T12:00:00Z" });
+  await api("medida", { method: "POST", usuario: "frankpimentel", body: corpo() });
+  const painel = (t2, o) => chamar(rh, { usuario: FE.RESPONSAVEL, ...o, query: { modulo: "faltasemail", t: t2, ...(o && o.query) } });
+  assert.equal((await painel("resumo", { method: "POST", body: { ligado: true } })).body.codigo, "SEM_DESTINO", "não liga sem ninguém para receber");
+  assert.equal((await painel("resumo", { method: "POST", body: { para: [{ nome: "Jussilene", email: "não é e-mail" }] } })).body.codigo, "EMAIL_INVALIDO");
+  assert.equal((await painel("resumo", { method: "POST", usuario: "frankpimentel", body: { ligado: true } })).statusCode, 403, "só a conta do responsável");
+  await painel("resumo", { method: "POST", body: { para: [{ nome: "Jussilene Almeida", email: "coord@exemplo.com.br" }] } });
+  // desligado: o automático não manda o resumo
+  enviados = [];
+  let r = await chamar(rh, { query: { modulo: "faltasemail", t: "cron" } });
+  assert.equal(r.body.resumo, "DESLIGADO");
+  assert.equal(enviados.filter(m => m.para.includes("coord@exemplo.com.br")).length, 0);
+  await painel("resumo", { method: "POST", body: { ligado: true } });
+  r = await chamar(rh, { query: { modulo: "faltasemail", t: "cron" } });
+  assert.equal(r.body.resumo, "ENVIADO");
+  const e = enviados.filter(m => m.para.includes("coord@exemplo.com.br"));
+  assert.equal(e.length, 1);
+  assert.match(e[0].assunto, /^Resumo semanal das medidas disciplinares — 1 medida falta lançar no SAR2G$/);
+  assert.match(e[0].html, /Olá, Jussilene\./);
+  // a rodada das 16h não manda de novo
+  r = await chamar(rh, { query: { modulo: "faltasemail", t: "cron" } });
+  assert.equal(r.body.resumo, "JA_ENVIADO");
+  const p = (await painel("painel")).body;
+  assert.deepEqual([p.resumo.ligado, p.resumo.enviado.qtd, p.resumo.para[0].email], [true, 1, "coord@exemplo.com.br"]);
+  assert.equal((await painel("resumo_enviar", { method: "POST", body: { confirmar: true } })).body.situacao, "JA_ENVIADO");
+  // prévia e teste não contam como envio oficial
+  assert.match((await painel("previa_resumo")).body.html, /Falta lançar no SAR2G/);
+  enviados = [];
+  const tt = await painel("resumo_teste", { method: "POST", body: { para: ["@eu"] } });
+  assert.deepEqual([tt.statusCode, enviados[0].para, /^\[TESTE\]/.test(enviados[0].assunto)], [200, ["remetente@gruposervcamp.com.br"], true]);
+  FE.definirRelogio(null);
+});
+
+test("nomes de quem gera iguais aos do USERS do index.html", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+  Object.entries(MD.NOMES).forEach(([k, n]) => assert.match(html, new RegExp(`"${k}":\\{nome:"${n}"`), k));
+  [...MD.COORDENACAO, ...MD.SUPERVISORES].forEach(k => assert.ok(MD.NOMES[k], "sem nome: " + k));
+});
+
 test("a tela recebe quem pode gerar (casos) e o encaixe fica fora do index.html", async () => {
   base();
   assert.deepEqual((await api("casos", { usuario: "frankpimentel" })).body.medida, { pode_gerar: true, coordenacao: false });

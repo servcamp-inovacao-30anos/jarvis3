@@ -115,6 +115,13 @@ html[data-theme="dark"] .md-chip.on{color:#8cc6ff}
 /* ── aba "Medidas geradas" ── */
 .md-tela{margin-top:4px}
 .md-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px}
+.md-kpis.k5{grid-template-columns:repeat(5,minmax(0,1fr))}
+/* documento assinado aberto na tela */
+.md-anexo-c{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;align-items:center;gap:12px;padding:16px;background:#5b6b82}
+.md-anexo-c img{max-width:100%;height:auto;border-radius:6px;box-shadow:0 10px 30px rgba(0,0,0,.35);background:#fff}
+.md-anexo-c iframe{width:100%;flex:1;min-height:70vh;border:0;border-radius:6px;background:#fff}
+.md-anexo-r{display:flex;gap:8px}
+label.md-b{position:relative}
 .md-kpi{padding:14px 16px;border:1px solid var(--md-ln);border-radius:14px;background:var(--md-bg);text-align:left;font:inherit;color:inherit;cursor:pointer;transition:border-color .15s,box-shadow .15s}
 .md-kpi:hover{border-color:var(--md-pri2)}
 .md-kpi.on{border-color:var(--md-pri2);box-shadow:0 0 0 1px var(--md-pri2);background:var(--md-prisf)}
@@ -129,7 +136,7 @@ html[data-theme="dark"] .md-kpi.am b{color:#fdb022}html[data-theme="dark"] .md-k
 .md-grupo-h{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--md-sf);border-bottom:1px solid var(--md-ln)}
 .md-grupo-h b{flex:1;font-size:.9rem}
 .md-grupo-h span{font-size:.74rem;color:var(--md-mut)}
-.md-it{display:grid;grid-template-columns:118px minmax(170px,1.3fr) minmax(120px,.8fr) minmax(160px,1.4fr) 150px auto;gap:12px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--md-ln2);font-size:.8rem}
+.md-it{display:grid;grid-template-columns:118px minmax(160px,1.2fr) minmax(120px,.8fr) minmax(140px,1.2fr) 150px minmax(200px,auto);gap:12px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--md-ln2);font-size:.8rem}
 .md-it:last-child{border-bottom:0}
 .md-it .num b{display:block;font-variant-numeric:tabular-nums}
 .md-it small{display:block;font-size:.7rem;color:var(--md-mut);margin-top:2px;line-height:1.35}
@@ -145,7 +152,7 @@ html[data-theme="dark"] .md-kpi.am b{color:#fdb022}html[data-theme="dark"] .md-k
   .md-prev{overflow:visible}
   .md-it{grid-template-columns:1fr 1fr}
   .md-it .ac{grid-column:1/-1;justify-content:flex-start}
-  .md-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .md-kpis,.md-kpis.k5{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media (max-width:560px){
   .md-ov{padding:0}.md-win{border-radius:0}

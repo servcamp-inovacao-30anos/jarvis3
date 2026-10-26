@@ -12,6 +12,8 @@ Feito nesta branch (`feature/medida-disciplinar`), com testes em `test/medida.te
 - **Lembrete no perfil**: quem gerou e ainda não lançou vê "N medidas para lançar no SAR2G" no menu (a coordenação vê o total) e um aviso ao entrar.
 - **Quem gera** (decidido): Raphael, Jussilene e João (todas as áreas) e os supervisores (só a área deles). A checagem é no servidor (`api/_medida_regras.js`).
 - A interface fica em `assets/medida/` (o `index.html` está no limite de tamanho) e se encaixa nas funções da tela dos supervisores.
+- **Documento assinado** (27/10): em "Medidas geradas", "Anexar assinado" recebe a foto (reduzida no próprio aparelho para até ~2 MB) ou o PDF do documento assinado pelo colaborador. Fica registrado quem anexou e quando; dá para trocar e tirar. O arquivo fica na `fm_auditoria` (ação `MEDIDA_ASSINADA`) e só desce quando alguém abre. Filtro "Sem documento assinado". Anexa quem gerou, a coordenação ou o supervisor da área.
+- **Resumo semanal para a coordenação** (27/10): no painel do aviso por e-mail, seção "Resumo semanal para a coordenação" — quem recebe (a Jussilene), ligar/desligar, prévia, teste e envio da semana. Ligado, sai na rodada automática das segundas (com o automático do aviso ligado), uma vez por semana: o que falta lançar no SAR2G (da mais antiga para a mais nova), por supervisor (falta lançar, mais antiga, geradas e lançadas na semana, sem assinatura) e o que está sem documento assinado. Botão para a aba "Medidas geradas".
 
 Falta:
 

@@ -37,7 +37,9 @@ const IC={
   doc:svg('<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/>'),
   imp:svg('<path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/>'),
   ok:svg('<path d="m5 12 5 5 9-10"/>'),
-  x:svg('<path d="M18 6 6 18M6 6l12 12"/>')
+  x:svg('<path d="M18 6 6 18M6 6l12 12"/>'),
+  clip:svg('<path d="m21 11-8.5 8.5a5 5 0 0 1-7-7L14 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L15 7"/>'),
+  olho:svg('<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>')
 };
 
 async function api(t,metodo,corpo){
@@ -230,7 +232,7 @@ function faltando(E){
 function pintaRod(){
   const E=MDS.ed,el=document.getElementById("md-rod");if(!E||!el)return;
   if(E.gerada){
-    el.innerHTML=`<div class="md-alerta ok" style="margin:0;flex:1"><b>Medida ${esc(E.gerada.numero)} gerada.</b> Imprima, colha as assinaturas e <b>lance no SAR2G</b>: até a planilha trazer a medida, ela fica no seu perfil como pendente.</div><button type="button" class="md-b" data-md="fechar">Fechar</button><button type="button" class="md-b pri" data-md="imprimir">${IC.imp}Imprimir ou salvar PDF</button>`;
+    el.innerHTML=`<div class="md-alerta ok" style="margin:0;flex:1"><b>Medida ${esc(E.gerada.numero)} gerada.</b> Imprima, colha as assinaturas e <b>lance no SAR2G</b>: até a planilha trazer a medida, ela fica no seu perfil como pendente. Depois de assinado, anexe a foto em "Medidas geradas".</div><button type="button" class="md-b" data-md="fechar">Fechar</button><button type="button" class="md-b pri" data-md="imprimir">${IC.imp}Imprimir ou salvar PDF</button>`;
     return;
   }
   const f=faltando(E),t=TIPOS[E.tipo];
@@ -325,19 +327,21 @@ function tela(){
   const naArea=g=>typeof fsNaArea!=="function"||fsNaArea(g.supervisor||""); // o mesmo filtro de área/"ver como" da tela
   const L=MDS.lista.filter(naArea),q=MDS.busca.trim().toLowerCase();
   const n=s=>L.filter(g=>g.status===s).length,atras=L.filter(g=>g.status==="PENDENTE"&&g.diasPendente>=3).length;
+  const semAss=g=>g.status!=="CANCELADA"&&!g.assinado,nSem=L.filter(semAss).length;
   const k=(id,cls,rot,val,sub)=>`<button type="button" class="md-kpi ${cls}${MDS.filtro===id?" on":""}" onclick="mdFiltro('${id}')"><small>${rot}</small><b>${val}</b><span>${sub}</span></button>`;
-  let h=`<div class="md-tela"><div class="md-kpis">`+
+  let h=`<div class="md-tela"><div class="md-kpis k5">`+
     k("PENDENTE","am","Falta lançar no SAR2G",n("PENDENTE"),atras?`${atras} há 3 dias ou mais`:"geradas no painel")+
+    k("SEMASS",nSem?"am":"","Sem documento assinado",nSem,"falta anexar a foto ou o PDF")+
     k("LANCADA","ok","Lançadas no SAR2G",n("LANCADA"),"pela planilha ou marcadas")+
     k("CANCELADA","","Canceladas",n("CANCELADA"),"geradas por engano")+
     k("TODAS","","Todas",L.length,MDS.coord?"de todas as áreas":"da sua área")+`</div>`;
   h+=`<div class="md-bar"><input class="md-in md-busca" id="md-busca" placeholder="Buscar por colaborador, RE, número ou motivo" value="${esc(MDS.busca)}" oninput="mdBusca(this.value)"><span class="md-dica" style="margin:0">A medida sai de "falta lançar" sozinha quando a planilha diária trouxer a medida do colaborador.</span></div>`;
-  const vis=L.filter(g=>(MDS.filtro==="TODAS"||g.status===MDS.filtro)&&(!q||[g.nome,g.re,g.numero,g.motivo,g.posto].some(v=>String(v||"").toLowerCase().indexOf(q)>=0)));
-  if(!vis.length)return h+`<div class="md-vazio"><b>${MDS.filtro==="PENDENTE"?"Nada pendente":"Nenhuma medida"}</b>${MDS.filtro==="PENDENTE"?"Todas as medidas geradas já estão no SAR2G.":"Nenhuma medida com esse filtro."}</div></div>`;
+  const vis=L.filter(g=>(MDS.filtro==="TODAS"||(MDS.filtro==="SEMASS"?semAss(g):g.status===MDS.filtro))&&(!q||[g.nome,g.re,g.numero,g.motivo,g.posto].some(v=>String(v||"").toLowerCase().indexOf(q)>=0)));
+  if(!vis.length)return h+`<div class="md-vazio"><b>${MDS.filtro==="PENDENTE"?"Nada pendente":MDS.filtro==="SEMASS"?"Todas com o documento assinado":"Nenhuma medida"}</b>${MDS.filtro==="PENDENTE"?"Todas as medidas geradas já estão no SAR2G.":MDS.filtro==="SEMASS"?"Todas as medidas têm a foto ou o PDF do documento assinado.":"Nenhuma medida com esse filtro."}</div></div>`;
   const grupos={};vis.forEach(g=>{const s=titulo(g.supervisor||"Sem supervisor");(grupos[s]=grupos[s]||[]).push(g);});
   Object.keys(grupos).sort((a,b)=>grupos[b].filter(g=>g.status==="PENDENTE").length-grupos[a].filter(g=>g.status==="PENDENTE").length||a.localeCompare(b)).forEach(s=>{
-    const gs=grupos[s],p=gs.filter(g=>g.status==="PENDENTE").length;
-    h+=`<div class="md-grupo"><div class="md-grupo-h"><b>${esc(s)}</b><span>${gs.length} ${gs.length===1?"medida":"medidas"}${p?` · <span class="md-pill pend"><i></i>${p} falta lançar</span>`:""}</span></div>`+gs.map(item).join("")+`</div>`;
+    const gs=grupos[s],p=gs.filter(g=>g.status==="PENDENTE").length,sa=gs.filter(semAss).length;
+    h+=`<div class="md-grupo"><div class="md-grupo-h"><b>${esc(s)}</b><span>${gs.length} ${gs.length===1?"medida":"medidas"}${p?` · <span class="md-pill pend"><i></i>${p} falta lançar</span>`:""}${sa?` · <span class="md-pill pend"><i></i>${sa} sem assinatura</span>`:""}</span></div>`+gs.map(item).join("")+`</div>`;
   });
   return h+`</div>`;
 }
@@ -346,6 +350,9 @@ function item(g){
   const t=TIPOS[g.tipoId]?TIPOS[g.tipoId].rot:g.tipo,dias=g.tipoId==="SUSPENSAO"?" · "+g.dias+(g.dias===1?" dia":" dias"):"";
   const sub=g.status==="PENDENTE"?(g.diasPendente?`há ${g.diasPendente} ${g.diasPendente===1?"dia":"dias"}`:"gerada hoje"):g.status==="LANCADA"?(g.lancadaPor==="planilha"?`na planilha em ${esc(dm(g.lancadaEm))}`:`marcada por ${esc(nomeDe(g.lancadaPor))}`):`por ${esc(nomeDe(g.canceladaPor))}: ${esc(g.motivoCancelamento)}`;
   const ac=[`<button type="button" class="md-b sm" data-c="${g.chave}" onclick="mdReimprimir(this.dataset.c)" title="Imprimir de novo">${IC.imp}Imprimir</button>`];
+  // documento assinado: ver quem tem; anexar (ou trocar) quem pode mexer na medida
+  if(g.assinado)ac.push(`<button type="button" class="md-b sm ok" data-c="${g.chave}" onclick="mdVerAssinado(this.dataset.c)" title="Anexado por ${esc(nomeDe(g.assinado.por))} em ${esc(quando(g.assinado.em))}">${IC.olho}Assinado</button>`);
+  if(g.status!=="CANCELADA")ac.push(`<label class="md-b sm${g.assinado?"":" pri"}" title="${g.assinado?"Trocar o arquivo":"Foto ou PDF do documento assinado pelo colaborador"}">${IC.clip}${g.assinado?"Trocar":"Anexar assinado"}<input type="file" accept="image/*,application/pdf" data-c="${g.chave}" onchange="mdAnexar(this)" hidden></label>`);
   if(pode&&g.status==="PENDENTE")ac.push(`<button type="button" class="md-b sm ok" data-c="${g.chave}" onclick="mdLancada(this.dataset.c,true)">${IC.ok}Já lancei no SAR2G</button>`);
   if(pode&&g.status==="LANCADA"&&g.manual)ac.push(`<button type="button" class="md-b sm" data-c="${g.chave}" onclick="mdLancada(this.dataset.c,false)">Desfazer</button>`);
   if(pode&&g.status!=="CANCELADA")ac.push(`<button type="button" class="md-b sm er" data-c="${g.chave}" onclick="mdCancelar(this.dataset.c)" title="Cancelar (gerada por engano)">${IC.x}</button>`);
@@ -372,6 +379,63 @@ window.mdCancelar=async ch=>{
   catch(e){alert(e.message);}
 };
 window.mdAbrir=abrir;
+
+/* ── documento assinado: foto (reduzida aqui, como a assinatura do e-mail) ou PDF ── */
+const ANEXO_MAX=2400*1024; // o servidor aceita até 2,5 MB
+const bytesDe=u=>{const b=u.slice(u.indexOf(",")+1);return Math.floor(b.length*3/4)-(b.endsWith("==")?2:b.endsWith("=")?1:0);};
+const lerArquivo=f=>new Promise((ok,err)=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=()=>err(new Error("Não deu para ler o arquivo."));r.readAsDataURL(f);});
+function reduzirFoto(dataUrl){
+  return new Promise((ok,err)=>{
+    const img=new Image();
+    img.onload=()=>{
+      // 1800 px no lado maior lê bem a assinatura e o texto; JPEG baixando a qualidade até caber
+      for(const lado of [1800,1500,1200]){
+        const s=Math.min(1,lado/Math.max(img.naturalWidth,img.naturalHeight)),w=Math.round(img.naturalWidth*s),h=Math.round(img.naturalHeight*s);
+        const c=document.createElement("canvas");c.width=w;c.height=h;
+        const g=c.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,w,h);g.imageSmoothingQuality="high";g.drawImage(img,0,0,w,h);
+        for(const q of [.85,.75,.65]){const u=c.toDataURL("image/jpeg",q);if(bytesDe(u)<=ANEXO_MAX)return ok(u);}
+      }
+      err(new Error("Não consegui reduzir a foto. Tire de novo, mais perto do documento."));
+    };
+    img.onerror=()=>err(new Error("Não deu para abrir essa imagem. Envie uma foto JPG ou PNG, ou um PDF."));
+    img.src=dataUrl;
+  });
+}
+window.mdAnexar=async function(inp){
+  const f=inp.files&&inp.files[0],ch=inp.dataset.c;inp.value="";
+  if(!f)return;
+  const g=(MDS.lista||[]).find(x=>x.chave===ch);
+  try{
+    let u=await lerArquivo(f);
+    if(f.type==="application/pdf"){if(bytesDe(u)>ANEXO_MAX)throw new Error("O PDF passa de 2,4 MB. Salve com qualidade menor ou envie uma foto.");}
+    else if(/^image\//.test(f.type))u=await reduzirFoto(u);
+    else throw new Error("Envie uma foto ou um PDF do documento assinado.");
+    if(typeof hqToast==="function")hqToast("Enviando o documento assinado…");
+    await api("medida_assinado","POST",{chave:ch,arquivo:u,nome:f.name});
+    await carregar(true);
+    if(typeof hqToast==="function")hqToast("📎 Documento assinado anexado"+(g?" à "+g.numero:""));
+  }catch(e){alert(e.message);}
+};
+window.mdVerAssinado=async function(ch){
+  const g=(MDS.lista||[]).find(x=>x.chave===ch);
+  const ov=document.createElement("div");ov.className="md-ov";ov.id="md-anexo";
+  const fechar=()=>{const u=ov.dataset.url;if(u)URL.revokeObjectURL(u);ov.remove();document.removeEventListener("keydown",esc1);};
+  const esc1=e=>{if(e.key==="Escape")fechar();};
+  ov.innerHTML=`<div class="md-win" style="width:min(980px,100%)" role="dialog" aria-modal="true" aria-label="Documento assinado"><div class="md-hd"><div class="t"><b>Documento assinado · ${esc(g?g.numero:"")}</b><span>${g?esc(titulo(g.nome))+" · anexado por "+esc(nomeDe(g.assinado&&g.assinado.por))+" em "+esc(quando(g.assinado&&g.assinado.em)):""}</span></div><button type="button" class="md-x" aria-label="Fechar">✕</button></div><div class="md-anexo-c"><p class="md-dica">Carregando…</p></div></div>`;
+  ov.addEventListener("click",e=>{if(e.target===ov||e.target.closest(".md-x"))fechar();});
+  document.addEventListener("keydown",esc1);
+  document.body.appendChild(ov);
+  const c=ov.querySelector(".md-anexo-c");
+  try{
+    const j=await api("medida_assinado&chave="+encodeURIComponent(ch));
+    const bin=atob(j.base64),arr=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
+    const url=URL.createObjectURL(new Blob([arr],{type:j.tipo}));ov.dataset.url=url;
+    const nome=(j.numero||"medida")+"-assinada."+(j.tipo==="application/pdf"?"pdf":j.tipo==="image/png"?"png":"jpg");
+    // PDF não abre em quadro dentro da página (a política de segurança do vercel.json só deixa a própria página): abre numa aba
+    c.innerHTML=(j.tipo==="application/pdf"?`<div class="md-alerta" style="margin:20px">Documento em PDF${j.nome?" ("+esc(j.nome)+")":""}. Abra numa aba nova ou baixe.</div>`:`<img src="${url}" alt="Documento assinado">`)+
+      `<div class="md-anexo-r">${j.tipo==="application/pdf"?`<a class="md-b pri" href="${url}" target="_blank" rel="noopener">Abrir o PDF</a>`:""}<a class="md-b" href="${url}" download="${esc(nome)}">Baixar</a></div>`;
+  }catch(e){c.innerHTML=`<div class="md-alerta er">${esc(e.message)}</div>`;}
+};
 
 /* ── encaixe na tela dos supervisores (sem mexer no index.html, que está no limite) ── */
 function redesenhar(){if(typeof fsRender==="function")fsRender();}

@@ -707,11 +707,13 @@ const iso10 = v => (v == null ? "" : String(v).slice(0, 10));
 // principal: a medida fica "pendente" até a planilha diária trazê-la ou alguém marcar que lançou.
 async function lerGeradas(db) {
   const hoje = hojeSP();
-  const [eventos, medidas] = await Promise.all([
-    db.listar(`fm_auditoria?select=id,ator,acao,chave,depois,criado_em&entidade=eq.${MD.ENTIDADE}&order=id.asc`),
-    db.listar(`fm_medidas?select=re,data,tipo,grau,dias,fase,nome&data=gte.${R.somaDias(hoje, -400)}&order=re.asc,data.asc`)
+  const [eventos, medidas, anexos] = await Promise.all([
+    db.listar(`fm_auditoria?select=id,ator,acao,chave,depois,criado_em&entidade=eq.${MD.ENTIDADE}&acao=in.(${MD.ACOES.join(",")})&order=id.asc`),
+    db.listar(`fm_medidas?select=re,data,tipo,grau,dias,fase,nome&data=gte.${R.somaDias(hoje, -400)}&order=re.asc,data.asc`),
+    // do documento assinado, só os dados: o arquivo é pesado e só desce quando alguém abre
+    db.listar(`fm_auditoria?select=id,ator,chave,criado_em,tipo:depois->>tipo,bytes:depois->>bytes,nome:depois->>nome,removido:depois->>removido&acao=eq.${MD.ACAO_ASSINADA}&order=id.asc`)
   ]);
-  return MD.dobrar(eventos, medidas, hoje);
+  return MD.dobrar(eventos, medidas, hoje, anexos);
 }
 // Coordenação vê todas; o supervisor, as que ele gerou e as da área dele.
 const visivelPara = (ator, g) => MD.ehCoordenacao(ator) || g.geradaPor === ator || MD.daArea(ator, g.supervisor);
@@ -757,6 +759,40 @@ function marcarLancada(ctx) {
   if (ctx.body.lancado !== true && ctx.body.lancado !== false) return erro(ctx.res, 400, "Informe lancado: true ou false.", "VALOR_INVALIDO");
   return eventoDaGerada(ctx, MD.ACAO_LANCADA, { lancado: ctx.body.lancado });
 }
+// Foto ou PDF do documento assinado pelo colaborador: prova de que ele tomou ciência.
+// Anexa (ou troca) quem gerou, a coordenação ou o supervisor da área. { remover: true } tira.
+async function anexarAssinado({ res, db, ator, body }) {
+  const chave = String(body.chave || "").trim();
+  if (!/^[0-9a-f]{16}$/.test(chave)) return erro(res, 400, "Medida inválida.", "CHAVE_INVALIDA");
+  const g = (await lerGeradas(db)).find(x => x.chave === chave);
+  if (!g) return erro(res, 404, "Medida não encontrada.", "NAO_ENCONTRADA");
+  if (!visivelPara(ator, g)) return erro(res, 403, "Esta medida é de outra área.", "NAO_AUTORIZADO");
+  if (g.status === "CANCELADA") return erro(res, 409, "Esta medida foi cancelada.", "CANCELADA");
+  let depois;
+  if (body.remover === true) {
+    if (!g.assinado) return res.status(200).json({ ok: true, alterado: false, medida: g });
+    depois = { removido: true };
+  } else {
+    const a = MD.validarAnexo(body.arquivo);
+    if (a.erro) return erro(res, 400, a.erro[0], a.erro[1]);
+    depois = { ...a, nome: String(body.nome == null ? "" : body.nome).trim().slice(0, 120) };
+  }
+  await db.inserir("fm_auditoria", [{ ator, acao: MD.ACAO_ASSINADA, entidade: MD.ENTIDADE, chave, antes: null, depois }]);
+  const nova = (await lerGeradas(db)).find(x => x.chave === chave);
+  return res.status(200).json({ ok: true, alterado: true, medida: nova });
+}
+async function verAssinado({ req, res, db, ator }) {
+  const chave = String((req.query && req.query.chave) || "").trim();
+  if (!/^[0-9a-f]{16}$/.test(chave)) return erro(res, 400, "Medida inválida.", "CHAVE_INVALIDA");
+  const g = (await lerGeradas(db)).find(x => x.chave === chave);
+  if (!g || !visivelPara(ator, g)) return erro(res, 404, "Medida não encontrada.", "NAO_ENCONTRADA");
+  if (!g.assinado) return erro(res, 404, "Esta medida ainda não tem o documento assinado.", "SEM_ANEXO");
+  const [e] = await db.obter(`fm_auditoria?select=depois&acao=eq.${MD.ACAO_ASSINADA}&chave=eq.${chave}&order=id.desc&limit=1`);
+  const d = (e && e.depois) || {};
+  res.setHeader("Cache-Control", "private, no-store");
+  return res.status(200).json({ ok: true, tipo: d.tipo, base64: d.base64, nome: d.nome || "", numero: g.numero });
+}
+
 // Documento gerado por engano: sai da lista de pendentes, mas o registro fica (com o motivo).
 function cancelarGerada(ctx) {
   const motivo = String(ctx.body.motivo == null ? "" : ctx.body.motivo).trim().slice(0, 300);
@@ -782,7 +818,9 @@ const ROTAS = {
   "GET medidas_geradas": { gerador: true, fn: verGeradas },
   "POST medida": { gerador: true, fn: gerarMedida },
   "POST medida_lancada": { gerador: true, fn: marcarLancada },
-  "POST medida_cancelar": { gerador: true, fn: cancelarGerada }
+  "POST medida_cancelar": { gerador: true, fn: cancelarGerada },
+  "POST medida_assinado": { gerador: true, fn: anexarAssinado },
+  "GET medida_assinado": { gerador: true, fn: verAssinado }
 };
 
 module.exports = async function faltas(req, res) {
@@ -803,6 +841,7 @@ module.exports = async function faltas(req, res) {
 };
 
 module.exports.materializar = materializar;
+module.exports.lerGeradas = lerGeradas; // o resumo semanal da coordenação (api/_faltas_email.js) lê as mesmas medidas geradas
 // eventos de atestado registrados à mão: o aviso semanal por e-mail (api/_faltas_email.js) desconta as faltas cobertas, igual à tela
 module.exports.ACOES_ATESTADO = [ACAO_ATESTADO, ACAO_ATESTADO_FIM, ACAO_ATESTADO_LANCADO];
 module.exports.ACAO_VIROU_I = ACAO_VIROU_I;

@@ -15,12 +15,20 @@ const ENTIDADE = "fm_medida_gerada";
 const ACAO_GERADA = "MEDIDA_GERADA";
 const ACAO_LANCADA = "MEDIDA_LANCADA_SAR2G";   // marcada à mão como lançada (ou desmarcada)
 const ACAO_CANCELADA = "MEDIDA_CANCELADA";     // documento gerado por engano: sai da lista, fica no histórico
-const ACOES = [ACAO_GERADA, ACAO_LANCADA, ACAO_CANCELADA];
+const ACAO_ASSINADA = "MEDIDA_ASSINADA";       // foto ou PDF do documento assinado pelo colaborador (o último vale; { removido: true } tira)
+const ACOES = [ACAO_GERADA, ACAO_LANCADA, ACAO_CANCELADA];   // as que a lista lê inteiras; o anexo é lido à parte (é pesado)
+const MAX_ANEXO = 2500 * 1024; // bytes do arquivo: a Vercel corta o pedido em 4,5 MB, e a foto já chega reduzida da tela
 
 // Quem gera (pedido do Raphael, 26/10/2026): ele, a coordenadora Jussilene, o João (admin) e os supervisores.
 // A coordenação vê e gera para todas as áreas; o supervisor só para a área dele.
 const COORDENACAO = new Set(["raphaelvictor", "jussilenealmeida", "joaoygor"]);
 const SUPERVISORES = new Set(["rafaelandrade", "adrianomacedo", "edneyferraz", "frankpimentel", "carlos", "jeankleber", "paulosergio", "ronaldocimadon"]);
+// Nome de quem gera, para o resumo por e-mail (os mesmos do USERS do index.html; test/medida confere).
+const NOMES = {
+  raphaelvictor: "Raphael Victor", jussilenealmeida: "Jussilene Almeida", joaoygor: "João Ygor",
+  rafaelandrade: "Rafael Andrade", adrianomacedo: "Adriano Macedo", edneyferraz: "Edney Ferraz", frankpimentel: "Frank Pimentel",
+  carlos: "Carlos", jeankleber: "Jean Kleber", paulosergio: "Paulo Sérgio", ronaldocimadon: "Ronaldo Cimadon"
+};
 
 const TIPOS = {
   ADVERTENCIA_VERBAL: { tipo: "ADVERTÊNCIA", grau: "VERBAL", rot: "Advertência verbal" },
@@ -113,11 +121,31 @@ function noSar2g(g, medidas) {
     .sort((a, b) => iso(a.data).localeCompare(iso(b.data)))[0] || null;
 }
 
+// Foto ou PDF do documento assinado: "data:<tipo>;base64,...", conferido pelos primeiros bytes
+// (não só pelo nome). Devolve { erro: [mensagem, codigo] } ou { tipo, base64, bytes }.
+function validarAnexo(dataUrl) {
+  const m = /^data:(image\/jpeg|image\/png|application\/pdf);base64,([A-Za-z0-9+/]+={0,2})$/.exec(String(dataUrl || ""));
+  if (!m) return { erro: ["Envie uma foto (JPG ou PNG) ou um PDF do documento assinado.", "ARQUIVO_INVALIDO"] };
+  const b = Buffer.from(m[2], "base64");
+  const ok = m[1] === "application/pdf" ? b.slice(0, 5).toString("latin1") === "%PDF-"
+    : m[1] === "image/png" ? b.length > 8 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47
+    : b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff;
+  if (!ok) return { erro: ["O arquivo não é uma foto ou um PDF de verdade.", "ARQUIVO_INVALIDO"] };
+  if (b.length > MAX_ANEXO) return { erro: ["O arquivo passa de 2,5 MB. Tire a foto de novo ou reduza o PDF.", "ARQUIVO_GRANDE"] };
+  return { tipo: m[1], base64: m[2], bytes: b.length };
+}
+
 // Junta os eventos de cada medida gerada e diz em que pé está cada uma:
 //   PENDENTE   gerada, ainda não apareceu no SAR2G nem foi marcada como lançada
 //   LANCADA    a planilha trouxe a medida (automático) ou alguém marcou à mão
 //   CANCELADA  documento gerado por engano
-function dobrar(eventos, medidas, hoje) {
+// anexos: só os dados de cada anexo (sem o arquivo): [{ id, chave, ator, criado_em, tipo, bytes, nome, removido }].
+function dobrar(eventos, medidas, hoje, anexos) {
+  const assinado = new Map();
+  [...(anexos || [])].sort((a, b) => Number(a.id) - Number(b.id)).forEach(a => {
+    const removido = a.removido === true || a.removido === "true";
+    assinado.set(a.chave, removido ? null : { em: a.criado_em, por: a.ator, tipo: a.tipo || "", bytes: Number(a.bytes) || 0, nome: a.nome || "" });
+  });
   const por = new Map();
   [...(eventos || [])].sort((a, b) => Number(a.id) - Number(b.id)).forEach(e => {
     if (e.acao === ACAO_GERADA) { por.set(e.chave, { ev: e, lancada: null, cancelada: null }); return; }
@@ -133,7 +161,8 @@ function dobrar(eventos, medidas, hoje) {
       chave: ev.chave, numero: numeros.get(ev.chave), geradaPor: ev.ator, geradaEm: ev.criado_em,
       re: String(d.re), nome: d.nome, empresa: d.empresa || "", cargo: d.cargo || "", posto: d.posto || "", supervisor: d.supervisor || "",
       tipoId: d.tipoId, tipo: d.tipo, grau: d.grau, dias: Number(d.dias) || 0, inicio: iso(d.inicio), motivo: d.motivo || "",
-      situacoes: d.situacoes || [], faltas: d.faltas || [], caso: d.caso || ""
+      situacoes: d.situacoes || [], faltas: d.faltas || [], caso: d.caso || "",
+      assinado: assinado.get(ev.chave) || null
     };
     const sar = noSar2g(g, medidas);
     if (cancelada) Object.assign(g, { status: "CANCELADA", canceladaPor: cancelada.ator, canceladaEm: cancelada.criado_em, motivoCancelamento: (cancelada.depois || {}).motivo || "" });
@@ -171,6 +200,6 @@ function historicoTxt(h) {
 }
 
 module.exports = {
-  ENTIDADE, ACAO_GERADA, ACAO_LANCADA, ACAO_CANCELADA, ACOES, COORDENACAO, SUPERVISORES, TIPOS, SITUACOES, MAX_MOTIVO, MAX_DIAS_SUSPENSAO,
-  podeGerar, ehCoordenacao, daArea, validar, numerar, noSar2g, dobrar, historicoDe, historicoTxt, primeiroNome
+  ENTIDADE, ACAO_GERADA, ACAO_LANCADA, ACAO_CANCELADA, ACAO_ASSINADA, ACOES, COORDENACAO, SUPERVISORES, NOMES, TIPOS, SITUACOES, MAX_MOTIVO, MAX_DIAS_SUSPENSAO, MAX_ANEXO,
+  podeGerar, ehCoordenacao, daArea, validar, validarAnexo, numerar, noSar2g, dobrar, historicoDe, historicoTxt, primeiroNome
 };

@@ -21,6 +21,8 @@
 //     POST assinatura a imagem da assinatura do e-mail (ou null para tirar)
 //     POST enviar    envio oficial da semana anterior: áreas e cópias escolhidas
 //     POST teste     envio de teste de qualquer período, para quem ele escolher
+//     POST resumo / GET previa_resumo / POST resumo_enviar, resumo_teste   resumo semanal das medidas
+//                    geradas no painel para a coordenação (quem recebe, ligado, prévia, envio, teste)
 //
 // Onde fica guardado: o e-mail do supervisor na jv_supervisores (a mesma do
 // relatório de hora extra: cadastra uma vez, vale para os dois); o resto na tabela
@@ -58,6 +60,8 @@ const ACAO_CONTA = "FALTAS_EMAIL_CONTA";       // conta de e-mail que envia (sen
 const ACAO_ASSINATURA = "FALTAS_EMAIL_ASSINATURA"; // imagem da assinatura, no corpo do e-mail abaixo do cartão
 const ACAO_AREA = "FALTAS_EMAIL_AREA";         // e-mail e nome da saudação de uma área (o e-mail vai também para a jv_supervisores)
 const ACAO_LINK = "FALTAS_EMAIL_LINK";         // endereço do painel para o botão "Abrir no Painel ServCamp" (guardado ao abrir o painel)
+const ACAO_RESUMO = "FALTAS_EMAIL_RESUMO";     // resumo semanal das medidas geradas para a coordenação: { ligado, para: [{ nome, email }] }
+const CHAVE_RESUMO = "#RESUMO";                // na chave do envio ("semana|#RESUMO"): nunca é uma área (área é só letra, número e espaço)
 const ACOES_ENVIO = [ACAO_RESERVA, ACAO_ENVIADO, ACAO_FALHOU];
 
 const RESERVA_VALE_MS = 15 * 60000; // função que caiu no meio do envio não trava a área para sempre
@@ -434,6 +438,62 @@ async function enviarSemana(db, { semana, escolhidas, copias, origem, ator, agor
   return tot;
 }
 
+// ── resumo semanal das medidas para a coordenação ───────────────────────────
+// Um e-mail só, para quem estiver cadastrado no painel (a Jussilene, pedido do Raphael em 26/10/2026):
+// o que foi gerado no Painel ServCamp e ainda não está no SAR2G, por supervisor, e o que ainda não
+// tem o documento assinado anexado. Sai na mesma rodada do aviso das áreas, uma vez por semana.
+async function lerResumo(db) {
+  const [e] = await db.obter(`fm_auditoria?select=depois&acao=eq.${ACAO_RESUMO}&order=id.desc&limit=1`);
+  const d = (e && e.depois) || {};
+  return { ligado: d.ligado === true, para: Array.isArray(d.para) ? d.para : [] };
+}
+const saudacaoResumo = para => (para.length === 1 ? String(para[0].nome || "").trim().split(/\s+/)[0] : "");
+async function montarResumoEmail(db, o) {
+  const [geradas, base] = await Promise.all([faltasMod.lerGeradas(db), o.link !== undefined ? o.link : lerLink(db)]);
+  return HTML.montarResumo({
+    semana: o.semana, hoje: diaSP(o.agora), geradas, nomes: MD.NOMES, teste: !!o.teste, saudacao: o.saudacao || "",
+    link: base ? base + "/?pg=faltassup&aba=MEDIDA" : null, logo: o.logo || "cid:" + CID_LOGO, assinatura: o.assinatura || null
+  });
+}
+// Envio oficial do resumo de uma semana. Mesma reserva do aviso das áreas: só uma chamada envia.
+async function enviarResumo(db, { semana, origem, ator, agora }) {
+  agora = agora || agoraAtual();
+  const cfg = await lerResumo(db);
+  if (!cfg.para.length) return { situacao: "SEM_DESTINO" };
+  const conta = await lerConta(db);
+  if (!pronta(conta)) throw new Error("conta de envio não cadastrada");
+  const chave = semana.inicio + "|" + CHAVE_RESUMO;
+  let est = estadoEnvio(await eventosDoEnvio(db, chave), Date.now());
+  if (est.enviado) return { situacao: "JA_ENVIADO" };
+  if (est.dono) return { situacao: "EM_ANDAMENTO" };
+  const lote = crypto.randomBytes(6).toString("hex");
+  await db.inserir("fm_auditoria", [ev(ator, ACAO_RESERVA, chave, { lote, origem })]);
+  est = estadoEnvio(await eventosDoEnvio(db, chave), Date.now());
+  if (est.enviado || est.dono !== lote) return { situacao: "EM_ANDAMENTO" };
+  const para = cfg.para.map(p => p.email);
+  let m = null, r;
+  const correio = abrirCorreio(conta);
+  try {
+    const assinatura = await lerAssinatura(db);
+    m = await montarResumoEmail(db, { semana, agora, assinatura: assinaturaNoEmail(assinatura), saudacao: saudacaoResumo(cfg.para) });
+    r = await correio.enviar({ para, cc: [], responderPara: [conta.user], assinatura, assunto: m.assunto, html: m.html, texto: m.texto });
+  } catch (e) {
+    r = { ok: false, erro: String((e && e.message) || e).slice(0, 200) };
+  } finally {
+    correio.fechar();
+  }
+  if (!r || !r.ok) {
+    await db.inserir("fm_auditoria", [ev(ator, ACAO_FALHOU, chave, { lote, origem, erro: (r && r.erro) || "o servidor de e-mail não confirmou o envio" })]);
+    console.error("[faltas-email] resumo da coordenação não confirmado");
+    return { situacao: "FALHOU" };
+  }
+  await db.inserir("fm_auditoria", [ev(ator, ACAO_ENVIADO, chave, {
+    lote, origem, semana: semana.inicio, area: CHAVE_RESUMO, nome: "Resumo das medidas (coordenação)", para, cc: [], assunto: m.assunto, id: r.id || null,
+    qtd: m.pendentes, atrasadas: m.atrasadas, geradas: m.geradasSemana, lancadas: m.lancadasSemana, semAssinatura: m.semAssinatura
+  })]);
+  return { situacao: "ENVIADO", pendentes: m.pendentes };
+}
+
 // ── agendamento (vercel.json → /api/rh?modulo=faltasemail&t=cron) ───────────
 async function cron(req, res) {
   const segredo = process.env.CRON_SECRET;
@@ -454,7 +514,11 @@ async function cron(req, res) {
     const copias = (await lerCopias(db)).map(c => c.email);
     const semana = semanaAnterior(agora);
     const t = await enviarSemana(db, { semana, copias, origem: "auto", ator: "sistema", agora });
-    return res.status(200).json({ ok: true, semana, ...t, semEmail: t.semEmail.length });
+    // resumo da coordenação: falhar aqui não desfaz nem atrasa o aviso das áreas (as rodadas das 16h e 18h tentam de novo)
+    let resumo = { situacao: "DESLIGADO" };
+    try { if ((await lerResumo(db)).ligado) resumo = await enviarResumo(db, { semana, origem: "auto", ator: "sistema", agora }); }
+    catch (e) { console.error("[faltas-email] resumo da coordenação: " + (e && e.message ? e.message : e)); resumo = { situacao: "FALHOU" }; }
+    return res.status(200).json({ ok: true, semana, ...t, semEmail: t.semEmail.length, resumo: resumo.situacao });
   } catch (e) {
     console.error("[faltas-email] agendamento falhou: " + (e && e.message ? e.message : e));
     return erro(res, 500, "Falha no envio automático.", "FALHA_NO_ENVIO");
@@ -470,7 +534,7 @@ async function verPainel({ req, res, db, ator }) {
     const [u] = await db.obter(`fm_auditoria?select=depois&acao=eq.${ACAO_LINK}&order=id.desc&limit=1`);
     if (!(u && u.depois && u.depois.link === origem)) await db.inserir("fm_auditoria", [ev(ator, ACAO_LINK, "link", { link: origem }, u ? u.depois : null)]);
   }
-  const [areas, faltas, copias, auto, envios, historico, conta, assinatura] = await Promise.all([
+  const [areas, faltas, copias, auto, envios, historico, conta, assinatura, resumo, link] = await Promise.all([
     lerAreas(db, hoje),
     faltasDoPeriodo(db, semana.inicio, semana.fim, fimDoDiaSP(semana.fim)),
     lerCopias(db),
@@ -478,8 +542,11 @@ async function verPainel({ req, res, db, ator }) {
     eventos(db, ACOES_ENVIO, `&criado_em=gte.${semana.inicio}T00:00:00Z`),
     db.obter(`fm_auditoria?select=id,ator,acao,chave,depois,criado_em&acao=in.(${ACAO_ENVIADO},${ACAO_TESTE})&order=id.desc&limit=30`),
     lerConta(db),
-    lerAssinatura(db)
+    lerAssinatura(db),
+    lerResumo(db),
+    lerLink(db)
   ]);
+  const estResumo = estadoEnvio(envios.filter(e => e.chave === semana.inicio + "|" + CHAVE_RESUMO), Date.now());
   const porChave = new Map();
   envios.filter(e => String(e.chave).startsWith(semana.inicio + "|")).forEach(e => {
     if (!porChave.has(e.chave)) porChave.set(e.chave, []);
@@ -503,6 +570,12 @@ async function verPainel({ req, res, db, ator }) {
     conta: conta ? { origem: conta.origem, email: conta.user, host: conta.host, port: conta.port, em: conta.em || null, ilegivel: !conta.pass } : null,
     assinatura: assinatura ? { src: assinaturaNaPrevia(assinatura).src, largura: assinatura.largura, altura: assinatura.altura, bytes: assinatura.bytes, em: assinatura.em } : null,
     semArea: faltas.filter(f => !f.area).length, // falta sem área na planilha não tem para quem ir: o painel avisa
+    link, // endereço do botão "Abrir no Painel ServCamp" (null: os e-mails saem sem o botão)
+    resumo: {
+      ligado: resumo.ligado, para: resumo.para,
+      enviado: estResumo.enviado ? { em: estResumo.enviado.criado_em, origem: estResumo.enviado.depois.origem, qtd: estResumo.enviado.depois.qtd || 0 } : null,
+      falha: !estResumo.enviado && estResumo.ultimaFalha ? { em: estResumo.ultimaFalha.criado_em, erro: estResumo.ultimaFalha.depois.erro } : null
+    },
     historico: (historico || []).map(e => ({
       tipo: e.acao === ACAO_TESTE ? "TESTE" : "OFICIAL", em: e.criado_em, por: e.ator,
       area: (e.depois && (e.depois.nome || e.depois.area)) || "", semana: e.depois && (e.depois.semana || e.depois.de) || null,
@@ -687,8 +760,70 @@ async function enviarTeste({ res, db, ator, body }) {
   return res.status(200).json({ ok: true, para: para.length, faltas: m.faltas.length, periodo: p });
 }
 
+// Resumo da coordenação no painel: quem recebe e liga/desliga; prévia; teste; envio oficial da semana.
+async function salvarResumo({ res, db, ator, body }) {
+  const antes = await lerResumo(db);
+  let para = antes.para;
+  if (body.para !== undefined) {
+    if (!Array.isArray(body.para)) return erro(res, 400, "Envie a lista de quem recebe.", "SEM_LISTA");
+    if (body.para.length > MAX_COPIAS) return erro(res, 400, `No máximo ${MAX_COPIAS} pessoas.`, "MUITOS_DESTINOS");
+    para = []; const vistos = new Set();
+    for (const c of body.para) {
+      const email = emailLimpo(c && c.email), nome = String((c && c.nome) || "").trim().slice(0, 60);
+      if (!emailValido(email)) return erro(res, 400, "E-mail inválido: " + String((c && c.email) || "(vazio)").slice(0, 80), "EMAIL_INVALIDO");
+      if (vistos.has(email)) continue;
+      vistos.add(email); para.push({ nome: nome || email, email });
+    }
+  }
+  const ligado = body.ligado === true || body.ligado === false ? body.ligado : antes.ligado;
+  if (ligado && !para.length) return erro(res, 400, "Cadastre quem recebe o resumo antes de ligar.", "SEM_DESTINO");
+  await db.inserir("fm_auditoria", [ev(ator, ACAO_RESUMO, "resumo", { ligado, para }, antes)]);
+  return res.status(200).json({ ok: true, resumo: { ligado, para } });
+}
+async function verPreviaResumo({ res, db }) {
+  const agora = agoraAtual(), semana = semanaAnterior(agora);
+  const [cfg, assinatura] = await Promise.all([lerResumo(db), lerAssinatura(db)]);
+  const m = await montarResumoEmail(db, { semana, agora, logo: "data:image/png;base64," + LOGO, assinatura: assinaturaNaPrevia(assinatura), saudacao: saudacaoResumo(cfg.para) });
+  return res.status(200).json({ ok: true, assunto: m.assunto, html: m.html, para: cfg.para.map(p => p.email).join(", "), cc: [] });
+}
+async function enviarResumoManual({ res, db, ator, body }) {
+  if (body.confirmar !== true) return erro(res, 400, "Confirme o envio.", "SEM_CONFIRMACAO");
+  if (!pronta(await lerConta(db))) return erro(res, 409, SEM_CONTA, "SEM_CONTA");
+  const r = await enviarResumo(db, { semana: semanaAnterior(agoraAtual()), origem: "manual", ator });
+  if (r.situacao === "SEM_DESTINO") return erro(res, 400, "Cadastre quem recebe o resumo.", "SEM_DESTINO");
+  if (r.situacao === "FALHOU") return res.status(502).json({ ok: false, error: "O servidor de e-mail não confirmou o envio do resumo.", codigo: "FALHA_NO_ENVIO" });
+  return res.status(200).json({ ok: true, ...r });
+}
+async function enviarResumoTeste({ res, db, ator, body }) {
+  const conta = await lerConta(db);
+  if (!pronta(conta)) return erro(res, 409, SEM_CONTA, "SEM_CONTA");
+  const cfg = await lerResumo(db), para = [];
+  for (const x of Array.isArray(body.para) ? body.para : []) {
+    let e = String(x == null ? "" : x).trim();
+    if (e === "@eu") e = conta.user;
+    else { e = emailLimpo(e); if (!emailValido(e)) return erro(res, 400, "E-mail inválido: " + String(x).slice(0, 80), "EMAIL_INVALIDO"); }
+    if (e && !para.includes(e)) para.push(e);
+  }
+  if (!para.length) return erro(res, 400, "Escolha ao menos um destinatário.", "SEM_DESTINO");
+  if (para.length > MAX_DESTINOS) return erro(res, 400, `No máximo ${MAX_DESTINOS} destinatários.`, "MUITOS_DESTINOS");
+  const agora = agoraAtual(), semana = semanaAnterior(agora), assinatura = await lerAssinatura(db);
+  const m = await montarResumoEmail(db, { semana, agora, teste: true, assinatura: assinaturaNoEmail(assinatura), saudacao: saudacaoResumo(cfg.para) });
+  const correio = abrirCorreio(conta);
+  let r;
+  try { r = await correio.enviar({ para, cc: [], responderPara: [conta.user], assinatura, assunto: m.assunto, html: m.html, texto: m.texto }); }
+  catch (e) { r = { ok: false, erro: String((e && e.message) || e).slice(0, 200) }; }
+  finally { correio.fechar(); }
+  await db.inserir("fm_auditoria", [ev(ator, ACAO_TESTE, CHAVE_RESUMO, { nome: "Resumo das medidas (coordenação)", de: semana.inicio, ate: semana.fim, para, qtd: m.pendentes, ok: !!(r && r.ok), erro: r && !r.ok ? (r.erro || "não confirmado") : null })]);
+  if (!r || !r.ok) return res.status(502).json({ ok: false, error: "O servidor de e-mail não confirmou o envio do teste.", codigo: "FALHA_NO_ENVIO" });
+  return res.status(200).json({ ok: true, para: para.length, pendentes: m.pendentes });
+}
+
 // ── roteamento ──────────────────────────────────────────────────────────────
 const ROTAS = {
+  "POST resumo": salvarResumo,
+  "GET previa_resumo": verPreviaResumo,
+  "POST resumo_enviar": enviarResumoManual,
+  "POST resumo_teste": enviarResumoTeste,
   "GET painel": verPainel,
   "GET previa": verPrevia,
   "POST area": salvarArea,
@@ -731,4 +866,5 @@ module.exports.RESPONSAVEL = RESPONSAVEL;
 module.exports.AREAS_FORA = AREAS_FORA;
 module.exports.lerConta = lerConta;
 module.exports.definirVerificador = definirVerificador;
-module.exports.ACOES = { ACAO_ASSINATURA, ACAO_CONTA, ACAO_RESERVA, ACAO_ENVIADO, ACAO_FALHOU, ACAO_TESTE, ACAO_COPIAS, ACAO_AUTO, ACAO_AREA };
+module.exports.ACOES = { ACAO_ASSINATURA, ACAO_CONTA, ACAO_RESERVA, ACAO_ENVIADO, ACAO_FALHOU, ACAO_TESTE, ACAO_COPIAS, ACAO_AUTO, ACAO_AREA, ACAO_LINK, ACAO_RESUMO };
+module.exports.enviarResumo = enviarResumo;
