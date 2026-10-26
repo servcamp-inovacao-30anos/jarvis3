@@ -4500,6 +4500,11 @@ function mT(r){if(ST.turno==="TODOS")return true;return(r.TURNO||"DIURNO")===ST.
 function mA(r){if(!ST.area)return true;return(r.AREA||"")===ST.area;}
 function full(arr){return arr.filter(r=>inR(r.DATA)&&mT(r)&&mA(r));}
 
+/* Horas extras: o turno vem do supervisor (AREA), não do funcionário. Paulo Sérgio e
+   Ronaldo Cimadom são noturnos; os demais, diurnos. A planilha não traz essa info. */
+const SUP_NOTURNO_HE=["PAULO SERGIO","RONALDO CIMADOM"];
+function turnoSupervisorHE(sup){const s=String(sup||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase();return SUP_NOTURNO_HE.some(n=>s.includes(n))?"NOTURNO":"DIURNO";}
+
 /* ── Filtro global aplicado às guias que vêm do BANCO (RH, Comercial, painéis).
    Elas não têm DATA/TURNO da planilha: cada uma tem sua própria data e algumas
    têm "area" (supervisor). Turno não se aplica e é ignorado, não zerado.
@@ -4572,7 +4577,7 @@ function filterAll(){
     faltas:full(D.faltas).filter(r=>!(r.LOCAL||"").toUpperCase().includes("ABANDONO")),
     abandono:full(D.faltas).filter(r=>(r.LOCAL||"").toUpperCase().includes("ABANDONO")),
     fts:full(D.fts),os:full(D.os),
-    cobertura:full(D.cobertura),hrextra:full(D.hrextra||[]),
+    cobertura:full(D.cobertura),hrextra:full((D.hrextra||[]).map(r=>({...r,TURNO:turnoSupervisorHE(r.AREA)}))),
     justif:full(D.justif),
     clientes:(ST.turno==="TODOS"?D.clientes:D.clientes.filter(c=>c.TURNO===ST.turno)).filter(c=>c.TPCLIENTE==="CLIENTE"),
     dispo:D.dispo||[],
@@ -7300,7 +7305,7 @@ const TCFG={
   fts:{d:()=>F.fts,s:"s-fts",cols:["DATA","NOME","LOCAL","CARGO","AREA","TIPO","TURNO","MOTIVO"],hdrs:["Data","Funcionário","Local","Cargo","Área","Tipo","Turno","Motivo"],b:["TIPO","TURNO"]},
   dispo:{d:()=>F.dispo,s:"s-dispo",cols:["DATA","NOME","TURNO","RESERVA","SITUACAO","AREA"],hdrs:["Data","Funcionário","Turno","Reserva","Situação","Área"],b:["TURNO"]},
   restec:{d:()=>F.restec,s:"s-restec",cols:["NOME","CARGO","TURNO","MOTIVO","STATUS"],hdrs:["Funcionário","Cargo","Turno","Motivo","Status"],b:["TURNO","STATUS"]},
-  hrextra:{d:()=>F.hrextra,s:"s-hrextra",cols:["DATA","NOME","TIPO","CLIENTE","AREA","MINUTOS"],hdrs:["Data","Funcionário","Tipo","Cliente","Supervisor","Minutos"],b:["TIPO"]},
+  hrextra:{d:()=>F.hrextra,s:"s-hrextra",cols:["DATA","NOME","TIPO","CLIENTE","AREA","TURNO","MINUTOS"],hdrs:["Data","Funcionário","Tipo","Cliente","Supervisor","Turno","Minutos"],b:["TIPO","TURNO"]},
   checklist:{d:()=>F.checklist,s:"s-checklist",cols:["DATA","CLIENTE","MODELO","FUNCIONARIO","TURNO"],hdrs:["Data","Cliente","Modelo","Funcionário","Turno"],b:["MODELO","TURNO"]},
   ativos:{d:()=>DASHBOARD_DATA.ativos||[],s:"s-ativos",cols:["NOME","RE","CARGO","AREA","LOCAL","ESCALA","TURNO","TIPO"],hdrs:["Nome","RE","Cargo","Área","Local","Escala","Turno","Tipo"],b:["TURNO","TIPO"]},
   clientes:{d:()=>aggClientesList(),s:"s-clientes",cols:["NOME","TURNO","AREA","EMPRESA"],hdrs:["Cliente","Turno","Supervisor/Área","Empresa"],b:["TURNO"]}
