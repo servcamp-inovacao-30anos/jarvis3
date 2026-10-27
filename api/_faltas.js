@@ -94,6 +94,35 @@ async function empresasDaUltimaPlanilha(db) {
   } catch (e) { /* sem registro: o formulário deixa a empresa em branco para preencher */ }
   return porRE;
 }
+// Supervisor de cada pessoa pela lista de ativos (coluna AREASUPERVISAO do cadastro): toda pessoa tem um
+// supervisor, então falta que veio sem área na planilha herda o do cadastro e nunca fica "sem supervisor".
+function areasDosAtivos(ativos) {
+  const m = {};
+  (ativos || []).forEach(a => {
+    const re = R.reDe(a && a.RE), area = String(a && a.AREA || "").trim();
+    if (!re || !area || area === "—" || area === "-") return;
+    const sup = R.supervisorAtual(area);
+    if (sup) m[re + "|" + R.primeiroNome(a.NOME)] = sup;
+  });
+  return m;
+}
+// Falta já guardada sem supervisor (a planilha de um dia veio sem área): passa para o do cadastro.
+async function consertarSemSupervisor(db, areas) {
+  try {
+    if (!Object.keys(areas).length) return 0;
+    const sem = await db.listar("fm_faltas?select=re,data,nome&supervisor=is.null&order=re.asc,data.asc");
+    const troca = [];
+    sem.forEach(f => { const s = areas[R.reDe(f.re) + "|" + R.primeiroNome(f.nome)]; if (s) troca.push({ re: f.re, data: String(f.data).slice(0, 10), supervisor: s }); });
+    if (troca.length) await db.upsert("fm_faltas", troca, "re,data");
+    return troca.length;
+  } catch (e) { console.error("faltas: não consertou falta sem supervisor:", e && e.message); return 0; }
+}
+async function areasDaUltimaPlanilha(db) {
+  try {
+    const r = await db.obter("dashboard_snapshots?select=ativos:data->ativos&order=created_at.desc&limit=1");
+    return areasDosAtivos((Array.isArray(r) && r[0] && Array.isArray(r[0].ativos)) ? r[0].ativos : []);
+  } catch (e) { return {}; }
+}
 // O do dia da falta; se esse dia não está no registro, o efetivo mantém o horário da vaga dele (a reserva técnica muda de vaga).
 const horarioDa = (h, f) => h.porDia[f.re + "|" + String(f.data).slice(0, 10)] || (String(f.tipo || "").toUpperCase() === "CONTRATO" ? h.porRE[f.re] : "") || "";
 
@@ -147,6 +176,7 @@ async function materializar(data, opcoes) {
   });
   // Base de demitidos: quem foi registrado à mão (a planilha pode demorar a tirar a pessoa da lista de ativos).
   // Quem a planilha dá como fora dos ativos é conferido a cada envio, sem precisar guardar.
+  const areasAtivos = areasDosAtivos(data.ativos); // supervisor de cada pessoa pelo cadastro
   const registro = await lerRegistroDemissoes(db);
   const demitidos = new Set(registro.demitidos.map(b => b.re + "|" + b.nome1));
   const confirmados = new Set(registro.confirmados.map(b => b.re + "|" + b.nome1));
@@ -175,7 +205,7 @@ async function materializar(data, opcoes) {
     faltas.push({
       re, data: dia, codigo,
       nome: f.NOME || null, cargo: f.CARGO || null, posto: f.LOCAL || null,
-      supervisor: R.supervisorAtual(f.AREA) || null, escala: f.ESCALA || null, tipo: f.TIPO || null, atualizado_em: agora
+      supervisor: R.supervisorAtual(f.AREA) || areasAtivos[re + "|" + R.primeiroNome(f.NOME)] || null, escala: f.ESCALA || null, tipo: f.TIPO || null, atualizado_em: agora
     });
   });
   // Dias da ficha interessam de quem faltou nesta planilha e de quem faltou
@@ -211,6 +241,7 @@ async function materializar(data, opcoes) {
     for (const [re, lista] of sumiram) { await db.remover(`fm_faltas?re=eq.${re}&data=in.(${lista.join(",")})`); removidas += lista.length; }
   }
   if (faltas.length) await db.upsert("fm_faltas", faltas, "re,data");
+  await consertarSemSupervisor(db, areasAtivos);
   await anotarAbonosTardios(db, faltas, codigoAntes);
   await anotarViradasInjustificada(db, faltas, codigoAntes);
   faltas.forEach(f => {
@@ -397,6 +428,7 @@ const postoOuReserva = (posto, sup) => (semPosto(posto) ? (sup ? "Reserva técni
 
 async function verCasos({ res, db, ator }) {
   const hoje = hojeSP(), desde = R.somaDias(hoje, -JANELA_DIAS);
+  const areasAtivos = await areasDaUltimaPlanilha(db);
   const [faltas, dias, medidasLidas, adm, feriados, trocas, eventosAtestado, horarios, situacoes, empresas] = await Promise.all([
     // falta importada só para o histórico (antes de o módulo existir) não abre caso nem prazo
     db.listar(`fm_faltas?select=re,data,codigo,nome,cargo,posto,supervisor,escala,tipo&data=gte.${desde}&order=re.asc,data.asc`).then(l => l.filter(f => f.tipo !== TIPO_HISTORICO)),
@@ -410,6 +442,8 @@ async function verCasos({ res, db, ator }) {
     situacoesDaUltimaPlanilha(db),
     empresasDaUltimaPlanilha(db)
   ]);
+  // toda pessoa tem supervisor: falta guardada sem ele usa o do cadastro (a tela nunca mostra "sem supervisor")
+  faltas.forEach(f => { if (!String(f.supervisor || "").trim()) f.supervisor = areasAtivos[R.reDe(f.re) + "|" + R.primeiroNome(f.nome)] || f.supervisor; });
   // a mesma medida pode estar no histórico importado e na planilha diária: conta uma vez só
   const medidas = R.dedupMedidas(medidasLidas);
   // atestados registrados à mão: valem já, sem esperar o lançamento no SAR2G
@@ -578,7 +612,7 @@ async function salvarFaltasHistorico({ res, db, ator, body }) {
   if (lista.length > MAX_FALTAS_HISTORICO) return erro(res, 400, `Arquivo grande demais: no máximo ${MAX_FALTAS_HISTORICO} faltas por envio.`, "GRANDE_DEMAIS");
   const [primeira] = await db.obter("fm_faltas?select=data&tipo=in.(CONTRATO,RESERVA)&order=data.asc&limit=1");
   const corte = primeira ? String(primeira.data).slice(0, 10) : hojeSP(); // faltas desta data em diante já são do módulo
-  const agora = new Date().toISOString(), vistas = new Set(), linhas = [];
+  const agora = new Date().toISOString(), vistas = new Set(), linhas = [], areasAtivos = await areasDaUltimaPlanilha(db);
   const sobra = { depoisDoCorte: 0, escala: 0, invalidas: 0 };
   lista.forEach(f => {
     const re = reNum(f.RE), dia = String(f.DATA || "").slice(0, 10);
@@ -590,7 +624,7 @@ async function salvarFaltasHistorico({ res, db, ator, body }) {
     vistas.add(k);
     linhas.push({
       re, data: dia, codigo: "I", nome: f.NOME || null, cargo: f.CARGO || null, posto: f.LOCAL || null,
-      supervisor: R.supervisorAtual(f.AREA) || null, escala: f.ESCALA || null, tipo: TIPO_HISTORICO, atualizado_em: agora
+      supervisor: R.supervisorAtual(f.AREA) || areasAtivos[re + "|" + R.primeiroNome(f.NOME)] || null, escala: f.ESCALA || null, tipo: TIPO_HISTORICO, atualizado_em: agora
     });
   });
   if (linhas.length) await db.upsert("fm_faltas", linhas, "re,data");

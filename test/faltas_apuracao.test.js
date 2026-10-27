@@ -458,3 +458,19 @@ test("materializar: quem trabalha na Ficha e não está na lista de ativos é co
   assert.equal(codigos(t)["4990|2026-10-20"], "I");
   assert.equal(t.fm_auditoria.filter(a => a.acao === "DEMITIDO_DESFEITO").length, 1, "não registra de novo");
 });
+
+// ── toda pessoa tem supervisor ──────────────────────────────────────────────
+test("falta que veio sem área na planilha herda o supervisor do cadastro (lista de ativos), no import e nas já guardadas", async () => {
+  const t = tabelasVazias(); supabaseFalso(t);
+  // já guardada sem supervisor (planilha de outro dia veio sem área)
+  t.fm_faltas.push({ re: 1005, data: "2026-10-08", codigo: "I", nome: "PESSOA 1005", escala: "12X36", tipo: "CONTRATO", supervisor: null });
+  const ativos = ativosDoTeste().map(a => a.RE === 1005 ? { ...a, AREA: "FRANK PIMENTEL" } : a.RE === 1006 ? { ...a, AREA: "EDNEY FERRAZ" } : a);
+  await faltas.materializar({
+    faltas: [falta(1006, "2026-10-10", { AREA: "" }), falta(1001, "2026-10-10", { AREA: "" })],
+    fichaDias: {}, ativos
+  });
+  const sup = Object.fromEntries(t.fm_faltas.map(f => [f.re + "|" + f.data, f.supervisor]));
+  assert.equal(sup["1006|2026-10-10"], "JEAN KLEBER", "do cadastro, com a regra de quem assumiu a área (Edney passou para o Jean)");
+  assert.equal(sup["1005|2026-10-08"], "FRANK PIMENTEL", "a já guardada sem supervisor foi consertada");
+  assert.equal(sup["1001|2026-10-10"], null, "sem área em lugar nenhum: continua vazio (a tela mostra o que o cadastro disser)");
+});
