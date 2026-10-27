@@ -150,7 +150,7 @@ function histDe(c){
   const H=FM.hist;
   const med=H&&!H.erro?((H.porRE[c.re]||[]).filter(m=>!/CANCEL/i.test(m.fase||""))):null;
   const p=H&&!H.erro?(H.faltas||[]).find(f=>String(f.re)===String(c.re)&&String(f.nome||"").split(" ")[0]===String(c.nome||"").split(" ")[0]):null;
-  return{med,faltasAno:p?p.datas.length:null};
+  return{med,faltasAno:p?p.datas.length:null,datas:p?p.datas.map(iso):(H&&!H.erro?[]:null)};
 }
 function motivoAuto(E){
   const c=E.c,fl=[...E.faltas].sort(),p=[];
@@ -170,8 +170,7 @@ function abrir(k){
   injetaCss();
   const ov=document.createElement("div");ov.id="md-ov";ov.className="md-ov";
   ov.innerHTML=`<div class="md-win" role="dialog" aria-modal="true" aria-labelledby="md-tit">`+
-    `<div class="md-hd"><div class="md-hd-ic">${IC.doc}</div><div class="t"><small>Medida disciplinar</small><b id="md-tit">Gerar o documento</b><span>Preencha os 4 passos. O documento ao lado muda enquanto você escreve.</span></div>`+
-      `<div class="md-hd-quem"><span class="md-av">${esc(iniciaisDe(c.nome))}</span><div><b>${esc(titulo(c.nome))}</b><small>RE ${esc(c.re)} · ${esc(c.posto||"sem posto")}</small></div></div>`+
+    `<div class="md-hd"><div class="md-hd-ic">${IC.doc}</div><div class="t"><b id="md-tit">Gerar medida disciplinar</b><span><strong>${esc(titulo(c.nome))}</strong> · RE ${esc(c.re)} · ${esc(c.posto||"sem posto")}</span></div>`+
       `<button type="button" class="md-x" data-md="fechar" aria-label="Fechar a janela" title="Fechar (Esc)">${IC.x}</button></div>`+
     `<nav class="md-passos" id="md-passos" aria-label="Passos"></nav>`+
     `<div class="md-corpo"><div class="md-form" id="md-form"></div><div class="md-prev" id="md-prev"></div></div><div class="md-rod" id="md-rod"></div></div>`;
@@ -213,35 +212,37 @@ function pintaPassos(){
   const E=MDS.ed,el=document.getElementById("md-passos");if(!E||!el)return;
   const p=passos(E),feitos=p.filter(x=>x.ok).length;
   el.style.setProperty("--md-prog",(E.gerada?100:feitos/p.length*100)+"%");
-  el.innerHTML=`<div class="md-passos-l">${p.map((x,i)=>`<button type="button" class="md-passo${x.ok||E.gerada?" ok":""}" data-md="ir" data-v="${x.k}"><span class="n">${x.ok||E.gerada?IC.ok:i+1}</span><span class="r"><small>Passo ${i+1}</small><b>${x.rot}</b></span></button>`).join("")}</div>`+
+  el.innerHTML=`<div class="md-passos-l">${p.map((x,i)=>`<button type="button" class="md-passo${x.ok||E.gerada?" ok":""}" data-md="ir" data-v="${x.k}"><span class="n">${x.ok||E.gerada?IC.ok:i+1}</span><span class="r"><b>${x.rot}</b></span></button>`).join("")}</div>`+
     `<div class="md-passos-b" aria-hidden="true"><i></i></div><span class="md-passos-c">${E.gerada?"Documento gerado":feitos===p.length?"Tudo pronto para gerar":feitos+" de "+p.length+" passos prontos"}</span>`;
 }
-const cabPasso=(k,n,tit,sub,ok)=>`<div class="md-sec-h"><span class="md-n${ok?" ok":""}">${ok?IC.ok:n}</span><div><h5>${tit}</h5><p>${sub}</p></div></div>`;
+const cabPasso=(k,n,tit,sub,ok)=>`<div class="md-sec-h" title="${esc(sub)}"><span class="md-n${ok?" ok":""}">${ok?IC.ok:n}</span><h5>${tit}</h5></div>`;
 function pintaForm(){
   const E=MDS.ed,el=document.getElementById("md-form");if(!E||!el)return;
   const c=E.c,h=histDe(c),trava=!!E.gerada,P=passos(E);
   let hist;
   if(!h.med)hist=`<div class="md-hist-v">Carregando o histórico…</div>`;
   else{
-    const n=h.med.length,ult=h.med[0];
-    hist=`<div class="md-hist-k"><div><b>${h.faltasAno==null?"—":h.faltasAno}</b><span>faltas injustificadas no ano</span></div><div class="${n>=2?"er":""}"><b>${n}</b><span>${n===1?"medida":"medidas"} no ano${n>=2?" · reincidente":""}</span></div><div><b>${ult?esc(dm(ult.data)):"—"}</b><span>última medida</span></div></div>`+
-      (n?`<div class="md-hist-l">${h.med.map(m=>`<div><b>${esc(dm(m.data))}</b><span>${esc(typeof fmMedTxtH==="function"?fmMedTxtH(m):m.tipo)}${m.motivo?`<em>${esc(m.motivo)}</em>`:""}</span></div>`).join("")}</div>`:`<div class="md-hist-v">Nenhuma medida desde ${esc(dma(FM.hist.desde))}: esta é a primeira no ano.</div>`);
+    // os dois cartões abrem a lista que está por trás do número (clicar de novo fecha)
+    const n=h.med.length,ult=h.med[0],nf=h.datas?h.datas.length:h.faltasAno;
+    const cartao=(k,num,rot,cls)=>`<button type="button" class="md-hk${E.ver===k?" on":""}${cls?" "+cls:""}" data-md="ver" data-v="${k}" aria-expanded="${E.ver===k}"><b>${num}</b><span>${rot}</span><i aria-hidden="true">›</i></button>`;
+    hist=`<div class="md-hist-k">${cartao("faltas",nf==null?"—":nf,(nf===1?"falta injustificada":"faltas injustificadas")+" no ano","")}${cartao("medidas",n,(n===1?"medida":"medidas")+" no ano"+(n>=2?" · reincidente":"")+(ult?" · última em "+esc(dm(ult.data)):""),n>=2?"er":"")}</div>`;
+    if(E.ver==="faltas")hist+=h.datas&&h.datas.length?`<div class="md-hist-d"><span class="md-rot">Faltas injustificadas desde ${esc(dma(FM.hist.desde))}</span><div class="md-hist-dt">${[...h.datas].sort().reverse().map(d=>`<span${E.faltas.has(d)?' class="atual" title="Falta desta ocorrência"':""}>${esc(dm(d))}</span>`).join("")}</div></div>`:`<div class="md-hist-d md-hist-v">Nenhuma falta injustificada no ano.</div>`;
+    if(E.ver==="medidas")hist+=n?`<div class="md-hist-d"><span class="md-rot">Medidas desde ${esc(dma(FM.hist.desde))}</span><div class="md-hist-l">${h.med.map(m=>`<div><b>${esc(dm(m.data))}</b><span>${esc(typeof fmMedTxtH==="function"?fmMedTxtH(m):m.tipo)}${m.motivo?`<em>${esc(m.motivo)}</em>`:""}</span></div>`).join("")}</div></div>`:`<div class="md-hist-d md-hist-v">Nenhuma medida no ano: esta seria a primeira.</div>`;
   }
   const ant=geradasDoCaso(E.k).filter(g=>!E.gerada||g.chave!==E.gerada.chave);
   const avisoAnt=ant.length?`<div class="md-alerta"><b>Atenção:</b> já ${ant.length===1?"existe a medida":"existem as medidas"} ${lista(ant.map(g=>`<b>${esc(g.numero)}</b> (${esc(TIPOS[g.tipoId]?TIPOS[g.tipoId].rot:g.tipo)}, ${g.status==="LANCADA"?"lançada no SAR2G":"falta lançar no SAR2G"})`))} para esta ocorrência.</div>`:"";
-  const tipos=Object.keys(TIPOS).map(t=>`<button type="button" class="md-tipo${E.tipo===t?" on":""}" data-md="tipo" data-v="${t}" aria-pressed="${E.tipo===t}"${trava?" disabled":""}><span class="ic">${IC[t]}</span><b>${TIPOS[t].rot}</b><span>${TIPOS[t].sub}</span></button>`).join("");
+  const tipos=Object.keys(TIPOS).map(t=>`<button type="button" class="md-tipo${E.tipo===t?" on":""}" data-md="tipo" data-v="${t}" title="${esc(TIPOS[t].dica)}" aria-pressed="${E.tipo===t}"${trava?" disabled":""}><span class="ic">${IC[t]}</span><b>${TIPOS[t].rot}</b><span>${TIPOS[t].sub}</span></button>`).join("");
   const explica=E.tipo?`<div class="md-explica">${IC.info}<span>${esc(TIPOS[E.tipo].dica)}</span></div>`:`<div class="md-explica vz">${IC.info}<span>Escolha um dos três tipos. O título e o texto do documento mudam conforme a escolha.</span></div>`;
   const dias=E.tipo==="SUSPENSAO"?`<div class="md-dias"><div><label for="md-dias">Quantos dias de suspensão?</label><small>De 1 a 30 dias, contados a partir da data do passo 2.</small></div><div class="md-step"><button type="button" data-md="dias" data-v="-1" aria-label="Menos um dia"${trava||E.dias<=1?" disabled":""}>${IC.menos}</button><input id="md-dias" type="number" min="1" max="30" value="${E.dias}" data-md="diasIn"${trava?" disabled":""}><button type="button" data-md="dias" data-v="1" aria-label="Mais um dia"${trava||E.dias>=30?" disabled":""}>${IC.mais}</button></div></div>`:"";
-  const prov=E.tipo&&E.tipo!=="SUSPENSAO"?`<p class="md-dica">Modelo de advertência provisório, no mesmo formato da suspensão, até chegar o modelo oficial.</p>`:"";
+  const prov=E.tipo&&E.tipo!=="SUSPENSAO"?`<p class="md-dica">Modelo de advertência provisório, até chegar o oficial.</p>`:"";
   const fl=[...new Set(c.faltas||[])].sort();
   const dts=fl.map(d=>`<button type="button" class="md-chip dt${E.faltas.has(d)?" on":""}" data-md="falta" data-v="${d}" aria-pressed="${E.faltas.has(d)}"${trava?" disabled":""}>${esc(typeof fmDdS==="function"?fmDdS(d):dm(d))}</button>`).join("");
   const sits=Object.keys(SITUACOES).map(s=>`<button type="button" class="md-chip${E.sits.has(s)?" on":""}" data-md="sit" data-v="${s}" aria-pressed="${E.sits.has(s)}"${trava?" disabled":""}>${esc(SITUACOES[s])}</button>`).join("");
   const conta=E.motivo.length,limite=1500;
   el.innerHTML=
-    `<section class="md-sec md-ctx"><div class="md-sec-h"><span class="md-n ctx">${IC.olho}</span><div><h5>Antes de decidir</h5><p>Quem é o colaborador e o que ele já teve no ano. Quem decide a medida é você: o sistema não sugere o tipo.</p></div></div>`+
-      `<div class="md-colab"><div class="md-av">${esc(iniciaisDe(c.nome))}</div><div><b>${esc(titulo(c.nome))}</b><small>RE ${esc(c.re)} · ${esc(titulo(c.cargo||""))}<br>${esc(c.posto||"")} · supervisor ${esc(titulo(c.supervisor||"—"))}</small></div></div>`+
+    `<section class="md-sec md-ctx"><div class="md-sec-h"><h5>Histórico no ano</h5><small class="md-sec-d">clique num número para ver a lista</small></div>`+
       `<div class="md-hist">${hist}</div>${avisoAnt}</section>`+
-    `<section class="md-sec" id="md-p-tipo">${cabPasso("tipo",1,"Qual medida aplicar?","Escolha o tipo. Na suspensão, diga também quantos dias.",P[0].ok)}<div class="md-tipos" role="group" aria-label="Tipo da medida">${tipos}</div>${explica}${dias}${prov}</section>`+
+    `<section class="md-sec" id="md-p-tipo">${cabPasso("tipo",1,"Qual medida aplicar?","Escolha o tipo. Na suspensão, diga também quantos dias.",P[0].ok)}<div class="md-tipos" role="group" aria-label="Tipo da medida">${tipos}</div>${dias}${prov}</section>`+
     `<section class="md-sec" id="md-p-datas">${cabPasso("datas",2,E.tipo==="SUSPENSAO"?"Quando começa e em qual empresa?":"Quando e em qual empresa?","A data que vale para a medida, a data impressa no documento e a empresa do cabeçalho.",P[1].ok)}`+
       `<div class="md-grid2"><label class="md-campo">${E.tipo==="SUSPENSAO"?"Suspenso a partir de":"Data da medida"}<input class="md-in" type="date" value="${E.inicio}" data-md="inicio"${trava?" disabled":""}></label><label class="md-campo">Data do documento<input class="md-in" type="date" value="${E.docData}" data-md="docData"${trava?" disabled":""}></label></div>`+
       `<label class="md-campo" style="margin-top:12px">Empresa (vai no cabeçalho)<input class="md-in" value="${esc(E.empresa)}" placeholder="Ex.: SERV CAMP TERCEIRIZAÇÃO" data-md="empresa" maxlength="80"${trava?" disabled":""}></label>${E.empresa?"":`<p class="md-dica at">A empresa não veio na última planilha para este colaborador: preencha.</p>`}</section>`+
@@ -309,6 +310,7 @@ function cliqueEd(e){
   const a=b.dataset.md,v=b.dataset.v;
   if(a==="fechar"){fecharEd(!!E.gerada);return;}
   if(a==="ficar"){E.sair=false;pintaRod();return;}
+  if(a==="ver"){E.ver=E.ver===v?null:v;const fm=document.getElementById("md-form"),y=fm?fm.scrollTop:0;pintaForm();if(fm)fm.scrollTop=y;return;}
   if(a==="descartar"){fecharEd(true);return;}
   if(a==="ir"){const s=document.getElementById("md-p-"+v);if(s){s.scrollIntoView({behavior:"smooth",block:"start"});s.classList.remove("realce");void s.offsetWidth;s.classList.add("realce");}return;}
   if(a==="zoom"){

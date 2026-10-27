@@ -455,3 +455,7 @@ html[data-theme="dark"] .fe-frase p b{color:var(--acc)}
 @media (max-width:980px){.fe-nv-g,.fe-nv-t small{display:none}.fe-salvar{margin:18px -18px -34px;padding:14px 18px}}
 @media (max-width:640px){.fe-hg{grid-template-columns:1fr}.fe-hg>div{grid-template-columns:repeat(3,1fr)}}
 .fe-kpi b .fe-n{display:inline;margin:0;font-size:inherit;color:inherit}
+
+/* título e números com cor sólida: o degradê recortado no texto cortava as letras com perna (g, p, j) */
+.fe-top h2,.fe-kpi b{background:none;-webkit-background-clip:border-box;background-clip:border-box;-webkit-text-fill-color:currentColor;color:var(--tx);line-height:1.25;padding-bottom:.04em}
+.fe-kpi.alerta b{color:var(--am);-webkit-text-fill-color:var(--am)}
