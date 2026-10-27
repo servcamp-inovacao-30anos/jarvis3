@@ -14,7 +14,7 @@
 "use strict";
 // Mesma conta do servidor (api/_faltas_email.js RESPONSAVEL; test/faltas_email.test.js confere).
 const FE_RESPONSAVEL="raphaelvictor";
-const FE={conta:null,p:null,sel:new Set(),cc:new Set(),edit:null,copias:null,confirmar:false,msg:null,ocupado:false,t:null,aba:"geral",ag:null,ta:null,taConf:false};
+const FE={conta:null,p:null,sel:new Set(),cc:new Set(),edit:null,copias:null,msg:null,ocupado:false,aba:"geral",ag:null,env:null};
 const DIAS=["Domingo","Segunda-feira","Terça-feira","Quarta-feira","Quinta-feira","Sexta-feira","Sábado"],DIAS_C=["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
 
 const esc=s=>String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
@@ -63,7 +63,7 @@ window.feFechar=fechar;
 
 window.feAbrir=async function(){
   if(uk()!==FE_RESPONSAVEL)return;
-  FE.msg=null;FE.confirmar=false;FE.edit=null;FE.copias=null;FE.p=null;FE.rs=null;FE.rsConf=false;FE.aba="geral";FE.ag=null;FE.ta=null;FE.taConf=false;FE.animar=true;
+  FE.msg=null;FE.edit=null;FE.copias=null;FE.p=null;FE.rs=null;FE.rsConf=false;FE.aba="geral";FE.ag=null;FE.env=null;FE.animar=true;
   clearInterval(FE.tk);FE.tk=setInterval(()=>{if(!document.getElementById("feJanela")){clearInterval(FE.tk);return;}relogio();},30000);
   render();
   await carregar(false);
@@ -75,10 +75,7 @@ async function carregar(manter){
   if(!manter){
     FE.sel=new Set(FE.p.areas.filter(a=>a.email&&a.status!=="ENVIADO").map(a=>a.area));
     FE.cc=new Set(FE.p.copias.map(c=>c.email));
-    const prim=FE.p.areas.find(a=>a.email)||FE.p.areas[0];
-    FE.t={area:prim?prim.area:"",de:FE.p.semana.inicio,ate:FE.p.semana.fim,eu:true,sup:false,cc:new Set(),outro:""};
-    // teste de todas as áreas: já vem marcado quem acompanha pela coordenação (Jussilene), se estiver na lista de cópias
-    FE.ta={de:FE.p.semana.inicio,ate:FE.p.semana.fim,eu:false,cc:new Set(FE.p.copias.filter(c=>/jussilene/i.test(c.nome+" "+c.email)).map(c=>c.email)),outro:""};
+    FE.env=null;
     FE.ag={dia:FE.p.agenda.dia,hora:FE.p.agenda.hora};
   }
   render();
@@ -155,7 +152,7 @@ function render(){
   else if(aba.k==="agenda")corpo+=secAgenda(p);
   else if(aba.k==="areas")corpo+=secAreas(p);
   else if(aba.k==="dest")corpo+=secCopias(p)+secResumo(p);
-  else if(aba.k==="envio")corpo+=secEnvio(p)+secTesteAreas(p)+secTeste(p);
+  else if(aba.k==="envio")corpo+=secEnviar(p);
   else if(aba.k==="conta")corpo+=secConta(p)+secAssinatura(p);
   else corpo+=secHistorico(p);
   const pg='<div class="fe-pg"><header class="fe-top"><div><small>'+esc(aba.g)+' · '+esc(aba.rot)+'</small><h2>'+esc(aba.tit)+'</h2><p>'+esc(aba.desc)+'</p></div><button type="button" class="fe-x" aria-label="Fechar" data-fe="fechar" data-id="feJanela">✕</button></header><div class="fe-main'+(FE.animar?" entra":"")+'">'+corpo+'</div></div>';
@@ -258,30 +255,59 @@ function secAgenda(p){
     '</div><aside class="fe-agenda-r"><div class="fe-sec fe-resumo-ag">'+frase+(mudou?'':'<div class="fe-salvo">✓ Salvo</div>')+'</div>'+faq+'</aside></div>'+barra;
 }
 
-/* Teste de todas as áreas: um e-mail por área, com o conteúdo real, só para quem for escolhido. */
-function secTesteAreas(p){
-  const t=FE.ta||(FE.ta={de:p.semana.inicio,ate:p.semana.fim,eu:false,cc:new Set(),outro:""});
-  const sel=t.areas||(t.areas=new Set(p.areas.map(a=>a.area)));  // por padrão todas; marque quantas quiser
-  const com=p.areas.filter(a=>sel.has(a.area)).length,destinos=[];
-  if(t.eu)destinos.push(p.conta&&p.conta.email||"a conta de envio");
-  p.copias.filter(c=>t.cc.has(c.email)).forEach(c=>destinos.push(c.nome));
-  String(t.outro||"").split(/[,;\s]+/).map(x=>x.trim()).filter(Boolean).forEach(x=>destinos.push(x));
-  const chips='<label class="fe-chip"><input type="checkbox" data-fe="ta-eu"'+(t.eu?" checked":"")+'> <b>Eu</b> <span class="fe-mut">'+esc(p.conta&&p.conta.email||"a conta de envio")+'</span></label>'+
-    p.copias.map(c=>'<label class="fe-chip"><input type="checkbox" data-fe="ta-cc" data-email="'+esc(c.email)+'"'+(t.cc.has(c.email)?" checked":"")+'> <b>'+esc(c.nome)+'</b> <span class="fe-mut">'+esc(c.email)+'</span></label>').join("");
-  const areasChips=p.areas.map(a=>'<label class="fe-chip"><input type="checkbox" data-fe="ta-area" data-area="'+esc(a.area)+'"'+(sel.has(a.area)?" checked":"")+'> <b>'+esc(a.nome)+'</b> <span class="fe-mut">'+a.faltas+(a.faltas===1?" falta":" faltas")+'</span></label>').join("");
-  let h='<div class="fe-sec fe-destaque">'+cab("dest","Mandar o aviso das áreas para a coordenação","Marque quantas áreas quiser e para quem vai. Quem você escolher recebe um e-mail por área, igual ao que o supervisor recebe, sem estar em cópia. Nenhum supervisor é avisado e nada conta como envio oficial.")+
-    '<div class="fe-ta-h"><p class="fe-eyebrow" style="margin:0">1. Quais áreas ('+com+' de '+p.areas.length+')</p><span><button type="button" class="fe-b sm" data-fe="ta-todas">Marcar todas</button> <button type="button" class="fe-b sm" data-fe="ta-comfaltas">Só com faltas</button> <button type="button" class="fe-b sm" data-fe="ta-nenhuma">Limpar</button></span></div><div class="fe-chips">'+areasChips+'</div>'+
-    '<p class="fe-eyebrow" style="margin:18px 0 10px">2. Para quem vai</p><div class="fe-chips">'+chips+'</div>'+
-    '<div class="fe-linha"><input class="fe-in l" type="text" inputmode="email" autocomplete="off" data-fe-campo="ta.outro" placeholder="Outros e-mails (opcional; separe por vírgula)" value="'+esc(t.outro)+'"></div>'+
-    '<div class="fe-grade" style="margin-top:14px;max-width:460px"><div><label for="feTaDe">De</label><input id="feTaDe" class="fe-in" type="date" data-fe-campo="ta.de" value="'+esc(t.de)+'"></div><div><label for="feTaAte">Até</label><input id="feTaAte" class="fe-in" type="date" data-fe-campo="ta.ate" value="'+esc(t.ate)+'"></div></div>';
-  if(FE.taConf&&destinos.length&&com){
-    h+='<div class="fe-conf"><b>Enviar '+com+' e-mail(s) de teste?</b><p class="fe-mut" style="margin:6px 0 0">Para: '+destinos.map(esc).join(", ")+'. Período de '+esc(dma(t.de))+' a '+esc(dma(t.ate))+'.</p>'+
-      '<div class="fe-linha"><button class="fe-b fe-pri" data-fe="ta-confirmar"'+(FE.ocupado?" disabled":"")+'>'+(FE.ocupado?"Enviando…":"Enviar agora")+'</button><button class="fe-b" data-fe="ta-voltar"'+(FE.ocupado?" disabled":"")+'>Voltar</button></div></div>';
+/* Enviar agora e testar: um só fluxo em 3 passos. O modo (aviso oficial ou teste) só muda QUEM recebe;
+   as áreas, o período e a prévia são os mesmos nos dois. */
+function envInicial(p){
+  return{modo:"oficial",areas:new Set(FE.sel?[...FE.sel]:p.areas.filter(a=>a.email&&a.status!=="ENVIADO").map(a=>a.area)),de:p.semana.inicio,ate:p.semana.fim,
+    eu:false,cc:new Set(p.copias.filter(c=>/jussilene/i.test(c.nome+" "+c.email)).map(c=>c.email)),outro:"",prev:"",conf:false};
+}
+const envPode=(e,a)=>e.modo!=="oficial"||(!!a.email&&a.status!=="ENVIADO"); // no oficial: só quem tem e-mail e ainda não recebeu
+function envSel(p,e){return p.areas.filter(a=>e.areas.has(a.area)&&envPode(e,a));}
+function envDestinos(p,e){
+  const d=[];
+  if(e.eu)d.push(p.conta&&p.conta.email||"a conta de envio");
+  p.copias.filter(c=>e.cc.has(c.email)).forEach(c=>d.push(c.nome));
+  String(e.outro||"").split(/[,;\s]+/).map(x=>x.trim()).filter(Boolean).forEach(x=>d.push(x));
+  return d;
+}
+function secEnviar(p){
+  const e=FE.env||(FE.env=envInicial(p)),of=e.modo==="oficial",sel=envSel(p,e);
+  const passo=(n,tit,sub,ok,corpo)=>'<section class="fe-sec fe-passo"><div class="fe-passo-h"><span class="fe-passo-n'+(ok?" ok":"")+'">'+(ok?"✓":n)+'</span><div><small>Passo '+n+'</small><b>'+tit+'</b><span class="fe-mut">'+sub+'</span></div></div>'+corpo+'</section>';
+  const modos='<div class="fe-modos" role="group" aria-label="Tipo de envio">'+
+    '<button type="button" class="fe-modo'+(of?" on":"")+'" data-fe="env-modo" data-modo="oficial" aria-pressed="'+of+'"><span class="fe-modo-ic">'+IC.envio+'</span><b>Aviso oficial</b><span>Sai para cada supervisor, com a semana da área dele. Conta como enviado e a área não recebe de novo.</span></button>'+
+    '<button type="button" class="fe-modo'+(of?"":" on")+'" data-fe="env-modo" data-modo="teste" aria-pressed="'+(!of)+'"><span class="fe-modo-ic">'+IC.prev+'</span><b>Teste</b><span>Só para quem você escolher (a coordenação, por exemplo). Nenhum supervisor é avisado e nada conta como enviado.</span></button></div>';
+  const chips=p.areas.map(a=>{
+    const ok=envPode(e,a),nota=!ok?(a.status==="ENVIADO"?"já recebeu":"sem e-mail"):a.faltas+(a.faltas===1?" falta":" faltas");
+    return '<label class="fe-chip'+(ok?"":" off")+'"><input type="checkbox" data-fe="env-area" data-area="'+esc(a.area)+'"'+(e.areas.has(a.area)&&ok?" checked":"")+(ok?"":" disabled")+'> <b>'+esc(a.nome)+'</b> <span class="fe-mut">'+nota+'</span></label>';
+  }).join("");
+  const periodo=of?'<p class="fe-mut" style="margin:14px 0 0">Período: <b>'+esc(dma(p.semana.inicio))+' a '+esc(dma(p.semana.fim))+'</b> (a semana anterior, de segunda a domingo).</p>':
+    '<div class="fe-grade" style="margin-top:14px;max-width:460px"><div><label for="feEnvDe">De</label><input id="feEnvDe" class="fe-in" type="date" data-fe-campo="env.de" value="'+esc(e.de)+'"></div><div><label for="feEnvAte">Até</label><input id="feEnvAte" class="fe-in" type="date" data-fe-campo="env.ate" value="'+esc(e.ate)+'"></div></div><p class="fe-mut" style="margin:8px 0 0">Até 31 dias.</p>';
+  const p1=passo(1,"Qual envio e de quais áreas?","Escolha o tipo de envio e marque quantas áreas quiser.",sel.length>0,modos+
+    '<div class="fe-ta-h" style="margin-top:18px"><p class="fe-eyebrow" style="margin:0">Áreas ('+sel.length+' marcadas de '+p.areas.filter(a=>envPode(e,a)).length+')</p><span><button type="button" class="fe-b sm" data-fe="env-todas">Marcar todas</button> <button type="button" class="fe-b sm" data-fe="env-comfaltas">Só com faltas</button> <button type="button" class="fe-b sm" data-fe="env-nenhuma">Limpar</button></span></div><div class="fe-chips">'+chips+'</div>'+periodo);
+  const ccOficial=p.copias.map(c=>'<label class="fe-chip"><input type="checkbox" data-fe="cc" data-email="'+esc(c.email)+'"'+(FE.cc.has(c.email)?" checked":"")+'> <b>'+esc(c.nome)+'</b> <span class="fe-mut">'+esc(c.email)+'</span></label>').join("");
+  const ccTeste='<label class="fe-chip"><input type="checkbox" data-fe="env-eu"'+(e.eu?" checked":"")+'> <b>Eu</b> <span class="fe-mut">'+esc(p.conta&&p.conta.email||"a conta de envio")+'</span></label>'+
+    p.copias.map(c=>'<label class="fe-chip"><input type="checkbox" data-fe="env-cc" data-email="'+esc(c.email)+'"'+(e.cc.has(c.email)?" checked":"")+'> <b>'+esc(c.nome)+'</b> <span class="fe-mut">'+esc(c.email)+'</span></label>').join("");
+  const dest=envDestinos(p,e),ccN=p.copias.filter(c=>FE.cc.has(c.email));
+  const p2=of?
+    passo(2,"Quem recebe cópia?","Cada supervisor recebe o e-mail da própria área. Marque quem acompanha em cópia, ou desmarque para este envio.",true,
+      (p.copias.length?'<div class="fe-chips">'+ccOficial+'</div>':'<p class="fe-mut" style="margin:0">Ninguém em cópia. Cadastre na aba Cópias.</p>')):
+    passo(2,"Para quem vai o teste?","Marque quem recebe um e-mail por área. Pode incluir qualquer endereço.",dest.length>0,
+      '<div class="fe-chips">'+ccTeste+'</div><div class="fe-linha"><input class="fe-in l" type="text" inputmode="email" autocomplete="off" data-fe-campo="env.outro" placeholder="Outros e-mails (opcional; separe por vírgula)" value="'+esc(e.outro)+'"></div>');
+  const prontoEnviar=p.configurado&&sel.length&&(of||dest.length);
+  const resumo=of?sel.length+(sel.length===1?" e-mail":" e-mails")+', um para cada supervisor'+(ccN.length?", com "+ccN.map(c=>esc(c.nome)).join(", ")+" em cópia":", sem cópia")+".":
+    sel.length+(sel.length===1?" e-mail":" e-mails")+' de teste para '+(dest.length?dest.map(esc).join(", "):"ninguém ainda")+".";
+  const prev=e.prev&&sel.some(a=>a.area===e.prev)?e.prev:(sel[0]&&sel[0].area)||"";
+  let p3='<div class="fe-resumo-env"><span class="fe-eyebrow">Vai sair</span><p>'+resumo+'</p></div>';
+  if(e.conf&&prontoEnviar){
+    p3+='<div class="fe-conf"><b>'+(of?"Confirma o envio oficial?":"Enviar o teste agora?")+'</b><ul>'+sel.map(a=>'<li>'+esc(a.nome)+(of?' → '+esc(a.email):'')+' · '+a.faltas+' falta(s)</li>').join("")+'</ul>'+
+      '<div class="fe-linha"><button class="fe-b fe-pri" data-fe="env-confirmar"'+(FE.ocupado?" disabled":"")+'>'+(FE.ocupado?"Enviando…":"Enviar agora")+'</button><button class="fe-b" data-fe="env-voltar"'+(FE.ocupado?" disabled":"")+'>Voltar</button></div></div>';
   }else{
-    h+='<div class="fe-linha"><button class="fe-b fe-pri" data-fe="ta-enviar"'+(destinos.length&&p.configurado&&com&&!FE.ocupado?"":" disabled")+'>'+IC.enviar+'Enviar o teste de '+com+(com===1?" área":" áreas")+'</button>'+
-      (!com?'<span class="fe-mut">Marque ao menos uma área</span>':destinos.length?'<span class="fe-mut">'+com+(com===1?" e-mail":" e-mails")+' para '+destinos.length+' destinatário(s)</span>':'<span class="fe-mut">Escolha ao menos um destinatário</span>')+'</div>';
+    p3+='<div class="fe-linha"><select class="fe-in" data-fe-campo="env.prev" aria-label="Área da prévia"'+(sel.length?"":" disabled")+'>'+sel.map(a=>'<option value="'+esc(a.area)+'"'+(a.area===prev?" selected":"")+'>Prévia: '+esc(a.nome)+'</option>').join("")+'</select>'+
+      '<button type="button" class="fe-b" data-fe="env-previa"'+(sel.length?"":" disabled")+'>'+IC.prev+'Ver prévia</button><span style="flex:1"></span>'+
+      '<button type="button" class="fe-b fe-pri" data-fe="env-enviar"'+(prontoEnviar&&!FE.ocupado?"":" disabled")+'>'+IC.enviar+(of?"Enviar o aviso oficial":"Enviar o teste")+'</button></div>'+
+      (!p.configurado?'<p class="fe-falta-env">Cadastre a conta de envio na aba Conta e assinatura.</p>':!sel.length?'<p class="fe-falta-env">Marque ao menos uma área no passo 1.</p>':(!of&&!dest.length)?'<p class="fe-falta-env">Escolha ao menos um destinatário no passo 2.</p>':'');
   }
-  return h+'</div>';
+  return p1+p2+passo(3,"Conferir e enviar","Veja a prévia do e-mail de uma das áreas e confirme.",false,p3);
 }
 
 function secConta(p){
@@ -396,20 +422,6 @@ function secCopias(p){
       :'<p class="fe-mut">Ninguém em cópia ainda. Clique em "Editar lista" para incluir.</p>')+'</div>';
 }
 
-function secEnvio(p){
-  const areas=p.areas.filter(a=>FE.sel.has(a.area));
-  const cc=p.copias.filter(c=>FE.cc.has(c.email));
-  let h='<div class="fe-sec">'+cab("envio","Enviar o aviso desta semana agora","Semana de "+esc(dma(p.semana.inicio))+" a "+esc(dma(p.semana.fim))+". Um e-mail por área, só com as faltas daquela área. Área que já recebeu não recebe de novo. As áreas vêm marcadas na aba Supervisores.");
-  if(FE.confirmar&&areas.length){
-    h+='<div class="fe-conf"><b>Confirma o envio?</b><ul>'+areas.map(a=>'<li>'+esc(a.nome)+' → '+esc(a.email)+' · '+a.faltas+' falta(s)</li>').join("")+'</ul>'+
-      '<p class="fe-mut" style="margin:8px 0 0">Em cópia: '+(cc.length?cc.map(c=>esc(c.nome)).join(", "):"ninguém")+'</p>'+
-      '<div class="fe-linha"><button class="fe-b fe-pri" data-fe="confirmar-envio"'+(FE.ocupado?" disabled":"")+'>'+(FE.ocupado?"Enviando…":"Enviar agora")+'</button><button class="fe-b" data-fe="voltar-envio"'+(FE.ocupado?" disabled":"")+'>Voltar</button></div></div>';
-  }else{
-    h+='<div class="fe-linha"><button class="fe-b fe-pri" data-fe="enviar"'+(areas.length&&p.configurado?"":" disabled")+'>Enviar para '+areas.length+' área(s)</button>'+
-      '<span class="fe-mut">'+(cc.length?"Em cópia: "+cc.map(c=>esc(c.nome)).join(", "):"Sem cópia")+'</span></div>';
-  }
-  return h+'</div>';
-}
 
 /* Resumo semanal das medidas disciplinares para a coordenação: um e-mail só, com o que foi gerado no
    painel e ainda não está no SAR2G, por supervisor. Sai junto com o aviso das áreas (automático). */
@@ -446,26 +458,6 @@ async function previaResumo(){
   }catch(e){janela("fePrevia","Prévia do resumo","",'<div class="fe-msg er">'+esc(e.message)+'</div>',true);}
 }
 
-function secTeste(p){
-  const t=FE.t||{};
-  const a=p.areas.find(x=>x.area===t.area);
-  const ops=p.areas.map(x=>'<option value="'+esc(x.area)+'"'+(x.area===t.area?" selected":"")+'>'+esc(x.nome)+'</option>').join("");
-  const ccs=p.copias.map(c=>'<label class="fe-chip"><input type="checkbox" data-fe="t-cc" data-email="'+esc(c.email)+'"'+(t.cc&&t.cc.has(c.email)?" checked":"")+'> '+esc(c.nome)+'</label>').join("");
-  return '<div class="fe-sec">'+cab("prev","Testar o aviso de uma área","Escolha a área, o período (até 31 dias) e para quem vai. Serve para ver exatamente o que o supervisor recebe. Não conta como envio oficial.")+
-    '<div class="fe-grade">'+
-      '<div><label for="feTArea">Área</label><select id="feTArea" class="fe-in" data-fe-campo="t.area">'+ops+'</select></div>'+
-      '<div><label for="feTDe">De</label><input id="feTDe" class="fe-in" type="date" data-fe-campo="t.de" value="'+esc(t.de)+'"></div>'+
-      '<div><label for="feTAte">Até</label><input id="feTAte" class="fe-in" type="date" data-fe-campo="t.ate" value="'+esc(t.ate)+'"></div>'+
-    '</div>'+
-    '<p class="fe-mut" style="margin:12px 0 6px">Para quem vai o teste:</p>'+
-    '<div class="fe-chips">'+
-      '<label class="fe-chip"><input type="checkbox" data-fe="t-eu"'+(t.eu?" checked":"")+'> <b>Eu</b> <span class="fe-mut">('+esc(p.conta&&p.conta.email||"a conta de envio")+')</span></label>'+
-      '<label class="fe-chip"><input type="checkbox" data-fe="t-sup"'+(t.sup?" checked":"")+(a&&a.email?"":" disabled")+'> <b>Supervisor da área</b> <span class="fe-mut">'+esc(a&&a.email?a.email:"sem e-mail")+'</span></label>'+
-      ccs+
-    '</div>'+
-    '<div class="fe-linha"><input class="fe-in l" type="text" inputmode="email" autocomplete="off" data-fe-campo="t.outro" placeholder="Outros e-mails, de qualquer domínio (opcional; separe por vírgula)" value="'+esc(t.outro)+'"></div>'+
-    '<div class="fe-linha"><button class="fe-b" data-fe="previa-teste">Ver prévia</button><button class="fe-b fe-pri" data-fe="enviar-teste"'+(FE.ocupado||!p.configurado?" disabled":"")+'>'+(FE.ocupado?"Enviando…":"Enviar teste")+'</button></div></div>';
-}
 
 function secHistorico(p){
   if(!p.historico||!p.historico.length)return '<div class="fe-vazio"><b>Nenhum envio ainda</b><span>Quando o primeiro aviso ou teste sair, ele aparece aqui.</span></div>';
@@ -516,19 +508,7 @@ function clique(e){
   if(q==="ag-hora"){(FE.ag||(FE.ag={})).hora=Number(b.getAttribute("data-hora"));render();return;}
   if(q==="ag-descartar"){FE.ag={dia:p.agenda.dia,hora:p.agenda.hora};render();return;}
   if(q==="ag-salvar"){const a=FE.ag;acao(()=>api("agenda","POST",{dia:a.dia,hora:a.hora}),()=>"Agendamento salvo: "+DIAS[a.dia].toLowerCase()+" às "+horaTxt(a.hora)+".",true);return;}
-  if(q==="ta-todas"){FE.ta.areas=new Set(p.areas.map(a=>a.area));FE.taConf=false;render();return;}
-  if(q==="ta-nenhuma"){FE.ta.areas=new Set();FE.taConf=false;render();return;}
-  if(q==="ta-comfaltas"){FE.ta.areas=new Set(p.areas.filter(a=>a.faltas>0).map(a=>a.area));FE.taConf=false;render();return;}
-  if(q==="ta-enviar"){FE.taConf=true;FE.msg=null;render();return;}
-  if(q==="ta-voltar"){FE.taConf=false;render();return;}
-  if(q==="ta-confirmar"){
-    const t=FE.ta,para=[];
-    if(t.eu)para.push("@eu");
-    t.cc.forEach(e=>para.push(e));
-    String(t.outro||"").split(/[,;\s]+/).map(x=>x.trim()).filter(Boolean).forEach(x=>para.push(x));
-    acao(()=>api("teste_areas","POST",{de:t.de,ate:t.ate,para:para,areas:[...t.areas]}),r=>r.enviados+" e-mail(s) de teste enviado(s), um por área"+(r.falhas?" · "+r.falhas+" falharam: tente de novo":"")+" · "+r.comFaltas+" com faltas no período.",true).then(()=>{FE.taConf=false;render();});
-    return;
-  }
+  if(q.startsWith("env-")){envClique(q,b);return;}
   if(q==="editar-area"){const a=p.areas.find(x=>x.area===area);if(a){FE.edit={area:a.area,email:a.email||"",saudacao:a.saudacao||""};render();}return;}
   if(q==="cancelar-area"){FE.edit=null;render();return;}
   if(q==="salvar-area"){const ed=FE.edit;acao(()=>api("area","POST",{area:ed.area,email:ed.email,saudacao:ed.saudacao}),"Área atualizada.",true).then(()=>{if(!FE.msg||FE.msg.tipo==="ok")FE.edit=null;render();});return;}
@@ -547,13 +527,6 @@ function clique(e){
   if(q==="rm-copia"){FE.copias.splice(Number(b.getAttribute("data-i")),1);render();return;}
   if(q==="cancelar-copias"){FE.copias=null;render();return;}
   if(q==="salvar-copias"){const l=FE.copias.filter(c=>String(c.email||"").trim());acao(()=>api("copias","POST",{copias:l}),"Lista de cópias salva.",false).then(()=>{if(FE.msg&&FE.msg.tipo==="ok"){FE.copias=null;render();}});return;}
-  if(q==="enviar"){FE.confirmar=true;FE.msg=null;render();return;}
-  if(q==="voltar-envio"){FE.confirmar=false;render();return;}
-  if(q==="confirmar-envio"){
-    const corpo={areas:[...FE.sel],copias:[...FE.cc],confirmar:true};
-    acao(()=>api("enviar","POST",corpo),resumoEnvio,false).then(()=>{FE.confirmar=false;render();});
-    return;
-  }
   if(q==="rs-editar"){FE.rs=(p.resumo&&p.resumo.para||[]).map(c=>({nome:c.nome,email:c.email}));if(!FE.rs.length)FE.rs.push({nome:"",email:""});render();return;}
   if(q==="rs-add"){FE.rs.push({nome:"",email:""});render();return;}
   if(q==="rs-rm"){FE.rs.splice(Number(b.getAttribute("data-i")),1);render();return;}
@@ -564,32 +537,50 @@ function clique(e){
   if(q==="rs-enviar"){FE.rsConf=true;FE.msg=null;render();return;}
   if(q==="rs-voltar"){FE.rsConf=false;render();return;}
   if(q==="rs-confirmar"){acao(()=>api("resumo_enviar","POST",{confirmar:true}),r=>r.situacao==="JA_ENVIADO"?"O resumo desta semana já tinha sido enviado.":r.situacao==="EM_ANDAMENTO"?"Outro envio do resumo está em andamento.":"Resumo enviado ("+r.pendentes+" medida(s) pendente(s) no SAR2G).",true).then(()=>{FE.rsConf=false;render();});return;}
-  if(q==="previa-teste"){const t=FE.t;previa(t.area,t.de,t.ate,true);return;}
-  if(q==="enviar-teste"){
-    const t=FE.t,para=[];
-    if(t.eu)para.push("@eu");
-    if(t.sup)para.push("@supervisor");
-    t.cc.forEach(e=>para.push(e));
-    String(t.outro||"").split(/[,;\s]+/).map(x=>x.trim()).filter(Boolean).forEach(x=>para.push(x));
-    if(!para.length){msg("er","Escolha ao menos um destinatário para o teste.");render();return;}
-    acao(()=>api("teste","POST",{area:t.area,de:t.de,ate:t.ate,para:para}),r=>"Teste enviado para "+r.para+" destinatário(s), com "+r.faltas+" falta(s) no período.",true);
+}
+function envClique(q,b){
+  const p=FE.p,e=FE.env;if(!e)return;
+  if(q==="env-modo"){e.modo=b.getAttribute("data-modo");e.conf=false;FE.msg=null;render();return;}
+  if(q==="env-todas"){e.areas=new Set(p.areas.filter(a=>envPode(e,a)).map(a=>a.area));e.conf=false;render();return;}
+  if(q==="env-comfaltas"){e.areas=new Set(p.areas.filter(a=>envPode(e,a)&&a.faltas>0).map(a=>a.area));e.conf=false;render();return;}
+  if(q==="env-nenhuma"){e.areas=new Set();e.conf=false;render();return;}
+  if(q==="env-voltar"){e.conf=false;render();return;}
+  if(q==="env-enviar"){e.conf=true;FE.msg=null;render();return;}
+  if(q==="env-previa"){
+    const sel=envSel(p,e),area=e.prev&&sel.some(a=>a.area===e.prev)?e.prev:(sel[0]&&sel[0].area);
+    if(!area)return;
+    if(e.modo==="oficial")previa(area);else previa(area,e.de,e.ate,true);
     return;
   }
+  if(q==="env-confirmar"){
+    const sel=envSel(p,e).map(a=>a.area);
+    if(!sel.length)return;
+    if(e.modo==="oficial"){
+      acao(()=>api("enviar","POST",{areas:sel,copias:[...FE.cc],confirmar:true}),resumoEnvio,false).then(()=>{e.conf=false;render();});
+      return;
+    }
+    const para=[];
+    if(e.eu)para.push("@eu");
+    e.cc.forEach(m=>para.push(m));
+    String(e.outro||"").split(/[,;\s]+/).map(x=>x.trim()).filter(Boolean).forEach(x=>para.push(x));
+    acao(()=>api("teste_areas","POST",{de:e.de,ate:e.ate,para:para,areas:sel}),r=>r.enviados+" e-mail(s) de teste enviado(s), um por área"+(r.falhas?" · "+r.falhas+" falharam: tente de novo":"")+" · "+r.comFaltas+" com faltas no período.",true).then(()=>{e.conf=false;render();});
+  }
+}
+function envMudou(q,el){
+  const e=FE.env;if(!e)return;
+  if(q==="env-area"){const a=el.getAttribute("data-area");if(el.checked)e.areas.add(a);else e.areas.delete(a);}
+  else if(q==="env-eu")e.eu=el.checked;
+  else if(q==="env-cc"){const m=el.getAttribute("data-email");if(el.checked)e.cc.add(m);else e.cc.delete(m);}
+  e.conf=false;render();
 }
 function mudou(e){
   const el=e.target,q=el.getAttribute("data-fe");
   if(q==="ass-arquivo"){enviarAssinatura(el.files&&el.files[0]);return;}
   if(q==="rs-ligado"){const v=el.checked;acao(()=>api("resumo","POST",{ligado:v}),v?"Resumo da coordenação ligado: sai junto com o aviso automático.":"Resumo da coordenação desligado.",true);return;}
   if(q==="auto"){const v=el.checked,a=FE.p&&FE.p.agenda;acao(()=>api("auto","POST",{ligado:v}),v?"Envio automático ligado"+(a?": "+DIAS[a.dia].toLowerCase()+" às "+horaTxt(a.hora)+".":"."):"Envio automático desligado.",true);return;}
-  if(q==="ta-area"){const a=el.getAttribute("data-area");if(el.checked)FE.ta.areas.add(a);else FE.ta.areas.delete(a);FE.taConf=false;render();return;}
-  if(q==="ta-eu"){FE.ta.eu=el.checked;FE.taConf=false;render();return;}
-  if(q==="ta-cc"){const m=el.getAttribute("data-email");if(el.checked)FE.ta.cc.add(m);else FE.ta.cc.delete(m);FE.taConf=false;render();return;}
-  if(q==="sel"){const a=el.getAttribute("data-area");if(el.checked)FE.sel.add(a);else FE.sel.delete(a);FE.confirmar=false;render();return;}
-  if(q==="cc"){const m=el.getAttribute("data-email");if(el.checked)FE.cc.add(m);else FE.cc.delete(m);render();return;}
-  if(q==="t-eu"){FE.t.eu=el.checked;return;}
-  if(q==="t-sup"){FE.t.sup=el.checked;return;}
-  if(q==="t-cc"){const m=el.getAttribute("data-email");if(el.checked)FE.t.cc.add(m);else FE.t.cc.delete(m);return;}
-  if(el.getAttribute("data-fe-campo")==="t.area"){digitou(e);FE.t.sup=false;render();}
+  if(q&&q.startsWith("env-")){envMudou(q,el);return;}
+  if(q==="sel"){const a=el.getAttribute("data-area");if(el.checked)FE.sel.add(a);else FE.sel.delete(a);FE.env=null;render();return;}
+  if(q==="cc"){const m=el.getAttribute("data-email");if(el.checked)FE.cc.add(m);else FE.cc.delete(m);if(FE.env)FE.env.conf=false;render();return;}
 }
 // Campos de texto: guarda no estado sem redesenhar (o cursor não pula).
 function digitou(e){
@@ -597,8 +588,7 @@ function digitou(e){
   if(!c)return;
   const v=e.target.value,p=c.split(".");
   if(p[0]==="edit"&&FE.edit)FE.edit[p[1]]=v;
-  else if(p[0]==="t"&&FE.t)FE.t[p[1]]=v;
-  else if(p[0]==="ta"&&FE.ta)FE.ta[p[1]]=v;
+  else if(p[0]==="env"&&FE.env){FE.env[p[1]]=v;if(p[1]!=="prev")FE.env.conf=false;}
   else if(p[0]==="conta"&&FE.conta)FE.conta[p[1]]=v;
   else if(p[0]==="copias"&&FE.copias&&FE.copias[Number(p[1])])FE.copias[Number(p[1])][p[2]]=v;
   else if(p[0]==="rs"&&FE.rs&&FE.rs[Number(p[1])])FE.rs[Number(p[1])][p[2]]=v;
