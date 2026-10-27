@@ -66,7 +66,7 @@ const ACAO_RESUMO = "FALTAS_EMAIL_RESUMO";     // resumo semanal das medidas ger
 const ACAO_AGENDA = "FALTAS_EMAIL_AGENDA";     // dia da semana e hora do envio automático: { dia (0 = domingo), hora (de Brasília) }
 // Envio automático: sem escolha, segunda às 14h (o que valia antes). A Vercel (plano Hobby) dispara um agendamento por
 // hora, uma vez por dia cada, e é a regra daqui que decide se aquela hora é a do envio. Hora de 6 a 20 (Brasília).
-const AGENDA_PADRAO = { dia: 1, hora: 14 };
+const AGENDA_PADRAO = { dia: 1, hora: 14, minuto: 0 };
 const HORA_MIN = 6, HORA_MAX = 20;
 const CHAVE_RESUMO = "#RESUMO";                // na chave do envio ("semana|#RESUMO"): nunca é uma área (área é só letra, número e espaço)
 const ACOES_ENVIO = [ACAO_RESERVA, ACAO_ENVIADO, ACAO_FALHOU];
@@ -104,6 +104,8 @@ function definirRelogio(fn) { const antes = relogio; relogio = fn || (() => new 
 function diaSP(agora) {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(agora || new Date());
 }
+const minutoSP = agora => Number(new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", minute: "2-digit" }).format(agora)) % 60;
+const minutoDoDia = agora => horaSP(agora) * 60 + minutoSP(agora);
 const horaSP = agora => Number(new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", hour: "2-digit", hourCycle: "h23" }).format(agora)) % 24;
 const diaDaSemana = dia => new Date(iso(dia) + "T12:00:00Z").getUTCDay(); // 0 = domingo
 function semanaAnterior(agora) {
@@ -200,17 +202,17 @@ async function lerAuto(db) {
   const [e] = await db.obter(`fm_auditoria?select=depois&acao=eq.${ACAO_AUTO}&order=id.desc&limit=1`);
   return !!(e && e.depois && e.depois.ligado === true); // sem registro = desligado
 }
-const agendaValida = a => !!a && Number.isInteger(a.dia) && a.dia >= 0 && a.dia <= 6 && Number.isInteger(a.hora) && a.hora >= HORA_MIN && a.hora <= HORA_MAX;
+const agendaValida = a => !!a && Number.isInteger(a.dia) && a.dia >= 0 && a.dia <= 6 && Number.isInteger(a.hora) && a.hora >= HORA_MIN && a.hora <= HORA_MAX && (a.minuto === undefined || (Number.isInteger(a.minuto) && a.minuto >= 0 && a.minuto <= 59));
 async function lerAgenda(db) {
   const [e] = await db.obter(`fm_auditoria?select=depois&acao=eq.${ACAO_AGENDA}&order=id.desc&limit=1`);
-  return e && agendaValida(e.depois) ? { dia: e.depois.dia, hora: e.depois.hora } : { ...AGENDA_PADRAO };
+  return e && agendaValida(e.depois) ? { dia: e.depois.dia, hora: e.depois.hora, minuto: e.depois.minuto || 0 } : { ...AGENDA_PADRAO };
 }
 // Próximo envio automático: hoje, se ainda não chegou a hora, ou no próximo dia marcado.
 function proximoEnvio(agenda, agora) {
   const hoje = diaSP(agora);
   let dias = (agenda.dia - diaDaSemana(hoje) + 7) % 7;
-  if (dias === 0 && horaSP(agora) >= agenda.hora) dias = 7;
-  return { dia: R.somaDias(hoje, dias), hora: agenda.hora };
+  if (dias === 0 && minutoDoDia(agora) >= agenda.hora * 60 + agenda.minuto) dias = 7;
+  return { dia: R.somaDias(hoje, dias), hora: agenda.hora, minuto: agenda.minuto };
 }
 
 // ── quais faltas entram ─────────────────────────────────────────────────────
@@ -538,7 +540,7 @@ async function cron(req, res) {
     // só envia o que ficou para trás (área já enviada não sai de novo)
     const agenda = await lerAgenda(db);
     if (diaDaSemana(diaSP(agora)) !== agenda.dia) return res.status(200).json({ ok: true, ignorado: "NAO_E_O_DIA" });
-    if (horaSP(agora) < agenda.hora) return res.status(200).json({ ok: true, ignorado: "ANTES_DO_HORARIO" });
+    if (minutoDoDia(agora) < agenda.hora * 60 + agenda.minuto) return res.status(200).json({ ok: true, ignorado: "ANTES_DO_HORARIO" });
     if (!(await lerAuto(db))) return res.status(200).json({ ok: true, ignorado: "AUTO_DESLIGADO" });
     if (!pronta(await lerConta(db))) return res.status(200).json({ ok: false, motivo: SEM_CONTA });
     const copias = (await lerCopias(db)).map(c => c.email);
@@ -737,10 +739,10 @@ async function salvarAuto({ res, db, ator, body }) {
 
 // Dia da semana e hora do envio automático. O aviso sempre traz a semana anterior (segunda a domingo).
 async function salvarAgenda({ res, db, ator, body }) {
-  const nova = { dia: Number(body.dia), hora: Number(body.hora) };
-  if (!agendaValida(nova)) return erro(res, 400, `Escolha o dia da semana e uma hora entre ${HORA_MIN}h e ${HORA_MAX}h.`, "AGENDA_INVALIDA");
+  const nova = { dia: Number(body.dia), hora: Number(body.hora), minuto: body.minuto === undefined || body.minuto === "" ? 0 : Number(body.minuto) };
+  if (!agendaValida(nova)) return erro(res, 400, `Escolha o dia da semana e um horário entre ${HORA_MIN}:00 e ${HORA_MAX}:59.`, "AGENDA_INVALIDA");
   const antes = await lerAgenda(db);
-  if (antes.dia !== nova.dia || antes.hora !== nova.hora) await db.inserir("fm_auditoria", [ev(ator, ACAO_AGENDA, "agenda", nova, antes)]);
+  if (antes.dia !== nova.dia || antes.hora !== nova.hora || antes.minuto !== nova.minuto) await db.inserir("fm_auditoria", [ev(ator, ACAO_AGENDA, "agenda", nova, antes)]);
   return res.status(200).json({ ok: true, agenda: { ...nova, proximo: proximoEnvio(nova, agoraAtual()) } });
 }
 

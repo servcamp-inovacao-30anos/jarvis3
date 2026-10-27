@@ -76,7 +76,7 @@ async function carregar(manter){
     FE.sel=new Set(FE.p.areas.filter(a=>a.email&&a.status!=="ENVIADO").map(a=>a.area));
     FE.cc=new Set(FE.p.copias.map(c=>c.email));
     FE.env=null;
-    FE.ag={dia:FE.p.agenda.dia,hora:FE.p.agenda.hora};
+    FE.ag={dia:FE.p.agenda.dia,hora:FE.p.agenda.hora,minuto:FE.p.agenda.minuto||0};
   }
   render();
 }
@@ -112,17 +112,17 @@ const ABAS=[
 // Ícone + título + explicação de cada bloco: tudo que aparece na tela diz o que é e para que serve.
 const cab=(ic,tit,sub,extra)=>'<div class="fe-sec-h"><div class="fe-sec-t">'+(ic?'<span class="fe-sec-ic">'+IC[ic]+'</span>':'')+'<div><b>'+tit+'</b>'+(sub?'<span class="fe-mut">'+sub+'</span>':'')+'</div></div>'+(extra||'')+'</div>';
 const ajuda=t=>'<span class="fe-aj" tabindex="0" role="note" aria-label="'+esc(t)+'" data-dica="'+esc(t)+'">?</span>';
-const horaTxt=h=>String(h).padStart(2,"0")+":00";
+const horaTxt=(h,m)=>String(h).padStart(2,"0")+":"+String(m||0).padStart(2,"0");
 // dias entre duas datas ISO
 const difDias=(a,b)=>Math.round((Date.parse(b+"T12:00:00Z")-Date.parse(a+"T12:00:00Z"))/864e5);
 const dmCurto=d=>{const s=String(d||"");return s.slice(8,10)+"/"+s.slice(5,7);};
 const diaDe=d=>new Date(d+"T12:00:00Z").getUTCDay();
 // próximo envio de uma escolha (dia, hora): hoje se ainda não chegou a hora, senão o próximo dia marcado
 function proximo(p,ag){
-  const horaAgora=new Date(Date.now()-3*3600000).getUTCHours();
-  let n=(ag.dia-diaDe(p.hoje)+7)%7;if(n===0&&horaAgora>=ag.hora)n=7;
+  const ag0=new Date(Date.now()-3*3600000),minAgora=ag0.getUTCHours()*60+ag0.getUTCMinutes();
+  let n=(ag.dia-diaDe(p.hoje)+7)%7;if(n===0&&minAgora>=ag.hora*60+(ag.minuto||0))n=7;
   const d=new Date(p.hoje+"T12:00:00Z");d.setUTCDate(d.getUTCDate()+n);
-  return{dia:d.toISOString().slice(0,10),hora:ag.hora,em:n};
+  return{dia:d.toISOString().slice(0,10),hora:ag.hora,minuto:ag.minuto||0,em:n};
 }
 const emTxt=n=>n===0?"hoje":n===1?"amanhã":"em "+n+" dias";
 const iniciais=n=>String(n||"?").trim().split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join("").toUpperCase();
@@ -145,7 +145,7 @@ function render(){
     '<div class="fe-brand"><div class="fe-marca">'+IC.marca+'</div><div><b>Aviso semanal</b><span>Faltas injustificadas por área</span></div></div>'+
     '<div class="fe-semana">'+IC.cal+'<div><small>Semana do aviso</small><b>'+esc(dmCurto(sem.inicio))+' a '+esc(dmCurto(sem.fim))+'</b></div></div>'+
     '<nav class="fe-nav">'+nav+'</nav>'+
-    '<div class="fe-rail-foot"><small>Envio automático</small><label class="fe-sw"><span>'+(p.auto?'Ligado · '+DIAS_C[ag.dia]+' '+horaTxt(ag.hora):'Desligado')+'</span><input type="checkbox" data-fe="auto"'+(p.auto?" checked":"")+' aria-label="Envio automático"></label></div>'+
+    '<div class="fe-rail-foot"><small>Envio automático</small><label class="fe-sw"><span>'+(p.auto?'Ligado · '+DIAS_C[ag.dia]+' '+horaTxt(ag.hora,ag.minuto):'Desligado')+'</span><input type="checkbox" data-fe="auto"'+(p.auto?" checked":"")+' aria-label="Envio automático"></label></div>'+
   '</aside>';
   let corpo='';
   if(aba.k==="geral")corpo+=secGeral(p);
@@ -191,7 +191,7 @@ function secGeral(p){
   const faltas=p.areas.reduce((s,a)=>s+a.faltas,0),colab=p.areas.reduce((s,a)=>s+a.colaboradores,0),semEmail=p.areas.filter(a=>!a.email).length;
   const cob=semanaDo(pr.dia);
   const ticket='<div class="fe-ticket"><span class="fe-eyebrow">'+(p.auto?"Próximo envio automático":"Envio automático desligado")+'</span>'+
-    '<div class="fe-dia-nome">'+esc(DIAS[diaDe(pr.dia)])+'</div><span class="fe-hora">'+horaTxt(pr.hora)+'</span>'+
+    '<div class="fe-dia-nome">'+esc(DIAS[diaDe(pr.dia)])+'</div><span class="fe-hora">'+horaTxt(pr.hora,pr.minuto)+'</span>'+
     '<div class="fe-data">'+esc(dma(pr.dia))+' · <span data-alvo="'+alvoMs(pr.dia,pr.hora)+'">'+emTxt(n)+'</span></div>'+
     '<p class="fe-ticket-sub">Cada supervisor vai receber as faltas injustificadas da semana de <b>'+esc(dmCurto(cob.ini))+' a '+esc(dmCurto(cob.fim))+'</b>.</p>'+
     '<div class="fe-rod"><span class="fe-st '+(p.auto?"ENVIADO":"PENDENTE")+'">'+(p.auto?"Automático ligado":"Nada sai sozinho")+'</span>'+
@@ -211,7 +211,7 @@ function secGeral(p){
   const semAssin=!p.assinatura;
   const itens=[
     [p.configurado,"Conta que envia",p.configurado?"Os e-mails saem por "+esc(p.conta.email)+".":"Nenhuma conta pronta: até cadastrar, nenhum e-mail sai.",p.configurado?null:["conta","Cadastrar"]],
-    [p.auto,"Envio automático",p.auto?"Ligado: "+esc(DIAS[ag.dia].toLowerCase())+" às "+horaTxt(ag.hora)+".":"Desligado: o aviso só sai se você enviar na aba Enviar agora.",p.auto?null:["agenda","Ligar"]],
+    [p.auto,"Envio automático",p.auto?"Ligado: "+esc(DIAS[ag.dia].toLowerCase())+" às "+horaTxt(ag.hora,ag.minuto)+".":"Desligado: o aviso só sai se você enviar na aba Enviar agora.",p.auto?null:["agenda","Ligar"]],
     [!semEmail,"E-mail dos supervisores",semEmail?semEmail+" área(s) sem e-mail: "+esc(p.areas.filter(a=>!a.email).map(a=>a.nome).join(", "))+".":"Todas as áreas têm e-mail cadastrado.",semEmail?["areas","Cadastrar"]:null],
     [p.copias.length>0,"Cópias",p.copias.length?p.copias.length+" pessoa(s) acompanham em cópia.":"Ninguém em cópia ainda.",p.copias.length?null:["dest","Incluir"]],
     [!!p.link,"Botão para o painel",p.link?"O e-mail leva o botão \"Abrir no Painel ServCamp\".":"Os e-mails saem sem o botão. Abra este painel pelo endereço oficial do sistema (https) para ele ser guardado.",null],
@@ -227,31 +227,40 @@ function secGeral(p){
 
 /* Envio automático em três passos: ligar → dia → hora, e a confirmação em português claro antes de salvar. */
 function secAgenda(p){
-  const a=FE.ag||(FE.ag={dia:p.agenda.dia,hora:p.agenda.hora}),salvo=p.agenda,mudou=a.dia!==salvo.dia||a.hora!==salvo.hora;
+  const a=FE.ag||(FE.ag={dia:p.agenda.dia,hora:p.agenda.hora,minuto:p.agenda.minuto||0}),salvo=p.agenda,mudou=a.dia!==salvo.dia||a.hora!==salvo.hora||(a.minuto||0)!==(salvo.minuto||0);
   const pr=proximo(p,a),MES=["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
   const passo=(n,tit,sub,ok,corpo)=>'<section class="fe-sec fe-passo"><div class="fe-passo-h"><span class="fe-passo-n'+(ok?" ok":"")+'">'+(ok?"✓":n)+'</span><div><small>Passo '+n+'</small><b>'+tit+'</b><span class="fe-mut">'+sub+'</span></div></div>'+corpo+'</section>';
   const liga='<label class="fe-sw fe-sw-lg"><input type="checkbox" data-fe="auto"'+(p.auto?" checked":"")+'><span><b>'+(p.auto?"Ligado":"Desligado")+'</b><small>'+(p.auto?"O aviso sai sozinho toda semana, no dia e na hora abaixo.":"Nada sai sozinho. Você ainda pode enviar pela aba Enviar agora.")+'</small></span></label>';
   const dias=DIAS_C.map((c,i)=>{
-    const prox=proximo(p,{dia:i,hora:a.hora}).dia;
+    const prox=proximo(p,{dia:i,hora:a.hora,minuto:a.minuto}).dia;
     return '<button type="button" class="fe-dia'+(i===a.dia?" on":"")+'" data-fe="ag-dia" data-dia="'+i+'" aria-pressed="'+(i===a.dia)+'" title="'+esc(DIAS[i])+', próximo dia '+esc(dma(prox))+'"><small>'+c+'</small><b>'+prox.slice(8,10)+'</b><em>'+MES[Number(prox.slice(5,7))-1]+'</em></button>';
   }).join("");
-  const h0=salvo.horas[0],h1=salvo.horas[1];
-  const grupo=(rot,de,ate)=>{let b='';for(let h=Math.max(de,h0);h<=Math.min(ate,h1);h++)b+='<button type="button" class="fe-hr'+(h===a.hora?" on":"")+'" data-fe="ag-hora" data-hora="'+h+'" aria-pressed="'+(h===a.hora)+'">'+String(h).padStart(2,"0")+'h</button>';return b?'<div class="fe-hg"><span>'+rot+'</span><div>'+b+'</div></div>':'';};
-  const horas=grupo("Manhã",0,11)+grupo("Tarde",12,17)+grupo("Noite",18,23);
-  const prox3=[0,7,14].map(k=>{const d=somaD(pr.dia,k),s=semanaDo(d);return'<li><b>'+esc(DIAS_C[diaDe(d)])+' '+esc(dmCurto(d))+' · '+horaTxt(a.hora)+'</b><span>cobre '+esc(dmCurto(s.ini))+' a '+esc(dmCurto(s.fim))+'</span></li>';}).join("");
-  const frase='<div class="fe-frase"><span class="fe-eyebrow">Como vai ficar</span><p>'+(p.auto?'Toda <b>'+esc(DIAS[a.dia].toLowerCase())+'</b>, às <b>'+horaTxt(a.hora)+'</b>, cada supervisor recebe por e-mail as faltas injustificadas da semana anterior, de segunda a domingo.':'O envio automático está <b>desligado</b>. Quando ligar, o aviso vai sair toda <b>'+esc(DIAS[a.dia].toLowerCase())+'</b>, às <b>'+horaTxt(a.hora)+'</b>.')+'</p>'+
+  const h0=salvo.horas[0],h1=salvo.horas[1],mn=a.minuto||0;
+  const ang=(a.hora%12+mn/60)*30,angM=mn*6,pt=(g,r)=>(60+r*Math.sin(g*Math.PI/180)).toFixed(1)+" "+(60-r*Math.cos(g*Math.PI/180)).toFixed(1);
+  let marcas="";for(let i=0;i<12;i++){const g=i*30;marcas+='<line x1="'+pt(g,i%3===0?44:47).split(" ")[0]+'" y1="'+pt(g,i%3===0?44:47).split(" ")[1]+'" x2="'+pt(g,52).split(" ")[0]+'" y2="'+pt(g,52).split(" ")[1]+'" class="fe-rl-m'+(i%3===0?" g":"")+'"/>';}
+  const svg='<svg class="fe-rl-svg" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="56" class="fe-rl-face"/>'+marcas+
+    '<line x1="60" y1="60" x2="'+pt(ang,30).split(" ")[0]+'" y2="'+pt(ang,30).split(" ")[1]+'" class="fe-rl-h"/><line x1="60" y1="60" x2="'+pt(angM,44).split(" ")[0]+'" y2="'+pt(angM,44).split(" ")[1]+'" class="fe-rl-mn"/><circle cx="60" cy="60" r="3.5" class="fe-rl-c"/></svg>';
+  const rapidos=[[8,0],[9,0],[10,0],[14,0],[16,0]].filter(x=>x[0]>=h0&&x[0]<=h1).map(x=>'<button type="button" class="fe-hr'+(x[0]===a.hora&&x[1]===mn?" on":"")+'" data-fe="ag-hora" data-hora="'+x[0]+'" data-minuto="'+x[1]+'">'+horaTxt(x[0],x[1])+'</button>').join("");
+  const horas='<div class="fe-relogio">'+svg+'<div class="fe-rl-ctl"><label for="feRelogio" class="fe-eyebrow">Horário do envio (Brasília)</label>'+
+    '<div class="fe-rl-in"><button type="button" class="fe-b sm" data-fe="ag-min" data-d="-1" aria-label="Um minuto antes">−1 min</button>'+
+    '<input id="feRelogio" class="fe-in fe-rl-t" type="time" step="60" min="'+horaTxt(h0,0)+'" max="'+horaTxt(h1,59)+'" value="'+horaTxt(a.hora,mn)+'" data-fe="ag-relogio" required>'+
+    '<button type="button" class="fe-b sm" data-fe="ag-min" data-d="1" aria-label="Um minuto depois">+1 min</button></div>'+
+    '<div class="fe-rl-q"><span class="fe-mut">Atalhos</span>'+rapidos+'</div>'+
+    '<p class="fe-mut" style="margin:10px 0 0">Digite qualquer horário, até o minuto (por exemplo 13:51), de '+horaTxt(h0,0)+' a '+horaTxt(h1,59)+'.</p></div></div>';
+  const prox3=[0,7,14].map(k=>{const d=somaD(pr.dia,k),s=semanaDo(d);return'<li><b>'+esc(DIAS_C[diaDe(d)])+' '+esc(dmCurto(d))+' · '+horaTxt(a.hora,a.minuto)+'</b><span>cobre '+esc(dmCurto(s.ini))+' a '+esc(dmCurto(s.fim))+'</span></li>';}).join("");
+  const frase='<div class="fe-frase"><span class="fe-eyebrow">Como vai ficar</span><p>'+(p.auto?'Toda <b>'+esc(DIAS[a.dia].toLowerCase())+'</b>, às <b>'+horaTxt(a.hora,a.minuto)+'</b>, cada supervisor recebe por e-mail as faltas injustificadas da semana anterior, de segunda a domingo.':'O envio automático está <b>desligado</b>. Quando ligar, o aviso vai sair toda <b>'+esc(DIAS[a.dia].toLowerCase())+'</b>, às <b>'+horaTxt(a.hora,a.minuto)+'</b>.')+'</p>'+
     '<span class="fe-eyebrow" style="margin-top:14px">Próximos envios</span><ol class="fe-prox">'+prox3+'</ol></div>';
   const faq='<details class="fe-faq"><summary>Dúvidas comuns sobre o envio automático</summary>'+
     '<div><b>E se o servidor de e-mail falhar?</b><span>A cada hora, no mesmo dia, o sistema tenta de novo e envia só o que ficou para trás.</span></div>'+
     '<div><b>O supervisor pode receber o mesmo aviso duas vezes?</b><span>Não. Área que já recebeu o aviso da semana não recebe de novo, mesmo que alguém clique em enviar.</span></div>'+
-    '<div><b>Por que "dentro da hora" e não no minuto exato?</b><span>O serviço que dispara o envio garante a hora, não o minuto. Escolhendo 14h, o e-mail sai entre 14h e 14h59.</span></div>'+
+    '<div><b>O e-mail sai exatamente no minuto escolhido?</b><span>Sai na primeira verificação do sistema depois do horário. A verificação padrão (Vercel gratuita) acontece uma vez por hora; com a verificação a cada 5 minutos ativada (ver docs/envio-por-minuto.md), o atraso fica em poucos minutos.</span></div>'+
     '<div><b>Qual semana vai no e-mail?</b><span>Sempre a semana anterior completa, de segunda a domingo, já sem abonos, afastamentos e demitidos.</span></div></details>';
-  const barra=mudou?'<div class="fe-salvar" role="region" aria-label="Alteração não salva"><div><b>Você mudou o agendamento</b><span>De '+esc(DIAS_C[salvo.dia].toLowerCase())+' às '+horaTxt(salvo.hora)+' para '+esc(DIAS_C[a.dia].toLowerCase())+' às '+horaTxt(a.hora)+'. Ainda não está salvo.</span></div>'+
+  const barra=mudou?'<div class="fe-salvar" role="region" aria-label="Alteração não salva"><div><b>Você mudou o agendamento</b><span>De '+esc(DIAS_C[salvo.dia].toLowerCase())+' às '+horaTxt(salvo.hora,salvo.minuto)+' para '+esc(DIAS_C[a.dia].toLowerCase())+' às '+horaTxt(a.hora,a.minuto)+'. Ainda não está salvo.</span></div>'+
     '<button type="button" class="fe-b" data-fe="ag-descartar">Descartar</button><button type="button" class="fe-b fe-pri" data-fe="ag-salvar"'+(FE.ocupado?" disabled":"")+'>'+(FE.ocupado?"Salvando…":"Salvar agendamento")+'</button></div>':'';
   return '<div class="fe-agenda"><div class="fe-agenda-l">'+
       passo(1,"Ligue o envio automático","Ligado, o aviso sai sozinho toda semana. Desligado, só sai quando você enviar.",p.auto,liga)+
       passo(2,"Escolha o dia da semana","Embaixo de cada dia está a data do próximo envio, se você escolher aquele dia.",true,'<div class="fe-dias" role="group" aria-label="Dia da semana">'+dias+'</div>')+
-      passo(3,"Escolha a hora","Horário de Brasília. O e-mail sai dentro da hora escolhida "+ajuda("O serviço que dispara o envio garante a hora, não o minuto: escolhendo 14h, sai entre 14h e 14h59.")+".",true,'<div class="fe-horas" role="group" aria-label="Hora">'+horas+'</div>')+
+      passo(3,"Acerte o relógio","Escolha o horário exato do envio, com hora e minuto.",true,horas)+
     '</div><aside class="fe-agenda-r"><div class="fe-sec fe-resumo-ag">'+frase+(mudou?'':'<div class="fe-salvo">✓ Salvo</div>')+'</div>'+faq+'</aside></div>'+barra;
 }
 
@@ -505,9 +514,10 @@ function clique(e){
   if(q==="toast-x"){FE.msg=null;const el=document.querySelector("#feJanela .fe-toast");if(el)el.remove();return;}
   if(q==="aba"){FE.aba=b.getAttribute("data-aba");FE.msg=null;FE.animar=true;render();const m=document.querySelector("#feJanela .fe-main");if(m)m.scrollTop=0;return;}
   if(q==="ag-dia"){(FE.ag||(FE.ag={})).dia=Number(b.getAttribute("data-dia"));render();return;}
-  if(q==="ag-hora"){(FE.ag||(FE.ag={})).hora=Number(b.getAttribute("data-hora"));render();return;}
-  if(q==="ag-descartar"){FE.ag={dia:p.agenda.dia,hora:p.agenda.hora};render();return;}
-  if(q==="ag-salvar"){const a=FE.ag;acao(()=>api("agenda","POST",{dia:a.dia,hora:a.hora}),()=>"Agendamento salvo: "+DIAS[a.dia].toLowerCase()+" às "+horaTxt(a.hora)+".",true);return;}
+  if(q==="ag-hora"){const g=FE.ag||(FE.ag={});g.hora=Number(b.getAttribute("data-hora"));g.minuto=Number(b.getAttribute("data-minuto")||0);render();return;}
+  if(q==="ag-min"){const g=FE.ag||(FE.ag={}),h1=p.agenda.horas;let v=g.hora*60+(g.minuto||0)+Number(b.getAttribute("data-d"));v=Math.max(h1[0]*60,Math.min(h1[1]*60+59,v));g.hora=Math.floor(v/60);g.minuto=v%60;render();return;}
+  if(q==="ag-descartar"){FE.ag={dia:p.agenda.dia,hora:p.agenda.hora,minuto:p.agenda.minuto||0};render();return;}
+  if(q==="ag-salvar"){const a=FE.ag;acao(()=>api("agenda","POST",{dia:a.dia,hora:a.hora,minuto:a.minuto||0}),()=>"Agendamento salvo: "+DIAS[a.dia].toLowerCase()+" às "+horaTxt(a.hora,a.minuto)+".",true);return;}
   if(q.startsWith("env-")){envClique(q,b);return;}
   if(q==="editar-area"){const a=p.areas.find(x=>x.area===area);if(a){FE.edit={area:a.area,email:a.email||"",saudacao:a.saudacao||""};render();}return;}
   if(q==="cancelar-area"){FE.edit=null;render();return;}
@@ -575,9 +585,10 @@ function envMudou(q,el){
 }
 function mudou(e){
   const el=e.target,q=el.getAttribute("data-fe");
+  if(q==="ag-relogio"){const m=/^(\d{2}):(\d{2})/.exec(el.value||""),h1=FE.p.agenda.horas;if(!m)return;let v=Number(m[1])*60+Number(m[2]);v=Math.max(h1[0]*60,Math.min(h1[1]*60+59,v));(FE.ag||(FE.ag={})).hora=Math.floor(v/60);FE.ag.minuto=v%60;render();return;}
   if(q==="ass-arquivo"){enviarAssinatura(el.files&&el.files[0]);return;}
   if(q==="rs-ligado"){const v=el.checked;acao(()=>api("resumo","POST",{ligado:v}),v?"Resumo da coordenação ligado: sai junto com o aviso automático.":"Resumo da coordenação desligado.",true);return;}
-  if(q==="auto"){const v=el.checked,a=FE.p&&FE.p.agenda;acao(()=>api("auto","POST",{ligado:v}),v?"Envio automático ligado"+(a?": "+DIAS[a.dia].toLowerCase()+" às "+horaTxt(a.hora)+".":"."):"Envio automático desligado.",true);return;}
+  if(q==="auto"){const v=el.checked,a=FE.p&&FE.p.agenda;acao(()=>api("auto","POST",{ligado:v}),v?"Envio automático ligado"+(a?": "+DIAS[a.dia].toLowerCase()+" às "+horaTxt(a.hora,a.minuto)+".":"."):"Envio automático desligado.",true);return;}
   if(q&&q.startsWith("env-")){envMudou(q,el);return;}
   if(q==="sel"){const a=el.getAttribute("data-area");if(el.checked)FE.sel.add(a);else FE.sel.delete(a);FE.env=null;render();return;}
   if(q==="cc"){const m=el.getAttribute("data-email");if(el.checked)FE.cc.add(m);else FE.cc.delete(m);if(FE.env)FE.env.conf=false;render();return;}
