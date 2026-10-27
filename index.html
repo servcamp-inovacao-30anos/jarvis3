@@ -12583,6 +12583,24 @@ function fmHistLer(rows){
   return{medidas,semData,linhas:linhas.length,ocorrencias};
 }
 /*fim fmHistLer*/
+/* Relatório "faltas injustificadas desde 01/01" do SAR2G (uma linha por falta; colunas DATAPONTO e FALTASINJUSTIFICADAS).
+   Devolve null se o arquivo não for esse relatório. Só histórico: o servidor ignora as datas que o módulo já tem. */
+function fmHistLerFaltas(rows){
+  const norm=x=>String(x==null?"":x).trim().toUpperCase();
+  const iCab=(rows||[]).findIndex(r=>{const l=(r||[]).map(norm);return l.indexOf("RE")>=0&&l.indexOf("DATAPONTO")>=0&&l.indexOf("FALTASINJUSTIFICADAS")>=0;});
+  if(iCab<0)return null;
+  const cab=rows[iCab].map(norm),col=n=>cab.indexOf(n);
+  const c={re:col("RE"),nome:col("NOMEFUNC")>=0?col("NOMEFUNC"):col("COLABORADOR"),dt:col("DATAPONTO"),n:col("FALTASINJUSTIFICADAS"),esc:col("ESCALA"),cargo:col("CARGO"),area:col("AREASUPER"),local:col("NOMELOCAL")};
+  const v=(r,i)=>i<0?"":r[i];
+  const faltas=[];let semData=0;
+  rows.slice(iCab+1).forEach(r=>{
+    if(!r||!r.length||v(r,c.re)===""||v(r,c.re)==null)return;
+    if(!(Number(v(r,c.n))>0))return;
+    const d=fmHistData(v(r,c.dt));if(!d){semData++;return;}
+    faltas.push({RE:v(r,c.re),NOME:String(v(r,c.nome)||"").trim(),DATA:d,ESCALA:String(v(r,c.esc)||"").trim(),CARGO:String(v(r,c.cargo)||"").trim(),AREA:String(v(r,c.area)||"").trim(),LOCAL:String(v(r,c.local)||"").trim()});
+  });
+  return{faltas,semData};
+}
 const fmMedCancelada=m=>/CANCEL/i.test(m.fase||"");
 function fmHistCarregar(forcar){
   if(FM.histCarregando||(!forcar&&FM.hist&&Date.now()-FM.hist.em<60000))return;
@@ -12610,9 +12628,11 @@ function fmHistEnviar(){
     const f=inp.files&&inp.files[0];if(!f)return;
     const rd=new FileReader();
     rd.onload=()=>{
-      let r;
-      try{const wb=XLSX.read(new Uint8Array(rd.result),{type:"array"}); /* datas como número do Excel: sem efeito de fuso horário */r=fmHistLer(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:null}));}
+      let r,linhas;
+      try{const wb=XLSX.read(new Uint8Array(rd.result),{type:"array"}); /* datas como número do Excel: sem efeito de fuso horário */linhas=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:null});r=fmHistLer(linhas);}
       catch(e){alert("Não consegui ler o arquivo.\n"+e.message);return;}
+      const fh=fmHistLerFaltas(linhas);
+      if(fh){fmHistEnviarFaltas(fh);return;}
       if(r.erro){alert(r.erro);return;}
       const ms=r.medidas,ocs=r.ocorrencias||[];if(!ms.length&&!ocs.length){alert("O arquivo não tem advertência, suspensão, atestado nem afastamento.");return;}
       const n=k=>ms.filter(k).length,datas=ms.length?ms.map(m=>m.data).sort():[ocs.map(o=>o.INI).sort()[0]];
@@ -12634,6 +12654,17 @@ function fmHistEnviar(){
     rd.readAsArrayBuffer(f);
   };
   inp.click();
+}
+function fmHistEnviarFaltas(fh){
+  if(!fh.faltas.length){alert("O arquivo não tem nenhuma falta injustificada.");return;}
+  const datas=fh.faltas.map(f=>f.DATA).sort(),pessoas=new Set(fh.faltas.map(f=>f.RE)).size;
+  const txt=`Encontrei ${fh.faltas.length} faltas injustificadas de ${pessoas} pessoas, de ${fmDd(datas[0])} a ${fmDdA(datas[datas.length-1])}.\n\nSó entram as de antes da primeira falta que o painel já tem (as demais já vêm da planilha diária). Elas ficam só no histórico do colaborador: não abrem caso, não aparecem na TV nem no e-mail. Demitidos, afastados e abonos lançados dão baixa.\n\nEnviar para o Painel ServCamp?`;
+  if(!confirm(txt))return;
+  fmPedir("POST","faltas-historico",{faltas:fh.faltas}).then(j=>{
+    const ig=j.ignoradas||{};
+    ptToast(`Faltas recebidas: ${j.gravadas} gravadas (até ${j.corte?fmDd(j.corte):"—"})`+(j.reapuradas?`, ${j.reapuradas} deram baixa`:"")+`. Ignoradas: ${ig.depoisDoCorte||0} já no painel, ${ig.escala||0} de outra escala.`);
+    fmLoad(true);fmHistCarregar(true);
+  }).catch(e=>alert("Não foi possível enviar as faltas.\n"+e.message));
 }
 function fmHistTela(){
   const j=FM.dados,H=FM.hist;
