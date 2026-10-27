@@ -119,7 +119,7 @@ function docHtml(d){
   <h1>${tit}</h1>
   <div class="re">RE: ${re} – ${nome}</div>
   <p>${abre}</p>
-  <div class="mt">${mt} – ${nome} | RE: ${re}</div>
+  <div class="mt">${mt}</div>
   <div class="mv">${motivo?esc(motivo):vz("O motivo escrito ao lado aparece aqui.")}</div>
   <p>${FECHO}</p>
   <div class="lc"><span>Campinas, ${esc(extenso(d.docData||hojeSP()))}</span><span>atenciosamente</span></div>
@@ -204,7 +204,7 @@ function passos(E){
   return[
     {k:"tipo",rot:"Tipo da medida",ok:!!E.tipo&&(E.tipo!=="SUSPENSAO"||(E.dias>=1&&E.dias<=30))},
     {k:"datas",rot:"Data e empresa",ok:!!E.inicio&&!!String(E.empresa).trim()},
-    {k:"ocor",rot:"O que aconteceu",ok:E.faltas.size>0||E.sits.size>0},
+    {k:"ocor",rot:"O que aconteceu (opcional)",ok:true,opc:true},
     {k:"motivo",rot:"Motivo",ok:String(E.motivo).trim().length>=5}
   ];
 }
@@ -244,11 +244,11 @@ function pintaForm(){
   const resumo={
     tipo:()=>E.tipo?TIPOS[E.tipo].rot+(E.tipo==="SUSPENSAO"?" · "+E.dias+(E.dias===1?" dia":" dias"):""):"Nenhum tipo escolhido",
     datas:()=>(E.inicio?dma(E.inicio):"sem data")+" · "+(String(E.empresa).trim()||"sem empresa"),
-    ocor:()=>E.faltas.size+(E.faltas.size===1?" falta":" faltas")+(E.sits.size?" · "+[...E.sits].slice(0,2).map(s=>SITUACOES[s]).join(", ")+(E.sits.size>2?"…":""):""),
+    ocor:()=>E.faltas.size||E.sits.size?E.faltas.size+(E.faltas.size===1?" falta":" faltas")+(E.sits.size?" · "+[...E.sits].slice(0,2).map(s=>SITUACOES[s]).join(", ")+(E.sits.size>2?"…":""):""):"Nada marcado · você escreve o motivo",
     motivo:()=>String(E.motivo).trim()?String(E.motivo).trim().slice(0,80)+(String(E.motivo).trim().length>80?"…":""):"Motivo ainda em branco"
   };
-  const TIT={tipo:"Qual medida aplicar?",datas:E.tipo==="SUSPENSAO"?"Quando começa e em qual empresa?":"Quando e em qual empresa?",ocor:"O que aconteceu?",motivo:"Motivo que vai no documento"};
-  const SUB={tipo:"Escolha o tipo. Na suspensão, diga também quantos dias.",datas:"A data da medida, a data impressa no documento e a empresa do cabeçalho.",ocor:"Marque as faltas desta ocorrência e o que mais houve. O motivo, no passo 4, se monta sozinho.",motivo:"Já vem escrito a partir do passo 3. Pode reescrever com as suas palavras: o texto sai igual no papel."};
+  const TIT={tipo:"Qual medida aplicar?",datas:E.tipo==="SUSPENSAO"?"Quando começa e em qual empresa?":"Quando e em qual empresa?",ocor:"O que aconteceu? (opcional)",motivo:"Motivo que vai no documento"};
+  const SUB={tipo:"Escolha o tipo. Na suspensão, diga também quantos dias.",datas:"A data da medida, a data impressa no documento e a empresa do cabeçalho.",ocor:"Opcional. Marque as faltas e o que houve para o motivo, no passo 4, já vir escrito; ou pule este passo e escreva o motivo à mão.",motivo:"Já vem escrito a partir do passo 3. Pode reescrever com as suas palavras: o texto sai igual no papel."};
   const passo=(k,corpo)=>{
     const i=ORDEM.indexOf(k),ok=P[i].ok;
     if(foco!==k)return `<button type="button" class="md-res${ok?" ok":" pend"}" id="md-p-${k}" data-md="foco" data-v="${k}"${trava?" disabled":""}><span class="md-n${ok?" ok":""}">${ok?IC.ok:i+1}</span><span class="t"><b>${TIT[k]}</b><small>${esc(resumo[k]())}</small></span><em>${trava?"":ok?"Editar":"Preencher"}</em></button>`;

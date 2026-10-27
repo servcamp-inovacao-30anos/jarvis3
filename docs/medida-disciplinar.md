@@ -65,7 +65,7 @@ RE: {RE} – {NOME}
 Na conformidade da Consolidação das leis do trabalho pelo presente o notificamos que a partir de
 {DATA_INICIO} esta suspenso de suas atividades pelo período de {DIAS} dia (s) pelo seguinte motivo:
 
-MOTIVO DA SUSPENSÃO – {NOME} | RE: {RE}                 ← sublinhado, negrito
+MOTIVO DA SUSPENSÃO                                       ← sublinhado, negrito (sem repetir nome e RE, que já estão acima)
 
 {MOTIVO}                                                  ← texto do supervisor, maiúsculas, sublinhado, negrito, justificado
 
