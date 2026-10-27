@@ -36,6 +36,9 @@ const ACAO_XL_CHAVE = "XL_CHAVE";       // alguém gerou um Excel conectado
 const ACAO_XL_REVOGAR = "XL_REVOGAR";   // cancelou todas as chaves do Excel emitidas até aquele momento
 const DIAS_CHAVE_XL = 90;
 const MAX_HISTORICO = 5000; // linhas por envio
+const ACAO_HISTORICO_FALTAS = "HISTORICO_FALTAS_IMPORTADO"; // separada da das medidas: "Último envio" da aba Histórico é o das medidas
+const TIPO_HISTORICO = "HISTORICO"; // fm_faltas.tipo das faltas importadas só para o histórico do colaborador
+const MAX_FALTAS_HISTORICO = 20000;
 const MAX_OCORRENCIAS = 20000; // ocorrências por envio (o relatório completo tem ~3 mil linhas)
 const JANELA_DIAS = 150; // o que a tela carrega: casos mais antigos já se encerraram
 const DIAS_ACOMPANHADOS = 45; // quem faltou nesse período ainda tem os dias da ficha guardados
@@ -360,7 +363,8 @@ const postoOuReserva = (posto, sup) => (semPosto(posto) ? (sup ? "Reserva técni
 async function verCasos({ res, db, ator }) {
   const hoje = hojeSP(), desde = R.somaDias(hoje, -JANELA_DIAS);
   const [faltas, dias, medidasLidas, adm, feriados, trocas, eventosAtestado, horarios, situacoes, empresas] = await Promise.all([
-    db.listar(`fm_faltas?select=re,data,codigo,nome,cargo,posto,supervisor,escala,tipo&data=gte.${desde}&order=re.asc,data.asc`),
+    // falta importada só para o histórico (antes de o módulo existir) não abre caso nem prazo
+    db.listar(`fm_faltas?select=re,data,codigo,nome,cargo,posto,supervisor,escala,tipo&data=gte.${desde}&order=re.asc,data.asc`).then(l => l.filter(f => f.tipo !== TIPO_HISTORICO)),
     db.listar(`fm_dias?select=re,data,situacao&data=gte.${desde}&order=re.asc,data.asc`),
     db.listar(`fm_medidas?select=chave,re,data,tipo,grau,dias,fase,motivo_sar2g,obs,motivo,motivo_editado_por,motivo_editado_em&data=gte.${desde}&order=re.asc,data.asc,chave.asc`),
     db.listar("fm_admissoes?select=re,admissao&order=re.asc"),
@@ -527,6 +531,38 @@ async function salvarHistorico({ res, db, ator, body }) {
   const datas = linhas.map(l => l.data).sort();
   const resumo = { recebidas: lista.length, gravadas: linhas.length, removidas, recusadas, de: datas[0] || null, ate: datas[datas.length - 1] || null, ocorrencias: oc, reapuradas };
   await db.inserir("fm_auditoria", [{ ator, acao: ACAO_HISTORICO, entidade: "fm_medidas", chave: "historico", antes: {}, depois: resumo }]);
+  return res.status(200).json(Object.assign({ ok: true }, resumo));
+}
+
+// Faltas injustificadas do SAR2G desde 01/01, só para o histórico do colaborador. Entram apenas as de antes
+// da primeira falta que o módulo já tem (dali em diante a planilha diária manda), com tipo HISTORICO: não
+// abrem caso nem vão para o aviso por e-mail. Passam pela mesma conferência (demitidos, abonos, afastamentos).
+async function salvarFaltasHistorico({ res, db, ator, body }) {
+  const lista = Array.isArray(body.faltas) ? body.faltas : [];
+  if (!lista.length) return erro(res, 400, "Nenhuma falta recebida.", "VAZIO");
+  if (lista.length > MAX_FALTAS_HISTORICO) return erro(res, 400, `Arquivo grande demais: no máximo ${MAX_FALTAS_HISTORICO} faltas por envio.`, "GRANDE_DEMAIS");
+  const [primeira] = await db.obter("fm_faltas?select=data&tipo=in.(CONTRATO,RESERVA)&order=data.asc&limit=1");
+  const corte = primeira ? String(primeira.data).slice(0, 10) : hojeSP(); // faltas desta data em diante já são do módulo
+  const agora = new Date().toISOString(), vistas = new Set(), linhas = [];
+  const sobra = { depoisDoCorte: 0, escala: 0, invalidas: 0 };
+  lista.forEach(f => {
+    const re = reNum(f.RE), dia = String(f.DATA || "").slice(0, 10);
+    if (re == null || !ehData(dia)) { sobra.invalidas++; return; }
+    if (dia >= corte) { sobra.depoisDoCorte++; return; }
+    if (!R.familiaEscala(f.ESCALA)) { sobra.escala++; return; }
+    const k = re + "|" + dia;
+    if (vistas.has(k)) return;
+    vistas.add(k);
+    linhas.push({
+      re, data: dia, codigo: "I", nome: f.NOME || null, cargo: f.CARGO || null, posto: f.LOCAL || null,
+      supervisor: R.supervisorAtual(f.AREA) || null, escala: f.ESCALA || null, tipo: TIPO_HISTORICO, atualizado_em: agora
+    });
+  });
+  if (linhas.length) await db.upsert("fm_faltas", linhas, "re,data");
+  const reapuradas = linhas.length ? await reapurarComBanco(db) : 0;
+  const datas = linhas.map(l => l.data).sort();
+  const resumo = { recebidas: lista.length, gravadas: linhas.length, corte, ignoradas: sobra, de: datas[0] || null, ate: datas[datas.length - 1] || null, reapuradas };
+  await db.inserir("fm_auditoria", [{ ator, acao: ACAO_HISTORICO_FALTAS, entidade: "fm_faltas", chave: "historico-faltas", antes: {}, depois: resumo }]);
   return res.status(200).json(Object.assign({ ok: true }, resumo));
 }
 
@@ -807,6 +843,7 @@ const ROTAS = {
   "GET feriados": { fn: verFeriados },
   "GET historico": { fn: verHistorico },
   "POST historico": { aprovador: true, fn: salvarHistorico },
+  "POST faltas-historico": { aprovador: true, fn: salvarFaltasHistorico },
   "PATCH motivo": { aprovador: true, fn: editarMotivo },
   "POST feriados": { aprovador: true, fn: salvarFeriado },
   "POST atestado": { aprovador: true, fn: salvarAtestado },

@@ -230,3 +230,46 @@ test("o histórico traz o supervisor da área: pelo RE de quem faltou há pouco,
   const sup = Object.fromEntries(h.body.medidas.map(x => [x.re, x.supervisor]));
   assert.deepEqual(sup, { 40: "FRANK", 41: "FRANK", 42: "" });
 });
+
+// ── faltas injustificadas desde 01/01 (relatório do SAR2G, só para o histórico) ──
+const fmHistDataFn = new Function("ocorrenciaDaLinha", html.slice(ini, fim) + "\nreturn fmHistData;")(require("../api/_parse").ocorrenciaDaLinha);
+const iniF = html.indexOf("function fmHistLerFaltas("), fimF = html.indexOf("\n}\n", iniF) + 3;
+assert.ok(iniF > 0 && fimF > iniF, "fmHistLerFaltas não encontrada no index.html");
+const fmHistLerFaltas = new Function("fmHistData", html.slice(iniF, fimF) + "\nreturn fmHistLerFaltas;")(fmHistDataFn);
+
+test("relatório de faltas injustificadas: lê uma falta por linha e reconhece só esse arquivo", () => {
+  const cab = ["EMPRESAFUNC", "RE", "NOMEFUNC", "NOMELOCAL", "DATAPONTO", "ESCALA", "CARGO", "AREASUPER", "FALTASINJUSTIFICADAS"];
+  const r = fmHistLerFaltas([cab,
+    ["SERV CAMP FACILITES", 10, "ANA SOUZA", "POSTO A", "2026-02-03", "12X36", "PORTEIRO (A)", "FRANK", 1],
+    ["SERV CAMP FACILITES", 11, "BIA LIMA", "POSTO B", "2026-02-04", "5X2", "ZELADOR", "CARLOS", 0],
+    ["SERV CAMP FACILITES", 12, "CAIO", "POSTO C", null, "5X2", "ZELADOR", "CARLOS", 1]
+  ]);
+  assert.equal(r.faltas.length, 1, "só a que tem falta injustificada e data");
+  assert.equal(r.semData, 1);
+  assert.deepEqual(r.faltas[0], { RE: 10, NOME: "ANA SOUZA", DATA: "2026-02-03", ESCALA: "12X36", CARGO: "PORTEIRO (A)", AREA: "FRANK", LOCAL: "POSTO A" });
+  assert.equal(fmHistLerFaltas([["RE", "NOME", "DESCRICAO", "DTINICIOOCORRENCIA"], [1, "X", "SUSPENSÃO", "2026-01-01"]]), null, "o relatório de ocorrências não é este");
+});
+
+test("envio das faltas desde 01/01: só antes da 1ª falta do painel, como histórico, sem abrir caso", async () => {
+  const t = tabelas(); supabaseFalso(t);
+  t.fm_faltas.push({ re: 700, data: dia(-1), codigo: "I", nome: "REAL", escala: "12X36", tipo: "CONTRATO", supervisor: "FRANK" });
+  const f = (re, data, extra) => ({ RE: re, NOME: "PESSOA " + re, DATA: data, ESCALA: "12X36", CARGO: "PORTEIRO (A)", AREA: "FRANK", LOCAL: "POSTO A", ...extra });
+  const r = await pedir("POST", "faltas-historico", { body: { faltas: [f(10, dia(-3)), f(10, dia(-3)), f(11, dia(-1)), f(12, dia(-4), { ESCALA: "3X4 FOLGA FIXA" }), f(13, "lixo")] } });
+  assert.equal(r.statusCode, 200);
+  assert.deepEqual([r.body.gravadas, r.body.corte, r.body.ignoradas.depoisDoCorte, r.body.ignoradas.escala, r.body.ignoradas.invalidas], [1, dia(-1), 1, 1, 1]);
+  const h = t.fm_faltas.find(x => x.re === 10);
+  assert.deepEqual([h.data, h.codigo, h.tipo], [dia(-3), "I", "HISTORICO"]);
+  assert.equal(t.fm_faltas.length, 2, "a falta que o painel já tinha não foi tocada");
+  assert.equal(t.fm_auditoria.at(-1).depois.gravadas, 1);
+
+  const c = await pedir("GET", "casos");
+  assert.deepEqual(c.body.casos.map(x => String(x.re)), ["700"], "só a falta do painel abre caso");
+
+  const hist = await pedir("GET", "historico", { usuario: "supervisor.fulano" });
+  const dela = hist.body.faltas.find(x => x.re === "10");
+  assert.deepEqual(dela && dela.datas, [dia(-3)], "mas conta no histórico do colaborador");
+  assert.equal(hist.body.importacao, null, "o 'último envio' da aba continua sendo o das medidas");
+
+  const de = await pedir("POST", "faltas-historico", { usuario: "supervisor.fulano", body: { faltas: [f(10, dia(-3))] } });
+  assert.equal(de.statusCode, 403, "só aprovador");
+});
