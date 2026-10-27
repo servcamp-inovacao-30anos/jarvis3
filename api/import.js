@@ -55,9 +55,13 @@ const SB = () => ({
   key: process.env.SUPABASE_SERVICE_ROLE_KEY
 });
 
+// Dados que só o módulo Faltas x Medidas usa e que ele guarda em tabela própria
+// (fm_dias e as ocorrências no registro). Ficam fora do snapshot, que é grande e
+// baixado por toda tela: com as ocorrências (milhares de linhas) o insert estourava.
 function semFichaDias(data) {
   const copia = { ...data };
   delete copia.fichaDias;
+  delete copia.ocorrencias;
   return copia;
 }
 
