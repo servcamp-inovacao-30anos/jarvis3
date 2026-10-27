@@ -1716,3 +1716,8 @@
 #ftv .ftv-det button.ftv-dk.k-np.on{box-shadow:0 0 0 .1em #ffd21a inset,0 0 1em rgba(255,210,30,.55);border-color:#ffd21a}
 #ftv .ftv-det button.ftv-dk.k-vi.on,#ftv .ftv-det button.ftv-dk.k-gr.on{box-shadow:0 0 0 .1em #b48cff inset,0 0 1em rgba(160,120,255,.6);border-color:#b48cff}
 @media (prefers-reduced-motion:reduce){#ftv .ftv-det button.ftv-dk{transition:none}#ftv .ftv-det button.ftv-dk:hover{transform:none}}
+
+/* Botão Só hoje / Folha toda: aceso quando a TV mostra só as faltas de hoje */
+#ftv .ftv-hj{margin-right:1.2em}
+#ftv .ftv-hj.on{color:#ffc928}
+#ftv[data-tema="claro"] .ftv-hj.on{color:#b45f00}
