@@ -359,3 +359,46 @@ html[data-theme="dark"] .md-prev{background:#0a1626}
 .md-zoom span{color:var(--md-tx)}
 .md-papel{box-shadow:0 1px 3px rgba(13,31,53,.08),0 14px 40px -14px rgba(13,31,53,.3)}
 .md-rod.alerta{background:var(--md-prisf)}
+
+/* ═══ v5: CAMADAS BEM DEFINIDAS ═══════════════════════════════════════════════════════════════════════════
+   Branco continua sendo a cor dos cartões, mas agora cada camada se distingue da outra:
+   1) fundo da janela: cinza-azulado claro   2) cartões: brancos, com contorno e sombra visíveis
+   3) cabeçalho e rodapé: faixas brancas separadas por linha e sombra   4) mesa da prévia: cinza-azulado mais escuro */
+.md-win{--camada:#e9eff7;--mesa:#d6e0ee;--contorno:#cdd8e6;background:var(--camada)}
+html[data-theme="dark"] .md-win{--camada:#0f1f33;--mesa:#0a1626;--contorno:#2a4363}
+.md-hd{position:relative;z-index:3;background:var(--md-bg);border-bottom:1px solid var(--contorno);box-shadow:0 4px 14px -8px rgba(13,31,53,.3)}
+.md-passos{position:relative;z-index:2;background:var(--md-bg);border-bottom:1px solid var(--contorno);box-shadow:0 4px 12px -10px rgba(13,31,53,.25)}
+.md-corpo{background:var(--camada);gap:0}
+.md-form{background:var(--camada);padding:16px 18px 28px;border-right:1px solid var(--contorno)}
+.md-sec{margin:0 0 14px;padding:16px 16px 18px;border:1px solid var(--contorno);border-radius:14px;background:var(--md-bg);
+  box-shadow:0 1px 2px rgba(13,31,53,.06),0 8px 20px -12px rgba(13,31,53,.3)}
+.md-sec:last-child{border-bottom:1px solid var(--contorno);margin-bottom:0}
+.md-sec-h{margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--md-ln2)}
+.md-sec-d{font-size:.7rem}
+/* itens de dentro dos cartões: fundo levemente tingido para se destacarem do branco do cartão */
+.md-hk{background:var(--md-sf);border-color:var(--contorno)}
+.md-hk:hover{background:var(--md-bg)}
+.md-hk.on{background:var(--md-prisf)}
+.md-hist-d{background:var(--md-sf);border-color:var(--contorno)}
+.md-hist-dt span{background:var(--md-bg);border-color:var(--contorno)}
+.md-tipo{background:var(--md-sf);border-color:var(--contorno)}
+.md-tipo:hover:not(:disabled){background:var(--md-bg)}
+.md-tipo.on{background:var(--md-prisf)}
+.md-tipo .ic{background:var(--md-bg);box-shadow:inset 0 0 0 1px var(--contorno)}
+.md-tipo.on .ic{box-shadow:none}
+.md-chip{background:var(--md-sf);border-color:var(--contorno)}
+.md-chip.on{background:var(--md-prisf);border-color:var(--md-pri2)}
+.md-in,.md-ta{background:var(--md-sf);border-color:var(--contorno)}
+.md-in:focus,.md-ta:focus{background:var(--md-bg)}
+.md-dias{background:var(--md-sf);border-color:var(--contorno)}
+.md-step{background:var(--md-bg);border-color:var(--contorno)}
+.md-n{background:var(--md-bg)}
+/* mesa da prévia: mais escura que o resto, para a folha aparecer como uma folha */
+.md-prev{background:var(--mesa);padding:16px 22px 30px}
+.md-prev-h{background:var(--md-bg);border-color:var(--contorno);box-shadow:0 2px 8px -4px rgba(13,31,53,.3)}
+.md-papel{box-shadow:0 2px 4px rgba(13,31,53,.12),0 18px 44px -12px rgba(13,31,53,.45)}
+/* rodapé: faixa própria, com sombra para cima */
+.md-rod{position:relative;z-index:3;background:var(--md-bg);border-top:1px solid var(--contorno);box-shadow:0 -6px 16px -10px rgba(13,31,53,.3)}
+.md-rod.alerta{background:var(--md-prisf)}
+.md-dias{flex-wrap:wrap;gap:10px}
+.md-dias>div:first-child{flex:1 1 150px}
