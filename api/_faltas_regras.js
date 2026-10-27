@@ -71,6 +71,14 @@ function trabalhouNoDia(situacoes) {
   return lista.some(s => !NAO_TRABALHOU.some(p => s.includes(p)));
 }
 
+// A Ficha mostra a pessoa trabalhando nos últimos dias (até a data da planilha)? Quem foi desligado não tem
+// dia trabalhado depois da saída; quem faltou até ser desligado (abandono) também não.
+const JANELA_TRABALHO_RECENTE = 7;
+function trabalhandoRecente(dias, dataBase, janela) {
+  const de = somaDias(dataBase, -(janela || JANELA_TRABALHO_RECENTE));
+  return Object.keys(dias || {}).some(d => d >= de && d <= dataBase && trabalhouNoDia(dias[d]) === true);
+}
+
 // ── agenda de uma pessoa ─────────────────────────────────────────────────────
 // Diz, para cada dia, se era dia de trabalho e se a pessoa estava presente.
 // Dia até a data da planilha: o que a Ficha de Presença diz manda.
@@ -152,6 +160,7 @@ const MAX_LACUNA_AFASTAMENTO = 15;
 //   demitidos: Set "RE|PRIMEIRONOME" da base de demitidos (planilha + registro manual)
 //   ativos: Map RE → nome ou lista de nomes (o mesmo RE existe em mais de uma empresa do grupo);
 //           null/ausente = lista não confiável, ninguém vira demitido por ela
+//   confirmados: Set "RE|PRIMEIRONOME" de quem NÃO é demitido mesmo fora da lista de ativos (contratação nova)
 //   ocorrencias: indexarOcorrencias(...)
 //   dias: RE → { "AAAA-MM-DD": situação da Ficha } (para saber se a pessoa voltou a trabalhar); opcional
 function classificarFalta(f, ctx) {
@@ -159,8 +168,10 @@ function classificarFalta(f, ctx) {
   const codigo = String(f.codigo == null ? "" : f.codigo).toUpperCase().trim();
   if (codigo !== "I") return codigo || null;
   const re = reDe(f.re == null ? f.RE : f.re), data = iso(f.data == null ? f.DATA : f.data), nome = f.nome == null ? f.NOME : f.nome;
-  if (c.demitidos && c.demitidos.has(re + "|" + primeiroNome(nome))) return CODIGO_DEMITIDO;
-  if (c.ativos && c.ativos.size >= MIN_ATIVOS_PARA_DEMITIDOS && !(c.ativos.has(re) && [].concat(c.ativos.get(re)).some(n => mesmaPessoa(n, nome)))) return CODIGO_DEMITIDO;
+  const quem = re + "|" + primeiroNome(nome);
+  if (c.demitidos && c.demitidos.has(quem)) return CODIGO_DEMITIDO;
+  // confirmados: contratação nova que a lista de ativos ainda não tem; não vira demitido por não estar nela
+  if (c.ativos && c.ativos.size >= MIN_ATIVOS_PARA_DEMITIDOS && !(c.confirmados && c.confirmados.has(quem)) && !(c.ativos.has(re) && [].concat(c.ativos.get(re)).some(n => mesmaPessoa(n, nome)))) return CODIGO_DEMITIDO;
   const lista = ((c.ocorrencias && c.ocorrencias.get(re)) || []).filter(o => mesmaPessoa(o.nome, nome));
   if (!lista.length) return "I";
   const dias = (c.dias && c.dias(re)) || null;
@@ -616,6 +627,6 @@ function dedupMedidas(lista) {
 }
 
 module.exports = {
-  FAMILIAS, SITUACOES, ABONADAS, CODIGO_DEMITIDO, CODIGO_AFASTADO, NAO_COBRADAS, MIN_ATIVOS_PARA_DEMITIDOS, MAX_LACUNA_AFASTAMENTO, indexarOcorrencias, classificarFalta, primeiroNome, familiaEscala, ehOperacional, trabalhouNoDia, montarCasos, reDe, competenciaDe, calendario, compactarCalendario, expandirCalendario, periodosDeAbono, dobrarAtestados, turnoDoSupervisor, SUPERVISORES_NOTURNOS, supervisorAtual,
+  FAMILIAS, SITUACOES, ABONADAS, CODIGO_DEMITIDO, CODIGO_AFASTADO, NAO_COBRADAS, MIN_ATIVOS_PARA_DEMITIDOS, MAX_LACUNA_AFASTAMENTO, indexarOcorrencias, classificarFalta, primeiroNome, familiaEscala, ehOperacional, trabalhouNoDia, trabalhandoRecente, montarCasos, reDe, competenciaDe, calendario, compactarCalendario, expandirCalendario, periodosDeAbono, dobrarAtestados, turnoDoSupervisor, SUPERVISORES_NOTURNOS, supervisorAtual,
   descreverMedida, somaDias, ddmm, medidaDoHistorico, dedupMedidas
 };

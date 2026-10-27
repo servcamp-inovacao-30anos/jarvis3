@@ -424,3 +424,37 @@ test("o aviso por e-mail reflete a correção sem mudar nada nele: só leva as f
   const l = await FE.faltasDoPeriodo(ponto.conectar(), "2026-10-19", "2026-10-25", FE.fimDoDiaSP("2026-10-25"));
   assert.deepEqual(l.map(f => f.re), [10]);
 });
+
+// ── contratação nova que a lista de ativos ainda não tem ─────────────────────
+test("classificarFalta: confirmado (contratação nova) não vira demitido por faltar na lista de ativos", () => {
+  const ativos = ativos120();
+  assert.equal(cl(4990, "2026-10-20", { ativos }, { nome: "NOVATA CONTRATADA" }), "D", "sem confirmação, fora da lista = demitido");
+  assert.equal(cl(4990, "2026-10-20", { ativos, confirmados: new Set(["4990|NOVATA"]) }, { nome: "NOVATA CONTRATADA" }), "I");
+  assert.equal(cl(4990, "2026-10-20", { ativos, confirmados: new Set(["4990|NOVATA"]), demitidos: new Set(["4990|NOVATA"]) }, { nome: "NOVATA CONTRATADA" }), "D", "a base de demitidos vale mais");
+});
+
+test("trabalhandoRecente: só dia trabalhado nos últimos 7 dias conta; falta e folga não", () => {
+  assert.equal(R.trabalhandoRecente({ "2026-10-20": "FALTA", "2026-10-24": "TRABALHO" }, "2026-10-26"), true);
+  assert.equal(R.trabalhandoRecente({ "2026-10-20": "FALTA", "2026-10-24": "FALTA", "2026-10-25": "FOLGA" }, "2026-10-26"), false);
+  assert.equal(R.trabalhandoRecente({ "2026-10-10": "TRABALHO" }, "2026-10-26"), false, "trabalhou, mas faz mais de 7 dias");
+  assert.equal(R.trabalhandoRecente(undefined, "2026-10-26"), false);
+});
+
+test("materializar: quem trabalha na Ficha e não está na lista de ativos é contratação nova (continua cobrado e fica registrado); quem faltou até sair é demitido", async () => {
+  const t = tabelasVazias(); supabaseFalso(t);
+  const dados = () => ({
+    faltas: [falta(4990, "2026-10-20", { NOME: "NOVATA CONTRATADA" }), falta(556, "2026-10-20", { NOME: "FULANO ABANDONO" })],
+    fichaDias: { 4990: { "2026-10-20": "FALTA", "2026-10-24": "TRABALHO" }, 556: { "2026-10-20": "FALTA", "2026-10-24": "FALTA" } },
+    ativos: ativosDoTeste()
+  });
+  await faltas.materializar(dados());
+  assert.deepEqual(codigos(t), { "4990|2026-10-20": "I", "556|2026-10-20": "D" });
+  const ev = t.fm_auditoria.filter(a => a.acao === "DEMITIDO_DESFEITO");
+  assert.deepEqual(ev.map(a => [a.ator, a.chave, a.depois.nome1]), [["sistema", "4990|NOVATA", "NOVATA"]]);
+
+  // semanas depois, sem dia trabalhado na janela: continua cobrada, porque a confirmação ficou guardada
+  const depois = dados(); depois.fichaDias[4990] = { "2026-10-20": "FALTA" };
+  await faltas.materializar(depois);
+  assert.equal(codigos(t)["4990|2026-10-20"], "I");
+  assert.equal(t.fm_auditoria.filter(a => a.acao === "DEMITIDO_DESFEITO").length, 1, "não registra de novo");
+});
