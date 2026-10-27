@@ -140,17 +140,39 @@ ${corpo}
 </td></tr>`;
 }
 
+// Botão de verdade (à prova de cliente de e-mail): a área clicável é o botão inteiro, não só o texto; cantos
+// arredondados e sombra por baixo onde o cliente deixa; no Outlook (que ignora CSS de botão) vira um retângulo
+// arredondado desenhado em VML; no celular ocupa a largura toda. É o ÚNICO link do aviso.
+function botaoLink(link, rotulo) {
+  const h = esc(link), r = esc(rotulo);
+  return `<!--[if mso]>
+<v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${h}" style="height:50px;v-text-anchor:middle;width:320px" arcsize="20%" stroke="f" fillcolor="${AZUL}"><w:anchorlock/><center style="color:#ffffff;font-family:'Segoe UI',Arial,sans-serif;font-size:15px;font-weight:bold">${r} &rarr;</center></v:roundrect>
+<![endif]-->
+<!--[if !mso]><!-->
+<table role="presentation" class="btn-w" border="0" cellpadding="0" cellspacing="0" style="border-collapse:separate"><tr>
+  <td align="center" bgcolor="${AZUL}" style="background:${AZUL};background-image:linear-gradient(180deg,#2c82dc,#1a5fae);border-radius:10px;border-bottom:3px solid #14478a;mso-padding-alt:0">
+    <a href="${h}" target="_blank" class="btn" style="display:block;padding:15px 34px 14px;font-family:${FONTE};font-size:15px;line-height:20px;font-weight:700;letter-spacing:.2px;color:#ffffff;text-decoration:none;text-align:center;border-radius:10px">${r}&nbsp;&nbsp;&rarr;</a>
+  </td>
+</tr></table>
+<!--<![endif]-->`;
+}
+
 // Botão para o painel: lá o supervisor vê as mesmas faltas e gera a medida de cada uma.
 function botaoPainel(link) {
   if (!link) return "";
-  return `<tr><td class="px" style="padding:26px 40px 0;font-family:${FONTE}">
-  <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="#f4f7fb" style="background:#f4f7fb;border:1px solid #e3eaf3;border-radius:12px"><tr>
-    <td style="padding:18px 22px;font-family:${FONTE}">
-      <div style="font-size:14px;line-height:20px;font-weight:700;color:${MARINHO}">Gerar a medida disciplinar no Painel ServCamp</div>
-      <div style="font-size:12.5px;line-height:19px;color:${CINZA};padding-top:3px">As mesmas faltas, com o histórico de cada colaborador. Escolha a medida, escreva o motivo, confira o documento e imprima. Depois, lance no SAR2G.</div>
+  const passo = (n, t) => `<td valign="top" style="padding:0 14px 0 0;font-family:${FONTE}"><table role="presentation" border="0" cellpadding="0" cellspacing="0"><tr>
+        <td width="22" height="22" align="center" valign="middle" bgcolor="${AZUL}" style="width:22px;height:22px;background:${AZUL};border-radius:11px;color:#ffffff;font-size:12px;line-height:22px;font-weight:700;font-family:${FONTE}">${n}</td>
+        <td style="padding-left:8px;font-size:12.5px;line-height:18px;color:${CINZA};font-family:${FONTE}">${t}</td></tr></table></td>`;
+  return `<tr><td class="px" style="padding:30px 40px 0;font-family:${FONTE}">
+  <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="#f4f8fd" style="background:#f4f8fd;border:1px solid #d9e6f5;border-radius:14px"><tr>
+    <td style="padding:24px 26px 26px;font-family:${FONTE}" align="left">
+      <div style="font-size:11px;line-height:14px;font-weight:700;letter-spacing:2px;color:${AZUL};text-transform:uppercase">Próximo passo</div>
+      <div style="font-size:19px;line-height:26px;font-weight:700;color:${MARINHO};padding-top:6px">Gerar a medida disciplinar</div>
+      <div style="font-size:13.5px;line-height:21px;color:${CINZA};padding-top:4px">No painel você vê estas mesmas faltas, com o histórico de cada colaborador, e gera o documento em poucos cliques.</div>
       <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin-top:14px"><tr>
-        <td bgcolor="${AZUL}" style="background:${AZUL};border-radius:8px"><a href="${esc(link)}" target="_blank" style="display:inline-block;padding:11px 22px;font-size:14px;line-height:18px;font-weight:700;color:#ffffff;text-decoration:none;font-family:${FONTE}">Abrir no Painel ServCamp</a></td>
+        ${passo(1, "Escolha a medida")}${passo(2, "Escreva o motivo")}${passo(3, "Imprima e lance no SAR2G")}
       </tr></table>
+      <div style="padding-top:20px">${botaoLink(link, "Abrir no Painel ServCamp")}</div>
     </td>
   </tr></table>
 </td></tr>`;
@@ -235,16 +257,15 @@ ${linhas}
 </td></tr>`;
 }
 
-// Fecho no corpo do e-mail, abaixo do cartão: "Atenciosamente," e a assinatura do Raphael
-// como imagem (pedido dele). A imagem vem do painel (fica no banco, não no código: o
-// repositório é público e ela tem foto e telefones). Sem assinatura cadastrada, fecha com
-// "Atenciosamente, Servcamp".
+// Fecho no corpo do e-mail, abaixo do cartão: só a assinatura do Raphael como imagem (ela já traz o nome).
+// A imagem vem do painel (fica no banco, não no código: o repositório é público e ela tem foto e telefones).
+// Sem assinatura cadastrada, o e-mail termina no cartão.
 function fecho(a) {
-  const atenciosamente = `    <tr><td class="px" style="padding:28px 4px 0;font-family:${FONTE};font-size:15px;line-height:24px;color:#1f2a37">Atenciosamente,${a && a.src ? "" : "<br><b>Servcamp</b>"}</td></tr>`;
-  if (!a || !a.src) return atenciosamente;
+  // sem "Atenciosamente, Servcamp": a assinatura do Raphael já fecha o e-mail (pedido dele, 27/10/2026)
+  if (!a || !a.src) return "";
   const w = Math.min(Number(a.largura) || 600, 600), h = Number(a.altura) ? Math.round(Number(a.altura) * w / (Number(a.largura) || w)) : 0;
-  return atenciosamente + `
-    <tr><td class="px" style="padding:14px 4px 0"><img src="${esc(a.src)}" width="${w}"${h ? ` height="${h}"` : ""} alt="Assinatura" style="display:block;width:100%;max-width:${w}px;height:auto;border:0"></td></tr>`;
+  return `
+    <tr><td class="px" style="padding:22px 4px 0"><img src="${esc(a.src)}" width="${w}"${h ? ` height="${h}"` : ""} alt="Assinatura" style="display:block;width:100%;max-width:${w}px;height:auto;border:0"></td></tr>`;
 }
 
 const ESTILO = `<style>
@@ -256,6 +277,8 @@ const ESTILO = `<style>
     .px{padding-left:20px!important;padding-right:20px!important}
     .h1{font-size:24px!important;line-height:30px!important}
     .hide-sm{display:none!important}
+    .btn-w{width:100%!important}
+    .btn{padding:17px 12px 16px!important}
     .only-sm{display:block!important;max-height:none!important;overflow:visible!important;padding-top:16px}
     .kpi td.k{padding:12px 10px!important}
     .kpi .kv{font-size:13px!important}
@@ -357,8 +380,7 @@ ${fecho(o.assinatura)}
     atual.itens.forEach(x => t.push(`- ${x.nome} · RE ${x.re} · falta de ${ddmmaaaa(x.data)} · ${(SELO[x.tipo] || SELO.ABONADA).rot}${x.detalhe ? " (" + x.detalhe + ")" : ""}`));
     t.push("");
   }
-  t.push(rodape, "", "Atenciosamente,");
-  if (!(o.assinatura && o.assinatura.src)) t.push("Servcamp");
+  t.push(rodape);
 
   return { assunto, html, texto: t.join("\n") };
 }
@@ -455,9 +477,7 @@ ${pend.map((g, i) => {
 </td></tr>`;
 
   const botao = o.link ? `<tr><td class="px" style="padding:26px 40px 0;font-family:${FONTE}">
-  <table role="presentation" border="0" cellpadding="0" cellspacing="0"><tr>
-    <td bgcolor="${AZUL}" style="background:${AZUL};border-radius:8px"><a href="${esc(o.link)}" target="_blank" style="display:inline-block;padding:11px 22px;font-size:14px;line-height:18px;font-weight:700;color:#ffffff;text-decoration:none;font-family:${FONTE}">Abrir as medidas geradas no Painel ServCamp</a></td>
-  </tr></table>
+  ${botaoLink(o.link, "Abrir as medidas geradas no Painel ServCamp")}
 </td></tr>` : "";
 
   const titulo1 = `<tr><td class="px" style="padding:34px 40px 0;font-family:${FONTE}">
@@ -516,8 +536,7 @@ ${fecho(o.assinatura)}
     t.push("");
   }
   if (o.link) t.push(`Abrir no Painel ServCamp: ${o.link}`, "");
-  t.push("Envio automatizado", "", "Atenciosamente,");
-  if (!(o.assinatura && o.assinatura.src)) t.push("Servcamp");
+  t.push("Envio automatizado");
   return { assunto, html, texto: t.join("\n"), pendentes: pend.length, atrasadas: atras, geradasSemana: geradasSem.length, lancadasSemana: lancadasSem.length, semAssinatura: semAss.length };
 }
 

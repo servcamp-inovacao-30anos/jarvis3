@@ -363,13 +363,13 @@ test("modelo: escapa o que vem da planilha, texto simples equivalente e nomes em
   assert.match(m.html, /Envio automatizado/);
   assert.ok(!/Mensagem confidencial|Enviada (automaticamente )?pelo Servcamp/.test(m.html), "rodapé antigo saiu");
   assert.match(m.texto, /Faltas: 20\/10\/2026 \(ter\), 22\/10\/2026 \(qui\)/);
-  assert.ok(m.html.includes("Atenciosamente,<br><b>Servcamp</b>"), "sem assinatura cadastrada: Atenciosamente, Servcamp");
-  assert.ok(m.texto.endsWith("Envio automatizado\n\nAtenciosamente,\nServcamp"), "texto simples fecha igual ao HTML");
+  assert.ok(!/Atenciosamente|<b>Servcamp<\/b>/.test(m.html), "sem \"Atenciosamente, Servcamp\": a assinatura do Raphael já fecha o e-mail");
+  assert.ok(m.texto.endsWith("Envio automatizado") && !/Atenciosamente/.test(m.texto), "texto simples fecha igual ao HTML");
   const comAss = HTML.montar({ area: "JEAN KLEBER", inicio: "2026-10-19", fim: "2026-10-25", logo: "cid:x", linhas: [], assinatura: { src: "cid:ass", largura: 635, altura: 201 } });
-  assert.ok(comAss.html.indexOf("Atenciosamente,") < comAss.html.indexOf('src="cid:ass"'), "Atenciosamente em cima da assinatura");
+  assert.ok(comAss.html.includes('src="cid:ass"') && !comAss.html.includes("Atenciosamente"), "só a assinatura, sem Atenciosamente");
   assert.ok(!comAss.html.includes("<b>Servcamp</b>"), "com assinatura, não repete Servcamp");
   assert.match(comAss.html, /width="600" height="190" alt="Assinatura"/, "assinatura larga cabe nos 600 px do e-mail");
-  assert.match(comAss.texto, /Atenciosamente,$/);
+  assert.ok(!/Atenciosamente/.test(comAss.texto));
   assert.equal(HTML.titulo("OSEAS - DIURNO"), "Oseas - Diurno");
   assert.equal(HTML.titulo("DIURNO RT"), "Diurno RT");
   assert.equal(HTML.periodoCurto("2025-12-29", "2026-01-04"), "29/12/2025 a 04/01/2026");
@@ -509,8 +509,8 @@ test("assinatura: imagem do painel no corpo do e-mail, abaixo do cartão; confer
   enviados = [];
   agora = SEG_SEGUINTE;
   await cron();
-  assert.ok(enviados.length && enviados.every(x => !x.assinatura && !x.html.includes("cid:assinatura")), "sem assinatura, fecha com Atenciosamente, Servcamp");
-  assert.ok(enviados.every(x => x.html.includes("Atenciosamente,<br><b>Servcamp</b>")));
+  assert.ok(enviados.length && enviados.every(x => !x.assinatura && !x.html.includes("cid:assinatura")), "sem assinatura, o e-mail termina no cartão");
+  assert.ok(enviados.every(x => !x.html.includes("Atenciosamente")));
 });
 
 // ── dia e hora do envio automático ──────────────────────────────────────────
