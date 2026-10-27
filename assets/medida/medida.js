@@ -11,11 +11,11 @@
    Esconder botão é conveniência: quem barra é o servidor. */
 (function(){
 "use strict";
-const MDS={lista:null,em:0,carregando:null,erro:null,coord:false,minhas:0,filtro:"PENDENTE",busca:"",ed:null,avisado:false};
+const MDS={lista:null,em:0,carregando:null,erro:null,coord:false,minhas:0,filtro:"PENDENTE",busca:"",ed:null,avisado:false,zoom:null};
 const TIPOS={
-  ADVERTENCIA_VERBAL:{rot:"Advertência verbal",sub:"Conversa registrada por escrito"},
-  ADVERTENCIA_ESCRITA:{rot:"Advertência escrita",sub:"Aviso formal assinado"},
-  SUSPENSAO:{rot:"Suspensão",sub:"Afastamento sem remuneração"}
+  ADVERTENCIA_VERBAL:{rot:"Advertência verbal",sub:"Conversa registrada por escrito",dica:"Para a primeira ocorrência leve: o registro guarda que a conversa aconteceu."},
+  ADVERTENCIA_ESCRITA:{rot:"Advertência escrita",sub:"Aviso formal assinado",dica:"Aviso formal que o colaborador assina. Conta no histórico de reincidência."},
+  SUSPENSAO:{rot:"Suspensão",sub:"Afastamento sem remuneração",dica:"Afasta o colaborador sem salário pelos dias escolhidos (de 1 a 30)."}
 };
 const SITUACOES={FALTA_INJUSTIFICADA:"Falta injustificada",ATRASO:"Atraso",SAIDA_ANTECIPADA:"Saída antecipada sem autorização",ABANDONO_POSTO:"Abandono de posto",DESCUMPRIMENTO:"Descumprimento de norma ou procedimento",CONDUTA:"Conduta inadequada no posto"};
 const MES=["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
@@ -39,7 +39,13 @@ const IC={
   ok:svg('<path d="m5 12 5 5 9-10"/>'),
   x:svg('<path d="M18 6 6 18M6 6l12 12"/>'),
   clip:svg('<path d="m21 11-8.5 8.5a5 5 0 0 1-7-7L14 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L15 7"/>'),
-  olho:svg('<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>')
+  olho:svg('<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'),
+  ADVERTENCIA_VERBAL:svg('<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1.1-4.6A8 8 0 1 1 21 12z"/><path d="M9 11h6M9 14h4"/>'),
+  ADVERTENCIA_ESCRITA:svg('<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="m9 16 1.5-3.5L16 7l2 2-5.5 5.5z"/>'),
+  SUSPENSAO:svg('<rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4M10 14v4M14 14v4"/>'),
+  seta:svg('<path d="m9 6 6 6-6 6"/>'),menos:svg('<path d="M5 12h14"/>'),mais:svg('<path d="M12 5v14M5 12h14"/>'),
+  ajustar:svg('<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>'),
+  info:svg('<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>')
 };
 
 async function api(t,metodo,corpo){
@@ -68,6 +74,8 @@ const geradasDoCaso=k=>(MDS.lista||[]).filter(g=>g.caso===k&&g.status!=="CANCELA
    O mesmo HTML na prévia e na impressão. Suspensão: modelo oficial transcrito do PDF de 26/10/2026.
    Advertência: provisório, no mesmo formato, até chegar o modelo oficial. */
 const DOC_CSS=`.md-doc{box-sizing:border-box;width:794px;min-height:1123px;padding:64px 72px 70px;background:#fff;color:#111;font-family:Arial,Helvetica,sans-serif;font-size:13.5px;line-height:1.55;position:relative}
+.md-doc .logo{text-align:center;margin:-16px 0 4px}
+.md-doc .logo svg{width:230px;height:auto}
 .md-doc .emp{text-align:center;font-weight:700;font-size:15px;letter-spacing:.02em}
 .md-doc h1{margin:26px 0 22px;text-align:center;font-size:15.5px;font-weight:700}
 .md-doc .re{font-weight:700;margin:0 0 18px}
@@ -82,6 +90,8 @@ const DOC_CSS=`.md-doc{box-sizing:border-box;width:794px;min-height:1123px;paddi
 .md-doc .rod{position:absolute;left:72px;right:72px;bottom:28px;border-top:1px solid #ccc;padding-top:6px;font-size:9.5px;color:#555;display:flex;justify-content:space-between;gap:12px}
 .md-doc .vz{color:#b42318;font-style:italic;text-decoration:none;text-transform:none;font-weight:400}`;
 function injetaCss(){if(document.getElementById("md-doc-css"))return;const s=document.createElement("style");s.id="md-doc-css";s.textContent=DOC_CSS;document.head.appendChild(s);}
+// Logo do Grupo ServCamp para papel branco (vetor: sai nítido na prévia, na impressão e no PDF)
+const LOGO_SC='<svg class="logo-sc" viewBox="0 0 400 140" role="img" aria-label="Grupo ServCamp terceirizações"><defs><linearGradient id="mdLgC" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c9ced6"/><stop offset="1" stop-color="#848a94"/></linearGradient><linearGradient id="mdLgA" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3f78f0"/><stop offset="1" stop-color="#1b3f9e"/></linearGradient><clipPath id="mdLcC"><rect x="-20" y="-20" width="122" height="260"/></clipPath><clipPath id="mdLcA"><rect x="16" y="-20" width="140" height="260"/></clipPath></defs><g transform="translate(4 2)"><g clip-path="url(#mdLcC)"><path d="M103.54 41.46A47 47 0 1 0 55.36 94.97L56.27 68.99A21 21 0 1 1 77.8 45.08Z" fill="#5d636d" transform="translate(-6 3)"/><path d="M103.54 41.46A47 47 0 1 0 55.36 94.97L56.27 68.99A21 21 0 1 1 77.8 45.08Z" fill="url(#mdLgC)"/></g><g clip-path="url(#mdLcA)"><path d="M52.84 45.71A47 47 0 1 1 14.46 85.46L40.2 89.08A21 21 0 1 0 57.35 71.32Z" fill="#14307f" transform="translate(-6 3)"/><path d="M52.84 45.71A47 47 0 1 1 14.46 85.46L40.2 89.08A21 21 0 1 0 57.35 71.32Z" fill="url(#mdLgA)"/></g></g><text x="132" y="44" font-size="25" fill="#7d838d" style="font-family:Segoe UI,Arial,sans-serif;font-style:italic">Grupo</text><text x="124" y="96" font-size="54" font-style="italic" textLength="268" lengthAdjust="spacingAndGlyphs" style="font-family:Segoe UI Black,Arial Black,Arial,sans-serif;font-weight:900;letter-spacing:-1px"><tspan fill="#7d838d">SERV</tspan><tspan fill="#1b3f9e">CAMP</tspan></text><text x="390" y="126" font-size="21" fill="#7d838d" text-anchor="end" style="font-family:Segoe UI,Arial,sans-serif;font-style:italic">terceirizações</text></svg>';
 const FECHO="Não só esperamos que tome as necessárias providências a fim de que não se repita (m) a (s) irregularidade (s) acima discriminada (s), como também aproveitamos para esclarecer-lhes que a repetição ou a prática de outra Prevista em nossos Regulamentos, Ordens de Serviços, etc., irá contribuir desfavoravelmente em seu progresso nesta Empresa, além de poder acarretar-lhe penalidades mais severas, conforme preceitua as disposições do Artigo 482 e suas alíneas da Consolidação das leis do trabalho.";
 // d: { empresa, re, nome, tipoId, dias, inicio, motivo, docData, numero, geradoPor, geradoEm }
 function docHtml(d){
@@ -109,11 +119,12 @@ function docHtml(d){
   const rod=d.numero?`<div class="rod"><span>Painel ServCamp · documento <b>${esc(d.numero)}</b></span><span>Gerado em ${esc(dma(d.geradoEm))}${d.geradoPor?" por "+esc(nomeDe(d.geradoPor)):""}</span></div>`
     :`<div class="rod"><span>Painel ServCamp · prévia: o número do documento sai ao gerar</span><span></span></div>`;
   return `<div class="md-doc">
+  <div class="logo">${LOGO_SC}</div>
   <div class="emp">${d.empresa?esc(String(d.empresa).toUpperCase()):vz("(empresa)")}</div>
   <h1>${tit}</h1>
   <div class="re">RE: ${re} – ${nome}</div>
   <p>${abre}</p>
-  <div class="mt">${mt} – ${nome} | RE: ${re}</div>
+  <div class="mt">${mt}</div>
   <div class="mv">${motivo?esc(motivo):vz("O motivo escrito ao lado aparece aqui.")}</div>
   <p>${FECHO}</p>
   <div class="lc"><span>Campinas, ${esc(extenso(d.docData||hojeSP()))}</span><span>atenciosamente</span></div>
@@ -144,7 +155,7 @@ function histDe(c){
   const H=FM.hist;
   const med=H&&!H.erro?((H.porRE[c.re]||[]).filter(m=>!/CANCEL/i.test(m.fase||""))):null;
   const p=H&&!H.erro?(H.faltas||[]).find(f=>String(f.re)===String(c.re)&&String(f.nome||"").split(" ")[0]===String(c.nome||"").split(" ")[0]):null;
-  return{med,faltasAno:p?p.datas.length:null};
+  return{med,faltasAno:p?p.datas.length:null,datas:p?p.datas.map(iso):(H&&!H.erro?[]:null)};
 }
 function motivoAuto(E){
   const c=E.c,fl=[...E.faltas].sort(),p=[];
@@ -159,66 +170,119 @@ function motivoAuto(E){
 function abrir(k){
   const c=casoDe(k);if(!c){alert("Não encontrei esta ocorrência. Atualize a tela.");return;}
   const fl=[...new Set(c.faltas||[])].sort();
-  MDS.ed={c,k,tipo:"",dias:1,inicio:hojeSP(),docData:hojeSP(),empresa:c.empresa||"",faltas:new Set(fl),sits:new Set(["FALTA_INJUSTIFICADA"]),motivo:"",manual:false,confirma:false,enviando:false,erro:null,repetida:null,gerada:null};
+  MDS.ed={c,k,foco:"tipo",tipo:"",dias:1,inicio:hojeSP(),docData:hojeSP(),empresa:c.empresa||"",faltas:new Set(fl),sits:new Set(["FALTA_INJUSTIFICADA"]),motivo:"",manual:false,confirma:false,sair:false,enviando:false,erro:null,repetida:null,gerada:null};
   MDS.ed.motivo=motivoAuto(MDS.ed);
   injetaCss();
   const ov=document.createElement("div");ov.id="md-ov";ov.className="md-ov";
-  ov.innerHTML=`<div class="md-win" role="dialog" aria-modal="true" aria-label="Gerar medida disciplinar"><div class="md-hd"><div class="t"><b>Gerar medida disciplinar</b><span>${esc(titulo(c.nome))} · RE ${esc(c.re)} · ${esc(c.posto||"")}</span></div><button type="button" class="md-x" data-md="fechar" aria-label="Fechar">✕</button></div>`+
+  ov.innerHTML=`<div class="md-win" role="dialog" aria-modal="true" aria-labelledby="md-tit">`+
+    `<div class="md-hd"><div class="md-hd-ic">${IC.doc}</div><div class="t"><b id="md-tit">Gerar medida disciplinar</b><span><strong>${esc(titulo(c.nome))}</strong> · RE ${esc(c.re)} · ${esc(c.posto||"sem posto")}</span></div>`+
+      `<button type="button" class="md-x" data-md="fechar" aria-label="Fechar a janela" title="Fechar (Esc)">${IC.x}</button></div>`+
+    `<nav class="md-passos" id="md-passos" aria-label="Passos"></nav>`+
     `<div class="md-corpo"><div class="md-form" id="md-form"></div><div class="md-prev" id="md-prev"></div></div><div class="md-rod" id="md-rod"></div></div>`;
   ov.addEventListener("click",cliqueEd);ov.addEventListener("input",digitouEd);ov.addEventListener("change",mudouEd);
   document.body.appendChild(ov);document.body.style.overflow="hidden";
   document.addEventListener("keydown",teclaEd);window.addEventListener("resize",escala);
   pintaForm();pintaPrev();pintaRod();
-  setTimeout(()=>{const b=ov.querySelector(".md-tipo");if(b)b.focus();},40);
+  setTimeout(()=>{const b=ov.querySelector(".md-tipo");if(b)b.focus({preventScroll:true});},60);
+  setTimeout(()=>ov.classList.add("pintou"),500); // a entrada em cascata só na abertura, não a cada clique
 }
+const iniciaisDe=n=>String(n||"").split(" ").filter(Boolean).slice(0,2).map(x=>x[0]).join("").toUpperCase();
+// Fechar com algo preenchido pede confirmação DENTRO da janela (o confirm() do navegador pode não aparecer e a
+// janela ficava presa: o X e o Cancelar não faziam nada).
 function fecharEd(forcar){
   const E=MDS.ed;
-  if(!forcar&&E&&!E.gerada&&(E.tipo||E.manual)&&!confirm("Fechar sem gerar a medida? O que foi preenchido se perde."))return;
-  const ov=document.getElementById("md-ov");if(ov)ov.remove();
+  if(!forcar&&E&&!E.gerada&&(E.tipo||E.manual)){E.sair=true;E.confirma=false;pintaRod();const b=document.querySelector('#md-rod [data-md="ficar"]');if(b)b.focus();return;}
+  const ov=document.getElementById("md-ov");
   document.body.style.overflow="";document.removeEventListener("keydown",teclaEd);window.removeEventListener("resize",escala);
   MDS.ed=null;
+  if(ov){ov.classList.add("sai");setTimeout(()=>ov.remove(),180);}
 }
-function teclaEd(e){if(e.key==="Escape"&&MDS.ed&&!document.querySelector(".fs-calpop"))fecharEd(false);}
+function teclaEd(e){
+  if(e.key!=="Escape"||!MDS.ed||document.querySelector(".fs-calpop"))return;
+  if(MDS.ed.sair){MDS.ed.sair=false;pintaRod();return;} // Esc de novo: continua editando
+  fecharEd(false);
+}
 function docDoEd(E){return{empresa:E.empresa,re:E.c.re,nome:E.c.nome,tipoId:E.tipo,dias:E.dias,inicio:E.inicio,motivo:E.motivo,docData:E.docData,numero:E.gerada&&E.gerada.numero,geradoPor:E.gerada&&E.gerada.geradaPor,geradoEm:E.gerada?new Date(Date.parse(E.gerada.geradaEm)-3*3600000).toISOString():null};}
 
+// Os 4 passos e quando cada um está pronto: o que move a barra de progresso e os ✓ de cada seção.
+function passos(E){
+  return[
+    {k:"tipo",rot:"Tipo da medida",ok:!!E.tipo&&(E.tipo!=="SUSPENSAO"||(E.dias>=1&&E.dias<=30))},
+    {k:"datas",rot:"Data e empresa",ok:!!E.inicio&&!!String(E.empresa).trim()},
+    {k:"ocor",rot:"O que aconteceu (opcional)",ok:true,opc:true},
+    {k:"motivo",rot:"Motivo",ok:String(E.motivo).trim().length>=5}
+  ];
+}
+function pintaPassos(){
+  const E=MDS.ed,el=document.getElementById("md-passos");if(!E||!el)return;
+  const p=passos(E),feitos=p.filter(x=>x.ok).length;
+  el.style.setProperty("--md-prog",(E.gerada?100:feitos/p.length*100)+"%");
+  el.innerHTML=`<div class="md-passos-l">${p.map((x,i)=>`<button type="button" class="md-passo${x.ok||E.gerada?" ok":""}" data-md="ir" data-v="${x.k}"><span class="n">${x.ok||E.gerada?IC.ok:i+1}</span><span class="r"><b>${x.rot}</b></span></button>`).join("")}</div>`+
+    `<div class="md-passos-b" aria-hidden="true"><i></i></div><span class="md-passos-c">${E.gerada?"Documento gerado":feitos===p.length?"Tudo pronto para gerar":feitos+" de "+p.length+" passos prontos"}</span>`;
+}
+const cabPasso=(k,n,tit,sub,ok)=>`<div class="md-sec-h" title="${esc(sub)}"><span class="md-n${ok?" ok":""}">${ok?IC.ok:n}</span><h5>${tit}</h5></div>`;
 function pintaForm(){
   const E=MDS.ed,el=document.getElementById("md-form");if(!E||!el)return;
-  const c=E.c,h=histDe(c),trava=!!E.gerada;
-  const ini=String(c.nome||"").split(" ").filter(Boolean).slice(0,2).map(x=>x[0]).join("").toUpperCase();
+  const c=E.c,h=histDe(c),trava=!!E.gerada,P=passos(E);
   let hist;
   if(!h.med)hist=`<div class="md-hist-v">Carregando o histórico…</div>`;
   else{
-    const n=h.med.length,ult=h.med[0];
-    hist=`<div class="md-hist-k"><div><b>${h.faltasAno==null?"—":h.faltasAno}</b><span>faltas injustificadas no ano</span></div><div class="${n>=2?"er":""}"><b>${n}</b><span>${n===1?"medida":"medidas"} no ano${n>=2?" · reincidente":""}</span></div><div><b>${ult?esc(dm(ult.data)):"—"}</b><span>última medida</span></div></div>`+
-      (n?`<div class="md-hist-l">${h.med.map(m=>`<div><b>${esc(dm(m.data))}</b><span>${esc(typeof fmMedTxtH==="function"?fmMedTxtH(m):m.tipo)}${m.motivo?`<em>${esc(m.motivo)}</em>`:""}</span></div>`).join("")}</div>`:`<div class="md-hist-v">Nenhuma medida desde ${esc(dma(FM.hist.desde))}: esta é a primeira no ano.</div>`);
+    // os dois cartões abrem a lista que está por trás do número (clicar de novo fecha)
+    const n=h.med.length,ult=h.med[0],nf=h.datas?h.datas.length:h.faltasAno;
+    const cartao=(k,num,rot,cls)=>`<button type="button" class="md-hk${E.ver===k?" on":""}${cls?" "+cls:""}" data-md="ver" data-v="${k}" aria-expanded="${E.ver===k}"><b>${num}</b><span>${rot}</span><i aria-hidden="true">›</i></button>`;
+    hist=`<div class="md-hist-k">${cartao("faltas",nf==null?"—":nf,(nf===1?"falta injustificada":"faltas injustificadas")+" no ano","")}${cartao("medidas",n,(n===1?"medida":"medidas")+" no ano"+(n>=2?" · reincidente":"")+(ult?" · última em "+esc(dm(ult.data)):""),n>=2?"er":"")}</div>`;
+    if(E.ver==="faltas")hist+=h.datas&&h.datas.length?`<div class="md-hist-d"><span class="md-rot">Faltas injustificadas desde ${esc(dma(FM.hist.desde))}</span><div class="md-hist-dt">${[...h.datas].sort().reverse().map(d=>`<span${E.faltas.has(d)?' class="atual" title="Falta desta ocorrência"':""}>${esc(dm(d))}</span>`).join("")}</div></div>`:`<div class="md-hist-d md-hist-v">Nenhuma falta injustificada no ano.</div>`;
+    if(E.ver==="medidas")hist+=n?`<div class="md-hist-d"><span class="md-rot">Medidas desde ${esc(dma(FM.hist.desde))}</span><div class="md-hist-l">${h.med.map(m=>`<div><b>${esc(dm(m.data))}</b><span>${esc(typeof fmMedTxtH==="function"?fmMedTxtH(m):m.tipo)}${m.motivo?`<em>${esc(m.motivo)}</em>`:""}</span></div>`).join("")}</div></div>`:`<div class="md-hist-d md-hist-v">Nenhuma medida no ano: esta seria a primeira.</div>`;
   }
   const ant=geradasDoCaso(E.k).filter(g=>!E.gerada||g.chave!==E.gerada.chave);
   const avisoAnt=ant.length?`<div class="md-alerta"><b>Atenção:</b> já ${ant.length===1?"existe a medida":"existem as medidas"} ${lista(ant.map(g=>`<b>${esc(g.numero)}</b> (${esc(TIPOS[g.tipoId]?TIPOS[g.tipoId].rot:g.tipo)}, ${g.status==="LANCADA"?"lançada no SAR2G":"falta lançar no SAR2G"})`))} para esta ocorrência.</div>`:"";
-  const tipos=Object.keys(TIPOS).map(t=>`<button type="button" class="md-tipo${E.tipo===t?" on":""}" data-md="tipo" data-v="${t}" aria-pressed="${E.tipo===t}"${trava?" disabled":""}><b>${TIPOS[t].rot}</b><span>${TIPOS[t].sub}</span></button>`).join("");
-  const dias=E.tipo==="SUSPENSAO"?`<div class="md-dias"><label for="md-dias">Dias de suspensão</label><div class="md-step"><button type="button" data-md="dias" data-v="-1" aria-label="Menos um dia"${trava?" disabled":""}>−</button><input id="md-dias" type="number" min="1" max="30" value="${E.dias}" data-md="diasIn"${trava?" disabled":""}><button type="button" data-md="dias" data-v="1" aria-label="Mais um dia"${trava?" disabled":""}>+</button></div></div>`:"";
-  const prov=E.tipo&&E.tipo!=="SUSPENSAO"?`<p class="md-dica">Modelo de advertência provisório, no mesmo formato da suspensão, até chegar o modelo oficial.</p>`:"";
+  const tipos=Object.keys(TIPOS).map(t=>`<button type="button" class="md-tipo${E.tipo===t?" on":""}" data-md="tipo" data-v="${t}" title="${esc(TIPOS[t].dica)}" aria-pressed="${E.tipo===t}"${trava?" disabled":""}><span class="ic">${IC[t]}</span><b>${TIPOS[t].rot}</b><span>${TIPOS[t].sub}</span></button>`).join("");
+  const explica=E.tipo?`<div class="md-explica">${IC.info}<span>${esc(TIPOS[E.tipo].dica)}</span></div>`:`<div class="md-explica vz">${IC.info}<span>Escolha um dos três tipos. O título e o texto do documento mudam conforme a escolha.</span></div>`;
+  const dias=E.tipo==="SUSPENSAO"?`<div class="md-dias"><div><label for="md-dias">Quantos dias de suspensão?</label><small>De 1 a 30 dias, contados a partir da data do passo 2.</small></div><div class="md-step"><button type="button" data-md="dias" data-v="-1" aria-label="Menos um dia"${trava||E.dias<=1?" disabled":""}>${IC.menos}</button><input id="md-dias" type="number" min="1" max="30" value="${E.dias}" data-md="diasIn"${trava?" disabled":""}><button type="button" data-md="dias" data-v="1" aria-label="Mais um dia"${trava||E.dias>=30?" disabled":""}>${IC.mais}</button></div></div>`:"";
+  const prov=E.tipo&&E.tipo!=="SUSPENSAO"?`<p class="md-dica">Modelo de advertência provisório, até chegar o oficial.</p>`:"";
   const fl=[...new Set(c.faltas||[])].sort();
   const dts=fl.map(d=>`<button type="button" class="md-chip dt${E.faltas.has(d)?" on":""}" data-md="falta" data-v="${d}" aria-pressed="${E.faltas.has(d)}"${trava?" disabled":""}>${esc(typeof fmDdS==="function"?fmDdS(d):dm(d))}</button>`).join("");
   const sits=Object.keys(SITUACOES).map(s=>`<button type="button" class="md-chip${E.sits.has(s)?" on":""}" data-md="sit" data-v="${s}" aria-pressed="${E.sits.has(s)}"${trava?" disabled":""}>${esc(SITUACOES[s])}</button>`).join("");
+  const conta=E.motivo.length,limite=1500;
+  // Um foco por vez: o passo aberto aparece completo; os outros viram uma linha com o resumo e "Editar".
+  const foco=E.gerada?null:(E.foco||"tipo"),ORDEM=["tipo","datas","ocor","motivo"];
+  const resumo={
+    tipo:()=>E.tipo?TIPOS[E.tipo].rot+(E.tipo==="SUSPENSAO"?" · "+E.dias+(E.dias===1?" dia":" dias"):""):"Nenhum tipo escolhido",
+    datas:()=>(E.inicio?dma(E.inicio):"sem data")+" · "+(String(E.empresa).trim()||"sem empresa"),
+    ocor:()=>E.faltas.size||E.sits.size?E.faltas.size+(E.faltas.size===1?" falta":" faltas")+(E.sits.size?" · "+[...E.sits].slice(0,2).map(s=>SITUACOES[s]).join(", ")+(E.sits.size>2?"…":""):""):"Nada marcado · você escreve o motivo",
+    motivo:()=>String(E.motivo).trim()?String(E.motivo).trim().slice(0,80)+(String(E.motivo).trim().length>80?"…":""):"Motivo ainda em branco"
+  };
+  const TIT={tipo:"Qual medida aplicar?",datas:E.tipo==="SUSPENSAO"?"Quando começa e em qual empresa?":"Quando e em qual empresa?",ocor:"O que aconteceu? (opcional)",motivo:"Motivo que vai no documento"};
+  const SUB={tipo:"Escolha o tipo. Na suspensão, diga também quantos dias.",datas:"A data da medida, a data impressa no documento e a empresa do cabeçalho.",ocor:"Opcional. Marque as faltas e o que houve para o motivo, no passo 4, já vir escrito; ou pule este passo e escreva o motivo à mão.",motivo:"Já vem escrito a partir do passo 3. Pode reescrever com as suas palavras: o texto sai igual no papel."};
+  const passo=(k,corpo)=>{
+    const i=ORDEM.indexOf(k),ok=P[i].ok;
+    if(foco!==k)return `<button type="button" class="md-res${ok?" ok":" pend"}" id="md-p-${k}" data-md="foco" data-v="${k}"${trava?" disabled":""}><span class="md-n${ok?" ok":""}">${ok?IC.ok:i+1}</span><span class="t"><b>${TIT[k]}</b><small>${esc(resumo[k]())}</small></span><em>${trava?"":ok?"Editar":"Preencher"}</em></button>`;
+    const prox=ORDEM[i+1],cont=prox?`<div class="md-cont"><button type="button" class="md-b pri" data-md="prox" data-v="${prox}"${ok?"":" disabled"} title="${ok?"":"Falta preencher este passo"}">Continuar ${IC.seta}</button>${ok?"":`<span class="md-falta">Falta preencher este passo</span>`}</div>`:"";
+    return `<section class="md-sec foco" id="md-p-${k}">${cabPasso(k,i+1,TIT[k],SUB[k],ok)}<p class="md-sub">${SUB[k]}</p>${corpo}${cont}</section>`;
+  };
+  const corpoTipo=`<div class="md-tipos" role="group" aria-label="Tipo da medida">${tipos}</div>${dias}${prov}`;
+  const corpoDatas=`<div class="md-grid2"><label class="md-campo">${E.tipo==="SUSPENSAO"?"Suspenso a partir de":"Data da medida"}<input class="md-in" type="date" value="${E.inicio}" data-md="inicio"${trava?" disabled":""}></label><label class="md-campo">Data do documento<input class="md-in" type="date" value="${E.docData}" data-md="docData"${trava?" disabled":""}></label></div>`+
+    `<label class="md-campo" style="margin-top:14px">Empresa (vai no cabeçalho)<input class="md-in" value="${esc(E.empresa)}" placeholder="Ex.: SERV CAMP TERCEIRIZAÇÃO" data-md="empresa" maxlength="80"${trava?" disabled":""}></label>${E.empresa?"":`<p class="md-dica at">A empresa não veio na última planilha para este colaborador: preencha.</p>`}`;
+  const corpoOcor=`<span class="md-rot">Faltas desta ocorrência</span><div class="md-chips">${dts||'<span class="md-dica">Sem datas.</span>'}</div><span class="md-rot" style="margin-top:16px">Situações</span><div class="md-chips">${sits}</div>`;
+  const corpoMotivo=`<div class="md-ta-h"><span class="md-tag ${E.manual?"man":"auto"}">${E.manual?"Escrito por você":"Texto automático"}</span>${E.manual&&!trava?`<button type="button" data-md="refaz">Voltar ao texto automático</button>`:""}<small class="md-conta${conta>limite*.9?" quase":""}">${conta}/${limite}</small></div>`+
+    `<textarea class="md-ta" data-md="motivo" maxlength="${limite}" placeholder="Descreva o motivo da medida"${trava?" disabled":""}>${esc(E.motivo)}</textarea>`;
   el.innerHTML=
-    `<div class="md-sec"><h5>Colaborador</h5><div class="md-colab"><div class="md-av">${esc(ini)}</div><div><b>${esc(titulo(c.nome))}</b><small>RE ${esc(c.re)} · ${esc(titulo(c.cargo||""))}<br>${esc(c.posto||"")} · supervisor ${esc(titulo(c.supervisor||"—"))}</small></div></div></div>`+
-    `<div class="md-sec"><h5>Histórico no ano</h5><div class="md-hist">${hist}</div>${avisoAnt}</div>`+
-    `<div class="md-sec"><h5>Medida</h5><div class="md-tipos" role="group" aria-label="Tipo da medida">${tipos}</div>${dias}${prov}</div>`+
-    `<div class="md-sec"><div class="md-grid2"><label class="md-campo">${E.tipo==="SUSPENSAO"?"Suspenso a partir de":"Data da medida"}<input class="md-in" type="date" value="${E.inicio}" data-md="inicio"${trava?" disabled":""}></label><label class="md-campo">Data do documento<input class="md-in" type="date" value="${E.docData}" data-md="docData"${trava?" disabled":""}></label></div>`+
-      `<label class="md-campo" style="margin-top:10px">Empresa (cabeçalho)<input class="md-in" value="${esc(E.empresa)}" placeholder="Ex.: SERV CAMP TERCEIRIZAÇÃO" data-md="empresa" maxlength="80"${trava?" disabled":""}></label>${E.empresa?"":`<p class="md-dica">A empresa não veio na última planilha para este colaborador: preencha.</p>`}</div>`+
-    `<div class="md-sec"><h5>Faltas desta ocorrência</h5><div class="md-chips">${dts||'<span class="md-dica">Sem datas.</span>'}</div></div>`+
-    `<div class="md-sec"><h5>Situações</h5><div class="md-chips">${sits}</div><p class="md-dica">Marque o que aconteceu: o texto do motivo se monta sozinho, e você pode reescrever.</p></div>`+
-    `<div class="md-sec"><div class="md-ta-h"><h5 style="margin:0">Motivo (aparece no documento)</h5>${E.manual&&!trava?`<button type="button" data-md="refaz">Refazer texto automático</button>`:`<small>${E.motivo.length}/1500</small>`}</div><textarea class="md-ta" data-md="motivo" maxlength="1500" placeholder="Descreva o motivo da medida"${trava?" disabled":""}>${esc(E.motivo)}</textarea></div>`;
+    `<section class="md-sec md-ctx"><div class="md-sec-h"><h5>Histórico no ano</h5><small class="md-sec-d">clique num número para ver a lista</small></div><div class="md-hist">${hist}</div>${avisoAnt}</section>`+
+    passo("tipo",corpoTipo)+passo("datas",corpoDatas)+passo("ocor",corpoOcor)+passo("motivo",corpoMotivo);
 }
-function pintaPrev(){
+function pintaPrev(mudou){
   const E=MDS.ed,el=document.getElementById("md-prev");if(!E||!el)return;
-  el.innerHTML=`<div class="md-prev-h"><b>Prévia do documento · A4</b><span>${E.gerada?"Documento "+esc(E.gerada.numero):"Muda na hora conforme você preenche"}</span></div><div id="md-cx"><div class="md-papel" id="md-papel">${docHtml(docDoEd(E))}</div></div>`;
+  const z=MDS.zoom;
+  el.innerHTML=`<div class="md-prev-h"><div><b>Prévia do documento</b><span>${E.gerada?"Documento "+esc(E.gerada.numero)+" · pronto para imprimir":"Folha A4 · muda na hora conforme você preenche"}</span></div>`+
+    `<div class="md-zoom" role="group" aria-label="Zoom da prévia"><button type="button" data-md="zoom" data-v="-1" aria-label="Diminuir">${IC.menos}</button><span id="md-zoom-v">${z?Math.round(z*100)+"%":"Ajustado"}</span><button type="button" data-md="zoom" data-v="1" aria-label="Aumentar">${IC.mais}</button><button type="button" data-md="zoom" data-v="fit" aria-label="Ajustar à largura" title="Ajustar à largura">${IC.ajustar}</button></div></div>`+
+    `<div id="md-cx"><div class="md-papel${mudou?" mudou":""}" id="md-papel">${docHtml(docDoEd(E))}</div></div>`;
   escala();
 }
 function escala(){
   const p=document.getElementById("md-papel"),cx=document.getElementById("md-cx"),pv=document.getElementById("md-prev");if(!p||!cx||!pv)return;
-  const s=Math.min(1,Math.max(.35,(pv.clientWidth-44)/794));
+  const ajuste=Math.min(1,Math.max(.35,(pv.clientWidth-56)/794)),s=MDS.zoom||ajuste;
   p.style.transform="scale("+s+")";p.style.transformOrigin="top left";cx.style.width=(794*s)+"px";cx.style.height=(p.offsetHeight*s)+"px";
+  const v=document.getElementById("md-zoom-v");if(v)v.textContent=MDS.zoom?Math.round(s*100)+"%":"Ajustado ("+Math.round(s*100)+"%)";
 }
 function faltando(E){
   const f=[];
@@ -231,21 +295,29 @@ function faltando(E){
 }
 function pintaRod(){
   const E=MDS.ed,el=document.getElementById("md-rod");if(!E||!el)return;
+  pintaPassos();
+  el.classList.toggle("alerta",!!(E.sair||E.confirma||E.repetida));
+  if(E.sair){
+    el.innerHTML=`<div class="md-rod-txt"><b>Fechar sem gerar a medida?</b><span>O que foi preenchido nesta janela se perde.</span></div><button type="button" class="md-b" data-md="ficar">Continuar preenchendo</button><button type="button" class="md-b er" data-md="descartar">${IC.x}Descartar e fechar</button>`;
+    return;
+  }
   if(E.gerada){
-    el.innerHTML=`<div class="md-alerta ok" style="margin:0;flex:1"><b>Medida ${esc(E.gerada.numero)} gerada.</b> Imprima, colha as assinaturas e <b>lance no SAR2G</b>: até a planilha trazer a medida, ela fica no seu perfil como pendente. Depois de assinado, anexe a foto em "Medidas geradas".</div><button type="button" class="md-b" data-md="fechar">Fechar</button><button type="button" class="md-b pri" data-md="imprimir">${IC.imp}Imprimir ou salvar PDF</button>`;
+    el.innerHTML=`<div class="md-rod-txt ok"><span class="md-selo">${IC.ok}</span><div><b>Medida ${esc(E.gerada.numero)} gerada.</b><span>Agora: 1) imprima e colha as assinaturas; 2) lance no SAR2G. Até a planilha trazer a medida, ela fica no seu perfil como pendente. Depois, anexe a foto do documento assinado em "Medidas geradas".</span></div></div><button type="button" class="md-b" data-md="fechar">Fechar</button><button type="button" class="md-b pri" data-md="imprimir">${IC.imp}Imprimir ou salvar PDF</button>`;
     return;
   }
   const f=faltando(E),t=TIPOS[E.tipo];
   if(E.repetida){
-    el.innerHTML=`<div class="md-alerta" style="margin:0;flex:1">${esc(E.repetida)}</div><button type="button" class="md-b" data-md="voltar">Voltar</button><button type="button" class="md-b pri" data-md="repetir"${E.enviando?" disabled":""}>Gerar outra mesmo assim</button>`;
+    el.innerHTML=`<div class="md-rod-txt am"><b>Já existe medida para esta ocorrência</b><span>${esc(E.repetida)}</span></div><button type="button" class="md-b" data-md="voltar">Voltar</button><button type="button" class="md-b pri" data-md="repetir"${E.enviando?" disabled":""}>Gerar outra mesmo assim</button>`;
     return;
   }
   if(E.confirma){
-    el.innerHTML=`<div class="md-aviso" style="flex:1;font-size:.82rem;color:inherit">Gerar <b>${esc(t.rot.toLowerCase())}${E.tipo==="SUSPENSAO"?" de "+E.dias+(E.dias===1?" dia":" dias"):""}</b> para <b>${esc(titulo(E.c.nome))}</b>? O documento recebe um número e fica registrado em seu nome, pendente de lançar no SAR2G.</div><button type="button" class="md-b" data-md="voltar"${E.enviando?" disabled":""}>Voltar</button><button type="button" class="md-b pri" data-md="gerar"${E.enviando?" disabled":""}>${E.enviando?"Gerando…":IC.ok+"Confirmar e gerar"}</button>`;
+    el.innerHTML=`<div class="md-rod-txt"><b>Gerar ${esc(t.rot.toLowerCase())}${E.tipo==="SUSPENSAO"?" de "+E.dias+(E.dias===1?" dia":" dias"):""} para ${esc(titulo(E.c.nome))}?</b><span>O documento recebe um número e fica registrado em seu nome, pendente de lançar no SAR2G.</span></div><button type="button" class="md-b" data-md="voltar"${E.enviando?" disabled":""}>Voltar e revisar</button><button type="button" class="md-b pri" data-md="gerar"${E.enviando?" disabled":""}>${E.enviando?'<span class="md-gira"></span>Gerando…':IC.ok+"Confirmar e gerar"}</button>`;
     return;
   }
-  el.innerHTML=(E.erro?`<div class="md-alerta er" style="margin:0;flex:1">${esc(E.erro)}</div>`:`<div class="md-aviso">${f.length?"Falta preencher "+lista(f)+".":"Confira o documento ao lado. O SAR2G continua sendo o sistema oficial: depois de gerar, lance a medida lá."}</div><span class="sp"></span>`)+
-    `<button type="button" class="md-b" data-md="fechar">Cancelar</button><button type="button" class="md-b pri" data-md="confirmar"${f.length?" disabled":""}>${IC.doc}Gerar documento</button>`;
+  const resumo=t?`${t.rot}${E.tipo==="SUSPENSAO"?" · "+E.dias+(E.dias===1?" dia":" dias"):""}${E.inicio?" · "+dma(E.inicio):""}`:"Nenhum tipo escolhido";
+  el.innerHTML=(E.erro?`<div class="md-rod-txt er"><b>Não deu para gerar</b><span>${esc(E.erro)}</span></div>`:
+    `<div class="md-rod-txt"><b>${esc(resumo)}</b><span>${f.length?"Falta preencher "+lista(f)+".":"Tudo pronto. Confira o documento ao lado: o SAR2G continua sendo o sistema oficial, depois de gerar lance a medida lá."}</span></div>`)+
+    `<button type="button" class="md-b" data-md="fechar">Cancelar</button><button type="button" class="md-b pri" data-md="confirmar"${f.length?" disabled":""} title="${f.length?"Falta preencher "+esc(lista(f)):"Gerar o documento"}">${IC.doc}Gerar documento</button>`;
 }
 function atualizaMotivo(){const E=MDS.ed;if(E&&!E.manual)E.motivo=motivoAuto(E);}
 function cliqueEd(e){
@@ -254,22 +326,43 @@ function cliqueEd(e){
   const b=e.target.closest("[data-md]");if(!b||b.disabled)return;
   const a=b.dataset.md,v=b.dataset.v;
   if(a==="fechar"){fecharEd(!!E.gerada);return;}
+  if(a==="ficar"){E.sair=false;pintaRod();return;}
+  if(a==="ver"){E.ver=E.ver===v?null:v;const fm=document.getElementById("md-form"),y=fm?fm.scrollTop:0;pintaForm();if(fm)fm.scrollTop=y;return;}
+  if(a==="descartar"){fecharEd(true);return;}
+  if(a==="ir"||a==="foco"||a==="prox"){if(E.gerada)return;E.foco=v;const fm=document.getElementById("md-form");pintaForm();const s=document.getElementById("md-p-"+v);if(s){s.classList.add("abre");if(fm)fm.scrollTo({top:Math.max(0,s.offsetTop-12),behavior:"smooth"});}return;}
+  if(a==="zoom"){
+    const pv=document.getElementById("md-prev"),ajuste=pv?Math.min(1,Math.max(.35,(pv.clientWidth-56)/794)):1;
+    MDS.zoom=v==="fit"?null:Math.min(1.5,Math.max(.35,Math.round(((MDS.zoom||ajuste)+Number(v)*.1)*10)/10));
+    escala();return;
+  }
   if(a==="imprimir"){imprimir(docDoEd(E));return;}
   if(a==="tipo"){E.tipo=v;E.erro=null;}
   else if(a==="dias"){E.dias=Math.min(30,Math.max(1,(Number(E.dias)||1)+Number(v)));}
   else if(a==="falta"){E.faltas.has(v)?E.faltas.delete(v):E.faltas.add(v);atualizaMotivo();}
   else if(a==="sit"){E.sits.has(v)?E.sits.delete(v):E.sits.add(v);atualizaMotivo();}
   else if(a==="refaz"){E.manual=false;atualizaMotivo();}
-  else if(a==="confirmar"){E.confirma=true;E.erro=null;pintaRod();return;}
+  else if(a==="confirmar"){E.confirma=true;E.erro=null;pintaRod();const g=document.querySelector('#md-rod [data-md="gerar"]');if(g)g.focus();return;}
   else if(a==="voltar"){E.confirma=false;E.repetida=null;pintaRod();return;}
   else if(a==="gerar"){gerar(false);return;}
   else if(a==="repetir"){gerar(true);return;}
   else return;
-  pintaForm();pintaPrev();pintaRod();
+  // redesenhar o formulário não pode jogar a rolagem para o topo
+  const fm=document.getElementById("md-form"),y=fm?fm.scrollTop:0;
+  pintaForm();if(fm)fm.scrollTop=y;pintaPrev(true);pintaRod();
 }
 function digitouEd(e){
   const E=MDS.ed,a=e.target.dataset&&e.target.dataset.md;if(!E||!a)return;
-  if(a==="motivo"){E.motivo=e.target.value;E.manual=true;const h=e.target.closest(".md-sec").querySelector(".md-ta-h");if(h&&!h.querySelector("button")){h.innerHTML=`<h5 style="margin:0">Motivo (aparece no documento)</h5><button type="button" data-md="refaz">Refazer texto automático</button>`;}}
+  if(a==="motivo"){
+    E.motivo=e.target.value;E.manual=true;
+    const sec=e.target.closest(".md-sec"),h=sec&&sec.querySelector(".md-ta-h");
+    if(h){
+      const tag=h.querySelector(".md-tag");if(tag){tag.className="md-tag man";tag.textContent="Escrito por você";}
+      if(!h.querySelector("button")&&tag)tag.insertAdjacentHTML("afterend",`<button type="button" data-md="refaz">Voltar ao texto automático</button>`);
+      const ct=h.querySelector(".md-conta");if(ct){ct.textContent=E.motivo.length+"/1500";ct.classList.toggle("quase",E.motivo.length>1350);}
+    }
+    const n=sec&&sec.querySelector(".md-n"),ok=E.motivo.trim().length>=5;
+    if(n&&n.classList.contains("ok")!==ok){n.classList.toggle("ok",ok);n.innerHTML=ok?IC.ok:"4";}
+  }
   else if(a==="empresa")E.empresa=e.target.value;
   else if(a==="diasIn")E.dias=Math.min(30,Math.max(1,parseInt(e.target.value,10)||1));
   else return;
@@ -279,9 +372,10 @@ function mudouEd(e){
   const E=MDS.ed,a=e.target.dataset&&e.target.dataset.md;if(!E||!a)return;
   if(a==="inicio")E.inicio=e.target.value;
   else if(a==="docData")E.docData=e.target.value||hojeSP();
-  else if(a==="diasIn"){pintaForm();return;}
+  else if(a==="diasIn"){const fm=document.getElementById("md-form"),y=fm?fm.scrollTop:0;pintaForm();if(fm)fm.scrollTop=y;return;}
   else return;
-  pintaForm();pintaPrev();pintaRod();
+  const fm=document.getElementById("md-form"),y=fm?fm.scrollTop:0;
+  pintaForm();if(fm)fm.scrollTop=y;pintaPrev(true);pintaRod();
 }
 async function gerar(repetir){
   const E=MDS.ed;if(!E||E.enviando)return;
