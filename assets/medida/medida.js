@@ -74,6 +74,8 @@ const geradasDoCaso=k=>(MDS.lista||[]).filter(g=>g.caso===k&&g.status!=="CANCELA
    O mesmo HTML na prévia e na impressão. Suspensão: modelo oficial transcrito do PDF de 26/10/2026.
    Advertência: provisório, no mesmo formato, até chegar o modelo oficial. */
 const DOC_CSS=`.md-doc{box-sizing:border-box;width:794px;min-height:1123px;padding:64px 72px 70px;background:#fff;color:#111;font-family:Arial,Helvetica,sans-serif;font-size:13.5px;line-height:1.55;position:relative}
+.md-doc .logo{text-align:center;margin:-16px 0 4px}
+.md-doc .logo svg{width:230px;height:auto}
 .md-doc .emp{text-align:center;font-weight:700;font-size:15px;letter-spacing:.02em}
 .md-doc h1{margin:26px 0 22px;text-align:center;font-size:15.5px;font-weight:700}
 .md-doc .re{font-weight:700;margin:0 0 18px}
@@ -88,6 +90,8 @@ const DOC_CSS=`.md-doc{box-sizing:border-box;width:794px;min-height:1123px;paddi
 .md-doc .rod{position:absolute;left:72px;right:72px;bottom:28px;border-top:1px solid #ccc;padding-top:6px;font-size:9.5px;color:#555;display:flex;justify-content:space-between;gap:12px}
 .md-doc .vz{color:#b42318;font-style:italic;text-decoration:none;text-transform:none;font-weight:400}`;
 function injetaCss(){if(document.getElementById("md-doc-css"))return;const s=document.createElement("style");s.id="md-doc-css";s.textContent=DOC_CSS;document.head.appendChild(s);}
+// Logo do Grupo ServCamp para papel branco (vetor: sai nítido na prévia, na impressão e no PDF)
+const LOGO_SC='<svg class="logo-sc" viewBox="0 0 400 140" role="img" aria-label="Grupo ServCamp terceirizações"><defs><linearGradient id="mdLgC" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c9ced6"/><stop offset="1" stop-color="#848a94"/></linearGradient><linearGradient id="mdLgA" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3f78f0"/><stop offset="1" stop-color="#1b3f9e"/></linearGradient><clipPath id="mdLcC"><rect x="-20" y="-20" width="122" height="260"/></clipPath><clipPath id="mdLcA"><rect x="16" y="-20" width="140" height="260"/></clipPath></defs><g transform="translate(4 2)"><g clip-path="url(#mdLcC)"><path d="M103.54 41.46A47 47 0 1 0 55.36 94.97L56.27 68.99A21 21 0 1 1 77.8 45.08Z" fill="#5d636d" transform="translate(-6 3)"/><path d="M103.54 41.46A47 47 0 1 0 55.36 94.97L56.27 68.99A21 21 0 1 1 77.8 45.08Z" fill="url(#mdLgC)"/></g><g clip-path="url(#mdLcA)"><path d="M52.84 45.71A47 47 0 1 1 14.46 85.46L40.2 89.08A21 21 0 1 0 57.35 71.32Z" fill="#14307f" transform="translate(-6 3)"/><path d="M52.84 45.71A47 47 0 1 1 14.46 85.46L40.2 89.08A21 21 0 1 0 57.35 71.32Z" fill="url(#mdLgA)"/></g></g><text x="132" y="44" font-size="25" fill="#7d838d" style="font-family:Segoe UI,Arial,sans-serif;font-style:italic">Grupo</text><text x="124" y="96" font-size="54" font-style="italic" textLength="268" lengthAdjust="spacingAndGlyphs" style="font-family:Segoe UI Black,Arial Black,Arial,sans-serif;font-weight:900;letter-spacing:-1px"><tspan fill="#7d838d">SERV</tspan><tspan fill="#1b3f9e">CAMP</tspan></text><text x="390" y="126" font-size="21" fill="#7d838d" text-anchor="end" style="font-family:Segoe UI,Arial,sans-serif;font-style:italic">terceirizações</text></svg>';
 const FECHO="Não só esperamos que tome as necessárias providências a fim de que não se repita (m) a (s) irregularidade (s) acima discriminada (s), como também aproveitamos para esclarecer-lhes que a repetição ou a prática de outra Prevista em nossos Regulamentos, Ordens de Serviços, etc., irá contribuir desfavoravelmente em seu progresso nesta Empresa, além de poder acarretar-lhe penalidades mais severas, conforme preceitua as disposições do Artigo 482 e suas alíneas da Consolidação das leis do trabalho.";
 // d: { empresa, re, nome, tipoId, dias, inicio, motivo, docData, numero, geradoPor, geradoEm }
 function docHtml(d){
@@ -115,6 +119,7 @@ function docHtml(d){
   const rod=d.numero?`<div class="rod"><span>Painel ServCamp · documento <b>${esc(d.numero)}</b></span><span>Gerado em ${esc(dma(d.geradoEm))}${d.geradoPor?" por "+esc(nomeDe(d.geradoPor)):""}</span></div>`
     :`<div class="rod"><span>Painel ServCamp · prévia: o número do documento sai ao gerar</span><span></span></div>`;
   return `<div class="md-doc">
+  <div class="logo">${LOGO_SC}</div>
   <div class="emp">${d.empresa?esc(String(d.empresa).toUpperCase()):vz("(empresa)")}</div>
   <h1>${tit}</h1>
   <div class="re">RE: ${re} – ${nome}</div>
