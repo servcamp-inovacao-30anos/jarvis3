@@ -203,11 +203,13 @@ test("retorno numa planilha seguinte: os dias de quem faltou antes continuam sen
   assert.deepEqual(t.fm_dias.map(d => [d.re, d.data]), [[521, "2099-01-02"]]);
 });
 
-test("a cópia da planilha que as telas carregam não leva os dias da ficha", async () => {
+test("a cópia da planilha que as telas carregam não leva os dias da ficha nem as ocorrências", async () => {
   const importar = require("../api/import");
   const tab = tabelasVazias(); supabaseFalso(tab);
-  await chamar(importar, { method: "POST", usuario: "aprovador", headers: { "content-type": "application/json" }, body: { data: { ...planilha(), clientes: [] } } });
+  const ocorrencias = [{ RE: "521", NOME: "MARIA", COD: "A", INI: "2026-10-10", FIM: "2026-10-10", PARCIAL: false, FASE: "Concluido", DESC: "FALTA ABONADA" }];
+  await chamar(importar, { method: "POST", usuario: "aprovador", headers: { "content-type": "application/json" }, body: { data: { ...planilha(), ocorrencias, clientes: [] } } });
   assert.equal(tab.dashboard_snapshots[0].data.fichaDias, undefined);
+  assert.equal(tab.dashboard_snapshots[0].data.ocorrencias, undefined);
   assert.equal(tab.fm_dias.length, 2, "mas o módulo guardou");
 });
 
