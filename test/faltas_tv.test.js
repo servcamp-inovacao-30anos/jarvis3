@@ -164,3 +164,26 @@ test("indicadores do topo da TV: cada um abre o detalhe dele (folha, faltas, col
   assert.ok(/function ftvDetFecha\(\)\{FTV\.det="";FTV\.kpi="";/.test(H), "fechar limpa os dois");
   assert.ok(/if\(FTV\.det\|\|FTV\.kpi\)FTV\.tDet=setTimeout\(ftvDetFecha,90000\)/.test(H), "volta sozinho para a visão geral em 90 s");
 });
+
+test("só hoje: a TV mostra apenas as faltas do dia de hoje; sem o filtro continua a folha toda", () => {
+  const T = carrega("2026-10-27", [
+    caso(1, "CARLOS NOGUEIRA", "NO_PRAZO", ["2026-10-26", "2026-10-27"], "2026-10-29"),
+    caso(2, "CARLOS NOGUEIRA", "NO_PRAZO", ["2026-10-26"], "2026-10-28"),
+    caso(3, "FRANK PIMENTEL", "PRAZO_VENCIDO", ["2026-10-27"], "2026-10-28")
+  ]);
+  const todas = T.ftvDados(), hoje = T.ftvDados(true);
+  assert.equal(todas.soHoje, false);
+  assert.equal(todas.lista.find(x => x.nome === "CARLOS NOGUEIRA").faltas, 3);
+  assert.equal(hoje.soHoje, true);
+  const c = hoje.lista.find(x => x.nome === "CARLOS NOGUEIRA"), f = hoje.lista.find(x => x.nome === "FRANK PIMENTEL");
+  assert.deepEqual(c.itens.map(i => [i.c.re, i.fl]), [[1, ["2026-10-27"]]], "o caso 2 só tem falta de ontem: sai; o 1 fica só com a de hoje");
+  assert.equal(c.faltas, 1);
+  assert.equal(f.faltas, 1);
+});
+
+test("só hoje: botão no topo, escolha guardada nesta TV e aceita &dia=hoje no endereço", () => {
+  const troca = (H.match(/function ftvTrocaHoje\(\)\{[\s\S]*?\n\}/) || [""])[0];
+  assert.ok(troca.includes("ftvPinta()"), "o botão repinta a TV");
+  assert.ok(/ftvDados\(ftvSoHoje\(\)\)/.test(H), "a tela usa a escolha");
+  assert.ok(/localStorage\.setItem\("ftvSoHoje"/.test(H) && /get\("dia"\)/.test(H), "guardada e aceita pelo endereço");
+});
