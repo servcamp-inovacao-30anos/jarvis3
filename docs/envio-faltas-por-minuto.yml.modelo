@@ -1,0 +1,24 @@
+﻿# Verificação de 5 em 5 minutos do envio automático do aviso de faltas.
+# Só roda depois de configurar a variável de repositório APP_URL (ex.: https://painel.exemplo.com.br).
+# Se a Vercel tiver CRON_SECRET, cadastre o mesmo valor no secret CRON_SECRET do GitHub.
+# O sistema só envia no dia e a partir do horário escolhido no painel; repetir a chamada não reenvia.
+name: Envio de faltas por minuto
+on:
+  schedule:
+    - cron: "*/5 9-23 * * *"   # 6h às 20h59 de Brasília (UTC-3)
+  workflow_dispatch:
+jobs:
+  chamar:
+    if: ${{ vars.APP_URL != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Chamar o agendamento
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -n "$CRON_SECRET" ]; then
+            curl -fsS --max-time 55 -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/rh?modulo=faltasemail&t=cron"
+          else
+            curl -fsS --max-time 55 "$APP_URL/api/rh?modulo=faltasemail&t=cron"
+          fi

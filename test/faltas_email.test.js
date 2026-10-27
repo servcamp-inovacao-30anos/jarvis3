@@ -518,9 +518,9 @@ test("agenda: sem escolha vale segunda às 14h; o painel mostra o próximo envio
   base();
   const r = await api("painel", { usuario: RESP });
   assert.deepEqual([r.body.agenda.dia, r.body.agenda.hora], [1, 14]);
-  assert.deepEqual(r.body.agenda.proximo, { dia: "2026-11-02", hora: 14 }, "segunda 14h10: a das 14h já passou, vale a próxima");
+  assert.deepEqual(r.body.agenda.proximo, { dia: "2026-11-02", hora: 14, minuto: 0 }, "segunda 14h10: a das 14h já passou, vale a próxima");
   agora = new Date("2026-10-26T15:00:00Z"); // segunda 12h
-  assert.deepEqual((await api("painel", { usuario: RESP })).body.agenda.proximo, { dia: "2026-10-26", hora: 14 });
+  assert.deepEqual((await api("painel", { usuario: RESP })).body.agenda.proximo, { dia: "2026-10-26", hora: 14, minuto: 0 });
 });
 
 test("agenda: dia e hora escolhidos no painel mandam no envio automático; só a conta do responsável muda", async () => {
@@ -530,7 +530,7 @@ test("agenda: dia e hora escolhidos no painel mandam no envio automático; só a
   for (const ruim of [{ dia: 7, hora: 9 }, { dia: 5, hora: 5 }, { dia: 5, hora: 21 }, { dia: "x", hora: 9 }, { dia: 1.5, hora: 9 }, {}]) assert.equal((await cfg(ruim)).body.codigo, "AGENDA_INVALIDA", JSON.stringify(ruim));
   const r = await cfg({ dia: 5, hora: 9 }); // sexta, 9h
   assert.equal(r.statusCode, 200);
-  assert.deepEqual(r.body.agenda.proximo, { dia: "2026-10-30", hora: 9 });
+  assert.deepEqual(r.body.agenda.proximo, { dia: "2026-10-30", hora: 9, minuto: 0 });
   assert.equal(t.fm_auditoria.filter(e => e.acao === "FALTAS_EMAIL_AGENDA").length, 1);
   await cfg({ dia: 5, hora: 9 });
   assert.equal(t.fm_auditoria.filter(e => e.acao === "FALTAS_EMAIL_AGENDA").length, 1, "mesma escolha não duplica");
@@ -547,6 +547,19 @@ test("agenda: dia e hora escolhidos no painel mandam no envio automático; só a
   assert.equal((await cron()).body.enviados, 0);
 });
 
+test("agenda com minuto: 13:51 só envia a partir de 13:51 e aceita só minutos de 0 a 59", async () => {
+  base();
+  const cfg = corpo => api("agenda", { method: "POST", usuario: RESP, body: corpo });
+  for (const ruim of [{ dia: 5, hora: 13, minuto: 60 }, { dia: 5, hora: 13, minuto: -1 }, { dia: 5, hora: 13, minuto: 1.5 }, { dia: 5, hora: 13, minuto: "x" }]) assert.equal((await cfg(ruim)).body.codigo, "AGENDA_INVALIDA", JSON.stringify(ruim));
+  const r = await cfg({ dia: 5, hora: 13, minuto: 51 });
+  assert.deepEqual(r.body.agenda.proximo, { dia: "2026-10-30", hora: 13, minuto: 51 });
+  assert.deepEqual((await api("painel", { usuario: RESP })).body.agenda.minuto, 51);
+  agora = new Date("2026-10-30T16:50:00Z"); // sexta 13h50
+  assert.equal((await cron()).body.ignorado, "ANTES_DO_HORARIO");
+  assert.equal(enviados.length, 0);
+  agora = new Date("2026-10-30T16:51:00Z"); // sexta 13h51
+  assert.equal((await cron()).body.enviados, 4);
+});
 // ── teste de todas as áreas ─────────────────────────────────────────────────
 test("teste de todas as áreas: um e-mail por área só para quem foi escolhido, nada ao supervisor e nada marcado como oficial", async () => {
   const t = base();
