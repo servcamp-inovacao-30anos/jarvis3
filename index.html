@@ -9725,17 +9725,17 @@ function comFechadosAno(ano){return(COM_P||[]).filter(p=>p.status==="FECHADO"&&S
 function cpxMetaRender(){
   const el=document.getElementById("cpx-meta-ano");if(!el)return;
   const ano=new Date(Date.now()-3*3600000).getUTCFullYear(),meta=comMetaAno(ano),fec=comFechadosAno(ano).length;
-  const pct=meta?Math.min(100,Math.round(fec/meta*100)):0;
-  el.innerHTML='<span style="font-size:1.1rem">🎯</span><div style="flex:1;min-width:200px"><div style="font-size:.62rem;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:#64748b">Meta anual de contratos fechados · '+ano+'</div>'+
-    '<div style="font-size:.78rem;color:#0d1f35;font-weight:700">'+(meta?fec+' de '+meta+' fechados ('+pct+'%)'+(fec>=meta?' · meta batida 🎉':' · faltam '+(meta-fec)):'Meta ainda não definida. Ela aparece para a diretoria no Painel Comercial.')+'</div>'+
-    (meta?'<div style="height:6px;background:#eef2f7;border-radius:4px;margin-top:5px;max-width:360px"><div style="height:6px;border-radius:4px;width:'+pct+'%;background:'+(fec>=meta?'#16a34a':'#2e8fef')+'"></div></div>':'')+'</div>'+
-    '<label for="cpx-meta-inp" style="font-size:.66rem;font-weight:700;color:#64748b">Meta '+ano+'</label>'+
-    '<input id="cpx-meta-inp" class="rhf-i" type="number" min="0" step="1" style="width:90px" value="'+(meta==null?'':meta)+'" placeholder="Ex: 12">'+
+  const pct=meta==null?0:Math.min(100,meta);
+  el.innerHTML='<span style="font-size:1.1rem">🎯</span><div style="flex:1;min-width:200px"><div style="font-size:.62rem;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:#64748b">Meta anual de contratos · '+ano+' (porcentagem)</div>'+
+    '<div style="font-size:.78rem;color:#0d1f35;font-weight:700">'+(meta==null?'Meta ainda não definida. Ela aparece para a diretoria no Painel Comercial.':meta+'% da meta definida no ano · '+fec+' contratos fechados'+(meta>=100?' · meta batida 🎉':''))+'</div>'+
+    (meta==null?'':'<div style="height:6px;background:#eef2f7;border-radius:4px;margin-top:5px;max-width:360px"><div style="height:6px;border-radius:4px;width:'+pct+'%;background:'+(meta>=100?'#16a34a':'#2e8fef')+'"></div></div>')+'</div>'+
+    '<label for="cpx-meta-inp" style="font-size:.66rem;font-weight:700;color:#64748b">Meta '+ano+' (%)</label>'+
+    '<input id="cpx-meta-inp" class="rhf-i" type="number" min="0" step="1" style="width:90px" value="'+(meta==null?'':meta)+'" placeholder="Ex: 40">'+
     '<button type="button" class="rh-btn" style="padding:8px 14px" onclick="cpxMetaSalvar('+ano+')">Salvar meta</button><span id="cpx-meta-msg" role="status" style="font-size:.7rem;font-weight:700"></span>';
 }
 function cpxMetaSalvar(ano){
   const v=Number(document.getElementById("cpx-meta-inp").value),m=document.getElementById("cpx-meta-msg");
-  if(!Number.isInteger(v)||v<0){m.style.color="#dc2626";m.textContent="Informe um número inteiro.";return;}
+  if(!Number.isInteger(v)||v<0){m.style.color="#dc2626";m.textContent="Informe a porcentagem (número inteiro).";return;}
   fetch("/api/comercial?t=metaano",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ano,meta_contratos:v,atualizado_por:sessionStorage.getItem("userNome")||null})})
     .then(r=>r.json().catch(()=>({})).then(j=>{if(!r.ok)throw new Error(j.error||"Falha ao salvar.");}))
     .then(()=>fetch("/api/comercial?t=metaano").then(r=>r.json()).then(j=>{COM_METAANO=(j&&j.rows)||[];}))
@@ -18648,7 +18648,7 @@ function comDashRender(){
      contra a meta fixa de 4 e os serviços extras cadastrados. */
   {
     const ano=_M.ini.getFullYear(),metaA=comMetaAno(ano),fecA=comFechadosAno(ano).length;
-    const pctA=metaA?Math.min(100,Math.round(fecA/metaA*100)):0,batA=metaA&&fecA>=metaA;
+    const pctA=metaA==null?0:Math.min(100,metaA),batA=metaA!=null&&metaA>=100;
     const vis=comVisitasMes(_M).length,saldo=vis-COM_META_VISITAS,batV=vis>=COM_META_VISITAS;
     const hojeE=new Date(Date.now()-3*3600000).toISOString().slice(0,10),mesE=ymd(_M.ini).slice(0,7);
     const exAnd=(COM_EXTRAS||[]).filter(e=>String(e.data_inicio).slice(0,10)<=hojeE&&(!e.data_fim||String(e.data_fim).slice(0,10)>=hojeE));
@@ -18657,8 +18657,8 @@ function comDashRender(){
     const card=(cls,cor,ic,lbl,val,sub,extra,onc)=>`<div class="cvk cdm-card ${cls}" style="border-top:3px solid ${cor};${onc?"cursor:pointer":""}"${onc?` onclick="${onc}" title="Clique para ver os registros"`:""}><div style="font-size:1.05rem">${ic}</div><div class="cvk-lb" style="margin-top:5px">${lbl}</div><div class="cvk-v" style="font-size:1.3rem">${val}</div><div style="font-size:.64rem;color:#64748b">${sub}</div>${extra||""}</div>`;
     const barra=(p,c)=>`<div style="height:6px;background:#eef2f7;border-radius:4px;margin-top:7px"><div style="height:6px;border-radius:4px;width:${p}%;background:${c}"></div></div>`;
     h+=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px">`;
-    h+=card(batA?"cdm-ok":"","#0d9488","🎯",`Meta anual de contratos · ${ano}`,metaA?`${fecA} <span style="font-size:.8rem;color:#94a3b8">/ ${metaA}</span>`:"—",
-      metaA?(batA?"meta batida 🎉":`faltam ${metaA-fecA} · ${pctA}%`):"meta não definida (Propostas e Serviços Extras)",metaA?barra(pctA,batA?"#16a34a":"#0d9488"):"","comDet('metaAno')");
+    h+=card(batA?"cdm-ok":"","#0d9488","🎯",`Meta anual de contratos · ${ano}`,metaA==null?"—":`${metaA}% <span style="font-size:.8rem;color:#94a3b8">da meta do ano</span>`,
+      metaA==null?"meta não definida (Propostas e Serviços Extras)":`${fecA} contratos fechados${batA?" · meta batida 🎉":""}`,metaA==null?"":barra(pctA,batA?"#16a34a":"#0d9488"),"comDet('metaAno')");
     h+=card(batV?"cdm-ok cdm-festa":"cdm-atencao",batV?"#16a34a":"#f59e0b",batV?"🎉":"⚠️",`Visitas no mês · meta ${COM_META_VISITAS}`,`${vis} <span style="font-size:.8rem;color:#94a3b8">/ ${COM_META_VISITAS}</span>`,
       batV?`meta batida · ${saldo>0?"+"+saldo+" acima":"no alvo"}`:`ponto de atenção · faltam ${-saldo}`,barra(Math.min(100,Math.round(vis/COM_META_VISITAS*100)),batV?"#16a34a":"#f59e0b")+(batV?`<div class="cdm-confete" aria-hidden="true">${"<i></i>".repeat(12)}</div>`:""),"comDet('visitasMeta')");
     h+=card("","#16a34a","🧾","Serviços extras em andamento",exAnd.length,`${colAnd} colaborador${colAnd===1?"":"es"} hoje`,"","comDet('extrasAnd')");
