@@ -578,3 +578,44 @@ test("teste de todas as áreas: servidor de e-mail fora do ar não grava como en
   assert.equal(r.statusCode, 502);
   assert.equal(r.body.codigo, "FALHA_NO_ENVIO");
 });
+
+// ── falta já tratada por medida não é cobrada ───────────────────────────────
+test("falta com medida lançada a partir do dia dela já foi tratada: não entra no aviso (a mesma regra da tela e da TV)", async () => {
+  // Ana Paula (RE 101) faltou em 20/10 e 22/10; advertência lançada em 21/10: a de 20/10 está tratada, a de 22/10 não
+  base({ medidas: [{ chave: "P-1", re: 101, data: "2026-10-21", tipo: "ADVERTÊNCIA", grau: "ESCRITA", dias: 0, fase: "CONCLUIDO" }] });
+  const r = await cron();
+  assert.equal(r.statusCode, 200, JSON.stringify(r.body));
+  const jean = para("jean@exemplo.com.br")[0];
+  assert.ok(jean.html.includes("22/10/2026"), "a falta depois da medida continua cobrada");
+  assert.ok(!jean.html.includes("20/10/2026"), "a falta de 20/10 já foi tratada pela advertência de 21/10");
+  assert.ok(/1 falta|1 ocorr/i.test(jean.html) || !/2 faltas na semana/.test(jean.html), "não conta mais as duas");
+});
+
+test("medida na mesma data da falta também trata; medida cancelada ou de antes da falta não", async () => {
+  base({ medidas: [
+    { chave: "P-2", re: 201, data: "2026-10-23", tipo: "ADVERTÊNCIA", grau: "ESCRITA", dias: 0, fase: "CONCLUIDO" },      // mesmo dia da falta do Caio (Frank)
+    { chave: "P-3", re: 102, data: "2026-10-22", tipo: "SUSPENSÃO", grau: "SUSPENSÃO", dias: 2, fase: "CANCELADA" },     // cancelada: não trata o Bruno
+    { chave: "P-4", re: 101, data: "2026-10-19", tipo: "ADVERTÊNCIA", grau: "ESCRITA", dias: 0, fase: "CONCLUIDO" }      // um dia ANTES das faltas da Ana (20/10 e 22/10)
+  ] });
+  await cron();
+  const frank = para("frank@exemplo.com.br")[0].html, jean = para("jean@exemplo.com.br")[0].html;
+  assert.ok(!frank.includes("CAIO DO FRANK") && !frank.includes("Caio Do Frank"), "medida no dia da falta trata");
+  assert.ok(/Bruno/i.test(jean), "medida cancelada não trata");
+  assert.ok(/Ana Paula/i.test(jean), "medida anterior à falta não trata");
+});
+
+test("teste de várias áreas: só as escolhidas, quantas quiser; sem lista vão todas; lista sem área válida é recusada", async () => {
+  base();
+  const pedir = body => api("teste_areas", { method: "POST", usuario: RESP, body });
+  assert.equal((await pedir({ para: ["j@exemplo.com.br"], areas: [] })).body.codigo, "SEM_AREA");
+  assert.equal((await pedir({ para: ["j@exemplo.com.br"], areas: ["NAO EXISTE"] })).body.codigo, "SEM_AREA");
+  assert.equal(enviados.length, 0);
+  const duas = await pedir({ para: ["j@exemplo.com.br"], areas: ["JEAN KLEBER", "FRANK PIMENTEL", "NAO EXISTE"] });
+  assert.equal(duas.statusCode, 200, JSON.stringify(duas.body));
+  assert.equal(duas.body.areas, 2);
+  assert.equal(enviados.length, 2, "uma por área escolhida");
+  assert.ok(enviados.every(m => m.para.length === 1 && m.para[0] === "j@exemplo.com.br"));
+  enviados.length = 0;
+  const todas = await pedir({ para: ["j@exemplo.com.br"] });
+  assert.ok(todas.body.areas >= 4 && enviados.length === todas.body.areas, "sem lista, todas");
+});

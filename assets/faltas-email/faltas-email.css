@@ -467,3 +467,5 @@ html[data-theme="dark"] .fe-ov{--mut:#b4c3da;--faint:#9db0cb}
 .fe-sub,.fe-nv-t small{font-size:.76rem}
 .fe-eyebrow,.fe-tab th{color:var(--faint);font-weight:800}
 .fe-sec-h .fe-mut{color:var(--mut)}
+.fe-ta-h{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.fe-ta-h span{display:flex;gap:6px;flex-wrap:wrap}
