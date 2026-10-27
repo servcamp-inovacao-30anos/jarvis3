@@ -176,14 +176,12 @@ function dobrar(eventos, medidas, hoje, anexos) {
 // Histórico do colaborador no ano, para o e-mail e para o lado do formulário:
 // medidas válidas (sem as canceladas) e faltas injustificadas que continuam injustificadas.
 // medidas: [{ re, data, tipo, grau, dias, fase, nome? }]; faltasI: [{ re, data, nome? }]
-// `ano` (opcional): só conta o que é desse ano; a última medida de antes disso vai em `anterior`,
-// para o e-mail não dizer "0 medidas" de quem tem advertência de dezembro.
+// Conta tudo o que houver, de qualquer data (a medida de dezembro aparece em janeiro).
+// `ano` (opcional): só o selo de reincidência usa o corte do ano, o mesmo da tela.
 function historicoDe(re, nome, medidas, faltasI, ano) {
   const nome1 = primeiroNome(nome), mesma = x => String(x.re) === String(re) && (!x.nome || !nome1 || primeiroNome(x.nome) === nome1);
-  const todas = (medidas || []).filter(m => mesma(m) && !/CANCEL/i.test(String(m.fase || ""))).sort((a, b) => iso(b.data).localeCompare(iso(a.data)));
-  const corte = ano ? ano + "-01-01" : "";
-  const val = corte ? todas.filter(m => iso(m.data) >= corte) : todas;
-  const ant = corte ? todas.find(m => iso(m.data) < corte) : null;
+  const val = (medidas || []).filter(m => mesma(m) && !/CANCEL/i.test(String(m.fase || ""))).sort((a, b) => iso(b.data).localeCompare(iso(a.data)));
+  const noAno = ano ? val.filter(m => iso(m.data) >= ano + "-01-01").length : val.length;
   const cont = { verbal: 0, escrita: 0, suspensao: 0, diasSuspensao: 0 };
   val.forEach(m => {
     const t = String(m.tipo || "").toUpperCase(), g = String(m.grau || "").toUpperCase();
@@ -192,12 +190,11 @@ function historicoDe(re, nome, medidas, faltasI, ano) {
     else cont.escrita++;
   });
   const faltas = [...new Set((faltasI || []).filter(mesma).map(f => iso(f.data)))].sort();
-  const anterior = ant ? { data: iso(ant.data), tipo: ant.tipo, grau: ant.grau, dias: Number(ant.dias) || 0 } : null;
-  return { medidas: val.length, ...cont, anterior, ultima: val[0] ? { data: iso(val[0].data), tipo: val[0].tipo, grau: val[0].grau, dias: Number(val[0].dias) || 0 } : null, faltasAno: faltas.length, reincidente: val.length >= 2 }; // mesmo corte da tela: 2 ou mais medidas no ano
+  return { medidas: val.length, ...cont, ultima: val[0] ? { data: iso(val[0].data), tipo: val[0].tipo, grau: val[0].grau, dias: Number(val[0].dias) || 0 } : null, faltasAno: faltas.length, reincidente: noAno >= 2 }; // mesmo corte da tela: 2 ou mais medidas no ano
 }
 // "1 advertência verbal, 2 escritas e 1 suspensão (3 dias)" — curto, para o e-mail.
 function historicoTxt(h) {
-  if (!h || !h.medidas) return "Nenhuma medida no ano";
+  if (!h || !h.medidas) return "Nenhuma medida";
   const p = [];
   if (h.verbal) p.push(h.verbal + (h.verbal === 1 ? " advertência verbal" : " advertências verbais"));
   if (h.escrita) p.push(h.escrita + (h.escrita === 1 ? " advertência escrita" : " advertências escritas"));

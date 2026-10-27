@@ -259,8 +259,8 @@ async function faltasDoPeriodo(db, inicio, fim, corteMs) {
 async function historicoDoAno(db, hoje) {
   const ano = String(hoje).slice(0, 4), desde = ano + "-01-01";
   const [medidas, faltasI] = await Promise.all([
-    db.listar(`fm_medidas?select=chave,re,data,tipo,grau,dias,fase,nome&data=gte.${Number(ano) - 1}-01-01&order=re.asc,data.asc,chave.asc`),
-    db.listar(`fm_faltas?select=re,data,nome&codigo=eq.I&data=gte.${desde}&order=re.asc,data.asc`)
+    db.listar(`fm_medidas?select=chave,re,data,tipo,grau,dias,fase,nome&order=re.asc,data.asc,chave.asc`),
+    db.listar(`fm_faltas?select=re,data,nome&codigo=eq.I&order=re.asc,data.asc`)
   ]);
   return { ano, medidas: R.dedupMedidas(medidas).map(m => ({ ...m, data: iso(m.data) })), faltasI };
 }

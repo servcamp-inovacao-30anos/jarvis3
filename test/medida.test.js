@@ -91,16 +91,14 @@ test("histórico do colaborador no ano: conta por tipo, ignora cancelada e outra
   const h = MD.historicoDe(5, "ANA PAULA", medidas, faltas);
   assert.deepEqual([h.medidas, h.verbal, h.escrita, h.suspensao, h.diasSuspensao, h.faltasAno, h.reincidente, h.ultima.data], [3, 1, 1, 1, 2, 2, true, "2026-08-01"]);
   assert.equal(MD.historicoTxt(h), "1 advertência verbal, 1 advertência escrita e 1 suspensão (2 dias)");
-  assert.equal(MD.historicoTxt(MD.historicoDe(9, "X", medidas, faltas)), "Nenhuma medida no ano");
+  assert.equal(MD.historicoTxt(MD.historicoDe(9, "X", medidas, faltas)), "Nenhuma medida");
 });
 
-test("medida do ano anterior não conta no ano, mas aparece como 'anterior' (não some do e-mail)", () => {
+test("medida de ano anterior aparece no histórico, mas o selo de reincidência só conta o ano corrente", () => {
   const medidas = [{ re: 7, data: "2025-12-23", tipo: "ADVERTÊNCIA", grau: "ESCRITA" }, { re: 7, data: "2025-03-01", tipo: "ADVERTÊNCIA", grau: "VERBAL" }];
-  const h = MD.historicoDe(7, "ANA", medidas, [{ re: 7, data: "2026-10-22" }], 2026);
-  assert.deepEqual([h.medidas, h.faltasAno, h.reincidente, h.ultima, h.anterior.data, h.anterior.grau], [0, 1, false, null, "2025-12-23", "ESCRITA"]);
-  const sem = MD.historicoDe(7, "ANA", medidas, [], 2025);
-  assert.equal(sem.medidas, 2);
-  assert.equal(sem.anterior, null);
+  const h = MD.historicoDe(7, "ANA", medidas, [{ re: 7, data: "2025-11-10" }, { re: 7, data: "2026-10-22" }], 2026);
+  assert.deepEqual([h.medidas, h.faltasAno, h.reincidente, h.ultima.data], [2, 2, false, "2025-12-23"]);
+  assert.equal(MD.historicoDe(7, "ANA", medidas, [], 2025).reincidente, true);
 });
 
 // ── rotas ───────────────────────────────────────────────────────────────────
@@ -189,13 +187,13 @@ test("e-mail: tabela de reincidência no ano, selo de reincidente e botão para 
   h.txt = MD.historicoTxt(h);
   const linhas = [{ re: 1, nome: "ANA", posto: "P", cargo: "C", escala: "12X36", datas: ["2026-10-20"], hist: h }];
   const m = HTML.montar({ area: "FRANK PIMENTEL", inicio: "2026-10-19", fim: "2026-10-25", linhas, logo: "x", link: "https://painel.exemplo.com.br/?pg=faltassup" });
-  assert.match(m.html, /Reincidência no ano/);
+  assert.match(m.html, /Histórico dos colaboradores/);
   assert.match(m.html, /REINCIDENTE/);
   assert.match(m.html, /Suspensão de 2 dias/);
   assert.match(m.html, /href="https:\/\/painel\.exemplo\.com\.br\/\?pg=faltassup"/);
-  assert.match(m.texto, /No ano: 2 faltas injustificadas · 2 medidas \(1 advertência escrita e 1 suspensão \(2 dias\)\)/);
+  assert.match(m.texto, /Histórico: 2 faltas injustificadas · 2 medidas \(1 advertência escrita e 1 suspensão \(2 dias\)\)/);
   const sem = HTML.montar({ area: "X", inicio: "2026-10-19", fim: "2026-10-25", linhas: linhas.map(l => ({ ...l, hist: null })), logo: "x", link: null });
-  assert.doesNotMatch(sem.html, /Reincidência no ano|Abrir no Painel/, "sem histórico e sem endereço: o e-mail sai como antes");
+  assert.doesNotMatch(sem.html, /Histórico dos colaboradores|Abrir no Painel/, "sem histórico e sem endereço: o e-mail sai como antes");
 });
 
 test("e-mail: o endereço do painel é guardado ao abrir o painel do aviso (só https, nunca localhost)", async () => {
