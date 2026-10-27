@@ -94,6 +94,15 @@ test("histórico do colaborador no ano: conta por tipo, ignora cancelada e outra
   assert.equal(MD.historicoTxt(MD.historicoDe(9, "X", medidas, faltas)), "Nenhuma medida no ano");
 });
 
+test("medida do ano anterior não conta no ano, mas aparece como 'anterior' (não some do e-mail)", () => {
+  const medidas = [{ re: 7, data: "2025-12-23", tipo: "ADVERTÊNCIA", grau: "ESCRITA" }, { re: 7, data: "2025-03-01", tipo: "ADVERTÊNCIA", grau: "VERBAL" }];
+  const h = MD.historicoDe(7, "ANA", medidas, [{ re: 7, data: "2026-10-22" }], 2026);
+  assert.deepEqual([h.medidas, h.faltasAno, h.reincidente, h.ultima, h.anterior.data, h.anterior.grau], [0, 1, false, null, "2025-12-23", "ESCRITA"]);
+  const sem = MD.historicoDe(7, "ANA", medidas, [], 2025);
+  assert.equal(sem.medidas, 2);
+  assert.equal(sem.anterior, null);
+});
+
 // ── rotas ───────────────────────────────────────────────────────────────────
 function base() {
   const t = {

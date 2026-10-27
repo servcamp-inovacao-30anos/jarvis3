@@ -95,7 +95,7 @@ const pl = (n, um, v) => n + " " + (n === 1 ? um : v);
 const SELO_REIN = `<span style="display:inline-block;padding:2px 8px;border:1px solid #f4b4ad;border-radius:10px;background:#fdecea;color:#b42318;font-size:10px;line-height:14px;font-weight:700;letter-spacing:.5px;white-space:nowrap">REINCIDENTE</span>`;
 function noAno(h) {
   if (!h) return "";
-  return `<div style="font-size:11px;line-height:16px;font-weight:400;color:${CINZA};padding-top:5px">${h.reincidente ? SELO_REIN + "<br>" : ""}No ano: ${pl(h.faltasAno, "falta", "faltas")} · ${pl(h.medidas, "medida", "medidas")}</div>`;
+  return `<div style="font-size:11px;line-height:16px;font-weight:400;color:${CINZA};padding-top:5px">${h.reincidente ? SELO_REIN + "<br>" : ""}No ano: ${pl(h.faltasAno, "falta injustificada", "faltas injustificadas")} · ${pl(h.medidas, "medida", "medidas")}${h.anterior ? `<br>Antes de 01/01: ${esc(medidaTxt(h.anterior).toLowerCase())} em ${esc(ddmmaaaa(h.anterior.data))}` : ""}</div>`;
 }
 function medidaTxt(m) {
   if (!m) return "";
@@ -120,9 +120,10 @@ function tabelaReincidencia(linhas) {
     const td = (cls, alin, estilo, html) => `<td${cls ? ` class="${cls}"` : ""} align="${alin}" valign="top" style="padding:12px 10px;${b}${estilo};font-family:${FONTE}">${html}</td>`;
     return `<tr>
       ${td("nome", "left", `font-weight:700;color:${MARINHO}`, esc(l.nome) + `<div style="font-size:11px;line-height:16px;font-weight:400;color:${CLARO}">RE ${esc(l.re)}</div>`)}
-      ${td("", "center", `font-weight:700;color:${MARINHO};font-size:15px`, lbl("Faltas no ano") + h.faltasAno)}
-      ${td("", "left", "", lbl("Medidas") + (h.medidas ? `<b style="color:${MARINHO}">${h.medidas}</b> · ${esc(h.txt)}` : `<span style="color:${CLARO}">Nenhuma</span>`))}
-      ${td("", "left", "white-space:nowrap", lbl("Última") + (h.ultima ? esc(medidaTxt(h.ultima)) + `<div style="font-size:11px;line-height:16px;color:${CLARO}">${esc(ddmmaaaa(h.ultima.data))}</div>` : "—"))}
+      ${td("", "center", `font-weight:700;color:${MARINHO};font-size:15px`, lbl("Faltas injustificadas no ano") + h.faltasAno)}
+      ${td("", "left", "", lbl("Medidas") + (h.medidas ? `<b style="color:${MARINHO}">${h.medidas}</b> · ${esc(h.txt)}` : `<span style="color:${CLARO}">Nenhuma${ano ? " em " + esc(ano) : ""}</span>`))}
+      ${td("", "left", "white-space:nowrap", lbl("Última") + (h.ultima ? esc(medidaTxt(h.ultima)) + `<div style="font-size:11px;line-height:16px;color:${CLARO}">${esc(ddmmaaaa(h.ultima.data))}</div>`
+        : h.anterior ? esc(medidaTxt(h.anterior)) + `<div style="font-size:11px;line-height:16px;color:${CLARO}">${esc(ddmmaaaa(h.anterior.data))} (ano anterior)</div>` : "—"))}
       ${td("ult", "left", "", sit)}
     </tr>`;
   }).join("\n");
@@ -132,7 +133,7 @@ function tabelaReincidencia(linhas) {
     <tr><td style="font-size:12px;line-height:18px;color:#6b7e96;padding-bottom:12px;font-family:${FONTE}">Faltas injustificadas e medidas disciplinares de cada colaborador desde 01/01${ano ? "/" + esc(ano) : ""} (abonos, afastamentos e medidas canceladas não contam).</td></tr>
   </table>
   <table role="presentation" class="rt" width="100%" border="0" cellpadding="0" cellspacing="0" style="border:1px solid ${LINHA};border-radius:12px;border-collapse:separate;font-size:12.5px;line-height:19px;color:#3a4a5e">
-    <thead><tr>${th("Colaborador", "28%", "left", "12px 0 0 0")}${th("Faltas", "11%", "center", "")}${th("Medidas no ano", "31%", "left", "")}${th("Última", "16%", "left", "")}${th("Situação", "14%", "left", "0 12px 0 0")}</tr></thead>
+    <thead><tr>${th("Colaborador", "28%", "left", "12px 0 0 0")}${th("Faltas injust.", "11%", "center", "")}${th("Medidas no ano", "31%", "left", "")}${th("Última", "16%", "left", "")}${th("Situação", "14%", "left", "0 12px 0 0")}</tr></thead>
     <tbody>
 ${corpo}
     </tbody>
@@ -368,7 +369,7 @@ ${fecho(o.assinatura)}
     t.push(`FALTAS INJUSTIFICADAS — ÁREA ${area.toUpperCase()}`, `Período: ${periodo}`, `Ocorrências: ${faltas} · Colaboradores: ${linhas.length}`, "");
     linhas.forEach(l => {
       t.push(`- ${l.nome} · RE ${l.re} · ${l.posto} · ${l.cargo} · ${l.escala} · ${l.datas.length > 1 ? "Faltas" : "Falta"}: ${l.datas.map(d => ddmmaaaa(d) + " (" + diaDaSemana(d) + ")").join(", ")}`);
-      if (l.hist) t.push(`  No ano: ${l.hist.faltasAno} ${l.hist.faltasAno === 1 ? "falta injustificada" : "faltas injustificadas"} · ${l.hist.medidas ? l.hist.medidas + (l.hist.medidas === 1 ? " medida" : " medidas") + " (" + l.hist.txt + ")" : "nenhuma medida"}${l.hist.ultima ? " · última em " + ddmmaaaa(l.hist.ultima.data) : ""}${l.hist.reincidente ? " · REINCIDENTE" : ""}`);
+      if (l.hist) t.push(`  No ano: ${l.hist.faltasAno} ${l.hist.faltasAno === 1 ? "falta injustificada" : "faltas injustificadas"} · ${l.hist.medidas ? l.hist.medidas + (l.hist.medidas === 1 ? " medida" : " medidas") + " (" + l.hist.txt + ")" : "nenhuma medida"}${l.hist.ultima ? " · última em " + ddmmaaaa(l.hist.ultima.data) : ""}${l.hist.anterior ? " · antes de 01/01: " + medidaTxt(l.hist.anterior).toLowerCase() + " em " + ddmmaaaa(l.hist.anterior.data) : ""}${l.hist.reincidente ? " · REINCIDENTE" : ""}`);
     });
     t.push("");
     if (o.link) t.push(`Gerar a medida disciplinar no Painel ServCamp: ${o.link}`, "");
