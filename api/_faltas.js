@@ -464,11 +464,16 @@ async function verCasos({ res, db, ator }) {
   const admissoes = {};
   adm.forEach(a => { if (a.admissao) admissoes[a.re] = String(a.admissao).slice(0, 10); });
 
+  // Autorização no servidor: supervisor só recebe as situações da própria área (a coordenação, a diretoria e a TV
+  // recebem todas). Não depende de filtro nem de parâmetro da tela: quem altera o endereço não ganha acesso.
+  const restrito = !!ator && MD.SUPERVISORES.has(ator) && !MD.ehCoordenacao(ator);
+  const faltasVisiveis = restrito ? faltas.filter(f => MD.daArea(ator, R.supervisorAtual(f.supervisor))) : faltas;
+  const reVisiveis = new Set(faltasVisiveis.map(f => String(f.re)));
   const r = R.montarCasos({
     hoje,
     feriados: feriados.map(f => String(f.data).slice(0, 10)),
     admissoes, fichaDias,
-    faltas: faltas.map(f => ({ RE: f.re, DATA: f.data, ABONO: (!R.ABONADAS.has(f.codigo) && !R.NAO_COBRADAS.has(f.codigo) && cobertura(f.re, String(f.data).slice(0, 10))) ? "A" : f.codigo, NOME: f.nome, CARGO: f.cargo, LOCAL: f.posto, AREA: R.supervisorAtual(f.supervisor), ESCALA: f.escala, TIPO: f.tipo, HORARIO: horarioDa(horarios, f) })),
+    faltas: faltasVisiveis.map(f => ({ RE: f.re, DATA: f.data, ABONO: (!R.ABONADAS.has(f.codigo) && !R.NAO_COBRADAS.has(f.codigo) && cobertura(f.re, String(f.data).slice(0, 10))) ? "A" : f.codigo, NOME: f.nome, CARGO: f.cargo, LOCAL: f.posto, AREA: R.supervisorAtual(f.supervisor), ESCALA: f.escala, TIPO: f.tipo, HORARIO: horarioDa(horarios, f) })),
     medidas: medidas.map(m => ({ RE: m.re, DATA: m.data, TIPO: m.tipo, GRAU: m.grau, DIAS: m.dias, FASE: m.fase, HIST: m.chave, MOTIVO: m.motivo_sar2g, chave: m.chave, motivo: m.motivo, motivo_editado_por: m.motivo_editado_por, motivo_editado_em: m.motivo_editado_em }))
   });
 
@@ -518,15 +523,15 @@ async function verCasos({ res, db, ator }) {
   return res.status(200).json({
     ok: true, hoje, dataBase: r.dataBase, vazio: faltas.length === 0 && dias.length === 0, resumo, casos: r.casos, abonadas: r.abonadas,
     // abonadas juntadas pelo período que o atestado/justificativa cobriu
-    abonos, atestados,
+    abonos, atestados: restrito ? atestados.filter(a => reVisiveis.has(String(a.re))) : atestados,
     dias: diasDosCasos, historico, feriados, pode_editar: !!(ator && ponto.APROVADORES.has(ator)),
     // medida disciplinar: quem pode gerar e se vê todas as áreas (coordenação) ou só a dele
-    medida: { pode_gerar: MD.podeGerar(ator), coordenacao: MD.ehCoordenacao(ator) }
+    medida: { pode_gerar: MD.podeGerar(ator), coordenacao: MD.ehCoordenacao(ator), restrito }
   });
 }
 
 // Histórico: todas as advertências e suspensões desde 1º de janeiro (importadas + planilha diária).
-async function verHistorico({ res, db }) {
+async function verHistorico({ res, db, ator }) {
   const hoje = hojeSP(), desde = hoje.slice(0, 4) + "-01-01";
   const [lidas, ult, recentes, injust] = await Promise.all([
     db.listar(`fm_medidas?select=chave,re,data,tipo,grau,dias,fase,motivo_sar2g,obs,nome,local&data=gte.${desde}&order=re.asc,data.asc,chave.asc`),
@@ -566,9 +571,15 @@ async function verHistorico({ res, db }) {
     p.datas.push(iso10(f.data));
     p.nome = f.nome || p.nome; p.supervisor = R.supervisorAtual(f.supervisor) || p.supervisor; p.posto = postoOuReserva(f.posto, p.supervisor);
   });
-  const faltas = [...porPessoa.values()];
+  let faltas = [...porPessoa.values()], medidasVisiveis = medidas;
+  // supervisor só vê o histórico das pessoas da própria área (mesma regra da lista de casos)
+  if (ator && MD.SUPERVISORES.has(ator) && !MD.ehCoordenacao(ator)) {
+    faltas = faltas.filter(f => MD.daArea(ator, f.supervisor));
+    const meus = new Set(faltas.map(f => String(f.re)));
+    medidasVisiveis = medidas.filter(m => MD.daArea(ator, m.supervisor) || meus.has(String(m.re)));
+  }
   const u = (ult || [])[0];
-  return res.status(200).json({ ok: true, hoje, desde, medidas, faltas, importacao: u ? { por: u.ator, em: u.criado_em, linhas: (u.depois || {}).gravadas || 0 } : null });
+  return res.status(200).json({ ok: true, hoje, desde, medidas: medidasVisiveis, faltas, importacao: u ? { por: u.ator, em: u.criado_em, linhas: (u.depois || {}).gravadas || 0 } : null });
 }
 async function salvarHistorico({ res, db, ator, body }) {
   const lista = Array.isArray(body.medidas) ? body.medidas : [];

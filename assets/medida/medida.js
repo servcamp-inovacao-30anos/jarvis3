@@ -278,9 +278,17 @@ function pintaPrev(mudou){
     `<div id="md-cx"><div class="md-papel${mudou?" mudou":""}" id="md-papel">${docHtml(docDoEd(E))}</div></div>`;
   escala();
 }
+// Ajuste automático: a folha inteira cabe na área da prévia quando a tela deixa (largura E altura); em tela baixa
+// não passa de 62% (abaixo disso o texto fica ilegível) e a prévia rola. O zoom manual sempre vale.
+function ajusteDe(){
+  const p=document.getElementById("md-papel"),pv=document.getElementById("md-prev");if(!p||!pv)return 1;
+  const larg=(pv.clientWidth-56)/794,alt=(pv.clientHeight-84)/Math.max(1,p.offsetHeight);
+  let a=Math.min(1,larg,alt);if(a<.62)a=Math.min(larg,.62);
+  return Math.max(.35,a);
+}
 function escala(){
   const p=document.getElementById("md-papel"),cx=document.getElementById("md-cx"),pv=document.getElementById("md-prev");if(!p||!cx||!pv)return;
-  const ajuste=Math.min(1,Math.max(.35,(pv.clientWidth-56)/794)),s=MDS.zoom||ajuste;
+  const s=MDS.zoom||ajusteDe();
   p.style.transform="scale("+s+")";p.style.transformOrigin="top left";cx.style.width=(794*s)+"px";cx.style.height=(p.offsetHeight*s)+"px";
   const v=document.getElementById("md-zoom-v");if(v)v.textContent=MDS.zoom?Math.round(s*100)+"%":"Ajustado ("+Math.round(s*100)+"%)";
 }
@@ -331,7 +339,7 @@ function cliqueEd(e){
   if(a==="descartar"){fecharEd(true);return;}
   if(a==="ir"||a==="foco"||a==="prox"){if(E.gerada)return;E.foco=v;const fm=document.getElementById("md-form");pintaForm();const s=document.getElementById("md-p-"+v);if(s){s.classList.add("abre");if(fm)fm.scrollTo({top:Math.max(0,s.offsetTop-12),behavior:"smooth"});}return;}
   if(a==="zoom"){
-    const pv=document.getElementById("md-prev"),ajuste=pv?Math.min(1,Math.max(.35,(pv.clientWidth-56)/794)):1;
+    const ajuste=ajusteDe();
     MDS.zoom=v==="fit"?null:Math.min(1.5,Math.max(.35,Math.round(((MDS.zoom||ajuste)+Number(v)*.1)*10)/10));
     escala();return;
   }
@@ -402,13 +410,21 @@ function acaoCaso(c){
   const sel=gs.map(g=>`<span class="md-pill ${g.status==="LANCADA"?"ok":"pend"}"><i></i>${esc(g.numero)} · ${g.status==="LANCADA"?"lançada no SAR2G":"falta lançar no SAR2G"}</span>`).join(" ");
   return `<div class="md-acao"><button type="button" class="md-b pri" data-k="${esc(k)}" onclick="event.stopPropagation();mdAbrir(this.dataset.k)">${IC.doc}${gs.length?"Gerar outra medida":"Gerar medida"}</button>${sel}<small>${gs.length?"":"Escolha a medida, escreva o motivo e confira o documento antes de imprimir."}</small></div>`;
 }
+// Situações em que ainda cabe medida (as mesmas que a TV mostra como em aberto): nas outras o botão não aparece.
+const ABERTAS=["PRAZO_VENCIDO","NO_PRAZO","AGUARDANDO_RETORNO","COORDENACAO"];
 function selosNasLinhas(){
-  if(!MDS.lista||!MDS.lista.length)return;
   document.querySelectorAll("#fs-sec .fs-row[data-k]").forEach(r=>{
-    if(r.querySelector(".md-pill"))return;
-    const gs=geradasDoCaso(r.dataset.k);if(!gs.length)return;
-    const g=gs[0],lim=r.querySelector(".fs-c.lim");if(!lim)return;
-    lim.insertAdjacentHTML("beforeend",`<span class="md-pill ${g.status==="LANCADA"?"ok":"pend"}" title="${esc(g.numero)}"><i></i>${g.status==="LANCADA"?"Medida no SAR2G":"Gerada · lançar no SAR2G"}</span>`);
+    const k=r.dataset.k,gs=geradasDoCaso(k),lim=r.querySelector(".fs-c.lim")||r.lastElementChild;
+    if(!lim)return;
+    if(gs.length&&!r.querySelector(".md-pill")){
+      const g=gs[0];
+      lim.insertAdjacentHTML("beforeend",`<span class="md-pill ${g.status==="LANCADA"?"ok":"pend"}" title="${esc(g.numero)}"><i></i>${g.status==="LANCADA"?"Medida no SAR2G":"Gerada · lançar no SAR2G"}</span>`);
+    }
+    // botão direto na linha da situação: o supervisor não precisa abrir o caso antes
+    const c=casoDe(k);
+    if(podeGerar()&&c&&ABERTAS.indexOf(c.situacao)>=0&&!r.querySelector(".md-rowbtn")){
+      lim.insertAdjacentHTML("beforeend",`<button type="button" class="md-b pri sm md-rowbtn" data-k="${esc(k)}" title="Gerar a medida de ${esc(titulo(c.nome))}" aria-label="Gerar medida de ${esc(titulo(c.nome))}" onclick="event.stopPropagation();mdAbrir(this.dataset.k)">${IC.doc}${gs.length?"Gerar outra":"Gerar medida"}</button>`);
+    }
   });
 }
 

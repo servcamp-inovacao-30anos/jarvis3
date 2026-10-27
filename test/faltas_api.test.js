@@ -219,3 +219,24 @@ test("revisão: falta sem código que vira abonada não é marcada como 'lançad
   await faltas.materializar(planilha({ faltas: [falta(521, "2026-10-10", { ABONO: "A" })] }));
   assert.equal(t.fm_auditoria.length, 0);
 });
+
+// ── supervisor só vê a própria área (autorização no servidor) ───────────────
+test("casos e histórico: supervisor recebe só a própria área; coordenação, aprovador e TV recebem todas", async () => {
+  const tab = tabelasVazias(); supabaseFalso(tab);
+  const f = (re, sup) => ({ re, data: dia(-3), codigo: "I", nome: "PESSOA " + re, cargo: "PORTEIRO (A)", posto: "POSTO " + re, supervisor: sup, escala: "12X36", tipo: "CONTRATO" });
+  tab.fm_faltas.push(f(1, "FRANK PIMENTEL"), f(2, "FRANK PIMENTEL"), f(3, "CARLOS NOGUEIRA"), f(4, "JEAN KLEBER"));
+  tab.fm_medidas.push({ chave: "P-1", re: 1, data: dia(-20), tipo: "ADVERTÊNCIA", grau: "ESCRITA", dias: 0, fase: "CONCLUIDO" }, { chave: "P-2", re: 3, data: dia(-20), tipo: "ADVERTÊNCIA", grau: "ESCRITA", dias: 0, fase: "CONCLUIDO" });
+  const reDos = r => r.body.casos.map(c => Number(c.re)).sort();
+  ponto.APROVADORES.add("frankpimentel");
+  const frank = await pedir("GET", "casos", { usuario: "frankpimentel" });
+  assert.deepEqual(reDos(frank), [1, 2], "frank só vê as pessoas dele");
+  assert.equal(frank.body.medida.restrito, true);
+  assert.deepEqual((await pedir("GET", "casos", { usuario: "carlos" })).body.casos.map(c => Number(c.re)), [3]);
+  assert.deepEqual(reDos(await pedir("GET", "casos", { usuario: "jussilenealmeida" })), [1, 2, 3, 4], "coordenação vê todas");
+  assert.deepEqual(reDos(await pedir("GET", "casos", { usuario: "aprovador" })), [1, 2, 3, 4], "quem não é supervisor (diretoria, TV) vê todas");
+  // alterar parâmetros não muda nada: a restrição vem do login
+  assert.deepEqual(reDos(await pedir("GET", "casos", { usuario: "frankpimentel", query: { sup: "CARLOS NOGUEIRA", area: "JEAN KLEBER" } })), [1, 2]);
+  const hist = await pedir("GET", "historico", { usuario: "frankpimentel" });
+  assert.deepEqual(hist.body.medidas.map(m => Number(m.re)), [1], "histórico também: só a medida da área dele");
+  assert.deepEqual(hist.body.faltas.map(x => Number(x.re)).sort(), [1, 2]);
+});
