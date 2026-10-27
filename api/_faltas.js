@@ -97,6 +97,33 @@ async function empresasDaUltimaPlanilha(db) {
 // O do dia da falta; se esse dia não está no registro, o efetivo mantém o horário da vaga dele (a reserva técnica muda de vaga).
 const horarioDa = (h, f) => h.porDia[f.re + "|" + String(f.data).slice(0, 10)] || (String(f.tipo || "").toUpperCase() === "CONTRATO" ? h.porRE[f.re] : "") || "";
 
+// Quem falta, não está na lista de ativos mas a Ficha mostra trabalhando nos últimos dias é contratação nova
+// que a lista ainda não trouxe: não é demitido. Fica registrado (demissão desfeita, "sistema") para não virar
+// demitido depois, quando o dia trabalhado sair da janela. Quem faltou até ser desligado (abandono) não tem dia
+// trabalhado e continua sendo tratado como demitido. A base manual de demitidos sempre vale mais.
+async function confirmarContratacoesNovas(db, data, ctx) {
+  try {
+    if (!ctx.ativos || ctx.ativos.size < R.MIN_ATIVOS_PARA_DEMITIDOS) return;
+    const todas = [];
+    Object.values(data.fichaDias || {}).forEach(m => Object.keys(m || {}).forEach(d => todas.push(d)));
+    (data.faltas || []).forEach(f => todas.push(String(f.DATA || "").slice(0, 10)));
+    const dataBase = todas.filter(ehData).sort().pop();
+    if (!dataBase) return;
+    const eventos = [], vistos = new Set();
+    (data.faltas || []).forEach(f => {
+      const re = R.reDe(f.RE), nome = f.NOME || "", quem = re + "|" + R.primeiroNome(nome);
+      if (!re || !R.primeiroNome(nome) || vistos.has(quem)) return;
+      vistos.add(quem);
+      if (ctx.demitidos.has(quem) || ctx.confirmados.has(quem)) return;
+      if (ctx.ativos.has(re) && [].concat(ctx.ativos.get(re)).some(n => R.primeiroNome(n) === R.primeiroNome(nome))) return;
+      if (!R.trabalhandoRecente(ctx.diasPorRE.get(re), dataBase)) return;
+      ctx.confirmados.add(quem);
+      eventos.push({ ator: "sistema", acao: ACAO_DEMITIDO_FIM, entidade: "fm_demitidos", chave: quem, antes: null, depois: { re: Number(re), nome1: R.primeiroNome(nome), nome: String(nome).slice(0, 120), motivo: "trabalhando na Ficha e fora da lista de ativos: contratação nova" } });
+    });
+    if (eventos.length) await db.inserir("fm_auditoria", eventos);
+  } catch (e) { console.error("faltas: não confirmou contratações novas:", e && e.message); }
+}
+
 // ── materialização ──────────────────────────────────────────────────────────
 // A planilha traz só o mês até hoje e cada envio substitui o anterior: sem
 // guardar aqui, a falta de um mês some antes de o caso se resolver.
@@ -120,16 +147,19 @@ async function materializar(data, opcoes) {
   });
   // Base de demitidos: quem foi registrado à mão (a planilha pode demorar a tirar a pessoa da lista de ativos).
   // Quem a planilha dá como fora dos ativos é conferido a cada envio, sem precisar guardar.
-  const demitidos = new Set((await lerBaseDemitidos(db)).map(b => b.re + "|" + b.nome1));
+  const registro = await lerRegistroDemissoes(db);
+  const demitidos = new Set(registro.demitidos.map(b => b.re + "|" + b.nome1));
+  const confirmados = new Set(registro.confirmados.map(b => b.re + "|" + b.nome1));
   const diasPorRE = new Map(); // RE → { dia: situação da Ficha }: serve para ver se a pessoa voltou a trabalhar
   Object.entries(data.fichaDias || {}).forEach(([reTxt, porDia]) => diasPorRE.set(R.reDe(reTxt), porDia || {}));
+  await confirmarContratacoesNovas(db, data, { ativos, demitidos, confirmados, diasPorRE });
   // Ocorrências: as desta planilha mais todas as já guardadas (a aba DISCIPLINA só mostra uma janela de
   // tempo; o que já foi visto não pode deixar de dar baixa na falta). A desta planilha vale sobre a guardada.
   const ocorrenciasDaPlanilha = (data.ocorrencias || []).filter(x => x && x.RE != null);
   const guardadasOc = await lerOcorrencias(db); // Map chave → ocorrência
   const novasOc = await gravarOcorrencias(db, ocorrenciasDaPlanilha, guardadasOc);
   novasOc.forEach(x => guardadasOc.set(chaveOcorrencia(x), x));
-  const cobertura = { ativos, demitidos, ocorrencias: R.indexarOcorrencias([...guardadasOc.values()]), dias: re => diasPorRE.get(re) };
+  const cobertura = { ativos, demitidos, confirmados, ocorrencias: R.indexarOcorrencias([...guardadasOc.values()]), dias: re => diasPorRE.get(re) };
   const classificar = f => R.classificarFalta(f, cobertura);
   const codigoDaPlanilha = new Map(); // o que o SAR2G mandou, antes da conferência
   const classificadas = [];           // faltas cujo código mudou na conferência
@@ -254,7 +284,7 @@ async function gravarOcorrencias(db, lista, atuais) {
 // (sem esperar uma planilha): é o que roda depois de "Enviar histórico" com o relatório de ocorrências.
 async function reapurarComBanco(db) {
   const agora = new Date().toISOString();
-  const base = await lerBaseDemitidos(db);
+  const registro = await lerRegistroDemissoes(db), base = registro.demitidos;
   const diasPorRE = new Map();
   // A lista de ativos é a da última planilha recebida: assim quem saiu da empresa também dá baixa aqui,
   // sem esperar a planilha de amanhã.
@@ -268,7 +298,7 @@ async function reapurarComBanco(db) {
       ativos.get(re).push(a.NOME || "");
     });
   } catch (e) { /* sem planilha anterior: só a base e as ocorrências */ }
-  const cobertura = { ativos, demitidos: new Set(base.map(b => b.re + "|" + b.nome1)), ocorrencias: R.indexarOcorrencias([...(await lerOcorrencias(db)).values()]), dias: re => diasPorRE.get(re) };
+  const cobertura = { ativos, demitidos: new Set(base.map(b => b.re + "|" + b.nome1)), confirmados: new Set(registro.confirmados.map(b => b.re + "|" + b.nome1)), ocorrencias: R.indexarOcorrencias([...(await lerOcorrencias(db)).values()]), dias: re => diasPorRE.get(re) };
   const mudou = [];
   const n = await reapurarInjustificadasGuardadas(db, cobertura, f => R.classificarFalta(f, cobertura), diasPorRE, agora, mudou);
   await anotarReapuradas(db, mudou);
@@ -278,14 +308,19 @@ async function reapurarComBanco(db) {
 // ── base de demitidos ────────────────────────────────────────────────────────
 // Quem foi registrado à mão como demitido (RE + primeiro nome: o RE se repete entre as empresas do grupo).
 // O último registro de cada pessoa vale (registrado ou desfeito); fica no log de registros, sem tabela nova.
-async function lerBaseDemitidos(db) {
+// Também devolve os "confirmados": quem teve a demissão desfeita (ou foi visto trabalhando fora da lista de
+// ativos) é contratação nova, não demitido, e a falta de estar na lista de ativos não o transforma em demitido.
+async function lerRegistroDemissoes(db) {
   const m = new Map();
   try {
     const l = await db.listar(`fm_auditoria?select=chave,acao,depois&acao=in.(${ACAO_DEMITIDO},${ACAO_DEMITIDO_FIM})&order=id.asc`);
     l.forEach(e => m.set(e.chave, e));
   } catch (e) { console.error("faltas: base de demitidos indisponível:", e && e.message); }
-  return [...m.values()].filter(e => e.acao === ACAO_DEMITIDO && e.depois).map(e => ({ re: String(e.depois.re), nome1: e.depois.nome1 }));
+  const ultimos = [...m.values()].filter(e => e.depois);
+  const par = e => ({ re: String(e.depois.re), nome1: e.depois.nome1 });
+  return { demitidos: ultimos.filter(e => e.acao === ACAO_DEMITIDO).map(par), confirmados: ultimos.filter(e => e.acao === ACAO_DEMITIDO_FIM).map(par) };
 }
+const lerBaseDemitidos = async db => (await lerRegistroDemissoes(db)).demitidos;
 
 const MOTIVO_CODIGO = { [R.CODIGO_DEMITIDO]: "demitido", [R.CODIGO_AFASTADO]: "afastamento" };
 const motivoDoCodigo = c => MOTIVO_CODIGO[c] || (R.ABONADAS.has(c) ? "abono lançado no SAR2G" : "");
