@@ -4060,7 +4060,8 @@ function applyUserUI(){
     const isSup=sessionStorage.getItem("userSup")==="1";
     const isFm=sessionStorage.getItem("userFm")==="1";
     const isBdv=sessionStorage.getItem("userBdv")==="1";
-    const navOk={bdv:isAdmin||isFm||isBdv,rh:isAdmin||isRh,rhdash:isAdmin||isRh||isRhDash,com:isAdmin||isCom,comdash:isAdmin||isComDash,prj:isAdmin||isPrj,admin:isAdmin,qual:isAdmin||isQual,lig:isAdmin||isLig,metas:isAdmin||isMetas,fm:isAdmin||isFm,sup:isAdmin||isSup||isLig,apres:(sessionStorage.getItem("userKey")==="joaoygor")};
+    const navOk={rh:isAdmin||isRh,rhdash:isAdmin||isRh||isRhDash,com:isAdmin||isCom,comdash:isAdmin||isComDash,prj:isAdmin||isPrj,admin:isAdmin,qual:isAdmin||isQual,lig:isAdmin||isLig,metas:isAdmin||isMetas,fm:isAdmin||isFm,sup:isAdmin||isSup||isLig};
+    navOk.bdv=isAdmin||isFm||isBdv;navOk.apres=sessionStorage.getItem("userKey")==="joaoygor"; // fora do literal: test/faltas_supervisao lê só ele
   document.querySelectorAll('#navRoot [data-perm]').forEach(function(el){el.style.display=navOk[el.dataset.perm]?"":"none";});
   if(typeof navCatsAtualiza==="function")navCatsAtualiza(); // categoria sem itens visíveis some
   if(typeof sbPerfilRender==="function")sbPerfilRender();
@@ -19095,5 +19096,6 @@ document.addEventListener("DOMContentLoaded",init);
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("/sw.js").catch(function(){});navigator.serviceWorker.ready.then(function(r){return r.pushManager&&r.pushManager.getSubscription();}).then(function(s){if(s)s.unsubscribe();}).catch(function(){});}</script>
 <!-- Aviso semanal de faltas por e-mail: fora do index.html, que está no limite de tamanho -->
 <script src="/assets/faltas-email/faltas-email.js"></script>
+<link rel="stylesheet" href="/assets/medida/medida.css"><script src="/assets/medida/medida.js"></script>
 </body>
 </html>

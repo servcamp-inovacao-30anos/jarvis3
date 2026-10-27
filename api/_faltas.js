@@ -9,6 +9,8 @@
 //     POST feriados   só aprovadores: { data, descricao } ou { data, remover: true }
 //     GET  historico  qualquer pessoa logada: advertências e suspensões desde 1º de janeiro
 //     POST historico  só aprovadores: { medidas: [...], substituir?: { de, ate } } do relatório de ocorrências do SAR2G
+//     GET  medidas_geradas / POST medida, medida_lancada, medida_cancelar   medida disciplinar gerada pelo painel:
+//                     coordenação (Raphael, Jussilene, João) e supervisores (só a área dele) — _medida_regras.js
 // E o api/import.js chama materializar() a cada planilha recebida.
 //
 // As regras moram em _faltas_regras.js (puras, testadas). Aqui fica só o que
@@ -18,6 +20,7 @@ const R = require("./_faltas_regras");
 const ponto = require("./_ponto");
 const _auth = require("./_auth");
 const XL = require("./_faltas_excel");
+const MD = require("./_medida_regras");
 
 const ACAO_ABONO_TARDIO = "FALTA_ABONADA_DEPOIS";
 const ACAO_VIROU_I = "FALTA_VIROU_INJUSTIFICADA"; // tinha outro código e passou a "I" (veja anotarViradasInjustificada)
@@ -72,6 +75,20 @@ async function situacoesDaUltimaPlanilha(db) {
       if (re && s) porRE[re + "|" + R.primeiroNome(p.NOME)] = s; // RE + primeiro nome: o RE se repete entre empresas do grupo
     });
   } catch (e) { /* sem registro: sem marca */ }
+  return porRE;
+}
+// Empresa de cada pessoa (aba FUNCIONARIOS ATIVOS da última planilha): vai no cabeçalho da medida
+// disciplinar. RE + primeiro nome, como acima: o RE se repete entre as empresas do grupo.
+async function empresasDaUltimaPlanilha(db) {
+  const porRE = {};
+  try {
+    const r = await db.obter("dashboard_snapshots?select=ativos:data->ativos&order=created_at.desc&limit=1");
+    const lista = (Array.isArray(r) && r[0] && Array.isArray(r[0].ativos)) ? r[0].ativos : [];
+    lista.forEach(a => {
+      const re = R.reDe(a.RE), e = String(a.EMPRESA || "").trim();
+      if (re && e && e !== "—") porRE[re + "|" + R.primeiroNome(a.NOME)] = e;
+    });
+  } catch (e) { /* sem registro: o formulário deixa a empresa em branco para preencher */ }
   return porRE;
 }
 // O do dia da falta; se esse dia não está no registro, o efetivo mantém o horário da vaga dele (a reserva técnica muda de vaga).
@@ -342,7 +359,7 @@ const postoOuReserva = (posto, sup) => (semPosto(posto) ? (sup ? "Reserva técni
 
 async function verCasos({ res, db, ator }) {
   const hoje = hojeSP(), desde = R.somaDias(hoje, -JANELA_DIAS);
-  const [faltas, dias, medidasLidas, adm, feriados, trocas, eventosAtestado, horarios, situacoes] = await Promise.all([
+  const [faltas, dias, medidasLidas, adm, feriados, trocas, eventosAtestado, horarios, situacoes, empresas] = await Promise.all([
     db.listar(`fm_faltas?select=re,data,codigo,nome,cargo,posto,supervisor,escala,tipo&data=gte.${desde}&order=re.asc,data.asc`),
     db.listar(`fm_dias?select=re,data,situacao&data=gte.${desde}&order=re.asc,data.asc`),
     db.listar(`fm_medidas?select=chave,re,data,tipo,grau,dias,fase,motivo_sar2g,obs,motivo,motivo_editado_por,motivo_editado_em&data=gte.${desde}&order=re.asc,data.asc,chave.asc`),
@@ -351,7 +368,8 @@ async function verCasos({ res, db, ator }) {
     db.listar(`fm_auditoria?select=id,chave,criado_em&acao=eq.${ACAO_ABONO_TARDIO}&order=criado_em.asc,id.asc`),
     db.listar(`fm_auditoria?select=id,ator,acao,chave,depois,criado_em&acao=in.(${ACAO_ATESTADO},${ACAO_ATESTADO_FIM},${ACAO_ATESTADO_LANCADO})&order=criado_em.asc,id.asc`),
     horariosDaUltimaPlanilha(db),
-    situacoesDaUltimaPlanilha(db)
+    situacoesDaUltimaPlanilha(db),
+    empresasDaUltimaPlanilha(db)
   ]);
   // a mesma medida pode estar no histórico importado e na planilha diária: conta uma vez só
   const medidas = R.dedupMedidas(medidasLidas);
@@ -384,6 +402,7 @@ async function verCasos({ res, db, ator }) {
   // Quem está hoje de aviso prévio, férias ou INSS continua com o caso aberto (a falta é de antes), mas o
   // card mostra a situação. A marca é achada por RE + primeiro nome: o RE se repete entre as empresas do grupo.
   r.casos.forEach(c => { c.situacaoFunc = situacoes[c.re + "|" + R.primeiroNome(c.nome)] || ""; });
+  r.casos.forEach(c => { c.empresa = empresas[c.re + "|" + R.primeiroNome(c.nome)] || ""; });
   r.casos.forEach(c => { c.turno = R.turnoDoSupervisor(c.supervisor); });
   r.abonadas.forEach(a => { a.turno = R.turnoDoSupervisor(a.supervisor); });
   r.casos.forEach(c => { c.posto = postoOuReserva(c.posto, c.supervisor); });
@@ -422,7 +441,9 @@ async function verCasos({ res, db, ator }) {
     ok: true, hoje, dataBase: r.dataBase, vazio: faltas.length === 0 && dias.length === 0, resumo, casos: r.casos, abonadas: r.abonadas,
     // abonadas juntadas pelo período que o atestado/justificativa cobriu
     abonos, atestados,
-    dias: diasDosCasos, historico, feriados, pode_editar: !!(ator && ponto.APROVADORES.has(ator))
+    dias: diasDosCasos, historico, feriados, pode_editar: !!(ator && ponto.APROVADORES.has(ator)),
+    // medida disciplinar: quem pode gerar e se vê todas as áreas (coordenação) ou só a dele
+    medida: { pode_gerar: MD.podeGerar(ator), coordenacao: MD.ehCoordenacao(ator) }
   });
 }
 
@@ -681,6 +702,104 @@ async function salvarAtestado({ res, db, ator, body }) {
 }
 const iso10 = v => (v == null ? "" : String(v).slice(0, 10));
 
+// ── medida disciplinar gerada pelo painel (docs/medida-disciplinar.md) ──────
+// Regras em _medida_regras.js. Eventos na fm_auditoria; o SAR2G continua sendo o sistema
+// principal: a medida fica "pendente" até a planilha diária trazê-la ou alguém marcar que lançou.
+async function lerGeradas(db) {
+  const hoje = hojeSP();
+  const [eventos, medidas, anexos] = await Promise.all([
+    db.listar(`fm_auditoria?select=id,ator,acao,chave,depois,criado_em&entidade=eq.${MD.ENTIDADE}&acao=in.(${MD.ACOES.join(",")})&order=id.asc`),
+    db.listar(`fm_medidas?select=re,data,tipo,grau,dias,fase,nome&data=gte.${R.somaDias(hoje, -400)}&order=re.asc,data.asc`),
+    // do documento assinado, só os dados: o arquivo é pesado e só desce quando alguém abre
+    db.listar(`fm_auditoria?select=id,ator,chave,criado_em,tipo:depois->>tipo,bytes:depois->>bytes,nome:depois->>nome,removido:depois->>removido&acao=eq.${MD.ACAO_ASSINADA}&order=id.asc`)
+  ]);
+  return MD.dobrar(eventos, medidas, hoje, anexos);
+}
+// Coordenação vê todas; o supervisor, as que ele gerou e as da área dele.
+const visivelPara = (ator, g) => MD.ehCoordenacao(ator) || g.geradaPor === ator || MD.daArea(ator, g.supervisor);
+
+async function verGeradas({ res, db, ator }) {
+  const todas = (await lerGeradas(db)).filter(g => visivelPara(ator, g));
+  const minhas = todas.filter(g => g.geradaPor === ator && g.status === "PENDENTE").length;
+  return res.status(200).json({ ok: true, hoje: hojeSP(), coordenacao: MD.ehCoordenacao(ator), geradas: todas, minhasPendentes: minhas, tipos: MD.TIPOS, situacoes: MD.SITUACOES });
+}
+
+async function gerarMedida({ res, db, ator, body }) {
+  const v = MD.validar(body, hojeSP());
+  if (v.erro) return erro(res, 400, v.erro[0], v.erro[1]);
+  const d = v.dados;
+  if (!MD.daArea(ator, d.supervisor)) return erro(res, 403, "Você só pode gerar medida para os colaboradores da sua área.", "OUTRA_AREA");
+  const [existe] = await db.obter(`fm_faltas?select=re&re=eq.${d.re}&limit=1`);
+  if (!existe) return erro(res, 404, "Este colaborador não tem falta registrada no módulo.", "NAO_ENCONTRADA");
+  // mesmo caso e mesmo tipo já gerado (e não cancelado): avisa antes de duplicar o documento
+  const antes = (await lerGeradas(db)).filter(g => g.status !== "CANCELADA" && g.re === d.re && d.caso && g.caso === d.caso);
+  if (antes.length && body.repetir !== true) {
+    const a = antes[0];
+    return res.status(409).json({ error: `Já existe a medida ${a.numero} gerada para esta ocorrência em ${String(a.geradaEm).slice(8, 10)}/${String(a.geradaEm).slice(5, 7)}. Confirme para gerar outra.`, codigo: "JA_GERADA", existente: { numero: a.numero, chave: a.chave, status: a.status } });
+  }
+  const chave = require("crypto").randomBytes(8).toString("hex");
+  await db.inserir("fm_auditoria", [{ ator, acao: MD.ACAO_GERADA, entidade: MD.ENTIDADE, chave, antes: null, depois: d }]);
+  const g = (await lerGeradas(db)).find(x => x.chave === chave);
+  return res.status(200).json({ ok: true, medida: g || { chave } });
+}
+
+async function eventoDaGerada({ res, db, ator, body }, acao, depois) {
+  const chave = String(body.chave || "").trim();
+  if (!/^[0-9a-f]{16}$/.test(chave)) return erro(res, 400, "Medida inválida.", "CHAVE_INVALIDA");
+  const g = (await lerGeradas(db)).find(x => x.chave === chave);
+  if (!g) return erro(res, 404, "Medida não encontrada.", "NAO_ENCONTRADA");
+  if (!(MD.ehCoordenacao(ator) || g.geradaPor === ator)) return erro(res, 403, "Só quem gerou a medida ou a coordenação pode mudar a situação dela.", "NAO_AUTORIZADO");
+  if (g.status === "CANCELADA") return erro(res, 409, "Esta medida foi cancelada.", "CANCELADA");
+  await db.inserir("fm_auditoria", [{ ator, acao, entidade: MD.ENTIDADE, chave, antes: { status: g.status }, depois }]);
+  const nova = (await lerGeradas(db)).find(x => x.chave === chave);
+  return res.status(200).json({ ok: true, medida: nova });
+}
+// Marca (ou desmarca) que já lançou no SAR2G. Quando a planilha traz a medida, ela sai da lista sozinha.
+function marcarLancada(ctx) {
+  if (ctx.body.lancado !== true && ctx.body.lancado !== false) return erro(ctx.res, 400, "Informe lancado: true ou false.", "VALOR_INVALIDO");
+  return eventoDaGerada(ctx, MD.ACAO_LANCADA, { lancado: ctx.body.lancado });
+}
+// Foto ou PDF do documento assinado pelo colaborador: prova de que ele tomou ciência.
+// Anexa (ou troca) quem gerou, a coordenação ou o supervisor da área. { remover: true } tira.
+async function anexarAssinado({ res, db, ator, body }) {
+  const chave = String(body.chave || "").trim();
+  if (!/^[0-9a-f]{16}$/.test(chave)) return erro(res, 400, "Medida inválida.", "CHAVE_INVALIDA");
+  const g = (await lerGeradas(db)).find(x => x.chave === chave);
+  if (!g) return erro(res, 404, "Medida não encontrada.", "NAO_ENCONTRADA");
+  if (!visivelPara(ator, g)) return erro(res, 403, "Esta medida é de outra área.", "NAO_AUTORIZADO");
+  if (g.status === "CANCELADA") return erro(res, 409, "Esta medida foi cancelada.", "CANCELADA");
+  let depois;
+  if (body.remover === true) {
+    if (!g.assinado) return res.status(200).json({ ok: true, alterado: false, medida: g });
+    depois = { removido: true };
+  } else {
+    const a = MD.validarAnexo(body.arquivo);
+    if (a.erro) return erro(res, 400, a.erro[0], a.erro[1]);
+    depois = { ...a, nome: String(body.nome == null ? "" : body.nome).trim().slice(0, 120) };
+  }
+  await db.inserir("fm_auditoria", [{ ator, acao: MD.ACAO_ASSINADA, entidade: MD.ENTIDADE, chave, antes: null, depois }]);
+  const nova = (await lerGeradas(db)).find(x => x.chave === chave);
+  return res.status(200).json({ ok: true, alterado: true, medida: nova });
+}
+async function verAssinado({ req, res, db, ator }) {
+  const chave = String((req.query && req.query.chave) || "").trim();
+  if (!/^[0-9a-f]{16}$/.test(chave)) return erro(res, 400, "Medida inválida.", "CHAVE_INVALIDA");
+  const g = (await lerGeradas(db)).find(x => x.chave === chave);
+  if (!g || !visivelPara(ator, g)) return erro(res, 404, "Medida não encontrada.", "NAO_ENCONTRADA");
+  if (!g.assinado) return erro(res, 404, "Esta medida ainda não tem o documento assinado.", "SEM_ANEXO");
+  const [e] = await db.obter(`fm_auditoria?select=depois&acao=eq.${MD.ACAO_ASSINADA}&chave=eq.${chave}&order=id.desc&limit=1`);
+  const d = (e && e.depois) || {};
+  res.setHeader("Cache-Control", "private, no-store");
+  return res.status(200).json({ ok: true, tipo: d.tipo, base64: d.base64, nome: d.nome || "", numero: g.numero });
+}
+
+// Documento gerado por engano: sai da lista de pendentes, mas o registro fica (com o motivo).
+function cancelarGerada(ctx) {
+  const motivo = String(ctx.body.motivo == null ? "" : ctx.body.motivo).trim().slice(0, 300);
+  if (motivo.length < 5) return erro(ctx.res, 400, "Escreva por que a medida está sendo cancelada.", "SEM_MOTIVO");
+  return eventoDaGerada(ctx, MD.ACAO_CANCELADA, { motivo });
+}
+
 // ── roteamento ──────────────────────────────────────────────────────────────
 
 const ROTAS = {
@@ -694,7 +813,14 @@ const ROTAS = {
   "POST demitido": { aprovador: true, fn: marcarDemitido },
   "GET planilha": { fn: verPlanilha },
   "POST chave_excel": { fn: criarChaveExcel }, // qualquer pessoa logada que abre a tela (pedido do Raphael, 15/10/2026); cancelar todas as chaves segue só dos aprovadores
-  "POST revogar_excel": { aprovador: true, fn: revogarChavesExcel }
+  "POST revogar_excel": { aprovador: true, fn: revogarChavesExcel },
+  // medida disciplinar: Raphael, Jussilene, João e os supervisores (pedido do Raphael, 26/10/2026)
+  "GET medidas_geradas": { gerador: true, fn: verGeradas },
+  "POST medida": { gerador: true, fn: gerarMedida },
+  "POST medida_lancada": { gerador: true, fn: marcarLancada },
+  "POST medida_cancelar": { gerador: true, fn: cancelarGerada },
+  "POST medida_assinado": { gerador: true, fn: anexarAssinado },
+  "GET medida_assinado": { gerador: true, fn: verAssinado }
 };
 
 module.exports = async function faltas(req, res) {
@@ -703,6 +829,7 @@ module.exports = async function faltas(req, res) {
   if (!rota) return erro(res, 404, `Rota desconhecida: ${req.method} ${t || "(sem t)"}`, "ROTA_DESCONHECIDA");
   const ator = ponto.usuarioDoToken(req);
   if (rota.aprovador && !(ator && ponto.APROVADORES.has(ator))) return erro(res, 403, "Ação restrita aos aprovadores.", "NAO_AUTORIZADO");
+  if (rota.gerador && !MD.podeGerar(ator)) return erro(res, 403, "Medida disciplinar: só a coordenação e os supervisores.", "NAO_AUTORIZADO");
   const db = ponto.conectar();
   if (!db) return erro(res, 500, "SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY não configuradas.", "CONFIG_AUSENTE");
   try {
@@ -714,6 +841,7 @@ module.exports = async function faltas(req, res) {
 };
 
 module.exports.materializar = materializar;
+module.exports.lerGeradas = lerGeradas; // o resumo semanal da coordenação (api/_faltas_email.js) lê as mesmas medidas geradas
 // eventos de atestado registrados à mão: o aviso semanal por e-mail (api/_faltas_email.js) desconta as faltas cobertas, igual à tela
 module.exports.ACOES_ATESTADO = [ACAO_ATESTADO, ACAO_ATESTADO_FIM, ACAO_ATESTADO_LANCADO];
 module.exports.ACAO_VIROU_I = ACAO_VIROU_I;

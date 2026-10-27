@@ -60,12 +60,13 @@ window.feFechar=fechar;
 
 window.feAbrir=async function(){
   if(uk()!==FE_RESPONSAVEL)return;
-  FE.msg=null;FE.confirmar=false;FE.edit=null;FE.copias=null;FE.p=null;
+  FE.msg=null;FE.confirmar=false;FE.edit=null;FE.copias=null;FE.p=null;FE.rs=null;FE.rsConf=false;
   render();
   await carregar(false);
 };
 async function carregar(manter){
-  try{FE.p=await api("painel");}
+  // o endereço em que o painel foi aberto vira o do botão "Abrir no Painel ServCamp" dos e-mails (o servidor só aceita https)
+  try{FE.p=await api("painel","GET",null,"&origem="+encodeURIComponent(location.origin));}
   catch(e){FE.p=null;FE.msg={tipo:"er",t:e.message};render();return;}
   if(!manter){
     FE.sel=new Set(FE.p.areas.filter(a=>a.email&&a.status!=="ENVIADO").map(a=>a.area));
@@ -85,6 +86,7 @@ function render(){
   let h='';
   if(!p.configurado)h+='<div class="fe-alerta"><b>Nenhuma conta de envio pronta.</b> Cadastre o e-mail e a senha em "Conta de envio". Até lá nenhum e-mail sai.</div>';
   if(p.semArea)h+='<div class="fe-alerta">'+p.semArea+' falta(s) da semana vieram sem área na planilha e não têm para quem ir.</div>';
+  if(!p.link)h+='<div class="fe-alerta">Os e-mails ainda saem <b>sem o botão "Abrir no Painel ServCamp"</b>: abra este painel pelo endereço oficial do sistema (https) para ele ser guardado.</div>';
   h+='<div class="fe-topo" style="margin-top:6px">'+
     '<div class="fe-card"><small>Semana do aviso</small><b>'+esc(dma(sem.inicio))+' a '+esc(dma(sem.fim))+'</b><span class="fe-sub">segunda a domingo · vale para o envio oficial</span></div>'+
     '<div class="fe-card"><small>Envio automático</small><label class="fe-sw"><input type="checkbox" data-fe="auto"'+(p.auto?" checked":"")+'> '+(p.auto?"Ligado":"Desligado")+'</label><span class="fe-sub">segundas às 14h (novas tentativas às 16h e 18h)</span></div>'+
@@ -92,7 +94,7 @@ function render(){
   '</div>';
   h+=secConta(p)+secAssinatura(p);
   if(FE.msg)h+='<div class="fe-msg '+FE.msg.tipo+'">'+esc(FE.msg.t)+'</div>';
-  h+=secAreas(p)+secCopias(p)+secEnvio(p)+secTeste(p)+secHistorico(p);
+  h+=secAreas(p)+secCopias(p)+secEnvio(p)+secResumo(p)+secTeste(p)+secHistorico(p);
   janela("feJanela","Aviso semanal por e-mail","Faltas injustificadas por área · só a sua conta envia",h);
 }
 
@@ -223,6 +225,41 @@ function secEnvio(p){
   return h+'</div>';
 }
 
+/* Resumo semanal das medidas disciplinares para a coordenação: um e-mail só, com o que foi gerado no
+   painel e ainda não está no SAR2G, por supervisor. Sai junto com o aviso das áreas (automático). */
+function secResumo(p){
+  const r=p.resumo||{ligado:false,para:[]},ed=FE.rs;
+  let h='<div class="fe-sec"><div class="fe-sec-h"><b>Resumo semanal para a coordenação</b><span class="fe-mut">Medidas geradas no painel × SAR2G, por supervisor. Sai junto com o aviso das áreas.</span></div>';
+  if(ed){
+    h+=ed.map(function(c,i){
+      return '<div class="fe-linha"><input class="fe-in" style="flex:0 1 200px" data-fe-campo="rs.'+i+'.nome" maxlength="60" placeholder="Nome" value="'+esc(c.nome)+'">'+
+        '<input class="fe-in l" type="email" data-fe-campo="rs.'+i+'.email" maxlength="120" placeholder="email@gruposervcamp.com.br" value="'+esc(c.email)+'">'+
+        '<button class="fe-b sm" data-fe="rs-rm" data-i="'+i+'">Remover</button></div>';
+    }).join("");
+    return h+'<div class="fe-linha"><button class="fe-b sm" data-fe="rs-add">+ Adicionar</button><span style="flex:1"></span><button class="fe-b sm" data-fe="rs-cancelar">Cancelar</button><button class="fe-b sm fe-pri" data-fe="rs-salvar"'+(FE.ocupado?" disabled":"")+'>Salvar</button></div></div>';
+  }
+  const quem=r.para.length?r.para.map(c=>'<b>'+esc(c.nome)+'</b> <span class="fe-mut">'+esc(c.email)+'</span>').join(" · "):'<span class="fe-mut">Ninguém cadastrado.</span>';
+  const st=r.enviado?'<span class="fe-st ENVIADO">Enviado</span> <span class="fe-mut">'+esc(quando(r.enviado.em))+' · '+(r.enviado.origem==="auto"?"automático":"manual")+' · '+r.enviado.qtd+' pendente(s)</span>'
+    :r.falha?'<span class="fe-st FALHOU">Falhou</span> <span class="fe-mut" title="'+esc(r.falha.erro)+'">'+esc(quando(r.falha.em))+'</span>'
+    :'<span class="fe-st PENDENTE">Não enviado nesta semana</span>';
+  h+='<div class="fe-linha" style="margin-top:0"><span>Para: '+quem+'</span><span style="flex:1"></span><button class="fe-b sm" data-fe="rs-editar">'+(r.para.length?"Editar":"Cadastrar")+'</button></div>'+
+    '<div class="fe-linha"><label class="fe-sw"><input type="checkbox" data-fe="rs-ligado"'+(r.ligado?" checked":"")+(r.para.length?"":" disabled")+'> '+(r.ligado?"Ligado: sai com o aviso automático das segundas":"Desligado")+'</label></div>'+
+    '<div class="fe-linha"><span>Semana de '+esc(dma(p.semana.inicio))+' a '+esc(dma(p.semana.fim))+': '+st+'</span></div>';
+  if(FE.rsConf)h+='<div class="fe-conf"><b>Enviar o resumo desta semana agora?</b><p class="fe-mut" style="margin:6px 0 0">Para: '+esc(r.para.map(c=>c.nome).join(", "))+'. Se já foi enviado nesta semana, não sai de novo.</p>'+
+    '<div class="fe-linha"><button class="fe-b fe-pri" data-fe="rs-confirmar"'+(FE.ocupado?" disabled":"")+'>'+(FE.ocupado?"Enviando…":"Enviar agora")+'</button><button class="fe-b" data-fe="rs-voltar"'+(FE.ocupado?" disabled":"")+'>Voltar</button></div></div>';
+  else h+='<div class="fe-linha"><button class="fe-b" data-fe="rs-previa">Ver prévia</button><button class="fe-b" data-fe="rs-teste"'+(FE.ocupado||!p.configurado?" disabled":"")+'>Enviar teste para mim</button>'+
+    '<button class="fe-b fe-pri" data-fe="rs-enviar"'+(r.para.length&&p.configurado&&!r.enviado?"":" disabled")+'>Enviar o resumo da semana</button></div>';
+  return h+'</div>';
+}
+async function previaResumo(){
+  janela("fePrevia","Prévia do resumo","Nada é enviado",'<p class="fe-mut">Montando o e-mail…</p>',true);
+  try{
+    const r=await api("previa_resumo");
+    janela("fePrevia","Prévia do resumo",r.assunto,'<p class="fe-mut" style="margin:0">Para: '+esc(r.para||"(ninguém cadastrado)")+'</p><iframe class="fe-previa" title="Prévia do resumo" sandbox="" referrerpolicy="no-referrer"></iframe>',true);
+    const f=document.querySelector("#fePrevia iframe");if(f)f.srcdoc=r.html;
+  }catch(e){janela("fePrevia","Prévia do resumo","",'<div class="fe-msg er">'+esc(e.message)+'</div>',true);}
+}
+
 function secTeste(p){
   const t=FE.t||{};
   const a=p.areas.find(x=>x.area===t.area);
@@ -312,6 +349,16 @@ function clique(e){
     acao(()=>api("enviar","POST",corpo),resumoEnvio,false).then(()=>{FE.confirmar=false;render();});
     return;
   }
+  if(q==="rs-editar"){FE.rs=(p.resumo&&p.resumo.para||[]).map(c=>({nome:c.nome,email:c.email}));if(!FE.rs.length)FE.rs.push({nome:"",email:""});render();return;}
+  if(q==="rs-add"){FE.rs.push({nome:"",email:""});render();return;}
+  if(q==="rs-rm"){FE.rs.splice(Number(b.getAttribute("data-i")),1);render();return;}
+  if(q==="rs-cancelar"){FE.rs=null;render();return;}
+  if(q==="rs-salvar"){const l=FE.rs.filter(c=>String(c.email||"").trim());acao(()=>api("resumo","POST",{para:l,ligado:l.length?undefined:false}),"Quem recebe o resumo foi salvo.",true).then(()=>{if(FE.msg&&FE.msg.tipo==="ok"){FE.rs=null;render();}});return;}
+  if(q==="rs-previa"){previaResumo();return;}
+  if(q==="rs-teste"){acao(()=>api("resumo_teste","POST",{para:["@eu"]}),r=>"Teste do resumo enviado para você ("+r.pendentes+" medida(s) pendente(s) no SAR2G).",true);return;}
+  if(q==="rs-enviar"){FE.rsConf=true;FE.msg=null;render();return;}
+  if(q==="rs-voltar"){FE.rsConf=false;render();return;}
+  if(q==="rs-confirmar"){acao(()=>api("resumo_enviar","POST",{confirmar:true}),r=>r.situacao==="JA_ENVIADO"?"O resumo desta semana já tinha sido enviado.":r.situacao==="EM_ANDAMENTO"?"Outro envio do resumo está em andamento.":"Resumo enviado ("+r.pendentes+" medida(s) pendente(s) no SAR2G).",true).then(()=>{FE.rsConf=false;render();});return;}
   if(q==="previa-teste"){const t=FE.t;previa(t.area,t.de,t.ate,true);return;}
   if(q==="enviar-teste"){
     const t=FE.t,para=[];
@@ -327,6 +374,7 @@ function clique(e){
 function mudou(e){
   const el=e.target,q=el.getAttribute("data-fe");
   if(q==="ass-arquivo"){enviarAssinatura(el.files&&el.files[0]);return;}
+  if(q==="rs-ligado"){const v=el.checked;acao(()=>api("resumo","POST",{ligado:v}),v?"Resumo da coordenação ligado: sai com o aviso automático das segundas.":"Resumo da coordenação desligado.",true);return;}
   if(q==="auto"){const v=el.checked;acao(()=>api("auto","POST",{ligado:v}),v?"Envio automático ligado: segundas às 14h.":"Envio automático desligado.",true);return;}
   if(q==="sel"){const a=el.getAttribute("data-area");if(el.checked)FE.sel.add(a);else FE.sel.delete(a);FE.confirmar=false;render();return;}
   if(q==="cc"){const m=el.getAttribute("data-email");if(el.checked)FE.cc.add(m);else FE.cc.delete(m);render();return;}
@@ -344,5 +392,6 @@ function digitou(e){
   else if(p[0]==="t"&&FE.t)FE.t[p[1]]=v;
   else if(p[0]==="conta"&&FE.conta)FE.conta[p[1]]=v;
   else if(p[0]==="copias"&&FE.copias&&FE.copias[Number(p[1])])FE.copias[Number(p[1])][p[2]]=v;
+  else if(p[0]==="rs"&&FE.rs&&FE.rs[Number(p[1])])FE.rs[Number(p[1])][p[2]]=v;
 }
 })();
