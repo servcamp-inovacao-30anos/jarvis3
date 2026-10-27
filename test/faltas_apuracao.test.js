@@ -474,3 +474,16 @@ test("falta que veio sem área na planilha herda o supervisor do cadastro (lista
   assert.equal(sup["1005|2026-10-08"], "FRANK PIMENTEL", "a já guardada sem supervisor foi consertada");
   assert.equal(sup["1001|2026-10-10"], null, "sem área em lugar nenhum: continua vazio (a tela mostra o que o cadastro disser)");
 });
+
+test("reserva técnica fora do cadastro: o posto dela é o nome do supervisor, e dele sai o supervisor (nunca 'sem supervisor')", async () => {
+  const t = tabelasVazias(); supabaseFalso(t);
+  // guardada antes sem supervisor
+  t.fm_faltas.push({ re: 4574, data: "2026-10-10", codigo: "I", nome: "FERNANDA CARVALHO", posto: "JEAN KLEBER", escala: "12X36", tipo: "RESERVA", supervisor: null });
+  await faltas.materializar({
+    faltas: [falta(4726, "2026-10-27", { NOME: "NATALIA SANTOS", AREA: "", LOCAL: "JEAN KLEBER", TIPO: "RESERVA" }), falta(1001, "2026-10-26", { AREA: "JEAN KLEBER" })],
+    fichaDias: {}, ativos: ativosDoTeste()
+  });
+  const sup = Object.fromEntries(t.fm_faltas.map(f => [f.re, f.supervisor]));
+  assert.equal(sup[4726], "JEAN KLEBER", "do posto, no import");
+  assert.equal(sup[4574], "JEAN KLEBER", "a já guardada também");
+});
