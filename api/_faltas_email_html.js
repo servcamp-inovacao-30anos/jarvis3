@@ -119,7 +119,7 @@ function tabelaReincidencia(linhas) {
     const td = (cls, alin, estilo, html) => `<td${cls ? ` class="${cls}"` : ""} align="${alin}" valign="top" style="padding:12px 10px;${b}${estilo};font-family:${FONTE}">${html}</td>`;
     return `<tr>
       ${td("nome", "left", `font-weight:700;color:${MARINHO}`, esc(l.nome) + `<div style="font-size:11px;line-height:16px;font-weight:400;color:${CLARO}">RE ${esc(l.re)}</div>`)}
-      ${td("", "center", `font-weight:700;color:${MARINHO};font-size:15px`, lbl("Faltas injustificadas") + h.faltasAno)}
+      ${td("", "center", `font-weight:700;color:${MARINHO};font-size:15px`, lbl("Faltas") + h.faltasAno)}
       ${td("", "left", "", lbl("Medidas") + (h.medidas ? `<b style="color:${MARINHO}">${h.medidas}</b> · ${esc(h.txt)}` : `<span style="color:${CLARO}">Nenhuma</span>`))}
       ${td("", "left", "white-space:nowrap", lbl("Última") + (h.ultima ? esc(medidaTxt(h.ultima)) + `<div style="font-size:11px;line-height:16px;color:${CLARO}">${esc(ddmmaaaa(h.ultima.data))}</div>` : "—"))}
       ${td("ult", "left", "", sit)}
