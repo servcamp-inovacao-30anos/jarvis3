@@ -257,16 +257,15 @@ ${linhas}
 </td></tr>`;
 }
 
-// Fecho no corpo do e-mail, abaixo do cartão: "Atenciosamente," e a assinatura do Raphael
-// como imagem (pedido dele). A imagem vem do painel (fica no banco, não no código: o
-// repositório é público e ela tem foto e telefones). Sem assinatura cadastrada, fecha com
-// "Atenciosamente, Servcamp".
+// Fecho no corpo do e-mail, abaixo do cartão: só a assinatura do Raphael como imagem (ela já traz o nome).
+// A imagem vem do painel (fica no banco, não no código: o repositório é público e ela tem foto e telefones).
+// Sem assinatura cadastrada, o e-mail termina no cartão.
 function fecho(a) {
-  const atenciosamente = `    <tr><td class="px" style="padding:28px 4px 0;font-family:${FONTE};font-size:15px;line-height:24px;color:#1f2a37">Atenciosamente,${a && a.src ? "" : "<br><b>Servcamp</b>"}</td></tr>`;
-  if (!a || !a.src) return atenciosamente;
+  // sem "Atenciosamente, Servcamp": a assinatura do Raphael já fecha o e-mail (pedido dele, 27/10/2026)
+  if (!a || !a.src) return "";
   const w = Math.min(Number(a.largura) || 600, 600), h = Number(a.altura) ? Math.round(Number(a.altura) * w / (Number(a.largura) || w)) : 0;
-  return atenciosamente + `
-    <tr><td class="px" style="padding:14px 4px 0"><img src="${esc(a.src)}" width="${w}"${h ? ` height="${h}"` : ""} alt="Assinatura" style="display:block;width:100%;max-width:${w}px;height:auto;border:0"></td></tr>`;
+  return `
+    <tr><td class="px" style="padding:22px 4px 0"><img src="${esc(a.src)}" width="${w}"${h ? ` height="${h}"` : ""} alt="Assinatura" style="display:block;width:100%;max-width:${w}px;height:auto;border:0"></td></tr>`;
 }
 
 const ESTILO = `<style>
@@ -381,8 +380,7 @@ ${fecho(o.assinatura)}
     atual.itens.forEach(x => t.push(`- ${x.nome} · RE ${x.re} · falta de ${ddmmaaaa(x.data)} · ${(SELO[x.tipo] || SELO.ABONADA).rot}${x.detalhe ? " (" + x.detalhe + ")" : ""}`));
     t.push("");
   }
-  t.push(rodape, "", "Atenciosamente,");
-  if (!(o.assinatura && o.assinatura.src)) t.push("Servcamp");
+  t.push(rodape);
 
   return { assunto, html, texto: t.join("\n") };
 }
@@ -538,8 +536,7 @@ ${fecho(o.assinatura)}
     t.push("");
   }
   if (o.link) t.push(`Abrir no Painel ServCamp: ${o.link}`, "");
-  t.push("Envio automatizado", "", "Atenciosamente,");
-  if (!(o.assinatura && o.assinatura.src)) t.push("Servcamp");
+  t.push("Envio automatizado");
   return { assunto, html, texto: t.join("\n"), pendentes: pend.length, atrasadas: atras, geradasSemana: geradasSem.length, lancadasSemana: lancadasSem.length, semAssinatura: semAss.length };
 }
 

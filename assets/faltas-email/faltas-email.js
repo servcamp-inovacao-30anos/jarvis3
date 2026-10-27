@@ -219,7 +219,7 @@ function secGeral(p){
     [p.copias.length>0,"Cópias",p.copias.length?p.copias.length+" pessoa(s) acompanham em cópia.":"Ninguém em cópia ainda.",p.copias.length?null:["dest","Incluir"]],
     [!!p.link,"Botão para o painel",p.link?"O e-mail leva o botão \"Abrir no Painel ServCamp\".":"Os e-mails saem sem o botão. Abra este painel pelo endereço oficial do sistema (https) para ele ser guardado.",null],
     [!p.semArea,"Faltas com supervisor",p.semArea?p.semArea+" falta(s) da semana vieram sem área na planilha e não têm para quem ir.":"Todas as faltas da semana têm supervisor.",null],
-    [!semAssin,"Assinatura",semAssin?"Sem imagem: o e-mail fecha com \"Atenciosamente, Servcamp\".":"Imagem cadastrada, entra no fim do e-mail.",semAssin?["conta","Enviar imagem"]:null]
+    [!semAssin,"Assinatura",semAssin?"Sem imagem: o e-mail termina no cartão, sem assinatura.":"Imagem cadastrada, entra no fim do e-mail.",semAssin?["conta","Enviar imagem"]:null]
   ];
   const prontos=itens.filter(x=>x[0]).length,pp=Math.round(100*prontos/itens.length);
   const pronto='<div class="fe-sec">'+cab("geral","Está tudo pronto?","O que precisa estar em ordem para o aviso sair certo. Os itens em amarelo pedem atenção.",
@@ -306,10 +306,10 @@ function secConta(p){
 function secAssinatura(p){
   const a=p.assinatura;
   const kb=n=>Math.max(1,Math.round((Number(n)||0)/1024))+" KB";
-  return '<div class="fe-sec">'+cab("edit","Assinatura no fim do e-mail","Uma imagem (PNG ou JPG) que entra depois de \"Atenciosamente,\". Imagem grande é reduzida sozinha.")+
+  return '<div class="fe-sec">'+cab("edit","Assinatura no fim do e-mail","Uma imagem (PNG ou JPG) que fecha o e-mail, no lugar de qualquer texto de despedida. Imagem grande é reduzida sozinha.")+
     (a?'<img src="'+esc(a.src)+'" alt="Assinatura atual" style="display:block;max-width:100%;height:auto;border:1px solid var(--fe-ln);border-radius:8px">'+
       '<p class="fe-mut" style="margin:6px 0 0">'+a.largura+' × '+a.altura+' px · '+kb(a.bytes)+(a.em?' · enviada em '+esc(quando(a.em)):'')+'</p>'
-      :'<p class="fe-mut" style="margin:0">Nenhuma assinatura cadastrada: o e-mail fecha com "Atenciosamente, Servcamp".</p>')+
+      :'<p class="fe-mut" style="margin:0">Nenhuma assinatura cadastrada: o e-mail termina no cartão, sem despedida.</p>')+
     '<div class="fe-linha"><label class="fe-b sm" for="feAssArq" style="cursor:pointer">'+(a?"Trocar imagem":"Enviar imagem")+'</label>'+
     '<input id="feAssArq" type="file" accept="image/*" data-fe="ass-arquivo" style="display:none">'+
     (a?'<button class="fe-b sm" data-fe="ass-remover"'+(FE.ocupado?" disabled":"")+'>Remover</button>':'')+
@@ -533,7 +533,7 @@ function clique(e){
   if(q==="cancelar-area"){FE.edit=null;render();return;}
   if(q==="salvar-area"){const ed=FE.edit;acao(()=>api("area","POST",{area:ed.area,email:ed.email,saudacao:ed.saudacao}),"Área atualizada.",true).then(()=>{if(!FE.msg||FE.msg.tipo==="ok")FE.edit=null;render();});return;}
   if(q==="previa"){previa(area);return;}
-  if(q==="ass-remover"){acao(()=>api("assinatura","POST",{imagem:null}),"Assinatura removida: o e-mail fecha com Atenciosamente, Servcamp.",true);return;}
+  if(q==="ass-remover"){acao(()=>api("assinatura","POST",{imagem:null}),"Assinatura removida: o e-mail termina no cartão.",true);return;}
   if(q==="editar-conta"){const c=p.conta;FE.conta={email:c&&c.origem==="painel"?c.email:"",senha:"",host:c&&c.origem==="painel"?c.host:"email-ssl.com.br",port:c&&c.origem==="painel"?c.port:465};render();return;}
   if(q==="cancelar-conta"){FE.conta=null;render();return;}
   if(q==="salvar-conta"){
