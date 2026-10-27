@@ -257,16 +257,16 @@ async function faltasDoPeriodo(db, inicio, fim, corteMs) {
 // 01/01 (sem repetir a que veio no histórico importado e na planilha diária) e faltas que
 // continuam injustificadas (a apuração já tirou demitido, abono e afastamento).
 async function historicoDoAno(db, hoje) {
-  const desde = String(hoje).slice(0, 4) + "-01-01";
+  const ano = String(hoje).slice(0, 4), desde = ano + "-01-01";
   const [medidas, faltasI] = await Promise.all([
-    db.listar(`fm_medidas?select=chave,re,data,tipo,grau,dias,fase,nome&data=gte.${desde}&order=re.asc,data.asc,chave.asc`),
-    db.listar(`fm_faltas?select=re,data,nome&codigo=eq.I&data=gte.${desde}&order=re.asc,data.asc`)
+    db.listar(`fm_medidas?select=chave,re,data,tipo,grau,dias,fase,nome&order=re.asc,data.asc,chave.asc`),
+    db.listar(`fm_faltas?select=re,data,nome&codigo=eq.I&order=re.asc,data.asc`)
   ]);
-  return { medidas: R.dedupMedidas(medidas).map(m => ({ ...m, data: iso(m.data) })), faltasI };
+  return { ano, medidas: R.dedupMedidas(medidas).map(m => ({ ...m, data: iso(m.data) })), faltasI };
 }
 function historicoDaLinha(hist, re, nome) {
   if (!hist) return null;
-  const h = MD.historicoDe(re, nome, hist.medidas, hist.faltasI);
+  const h = MD.historicoDe(re, nome, hist.medidas, hist.faltasI, hist.ano);
   return { ...h, txt: MD.historicoTxt(h) };
 }
 
