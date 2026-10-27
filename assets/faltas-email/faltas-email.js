@@ -63,7 +63,8 @@ window.feFechar=fechar;
 
 window.feAbrir=async function(){
   if(uk()!==FE_RESPONSAVEL)return;
-  FE.msg=null;FE.confirmar=false;FE.edit=null;FE.copias=null;FE.p=null;FE.rs=null;FE.rsConf=false;FE.aba="geral";FE.ag=null;FE.ta=null;FE.taConf=false;
+  FE.msg=null;FE.confirmar=false;FE.edit=null;FE.copias=null;FE.p=null;FE.rs=null;FE.rsConf=false;FE.aba="geral";FE.ag=null;FE.ta=null;FE.taConf=false;FE.animar=true;
+  clearInterval(FE.tk);FE.tk=setInterval(()=>{if(!document.getElementById("feJanela")){clearInterval(FE.tk);return;}relogio();},30000);
   render();
   await carregar(false);
 };
@@ -82,7 +83,7 @@ async function carregar(manter){
   }
   render();
 }
-function msg(tipo,t){FE.msg={tipo:tipo,t:t};}
+function msg(tipo,t){FE.msg={tipo:tipo,t:t,em:Date.now()};if(tipo==="ok"){clearTimeout(FE.tm);FE.tm=setTimeout(()=>{if(FE.msg&&FE.msg.tipo==="ok"){const el=document.querySelector("#feJanela .fe-toast");if(el)el.remove();FE.msg=null;}},5200);}}
 
 /* ── tela ────────────────────────────────────────────────────────────── */
 /* ── ícones (traço fino, herdam a cor) ───────────────────────────────── */
@@ -101,15 +102,19 @@ const IC={
   edit:sv('<path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17z"/>'),
   enviar:sv('<path d="m21 3-9.5 18-2.2-7.3L2 11.5z"/>')
 };
+// Navegação em três grupos, na ordem em que as perguntas aparecem: como está? → como configurar? → enviar agora.
 const ABAS=[
-  {k:"geral",rot:"Visão geral",ic:"geral",tit:"Visão geral",desc:"O que vai acontecer, o que já saiu e se está tudo pronto para o próximo envio."},
-  {k:"agenda",rot:"Agendamento",ic:"agenda",tit:"Agendamento do envio automático",desc:"Escolha o dia da semana e a hora em que o aviso sai sozinho. Se alguma área falhar, o sistema tenta de novo a cada hora, no mesmo dia."},
-  {k:"areas",rot:"Áreas e supervisores",ic:"areas",tit:"Áreas e supervisores",desc:"Quem recebe o aviso de cada área, como o supervisor é chamado no e-mail e a situação do envio desta semana."},
-  {k:"dest",rot:"Destinatários",ic:"dest",tit:"Cópias e coordenação",desc:"Quem acompanha em cópia o aviso de cada supervisor e quem recebe o resumo semanal das medidas."},
-  {k:"envio",rot:"Envio e testes",ic:"envio",tit:"Envio oficial e testes",desc:"Envie a semana agora, ou mande um teste com o conteúdo real para conferir o que cada supervisor recebe."},
-  {k:"conta",rot:"Conta e assinatura",ic:"conta",tit:"Conta de envio e assinatura",desc:"A conta que envia os e-mails e a imagem de assinatura que fecha cada aviso."},
-  {k:"hist",rot:"Histórico",ic:"hist",tit:"Últimos envios",desc:"Tudo o que saiu, oficial e teste, com o resultado de cada envio."}
+  {k:"geral",g:"Acompanhar",rot:"Visão geral",sub:"Próximo envio e pendências",ic:"geral",tit:"Como está o aviso desta semana",desc:"O próximo envio automático, o que já saiu e o que ainda precisa de atenção. Comece por aqui."},
+  {k:"hist",g:"Acompanhar",rot:"Histórico",sub:"Tudo o que já saiu",ic:"hist",tit:"Histórico de envios",desc:"Cada e-mail enviado, oficial ou de teste, com a data, a área e se o servidor confirmou o envio."},
+  {k:"agenda",g:"Configurar",rot:"Envio automático",sub:"Dia e hora",ic:"agenda",tit:"Envio automático",desc:"Defina em três passos quando o aviso sai sozinho. Depois de salvar, não precisa fazer mais nada: toda semana ele sai no dia e na hora escolhidos."},
+  {k:"areas",g:"Configurar",rot:"Supervisores",sub:"Quem recebe cada área",ic:"areas",tit:"Supervisores e áreas",desc:"Cada área manda o aviso para o e-mail do supervisor dela. Aqui você cadastra o e-mail, o nome usado no \"Olá, …\" e vê a prévia."},
+  {k:"dest",g:"Configurar",rot:"Cópias",sub:"Quem acompanha",ic:"dest",tit:"Quem recebe cópia",desc:"Quem vai em cópia de todos os avisos (ex.: a coordenação) e quem recebe o resumo semanal das medidas geradas."},
+  {k:"conta",g:"Configurar",rot:"Conta e assinatura",sub:"Remetente do e-mail",ic:"conta",tit:"Conta que envia e assinatura",desc:"O endereço que aparece como remetente e a imagem de assinatura no fim de cada e-mail."},
+  {k:"envio",g:"Enviar",rot:"Enviar agora e testar",sub:"Sem esperar o automático",ic:"envio",tit:"Enviar agora ou testar",desc:"Mande o aviso da semana na hora, ou um teste com o conteúdo real para conferir o que cada supervisor vai receber."}
 ];
+// Ícone + título + explicação de cada bloco: tudo que aparece na tela diz o que é e para que serve.
+const cab=(ic,tit,sub,extra)=>'<div class="fe-sec-h"><div class="fe-sec-t">'+(ic?'<span class="fe-sec-ic">'+IC[ic]+'</span>':'')+'<div><b>'+tit+'</b>'+(sub?'<span class="fe-mut">'+sub+'</span>':'')+'</div></div>'+(extra||'')+'</div>';
+const ajuda=t=>'<span class="fe-aj" tabindex="0" role="note" aria-label="'+esc(t)+'" data-dica="'+esc(t)+'">?</span>';
 const horaTxt=h=>String(h).padStart(2,"0")+":00";
 // dias entre duas datas ISO
 const difDias=(a,b)=>Math.round((Date.parse(b+"T12:00:00Z")-Date.parse(a+"T12:00:00Z"))/864e5);
@@ -136,7 +141,8 @@ function render(){
     if(k==="geral"&&(!p.configurado||!p.link||p.semArea))return'<span class="fe-bd">!</span>';
     return"";
   };
-  const nav=ABAS.map(a=>'<button type="button" class="fe-nv'+(a.k===aba.k?" on":"")+'" data-fe="aba" data-aba="'+a.k+'"'+(a.k===aba.k?' aria-current="page"':'')+'>'+IC[a.ic]+'<span>'+esc(a.rot)+'</span>'+badge(a.k)+'</button>').join("");
+  const nav=ABAS.map((a,i)=>(i===0||ABAS[i-1].g!==a.g?'<span class="fe-nv-g">'+esc(a.g)+'</span>':'')+
+    '<button type="button" class="fe-nv'+(a.k===aba.k?" on":"")+'" data-fe="aba" data-aba="'+a.k+'"'+(a.k===aba.k?' aria-current="page"':'')+'>'+IC[a.ic]+'<span class="fe-nv-t"><b>'+esc(a.rot)+'</b><small>'+esc(a.sub)+'</small></span>'+badge(a.k)+'</button>').join("");
   const ag=p.agenda;
   const rail='<aside class="fe-rail" aria-label="Seções">'+
     '<div class="fe-brand"><div class="fe-marca">'+IC.marca+'</div><div><b>Aviso semanal</b><span>Faltas injustificadas por área</span></div></div>'+
@@ -145,7 +151,6 @@ function render(){
     '<div class="fe-rail-foot"><small>Envio automático</small><label class="fe-sw"><span>'+(p.auto?'Ligado · '+DIAS_C[ag.dia]+' '+horaTxt(ag.hora):'Desligado')+'</span><input type="checkbox" data-fe="auto"'+(p.auto?" checked":"")+' aria-label="Envio automático"></label></div>'+
   '</aside>';
   let corpo='';
-  if(FE.msg)corpo+='<div class="fe-msg '+FE.msg.tipo+'" role="status">'+esc(FE.msg.t)+'</div>';
   if(aba.k==="geral")corpo+=secGeral(p);
   else if(aba.k==="agenda")corpo+=secAgenda(p);
   else if(aba.k==="areas")corpo+=secAreas(p);
@@ -153,61 +158,104 @@ function render(){
   else if(aba.k==="envio")corpo+=secEnvio(p)+secTesteAreas(p)+secTeste(p);
   else if(aba.k==="conta")corpo+=secConta(p)+secAssinatura(p);
   else corpo+=secHistorico(p);
-  const pg='<div class="fe-pg"><header class="fe-top"><div><small>'+esc(aba.rot)+'</small><h2>'+esc(aba.tit)+'</h2><p>'+esc(aba.desc)+'</p></div><button type="button" class="fe-x" aria-label="Fechar" data-fe="fechar" data-id="feJanela">✕</button></header><div class="fe-main">'+corpo+'</div></div>';
-  janela("feJanela","Aviso semanal por e-mail","Faltas injustificadas por área · só a sua conta envia",rail+pg,false,true);
+  const pg='<div class="fe-pg"><header class="fe-top"><div><small>'+esc(aba.g)+' · '+esc(aba.rot)+'</small><h2>'+esc(aba.tit)+'</h2><p>'+esc(aba.desc)+'</p></div><button type="button" class="fe-x" aria-label="Fechar" data-fe="fechar" data-id="feJanela">✕</button></header><div class="fe-main'+(FE.animar?" entra":"")+'">'+corpo+'</div></div>';
+  // aviso flutuante: o de sucesso some sozinho em 5 s; o de erro fica até ser fechado
+  const m=FE.msg,toast=m&&(m.tipo==="er"||Date.now()-(m.em||0)<5000)?'<div class="fe-toast '+m.tipo+'" role="'+(m.tipo==="er"?"alert":"status")+'"><span class="fe-toast-ic">'+(m.tipo==="er"?"!":"✓")+'</span><span>'+esc(m.t)+'</span><button type="button" data-fe="toast-x" aria-label="Fechar aviso">✕</button><i></i></div>':'';
+  janela("feJanela","Aviso semanal por e-mail","Faltas injustificadas por área · só a sua conta envia",rail+pg+toast,false,true);
+  if(FE.animar){FE.animar=false;contar();}
+  relogio();
 }
+// números que sobem de 0 até o valor ao abrir uma aba (só na troca de aba, não a cada clique)
+function contar(){
+  if(window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches)return;
+  document.querySelectorAll("#feJanela [data-conta]").forEach(function(el){
+    const alvo=Number(el.getAttribute("data-conta"))||0;if(!alvo)return;
+    const t0=performance.now(),dur=700;
+    (function passo(t){const k=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-k,3);el.textContent=Math.round(alvo*e);if(k<1)requestAnimationFrame(passo);})(t0);
+  });
+}
+// contagem regressiva do próximo envio ("faltam 5 dias e 3 h"), atualizada a cada 30 s enquanto o painel está aberto
+function faltaTxt(alvoMs){
+  const ms=alvoMs-Date.now();if(ms<=0)return"saindo agora";
+  const min=Math.floor(ms/60000),d=Math.floor(min/1440),h=Math.floor(min%1440/60),mi=min%60;
+  return"faltam "+(d?d+(d===1?" dia":" dias")+(h?" e "+h+" h":""):h?h+" h"+(mi?" e "+mi+" min":""):mi+" min");
+}
+function relogio(){document.querySelectorAll("#feJanela [data-alvo]").forEach(el=>{el.textContent=faltaTxt(Number(el.getAttribute("data-alvo")));});}
 
-/* Visão geral: o próximo envio em destaque, os números da semana e o que falta para estar tudo pronto. */
+/* Visão geral: o próximo envio em destaque, como o aviso funciona, os números da semana e o que falta. */
+const somaD=(d,n)=>{const x=new Date(d+"T12:00:00Z");x.setUTCDate(x.getUTCDate()+n);return x.toISOString().slice(0,10);};
+// semana que um envio cobre: a anterior ao dia do envio, de segunda a domingo
+function semanaDo(d){const seg=somaD(d,-((diaDe(d)+6)%7));return{ini:somaD(seg,-7),fim:somaD(seg,-1)};}
+const alvoMs=(dia,hora)=>Date.parse(dia+"T"+String(hora).padStart(2,"0")+":00:00-03:00");
 function secGeral(p){
   const ag=p.agenda,pr=ag.proximo,n=difDias(p.hoje,pr.dia);
   const enviadas=p.areas.filter(a=>a.status==="ENVIADO").length,comEmail=p.areas.filter(a=>a.email).length;
   const pct=comEmail?Math.round(100*enviadas/comEmail):0;
-  const faltas=p.areas.reduce((s,a)=>s+a.faltas,0),colab=p.areas.reduce((s,a)=>s+a.colaboradores,0);
-  const ticket='<div class="fe-ticket"><span class="fe-eyebrow">Próximo envio automático</span>'+
+  const faltas=p.areas.reduce((s,a)=>s+a.faltas,0),colab=p.areas.reduce((s,a)=>s+a.colaboradores,0),semEmail=p.areas.filter(a=>!a.email).length;
+  const cob=semanaDo(pr.dia);
+  const ticket='<div class="fe-ticket"><span class="fe-eyebrow">'+(p.auto?"Próximo envio automático":"Envio automático desligado")+'</span>'+
     '<div class="fe-dia-nome">'+esc(DIAS[diaDe(pr.dia)])+'</div><span class="fe-hora">'+horaTxt(pr.hora)+'</span>'+
-    '<div class="fe-data">'+esc(dma(pr.dia))+' · '+emTxt(n)+'</div>'+
-    '<div class="fe-rod"><span class="fe-st '+(p.auto?"ENVIADO":"PENDENTE")+'">'+(p.auto?"Automático ligado":"Automático desligado")+'</span>'+
-    '<button type="button" class="fe-b sm" data-fe="aba" data-aba="agenda">'+IC.agenda+'Mudar dia e hora</button></div>'+
-    (p.auto?'':'<p class="fe-mut" style="margin:14px 0 0">Nada sai sozinho enquanto o automático estiver desligado. Ligue no canto esquerdo da janela.</p>')+'</div>';
+    '<div class="fe-data">'+esc(dma(pr.dia))+' · <span data-alvo="'+alvoMs(pr.dia,pr.hora)+'">'+emTxt(n)+'</span></div>'+
+    '<p class="fe-ticket-sub">Cada supervisor vai receber as faltas injustificadas da semana de <b>'+esc(dmCurto(cob.ini))+' a '+esc(dmCurto(cob.fim))+'</b>.</p>'+
+    '<div class="fe-rod"><span class="fe-st '+(p.auto?"ENVIADO":"PENDENTE")+'">'+(p.auto?"Automático ligado":"Nada sai sozinho")+'</span>'+
+    '<button type="button" class="fe-b sm" data-fe="aba" data-aba="agenda">'+IC.agenda+(p.auto?"Mudar dia e hora":"Ligar o envio automático")+'</button></div></div>';
   const kpis='<div class="fe-kpis">'+
-    '<div class="fe-kpi lg"><span class="fe-eyebrow">Áreas enviadas nesta semana</span><b>'+enviadas+'<i> de '+comEmail+'</i></b><div class="fe-barra" role="img" aria-label="'+pct+'% das áreas enviadas"><i style="width:'+pct+'%"></i></div></div>'+
-    '<div class="fe-kpi"><span class="fe-eyebrow">Faltas no aviso</span><b>'+faltas+'</b><span>'+colab+' colaborador(es)</span></div>'+
-    '<div class="fe-kpi"><span class="fe-eyebrow">Sem e-mail</span><b>'+p.areas.filter(a=>!a.email).length+'</b><span>área(s) sem supervisor cadastrado</span></div>'+
+    '<div class="fe-kpi lg"><span class="fe-eyebrow">Supervisores que já receberam o aviso desta semana</span><b><span class="fe-n" data-conta="'+enviadas+'">'+enviadas+'</span><i> de '+comEmail+'</i></b><div class="fe-barra" role="img" aria-label="'+pct+'% enviados"><i style="width:'+pct+'%"></i></div></div>'+
+    '<div class="fe-kpi"><span class="fe-eyebrow">Faltas no aviso</span><b data-conta="'+faltas+'">'+faltas+'</b><span>de '+colab+' colaborador(es), semana de '+esc(dmCurto(p.semana.inicio))+' a '+esc(dmCurto(p.semana.fim))+'</span></div>'+
+    '<div class="fe-kpi'+(semEmail?" alerta":"")+'"><span class="fe-eyebrow">Sem e-mail</span><b data-conta="'+semEmail+'">'+semEmail+'</b><span>'+(semEmail?"não recebem o aviso até cadastrar":"todas recebem o aviso")+'</span></div>'+
   '</div>';
-  const item=(ok,tit,det,acao)=>'<div class="fe-rd"><span class="fe-led '+(ok?"ok":"am")+'"></span><div><b>'+tit+'</b><span>'+det+'</span></div>'+(acao?'<button type="button" class="fe-b sm" data-fe="aba" data-aba="'+acao[0]+'">'+acao[1]+'</button>':'<span></span>')+'</div>';
+  const fluxo='<div class="fe-sec">'+cab("dest","Como o aviso funciona","Três etapas, toda semana. Você só configura uma vez.")+
+    '<ol class="fe-fluxo">'+
+      '<li><span class="fe-fluxo-n">1</span><b>A planilha diária atualiza as faltas</b><span>Abonos, afastamentos e demitidos já saem da conta. Só fica a falta injustificada de verdade.</span></li>'+
+      '<li><span class="fe-fluxo-n">2</span><b>No dia e hora marcados, sai o e-mail</b><span>Cada supervisor recebe só as faltas da área dele, com a planilha dentro do e-mail. Quem está em cópia acompanha.</span></li>'+
+      '<li><span class="fe-fluxo-n">3</span><b>O supervisor gera a medida no painel</b><span>O botão do e-mail abre a mesma lista no Painel ServCamp, onde ele gera o documento e depois lança no SAR2G.</span></li>'+
+    '</ol></div>';
+  const item=(ok,tit,det,acao)=>'<div class="fe-rd'+(ok?"":" pend")+'"><span class="fe-led '+(ok?"ok":"am")+'"></span><div><b>'+tit+'</b><span>'+det+'</span></div>'+(acao?'<button type="button" class="fe-b sm" data-fe="aba" data-aba="'+acao[0]+'">'+acao[1]+' →</button>':'<span class="fe-ok-txt">'+(ok?"Pronto":"")+'</span>')+'</div>';
   const semAssin=!p.assinatura;
-  const pronto='<div class="fe-sec"><div class="fe-sec-h"><div><b>Está tudo pronto?</b><span class="fe-mut">O que precisa estar em ordem para o aviso sair certo.</span></div></div><div class="fe-pronto">'+
-    item(p.configurado,"Conta de envio",p.configurado?"Enviando por "+esc(p.conta.email):"Nenhuma conta pronta: até cadastrar, nenhum e-mail sai.",p.configurado?null:["conta","Cadastrar"])+
-    item(!p.areas.some(a=>!a.email),"E-mail dos supervisores",p.areas.some(a=>!a.email)?p.areas.filter(a=>!a.email).length+" área(s) sem e-mail: "+esc(p.areas.filter(a=>!a.email).map(a=>a.nome).join(", ")):"Todas as áreas têm e-mail cadastrado.",p.areas.some(a=>!a.email)?["areas","Cadastrar"]:null)+
-    item(!!p.link,"Botão para o painel",p.link?"Os e-mails levam o botão \"Abrir no Painel ServCamp\" para "+esc(p.link):"Os e-mails saem sem o botão. Abra este painel pelo endereço oficial do sistema (https) para ele ser guardado.",null)+
-    item(!p.semArea,"Faltas com área",p.semArea?p.semArea+" falta(s) da semana vieram sem área na planilha e não têm para quem ir.":"Todas as faltas da semana têm supervisor.",null)+
-    item(!semAssin,"Assinatura",semAssin?"Sem imagem: o e-mail fecha com \"Atenciosamente, Servcamp\".":"Imagem cadastrada, entra abaixo do cartão.",semAssin?["conta","Enviar imagem"]:null)+
-    item(p.copias.length>0,"Cópias",p.copias.length?p.copias.length+" pessoa(s) acompanham em cópia.":"Ninguém em cópia ainda.",p.copias.length?null:["dest","Incluir"])+
-  '</div></div>';
-  return '<div class="fe-hero">'+ticket+kpis+'</div>'+pronto;
+  const itens=[
+    [p.configurado,"Conta que envia",p.configurado?"Os e-mails saem por "+esc(p.conta.email)+".":"Nenhuma conta pronta: até cadastrar, nenhum e-mail sai.",p.configurado?null:["conta","Cadastrar"]],
+    [p.auto,"Envio automático",p.auto?"Ligado: "+esc(DIAS[ag.dia].toLowerCase())+" às "+horaTxt(ag.hora)+".":"Desligado: o aviso só sai se você enviar na aba Enviar agora.",p.auto?null:["agenda","Ligar"]],
+    [!semEmail,"E-mail dos supervisores",semEmail?semEmail+" área(s) sem e-mail: "+esc(p.areas.filter(a=>!a.email).map(a=>a.nome).join(", "))+".":"Todas as áreas têm e-mail cadastrado.",semEmail?["areas","Cadastrar"]:null],
+    [p.copias.length>0,"Cópias",p.copias.length?p.copias.length+" pessoa(s) acompanham em cópia.":"Ninguém em cópia ainda.",p.copias.length?null:["dest","Incluir"]],
+    [!!p.link,"Botão para o painel",p.link?"O e-mail leva o botão \"Abrir no Painel ServCamp\".":"Os e-mails saem sem o botão. Abra este painel pelo endereço oficial do sistema (https) para ele ser guardado.",null],
+    [!p.semArea,"Faltas com supervisor",p.semArea?p.semArea+" falta(s) da semana vieram sem área na planilha e não têm para quem ir.":"Todas as faltas da semana têm supervisor.",null],
+    [!semAssin,"Assinatura",semAssin?"Sem imagem: o e-mail fecha com \"Atenciosamente, Servcamp\".":"Imagem cadastrada, entra no fim do e-mail.",semAssin?["conta","Enviar imagem"]:null]
+  ];
+  const prontos=itens.filter(x=>x[0]).length,pp=Math.round(100*prontos/itens.length);
+  const pronto='<div class="fe-sec">'+cab("geral","Está tudo pronto?","O que precisa estar em ordem para o aviso sair certo. Os itens em amarelo pedem atenção.",
+      '<div class="fe-anel" style="--p:'+pp+'" role="img" aria-label="'+prontos+' de '+itens.length+' prontos"><b>'+prontos+'<i>/'+itens.length+'</i></b></div>')+
+    '<div class="fe-pronto">'+itens.sort((a,b)=>(a[0]?1:0)-(b[0]?1:0)).map(x=>item(x[0],x[1],x[2],x[3])).join("")+'</div></div>';
+  return '<div class="fe-hero">'+ticket+kpis+'</div>'+pronto+fluxo;
 }
 
-/* Agendamento: dia da semana + régua de horas; só vale depois de salvar. */
+/* Envio automático em três passos: ligar → dia → hora, e a confirmação em português claro antes de salvar. */
 function secAgenda(p){
   const a=FE.ag||(FE.ag={dia:p.agenda.dia,hora:p.agenda.hora}),salvo=p.agenda,mudou=a.dia!==salvo.dia||a.hora!==salvo.hora;
-  const pr=proximo(p,a),n=pr.em;
-  const MES=["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+  const pr=proximo(p,a),MES=["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+  const passo=(n,tit,sub,ok,corpo)=>'<section class="fe-sec fe-passo"><div class="fe-passo-h"><span class="fe-passo-n'+(ok?" ok":"")+'">'+(ok?"✓":n)+'</span><div><small>Passo '+n+'</small><b>'+tit+'</b><span class="fe-mut">'+sub+'</span></div></div>'+corpo+'</section>';
+  const liga='<label class="fe-sw fe-sw-lg"><input type="checkbox" data-fe="auto"'+(p.auto?" checked":"")+'><span><b>'+(p.auto?"Ligado":"Desligado")+'</b><small>'+(p.auto?"O aviso sai sozinho toda semana, no dia e na hora abaixo.":"Nada sai sozinho. Você ainda pode enviar pela aba Enviar agora.")+'</small></span></label>';
   const dias=DIAS_C.map((c,i)=>{
-    const prox=proximo(p,{dia:i,hora:a.hora}).dia; // a próxima vez que esse dia da semana acontece
+    const prox=proximo(p,{dia:i,hora:a.hora}).dia;
     return '<button type="button" class="fe-dia'+(i===a.dia?" on":"")+'" data-fe="ag-dia" data-dia="'+i+'" aria-pressed="'+(i===a.dia)+'" title="'+esc(DIAS[i])+', próximo dia '+esc(dma(prox))+'"><small>'+c+'</small><b>'+prox.slice(8,10)+'</b><em>'+MES[Number(prox.slice(5,7))-1]+'</em></button>';
   }).join("");
-  const h0=salvo.horas[0],h1=salvo.horas[1],horas=[];
-  for(let h=h0;h<=h1;h++)horas.push('<button type="button" class="fe-hr'+(h===a.hora?" on":"")+'" data-fe="ag-hora" data-hora="'+h+'" aria-pressed="'+(h===a.hora)+'">'+String(h).padStart(2,"0")+'</button>');
-  return '<div class="fe-sec"><div class="fe-sec-h"><div><b>Dia da semana</b><span class="fe-mut">O aviso sempre traz a semana anterior, de segunda a domingo.</span></div></div><div class="fe-dias" role="group" aria-label="Dia da semana">'+dias+'</div></div>'+
-    '<div class="fe-sec"><div class="fe-sec-h"><div><b>Hora do envio</b><span class="fe-mut">Horário de Brasília, entre '+h0+'h e '+h1+'h. O sistema dispara de hora em hora, então o e-mail sai dentro da hora escolhida.</span></div></div><div class="fe-horas" role="group" aria-label="Hora">'+horas.join("")+'</div>'+
-    '<div class="fe-leitura"><b>'+horaTxt(a.hora)+'</b><span>Próximo envio: <b style="font:650 .95rem var(--font);color:var(--tx)">'+esc(DIAS[diaDe(pr.dia)].toLowerCase())+', '+esc(dma(pr.dia))+'</b> · '+emTxt(n)+(p.auto?'':' · <span style="color:var(--am)">o automático está desligado</span>')+'</span></div>'+
-    '<div class="fe-linha"><button type="button" class="fe-b fe-pri" data-fe="ag-salvar"'+(mudou&&!FE.ocupado?"":" disabled")+'>'+(FE.ocupado?"Salvando…":"Salvar agendamento")+'</button>'+
-    (mudou?'<button type="button" class="fe-b" data-fe="ag-descartar">Descartar</button><span class="fe-mut">Alteração ainda não salva</span>':'<span class="fe-mut">Salvo: '+esc(DIAS[salvo.dia].toLowerCase())+' às '+horaTxt(salvo.hora)+'</span>')+'</div></div>'+
-    '<div class="fe-sec"><div class="fe-sec-h"><div><b>Como o envio automático funciona</b></div></div><div class="fe-pronto">'+
-      '<div class="fe-rd"><span class="fe-led ok"></span><div><b>Um e-mail por área</b><span>Só com as faltas injustificadas daquela área, abonos e afastamentos já descontados.</span></div><span></span></div>'+
-      '<div class="fe-rd"><span class="fe-led ok"></span><div><b>Sem repetir</b><span>Área que já recebeu o aviso da semana não recebe de novo, mesmo que o sistema dispare outra vez.</span></div><span></span></div>'+
-      '<div class="fe-rd"><span class="fe-led ok"></span><div><b>Tentativas seguintes</b><span>Se o servidor de e-mail falhar, a cada hora, no mesmo dia, o sistema envia só o que ficou para trás.</span></div><span></span></div>'+
-    '</div></div>';
+  const h0=salvo.horas[0],h1=salvo.horas[1];
+  const grupo=(rot,de,ate)=>{let b='';for(let h=Math.max(de,h0);h<=Math.min(ate,h1);h++)b+='<button type="button" class="fe-hr'+(h===a.hora?" on":"")+'" data-fe="ag-hora" data-hora="'+h+'" aria-pressed="'+(h===a.hora)+'">'+String(h).padStart(2,"0")+'h</button>';return b?'<div class="fe-hg"><span>'+rot+'</span><div>'+b+'</div></div>':'';};
+  const horas=grupo("Manhã",0,11)+grupo("Tarde",12,17)+grupo("Noite",18,23);
+  const prox3=[0,7,14].map(k=>{const d=somaD(pr.dia,k),s=semanaDo(d);return'<li><b>'+esc(DIAS_C[diaDe(d)])+' '+esc(dmCurto(d))+' · '+horaTxt(a.hora)+'</b><span>cobre '+esc(dmCurto(s.ini))+' a '+esc(dmCurto(s.fim))+'</span></li>';}).join("");
+  const frase='<div class="fe-frase"><span class="fe-eyebrow">Como vai ficar</span><p>'+(p.auto?'Toda <b>'+esc(DIAS[a.dia].toLowerCase())+'</b>, às <b>'+horaTxt(a.hora)+'</b>, cada supervisor recebe por e-mail as faltas injustificadas da semana anterior, de segunda a domingo.':'O envio automático está <b>desligado</b>. Quando ligar, o aviso vai sair toda <b>'+esc(DIAS[a.dia].toLowerCase())+'</b>, às <b>'+horaTxt(a.hora)+'</b>.')+'</p>'+
+    '<span class="fe-eyebrow" style="margin-top:14px">Próximos envios</span><ol class="fe-prox">'+prox3+'</ol></div>';
+  const faq='<details class="fe-faq"><summary>Dúvidas comuns sobre o envio automático</summary>'+
+    '<div><b>E se o servidor de e-mail falhar?</b><span>A cada hora, no mesmo dia, o sistema tenta de novo e envia só o que ficou para trás.</span></div>'+
+    '<div><b>O supervisor pode receber o mesmo aviso duas vezes?</b><span>Não. Área que já recebeu o aviso da semana não recebe de novo, mesmo que alguém clique em enviar.</span></div>'+
+    '<div><b>Por que "dentro da hora" e não no minuto exato?</b><span>O serviço que dispara o envio garante a hora, não o minuto. Escolhendo 14h, o e-mail sai entre 14h e 14h59.</span></div>'+
+    '<div><b>Qual semana vai no e-mail?</b><span>Sempre a semana anterior completa, de segunda a domingo, já sem abonos, afastamentos e demitidos.</span></div></details>';
+  const barra=mudou?'<div class="fe-salvar" role="region" aria-label="Alteração não salva"><div><b>Você mudou o agendamento</b><span>De '+esc(DIAS_C[salvo.dia].toLowerCase())+' às '+horaTxt(salvo.hora)+' para '+esc(DIAS_C[a.dia].toLowerCase())+' às '+horaTxt(a.hora)+'. Ainda não está salvo.</span></div>'+
+    '<button type="button" class="fe-b" data-fe="ag-descartar">Descartar</button><button type="button" class="fe-b fe-pri" data-fe="ag-salvar"'+(FE.ocupado?" disabled":"")+'>'+(FE.ocupado?"Salvando…":"Salvar agendamento")+'</button></div>':'';
+  return '<div class="fe-agenda"><div class="fe-agenda-l">'+
+      passo(1,"Ligue o envio automático","Ligado, o aviso sai sozinho toda semana. Desligado, só sai quando você enviar.",p.auto,liga)+
+      passo(2,"Escolha o dia da semana","Embaixo de cada dia está a data do próximo envio, se você escolher aquele dia.",true,'<div class="fe-dias" role="group" aria-label="Dia da semana">'+dias+'</div>')+
+      passo(3,"Escolha a hora","Horário de Brasília. O e-mail sai dentro da hora escolhida "+ajuda("O serviço que dispara o envio garante a hora, não o minuto: escolhendo 14h, sai entre 14h e 14h59.")+".",true,'<div class="fe-horas" role="group" aria-label="Hora">'+horas+'</div>')+
+    '</div><aside class="fe-agenda-r"><div class="fe-sec fe-resumo-ag">'+frase+(mudou?'':'<div class="fe-salvo">✓ Salvo</div>')+'</div>'+faq+'</aside></div>'+barra;
 }
 
 /* Teste de todas as áreas: um e-mail por área, com o conteúdo real, só para quem for escolhido. */
@@ -219,7 +267,7 @@ function secTesteAreas(p){
   String(t.outro||"").split(/[,;\s]+/).map(x=>x.trim()).filter(Boolean).forEach(x=>destinos.push(x));
   const chips='<label class="fe-chip"><input type="checkbox" data-fe="ta-eu"'+(t.eu?" checked":"")+'> <b>Eu</b> <span class="fe-mut">'+esc(p.conta&&p.conta.email||"a conta de envio")+'</span></label>'+
     p.copias.map(c=>'<label class="fe-chip"><input type="checkbox" data-fe="ta-cc" data-email="'+esc(c.email)+'"'+(t.cc.has(c.email)?" checked":"")+'> <b>'+esc(c.nome)+'</b> <span class="fe-mut">'+esc(c.email)+'</span></label>').join("");
-  let h='<div class="fe-sec"><div class="fe-sec-h"><div><b>Teste de todas as áreas</b><span class="fe-mut">Manda para quem você escolher o mesmo e-mail que cada supervisor recebe, um por área ('+com+' no total). Nenhum supervisor é avisado e nada conta como envio oficial.</span></div></div>'+
+  let h='<div class="fe-sec fe-destaque">'+cab("dest","Mandar para a coordenação o aviso de todas as áreas","Quem você marcar recebe "+com+" e-mails, um por área, iguais aos que cada supervisor recebe. Assim dá para acompanhar tudo sem estar em cópia. Nenhum supervisor é avisado e nada conta como envio oficial.")+
     '<p class="fe-eyebrow" style="margin:0 0 10px">Para quem vai</p><div class="fe-chips">'+chips+'</div>'+
     '<div class="fe-linha"><input class="fe-in l" type="text" inputmode="email" autocomplete="off" data-fe-campo="ta.outro" placeholder="Outros e-mails (opcional; separe por vírgula)" value="'+esc(t.outro)+'"></div>'+
     '<div class="fe-grade" style="margin-top:14px;max-width:460px"><div><label for="feTaDe">De</label><input id="feTaDe" class="fe-in" type="date" data-fe-campo="ta.de" value="'+esc(t.de)+'"></div><div><label for="feTaAte">Até</label><input id="feTaAte" class="fe-in" type="date" data-fe-campo="ta.ate" value="'+esc(t.ate)+'"></div></div>';
@@ -235,7 +283,7 @@ function secTesteAreas(p){
 
 function secConta(p){
   const c=p.conta,f=FE.conta;
-  let h='<div class="fe-sec"><div class="fe-sec-h"><b>Conta de envio</b><span class="fe-mut">Quando o supervisor clicar em Responder, a resposta volta para esta conta com as cópias junto.</span></div>';
+  let h='<div class="fe-sec">'+cab("conta","Conta que envia os e-mails","É o remetente que o supervisor vê. Quando ele clicar em Responder, a resposta volta para esta conta, com as cópias junto.");
   if(c&&c.ilegivel&&!f)h+='<div class="fe-alerta" style="margin:0 0 8px">A senha guardada não pode mais ser lida (a chave de login do sistema mudou). Cadastre a conta de novo.</div>';
   if(f){
     return h+'<div class="fe-grade">'+
@@ -255,7 +303,7 @@ function secConta(p){
 function secAssinatura(p){
   const a=p.assinatura;
   const kb=n=>Math.max(1,Math.round((Number(n)||0)/1024))+" KB";
-  return '<div class="fe-sec"><div class="fe-sec-h"><b>Assinatura do e-mail</b><span class="fe-mut">Vai no corpo do e-mail, abaixo do cartão, depois de "Atenciosamente,"</span></div>'+
+  return '<div class="fe-sec">'+cab("edit","Assinatura no fim do e-mail","Uma imagem (PNG ou JPG) que entra depois de \"Atenciosamente,\". Imagem grande é reduzida sozinha.")+
     (a?'<img src="'+esc(a.src)+'" alt="Assinatura atual" style="display:block;max-width:100%;height:auto;border:1px solid var(--fe-ln);border-radius:8px">'+
       '<p class="fe-mut" style="margin:6px 0 0">'+a.largura+' × '+a.altura+' px · '+kb(a.bytes)+(a.em?' · enviada em '+esc(quando(a.em)):'')+'</p>'
       :'<p class="fe-mut" style="margin:0">Nenhuma assinatura cadastrada: o e-mail fecha com "Atenciosamente, Servcamp".</p>')+
@@ -323,8 +371,9 @@ function secAreas(p){
       '<td>'+st+'</td>'+
       '<td style="white-space:nowrap"><button class="fe-b sm'+(a.email?" ic":"")+'" data-fe="editar-area" data-area="'+esc(a.area)+'" title="'+(a.email?"Editar e-mail e saudação":"Cadastrar o e-mail do supervisor")+'" aria-label="'+(a.email?"Editar ":"Cadastrar e-mail de ")+esc(a.nome)+'">'+IC.edit+(a.email?"":"Cadastrar e-mail")+'</button> <button class="fe-b sm ic" data-fe="previa" data-area="'+esc(a.area)+'" title="Ver a prévia do e-mail" aria-label="Prévia do e-mail de '+esc(a.nome)+'">'+IC.prev+'</button></td></tr>';
   }).join("");
-  return '<div class="fe-sec"><div class="fe-sec-h"><b>Áreas e supervisores</b><span class="fe-mut">O e-mail vale também para o relatório de hora extra.</span></div>'+
-    (p.areas.length?'<div class="fe-tab-w"><table class="fe-tab"><thead><tr><th></th><th>Área</th><th>Saudação ("Olá, …")</th><th>E-mail do supervisor</th><th>Faltas na semana</th><th>Situação</th><th></th></tr></thead><tbody>'+linhas+'</tbody></table></div>'
+  return '<div class="fe-sec">'+cab("areas","Para quem vai o aviso de cada área","A caixa marcada inclui a área no próximo envio manual. O e-mail cadastrado aqui vale também para o relatório de hora extra.")+
+    '<div class="fe-legenda"><span class="fe-st ENVIADO">Enviado</span> já recebeu nesta semana <span class="fe-st PENDENTE">Pendente</span> ainda vai receber <span class="fe-st SEM_EMAIL">Sem e-mail</span> não recebe até cadastrar</div>'+
+    (p.areas.length?'<div class="fe-tab-w"><table class="fe-tab"><thead><tr><th><span class="fe-vh">Incluir</span></th><th>Área</th><th>Como chamar ("Olá, …")</th><th>E-mail do supervisor</th><th>Faltas na semana</th><th>Situação</th><th><span class="fe-vh">Ações</span></th></tr></thead><tbody>'+linhas+'</tbody></table></div>'
       :'<p class="fe-mut">Nenhuma área nas planilhas recentes.</p>')+'</div>';
 }
 
@@ -335,11 +384,11 @@ function secCopias(p){
         '<input class="fe-in l" type="email" data-fe-campo="copias.'+i+'.email" maxlength="120" placeholder="email@gruposervcamp.com.br" value="'+esc(c.email)+'">'+
         '<button class="fe-b sm" data-fe="rm-copia" data-i="'+i+'" aria-label="Remover">Remover</button></div>';
     }).join("");
-    return '<div class="fe-sec"><div class="fe-sec-h"><b>Quem vai em cópia</b></div>'+l+
+    return '<div class="fe-sec">'+cab("dest","Quem vai em cópia","Nome e e-mail de cada pessoa. Elas recebem uma cópia de todos os avisos dos supervisores.")+l+
       '<div class="fe-linha"><button class="fe-b sm" data-fe="add-copia">+ Adicionar</button><span style="flex:1"></span><button class="fe-b sm" data-fe="cancelar-copias">Cancelar</button><button class="fe-b sm fe-pri" data-fe="salvar-copias"'+(FE.ocupado?" disabled":"")+'>Salvar cópias</button></div></div>';
   }
   const chips=p.copias.map(c=>'<label class="fe-chip"><input type="checkbox" data-fe="cc" data-email="'+esc(c.email)+'"'+(FE.cc.has(c.email)?" checked":"")+'> <b>'+esc(c.nome)+'</b> <span class="fe-mut">'+esc(c.email)+'</span></label>').join("");
-  return '<div class="fe-sec"><div class="fe-sec-h"><b>Quem vai em cópia</b><button class="fe-b sm" data-fe="editar-copias">Editar lista</button></div>'+
+  return '<div class="fe-sec">'+cab("dest","Quem vai em cópia","Recebem uma cópia do aviso de cada supervisor. No envio automático vai a lista inteira; no envio manual você pode desmarcar alguém.",'<button class="fe-b sm" data-fe="editar-copias">'+IC.edit+'Editar lista</button>')+
     (p.copias.length?'<div class="fe-chips">'+chips+'</div><p class="fe-mut" style="margin:8px 0 0">Desmarque para tirar alguém da cópia neste envio. O automático sempre usa a lista inteira.</p>'
       :'<p class="fe-mut">Ninguém em cópia ainda. Clique em "Editar lista" para incluir.</p>')+'</div>';
 }
@@ -347,8 +396,7 @@ function secCopias(p){
 function secEnvio(p){
   const areas=p.areas.filter(a=>FE.sel.has(a.area));
   const cc=p.copias.filter(c=>FE.cc.has(c.email));
-  let h='<div class="fe-sec"><div class="fe-sec-h"><b>Envio oficial · semana de '+esc(dma(p.semana.inicio))+' a '+esc(dma(p.semana.fim))+'</b></div>'+
-    '<p class="fe-mut" style="margin:0">Um e-mail por área, só com as faltas daquela área. Área que já recebeu o aviso desta semana não recebe de novo.</p>';
+  let h='<div class="fe-sec">'+cab("envio","Enviar o aviso desta semana agora","Semana de "+esc(dma(p.semana.inicio))+" a "+esc(dma(p.semana.fim))+". Um e-mail por área, só com as faltas daquela área. Área que já recebeu não recebe de novo. As áreas vêm marcadas na aba Supervisores.");
   if(FE.confirmar&&areas.length){
     h+='<div class="fe-conf"><b>Confirma o envio?</b><ul>'+areas.map(a=>'<li>'+esc(a.nome)+' → '+esc(a.email)+' · '+a.faltas+' falta(s)</li>').join("")+'</ul>'+
       '<p class="fe-mut" style="margin:8px 0 0">Em cópia: '+(cc.length?cc.map(c=>esc(c.nome)).join(", "):"ninguém")+'</p>'+
@@ -364,7 +412,7 @@ function secEnvio(p){
    painel e ainda não está no SAR2G, por supervisor. Sai junto com o aviso das áreas (automático). */
 function secResumo(p){
   const r=p.resumo||{ligado:false,para:[]},ed=FE.rs;
-  let h='<div class="fe-sec"><div class="fe-sec-h"><b>Resumo semanal para a coordenação</b><span class="fe-mut">Medidas geradas no painel × SAR2G, por supervisor. Sai junto com o aviso das áreas.</span></div>';
+  let h='<div class="fe-sec">'+cab("hist","Resumo semanal para a coordenação","Um e-mail só, com as medidas que os supervisores geraram no painel e ainda não estão no SAR2G. Sai junto com o aviso automático.");
   if(ed){
     h+=ed.map(function(c,i){
       return '<div class="fe-linha"><input class="fe-in" style="flex:0 1 200px" data-fe-campo="rs.'+i+'.nome" maxlength="60" placeholder="Nome" value="'+esc(c.nome)+'">'+
@@ -400,7 +448,7 @@ function secTeste(p){
   const a=p.areas.find(x=>x.area===t.area);
   const ops=p.areas.map(x=>'<option value="'+esc(x.area)+'"'+(x.area===t.area?" selected":"")+'>'+esc(x.nome)+'</option>').join("");
   const ccs=p.copias.map(c=>'<label class="fe-chip"><input type="checkbox" data-fe="t-cc" data-email="'+esc(c.email)+'"'+(t.cc&&t.cc.has(c.email)?" checked":"")+'> '+esc(c.nome)+'</label>').join("");
-  return '<div class="fe-sec"><div class="fe-sec-h"><b>Envio de teste</b><span class="fe-mut">Qualquer período de até 31 dias. Não conta como envio oficial.</span></div>'+
+  return '<div class="fe-sec">'+cab("prev","Testar o aviso de uma área","Escolha a área, o período (até 31 dias) e para quem vai. Serve para ver exatamente o que o supervisor recebe. Não conta como envio oficial.")+
     '<div class="fe-grade">'+
       '<div><label for="feTArea">Área</label><select id="feTArea" class="fe-in" data-fe-campo="t.area">'+ops+'</select></div>'+
       '<div><label for="feTDe">De</label><input id="feTDe" class="fe-in" type="date" data-fe-campo="t.de" value="'+esc(t.de)+'"></div>'+
@@ -419,7 +467,7 @@ function secTeste(p){
 function secHistorico(p){
   if(!p.historico||!p.historico.length)return '<div class="fe-vazio"><b>Nenhum envio ainda</b><span>Quando o primeiro aviso ou teste sair, ele aparece aqui.</span></div>';
   const l=p.historico.map(e=>'<tr><td>'+esc(quando(e.em))+'</td><td>'+(e.tipo==="TESTE"?"Teste":"Oficial · "+(e.origem==="auto"?"automático":"manual"))+'</td><td>'+esc(e.area)+'</td><td>'+(e.semana?esc(dma(e.semana))+(e.ate?" a "+esc(dma(e.ate)):""):"—")+'</td><td>'+e.qtd+'</td><td>'+(e.ok?'<span class="fe-st ENVIADO">ok</span>':'<span class="fe-st FALHOU">falhou</span>')+'</td></tr>').join("");
-  return '<div class="fe-sec"><div class="fe-sec-h"><b>Últimos envios</b></div><div class="fe-tab-w"><table class="fe-tab"><thead><tr><th>Quando</th><th>Tipo</th><th>Área</th><th>Período</th><th>Faltas</th><th></th></tr></thead><tbody>'+l+'</tbody></table></div></div>';
+  return '<div class="fe-sec">'+cab("hist","Últimos 30 envios","Do mais recente para o mais antigo. \"Falhou\" quer dizer que o servidor de e-mail não confirmou: o automático tenta de novo na hora seguinte.")+'<div class="fe-tab-w"><table class="fe-tab"><thead><tr><th>Quando</th><th>Tipo</th><th>Área</th><th>Período</th><th>Faltas</th><th></th></tr></thead><tbody>'+l+'</tbody></table></div></div>';
 }
 
 /* ── prévia ──────────────────────────────────────────────────────────── */
@@ -459,7 +507,8 @@ function clique(e){
   const p=FE.p;
   if(q==="fechar"){fechar(b.getAttribute("data-id"));return;}
   if(!p)return;
-  if(q==="aba"){FE.aba=b.getAttribute("data-aba");FE.msg=null;render();const m=document.querySelector("#feJanela .fe-main");if(m)m.scrollTop=0;return;}
+  if(q==="toast-x"){FE.msg=null;const el=document.querySelector("#feJanela .fe-toast");if(el)el.remove();return;}
+  if(q==="aba"){FE.aba=b.getAttribute("data-aba");FE.msg=null;FE.animar=true;render();const m=document.querySelector("#feJanela .fe-main");if(m)m.scrollTop=0;return;}
   if(q==="ag-dia"){(FE.ag||(FE.ag={})).dia=Number(b.getAttribute("data-dia"));render();return;}
   if(q==="ag-hora"){(FE.ag||(FE.ag={})).hora=Number(b.getAttribute("data-hora"));render();return;}
   if(q==="ag-descartar"){FE.ag={dia:p.agenda.dia,hora:p.agenda.hora};render();return;}
