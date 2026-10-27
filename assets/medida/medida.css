@@ -505,3 +505,53 @@ html[data-theme="dark"] .md-rod-txt>b{color:#fff}
 .md-passo .r b{color:#2d4868;font-weight:650}
 .md-ctx .md-sec-h{flex-wrap:wrap;gap:2px 10px;margin-bottom:12px}
 .md-ctx .md-sec-d{margin-left:0;flex-basis:100%}
+
+/* ═══ v8: cabe na tela ═══════════════════════════════════════════════════════════════════════════════════════
+   Menos "casca" (topo, passos e rodapé mais baixos) para sobrar altura à folha; em tela baixa a rolagem fica
+   dentro do formulário e da prévia, e o rodapé com as ações nunca sai da janela. */
+.md-ov{padding:10px}
+.md-win{max-height:calc(100vh - 20px)}
+.md-hd{padding:10px 18px}
+.md-hd-ic{width:34px;height:34px;border-radius:10px}
+.md-hd-ic svg{width:18px;height:18px}
+.md-hd b{font-size:1rem}
+.md-hd .t span{margin-top:1px;font-size:.76rem}
+.md-passos{padding:6px 18px 9px}
+.md-passo{padding:3px 8px 3px 4px}
+.md-rod{padding:9px 18px}
+.md-rod .md-b{min-height:38px}
+.md-prev{padding:10px 18px 18px;gap:8px}
+.md-prev-h{padding:5px 8px 5px 12px}
+.md-form{padding:12px 14px 22px}
+.md-corpo{min-height:0}
+.md-prev,.md-form{min-height:0}
+@media (max-height:760px){
+  .md-hd .t span{display:none}
+  .md-passos-c{display:none}
+  .md-sub{display:none}
+  .md-sec{padding:14px 16px 16px}
+}
+.md-rowbtn{margin-top:6px;white-space:nowrap}
+/* na prévia a folha tem a altura do conteúdo (o A4 inteiro só vale na impressão): sobra mais tela para ler */
+.md-papel .md-doc{min-height:0}
+
+/* ═══ Topo da tela Faltas x Medidas: o que se usa todo dia em destaque, o resto agrupado ═════════════════════
+   Telas (lista, quadro, painel, histórico) = navegação principal, grande e com o item atual marcado.
+   Relatório, aviso por e-mail, envio da planilha e atualizar = ações de apoio, num grupo à parte e mais discretas.
+   Nada foi removido: os mesmos botões, as mesmas funções. */
+#pg-faltasmed .sec-hdr{display:flex;flex-wrap:wrap;align-items:center;gap:14px 20px}
+#pg-faltasmed .fm-topo-acoes{margin-left:auto;display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:10px 16px}
+#pg-faltasmed .fm-vista{box-shadow:0 1px 2px rgba(13,31,53,.06),0 8px 20px -14px rgba(13,31,53,.35)}
+#pg-faltasmed .fm-vista button{min-height:40px;padding:0 16px;font-size:.84rem;font-weight:700}
+#pg-faltasmed .fm-vista button.on{background:linear-gradient(180deg,#2f6fc4,#1e4d8c);color:#fff}
+#pg-faltasmed .fm-acoes{display:flex;flex-wrap:wrap;gap:4px;padding:4px;border:1px dashed var(--md-ln);border-radius:12px}
+#pg-faltasmed .fm-acoes .fm-btn{min-height:34px;padding:0 11px;font-size:.76rem;font-weight:650;color:var(--md-tx2);background:transparent;border-color:transparent;box-shadow:none}
+#pg-faltasmed .fm-acoes .fm-btn:hover{background:var(--md-prisf);color:var(--md-pri);border-color:transparent}
+#pg-faltasmed .fm-acoes .fm-btn svg{width:15px;height:15px}
+@media (max-width:900px){
+  #pg-faltasmed .fm-topo-acoes{margin-left:0;justify-content:flex-start;width:100%}
+  #pg-faltasmed .fm-vista{width:100%;overflow-x:auto}
+  #pg-faltasmed .fm-vista button{flex:1 0 auto}
+  #pg-faltasmed .fm-acoes{width:100%}
+  #pg-faltasmed .fm-acoes .fm-btn{flex:1 1 auto;justify-content:center}
+}

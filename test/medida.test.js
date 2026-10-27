@@ -313,9 +313,9 @@ test("nomes de quem gera iguais aos do USERS do index.html", () => {
 
 test("a tela recebe quem pode gerar (casos) e o encaixe fica fora do index.html", async () => {
   base();
-  assert.deepEqual((await api("casos", { usuario: "frankpimentel" })).body.medida, { pode_gerar: true, coordenacao: false });
-  assert.deepEqual((await api("casos", { usuario: "jussilenealmeida" })).body.medida, { pode_gerar: true, coordenacao: true });
-  assert.deepEqual((await api("casos", { usuario: "sandraalves" })).body.medida, { pode_gerar: false, coordenacao: false });
+  assert.deepEqual((await api("casos", { usuario: "frankpimentel" })).body.medida, { pode_gerar: true, coordenacao: false, restrito: true });
+  assert.deepEqual((await api("casos", { usuario: "jussilenealmeida" })).body.medida, { pode_gerar: true, coordenacao: true, restrito: false });
+  assert.deepEqual((await api("casos", { usuario: "sandraalves" })).body.medida, { pode_gerar: false, coordenacao: false, restrito: false });
   const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
   assert.match(html, /<script src="\/assets\/medida\/medida\.js"><\/script>/);
   const js = fs.readFileSync(path.join(__dirname, "..", "assets", "medida", "medida.js"), "utf8");

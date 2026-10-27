@@ -123,7 +123,7 @@ function tabelaReincidencia(linhas) {
       ${td("", "center", `font-weight:700;color:${MARINHO};font-size:15px`, lbl("Faltas no ano") + h.faltasAno)}
       ${td("", "left", "", lbl("Medidas") + (h.medidas ? `<b style="color:${MARINHO}">${h.medidas}</b> · ${esc(h.txt)}` : `<span style="color:${CLARO}">Nenhuma</span>`))}
       ${td("", "left", "white-space:nowrap", lbl("Última") + (h.ultima ? esc(medidaTxt(h.ultima)) + `<div style="font-size:11px;line-height:16px;color:${CLARO}">${esc(ddmmaaaa(h.ultima.data))}</div>` : "—"))}
-      ${td("ult", "right", "", sit)}
+      ${td("ult", "left", "", sit)}
     </tr>`;
   }).join("\n");
   return `<tr><td class="px" style="padding:30px 40px 0;font-family:${FONTE}">
@@ -132,7 +132,7 @@ function tabelaReincidencia(linhas) {
     <tr><td style="font-size:12px;line-height:18px;color:#6b7e96;padding-bottom:12px;font-family:${FONTE}">Faltas injustificadas e medidas disciplinares de cada colaborador desde 01/01${ano ? "/" + esc(ano) : ""} (abonos, afastamentos e medidas canceladas não contam).</td></tr>
   </table>
   <table role="presentation" class="rt" width="100%" border="0" cellpadding="0" cellspacing="0" style="border:1px solid ${LINHA};border-radius:12px;border-collapse:separate;font-size:12.5px;line-height:19px;color:#3a4a5e">
-    <thead><tr>${th("Colaborador", "28%", "left", "12px 0 0 0")}${th("Faltas", "11%", "center", "")}${th("Medidas no ano", "31%", "left", "")}${th("Última", "16%", "left", "")}${th("Situação", "14%", "right", "0 12px 0 0")}</tr></thead>
+    <thead><tr>${th("Colaborador", "28%", "left", "12px 0 0 0")}${th("Faltas", "11%", "center", "")}${th("Medidas no ano", "31%", "left", "")}${th("Última", "16%", "left", "")}${th("Situação", "14%", "left", "0 12px 0 0")}</tr></thead>
     <tbody>
 ${corpo}
     </tbody>
@@ -170,17 +170,17 @@ function tabela(linhas) {
       ${td("", "", `padding:16px 6px;border-bottom:1px solid ${LINHA}`, lbl("Posto") + esc(l.posto))}
       ${td("", "", `padding:16px 6px;border-bottom:1px solid ${LINHA}`, lbl("Cargo") + esc(l.cargo))}
       ${td("", "", `padding:16px 6px;border-bottom:1px solid ${LINHA};white-space:nowrap`, lbl("Escala") + esc(l.escala))}
-      ${td("ult", ` align="right"`, `padding:16px 12px;border-right:1px solid ${LINHA};border-bottom:1px solid ${LINHA};font-weight:700;color:${MARINHO};line-height:21px`, lbl(qtd > 1 ? "Datas" : "Data") + datas)}
+      ${td("ult", ` align="left"`, `padding:16px 12px;border-right:1px solid ${LINHA};border-bottom:1px solid ${LINHA};font-weight:700;color:${MARINHO};line-height:21px`, lbl(qtd > 1 ? "Datas" : "Data") + datas)}
     </tr>`;
   }).join("\n");
   return `<tr><td class="px" style="padding:30px 40px 0;font-family:${FONTE}">
   <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0"><tr>
     <td style="font-size:11px;line-height:14px;font-weight:700;letter-spacing:2px;color:${CINZA};text-transform:uppercase;padding-bottom:12px;font-family:${FONTE}">Ocorrências do período</td>
-    <td align="right" class="hide-sm" style="font-size:12px;line-height:14px;color:#6b7e96;padding-bottom:12px;font-family:${FONTE}">Ordenadas pela primeira falta</td>
+    <td align="left" class="hide-sm" style="font-size:12px;line-height:14px;color:#6b7e96;padding-bottom:12px;font-family:${FONTE}">Ordenadas pela primeira falta</td>
   </tr></table>
   <table role="presentation" class="rt" width="100%" border="0" cellpadding="0" cellspacing="0" style="border-collapse:separate">
     <thead><tr>
-      ${th("Colaborador", "24%", "left", "10px 0 0 0", "12px")}${th("RE", "9%", "left", "", "6px")}${th("Posto", "26%", "left", "", "6px")}${th("Cargo", "16%", "left", "", "6px")}${th("Escala", "8%", "left", "", "6px")}${th("Datas", "17%", "right", "0 10px 0 0", "12px")}
+      ${th("Colaborador", "24%", "left", "10px 0 0 0", "12px")}${th("RE", "9%", "left", "", "6px")}${th("Posto", "26%", "left", "", "6px")}${th("Cargo", "16%", "left", "", "6px")}${th("Escala", "8%", "left", "", "6px")}${th("Datas", "17%", "left", "0 10px 0 0", "12px")}
     </tr></thead>
     <tbody style="font-size:12.5px;line-height:19px;color:#3a4a5e">
 ${corpo}
@@ -218,7 +218,7 @@ function quadroAtualizacoes(a) {
     const s = SELO[x.tipo] || SELO.ABONADA, ult = i === a.itens.length - 1, borda = ult ? "" : `border-bottom:1px solid ${LINHA};`;
     return `<tr>
       <td class="nome" valign="top" style="padding:14px;${borda}font-weight:700;color:${MARINHO};font-family:${FONTE}">${esc(x.nome)}<div style="font-size:11px;line-height:16px;font-weight:400;color:${CLARO}">RE ${esc(x.re)} · falta de ${esc(ddmmaaaa(x.data))}</div></td>
-      <td class="ult" align="right" valign="top" style="padding:14px;${borda}font-family:${FONTE}">
+      <td class="ult" align="left" valign="top" style="padding:14px;${borda}font-family:${FONTE}">
         <span style="display:inline-block;padding:4px 12px;border:1px solid ${s.borda};border-radius:20px;background:${s.fundo};color:${s.cor};font-size:11px;line-height:14px;font-weight:700;letter-spacing:.5px;white-space:nowrap">${s.rot}</span>
         ${x.detalhe ? `<div style="font-size:11px;line-height:16px;color:${CLARO};padding-top:5px">${esc(x.detalhe)}</div>` : ""}
       </td>
