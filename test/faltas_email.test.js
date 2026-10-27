@@ -142,7 +142,7 @@ test("agendamento: com CRON_SECRET, só com a senha; sem ela roda pela regra (se
   delete process.env.CRON_SECRET;
   try {
     agora = new Date("2026-10-26T15:00:00Z"); // segunda, 12h em São Paulo
-    assert.equal((await cron({})).body.ignorado, "ANTES_DAS_14H");
+    assert.equal((await cron({})).body.ignorado, "ANTES_DO_HORARIO");
     assert.equal(enviados.length, 0);
     agora = SEG;
     const r = await cron({});
@@ -157,7 +157,7 @@ test("agendamento: automático desligado por padrão e só age na segunda", asyn
   assert.equal((await cron()).body.ignorado, "AUTO_DESLIGADO");
   base();
   agora = new Date("2026-10-27T17:10:00Z"); // terça
-  assert.equal((await cron()).body.ignorado, "NAO_E_SEGUNDA");
+  assert.equal((await cron()).body.ignorado, "NAO_E_O_DIA");
   assert.equal(enviados.length, 0);
 });
 
@@ -409,10 +409,10 @@ test("tela: script compila, mesma conta do servidor, ligado no index.html, e os 
   assert.ok(!pkg.dependencies["web-push"]);
 });
 
-test("vercel.json: segundas às 14h, 16h e 18h de Brasília (17h, 19h e 21h UTC) pela rota do cron", () => {
+test("vercel.json: um agendamento por hora, das 6h às 20h de Brasília (9h a 23h UTC), uma vez por dia cada, pela rota do cron", () => {
   const v = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "vercel.json"), "utf8"));
   const f = v.crons.filter(c => c.path.startsWith("/api/rh?modulo=faltasemail&t=cron"));
-  assert.deepEqual(f.map(c => c.schedule).sort(), ["0 17 * * 1", "0 19 * * 1", "0 21 * * 1"]);
+  assert.deepEqual(f.map(c => c.schedule).sort(), Array.from({ length: 15 }, (_, i) => "0 " + (9 + i) + " * * *").sort());
   assert.equal(new Set(v.crons.map(c => c.path)).size, v.crons.length, "cada agendamento com um endereço próprio");
   assert.ok(v.crons.filter(c => c.path.startsWith("/api/comercial-cron")).every(c => !/faltas/.test(c.path)), "nada do aviso passa pela rota do Comercial");
   assert.ok(!(v.functions || {})["api/comercial-cron.js"], "a função do Comercial não foi mexida");
@@ -511,4 +511,70 @@ test("assinatura: imagem do painel no corpo do e-mail, abaixo do cartão; confer
   await cron();
   assert.ok(enviados.length && enviados.every(x => !x.assinatura && !x.html.includes("cid:assinatura")), "sem assinatura, fecha com Atenciosamente, Servcamp");
   assert.ok(enviados.every(x => x.html.includes("Atenciosamente,<br><b>Servcamp</b>")));
+});
+
+// ── dia e hora do envio automático ──────────────────────────────────────────
+test("agenda: sem escolha vale segunda às 14h; o painel mostra o próximo envio", async () => {
+  base();
+  const r = await api("painel", { usuario: RESP });
+  assert.deepEqual([r.body.agenda.dia, r.body.agenda.hora], [1, 14]);
+  assert.deepEqual(r.body.agenda.proximo, { dia: "2026-11-02", hora: 14 }, "segunda 14h10: a das 14h já passou, vale a próxima");
+  agora = new Date("2026-10-26T15:00:00Z"); // segunda 12h
+  assert.deepEqual((await api("painel", { usuario: RESP })).body.agenda.proximo, { dia: "2026-10-26", hora: 14 });
+});
+
+test("agenda: dia e hora escolhidos no painel mandam no envio automático; só a conta do responsável muda", async () => {
+  const t = base();
+  const cfg = corpo => api("agenda", { method: "POST", usuario: RESP, body: corpo });
+  assert.equal((await api("agenda", { method: "POST", usuario: "outra.pessoa", body: { dia: 5, hora: 9 } })).statusCode, 403);
+  for (const ruim of [{ dia: 7, hora: 9 }, { dia: 5, hora: 5 }, { dia: 5, hora: 21 }, { dia: "x", hora: 9 }, { dia: 1.5, hora: 9 }, {}]) assert.equal((await cfg(ruim)).body.codigo, "AGENDA_INVALIDA", JSON.stringify(ruim));
+  const r = await cfg({ dia: 5, hora: 9 }); // sexta, 9h
+  assert.equal(r.statusCode, 200);
+  assert.deepEqual(r.body.agenda.proximo, { dia: "2026-10-30", hora: 9 });
+  assert.equal(t.fm_auditoria.filter(e => e.acao === "FALTAS_EMAIL_AGENDA").length, 1);
+  await cfg({ dia: 5, hora: 9 });
+  assert.equal(t.fm_auditoria.filter(e => e.acao === "FALTAS_EMAIL_AGENDA").length, 1, "mesma escolha não duplica");
+
+  assert.equal((await cron()).body.ignorado, "NAO_E_O_DIA", "segunda não é mais o dia");
+  agora = new Date("2026-10-30T11:00:00Z"); // sexta 8h
+  assert.equal((await cron()).body.ignorado, "ANTES_DO_HORARIO");
+  assert.equal(enviados.length, 0);
+  agora = new Date("2026-10-30T12:05:00Z"); // sexta 9h05
+  const e = await cron();
+  assert.equal(e.statusCode, 200);
+  assert.equal(e.body.enviados, 4, "envia as áreas com e-mail, como na segunda");
+  agora = new Date("2026-10-30T13:05:00Z"); // sexta 10h05: a chamada da hora seguinte não repete
+  assert.equal((await cron()).body.enviados, 0);
+});
+
+// ── teste de todas as áreas ─────────────────────────────────────────────────
+test("teste de todas as áreas: um e-mail por área só para quem foi escolhido, nada ao supervisor e nada marcado como oficial", async () => {
+  const t = base();
+  const pedir = body => api("teste_areas", { method: "POST", usuario: RESP, body });
+  assert.equal((await api("teste_areas", { method: "POST", usuario: "outra.pessoa", body: { para: ["a@exemplo.com.br"] } })).statusCode, 403);
+  assert.equal((await pedir({ para: [] })).body.codigo, "SEM_DESTINO");
+  assert.equal((await pedir({ para: ["não é e-mail"] })).body.codigo, "EMAIL_INVALIDO");
+  assert.equal((await pedir({ para: Array.from({ length: 11 }, (_, i) => "p" + i + "@exemplo.com.br") })).body.codigo, "MUITOS_DESTINOS");
+  assert.equal(enviados.length, 0);
+  const r = await pedir({ para: ["Jussilene@Exemplo.com.br"] });
+  assert.equal(r.statusCode, 200, JSON.stringify(r.body));
+  assert.equal(r.body.enviados, r.body.areas, "uma por área");
+  assert.ok(r.body.areas >= 4);
+  assert.equal(enviados.length, r.body.areas);
+  enviados.forEach(m => { assert.deepEqual(m.para, ["jussilene@exemplo.com.br"]); assert.deepEqual(m.cc, []); assert.ok(/teste/i.test(m.assunto), "assunto marca teste: " + m.assunto); });
+  for (const sup of ["jean@", "frank@", "carlos@", "paulo@"]) assert.ok(!enviados.some(m => m.para.some(p => p.startsWith(sup))), "nada vai ao supervisor " + sup);
+  for (const fora of ["rt-diurna@", "rt-noturna@", "rh@", "coord@"]) assert.ok(!enviados.some(m => m.para.some(p => p.startsWith(fora))));
+  assert.equal(envios(t).length, 0, "teste não conta como envio oficial");
+  assert.equal(t.fm_auditoria.filter(e => e.acao === "FALTAS_EMAIL_TESTE" && e.depois.todasAsAreas).length, r.body.areas);
+  const jean = enviados.find(m => /Jean/i.test(m.assunto) || m.html.includes("ANA PAULA"));
+  assert.ok(jean && jean.html.includes("<table"), "a planilha vai dentro do e-mail, como tabela");
+  assert.ok(!jean.html.includes("PESSOA 201") && !/FRANK/.test(jean.html.split("ANA PAULA")[0] || ""), "cada e-mail só com as faltas da área");
+});
+
+test("teste de todas as áreas: servidor de e-mail fora do ar não grava como enviado", async () => {
+  base();
+  falhar = () => true;
+  const r = await api("teste_areas", { method: "POST", usuario: RESP, body: { para: ["@eu"] } });
+  assert.equal(r.statusCode, 502);
+  assert.equal(r.body.codigo, "FALHA_NO_ENVIO");
 });

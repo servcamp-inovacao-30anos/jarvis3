@@ -2,9 +2,21 @@
   "crons": [
     { "path": "/api/comercial-cron?respostas=1", "schedule": "0 11 * * *" },
     { "path": "/api/comercial-cron", "schedule": "0 12 * * *" },
-    { "path": "/api/rh?modulo=faltasemail&t=cron", "schedule": "0 17 * * 1" },
-    { "path": "/api/rh?modulo=faltasemail&t=cron&rodada=16h", "schedule": "0 19 * * 1" },
-    { "path": "/api/rh?modulo=faltasemail&t=cron&rodada=18h", "schedule": "0 21 * * 1" }
+    { "path": "/api/rh?modulo=faltasemail&t=cron&h=06", "schedule": "0 9 * * *" },
+    { "path": "/api/rh?modulo=faltasemail&t=cron&h=07", "schedule": "0 10 * * *" },
+    { "path": "/api/rh?modulo=faltasemail&t=cron&h=08", "schedule": "0 11 * * *" },
+    { "path": "/api/rh?modulo=faltasemail&t=cron&h=09", "schedule": "0 12 * * *" },
+    { "path": "/api/rh?modulo=faltasemail&t=cron&h=10", "schedule": "0 13 * * *" },
+    { "path": "/api/rh?modulo=faltasemail&t=cron&h=11", "schedule": "0 14 * * *" },
+    { "path": "/api/rh?modulo=faltasemail&t=cron&h=12", "schedule": "0 15 * * *" },
+    { "path": "/api/rh?modulo=faltasemail&t=cron&h=13", "schedule": "0 16 * * *" },
+    { "path": "/api/rh?modulo=faltasemail&t=cron&h=14", "schedule": "0 17 * * *" },
+    { "path": "/api/rh?modulo=faltasemail&t=cron&h=15", "schedule": "0 18 * * *" },
+    { "path": "/api/rh?modulo=faltasemail&t=cron&h=16", "schedule": "0 19 * * *" },
+    { "path": "/api/rh?modulo=faltasemail&t=cron&h=17", "schedule": "0 20 * * *" },
+    { "path": "/api/rh?modulo=faltasemail&t=cron&h=18", "schedule": "0 21 * * *" },
+    { "path": "/api/rh?modulo=faltasemail&t=cron&h=19", "schedule": "0 22 * * *" },
+    { "path": "/api/rh?modulo=faltasemail&t=cron&h=20", "schedule": "0 23 * * *" }
   ],
   "functions": {
     "api/rh.js": { "maxDuration": 60 }

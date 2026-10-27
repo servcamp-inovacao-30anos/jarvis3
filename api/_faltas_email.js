@@ -6,17 +6,19 @@
 // configurado no painel (Jussilene, Campana e Ingridy, pedido do Raphael em 23/10/2026).
 //
 // Prefixo "_" → não vira rota. Duas portas de entrada:
-//   /api/rh?modulo=faltasemail&t=cron   agendamento da Vercel (vercel.json): segundas às 14h,
-//                                  16h e 18h de Brasília (o plano Hobby dispara dentro da
-//                                  hora). Só age na segunda a partir das 14h; com CRON_SECRET
-//                                  na Vercel, só com a senha. As rodadas das 16h e 18h enviam
-//                                  só o que ficou para trás.
+//   /api/rh?modulo=faltasemail&t=cron   agendamento da Vercel (vercel.json): uma chamada por hora, das 6h
+//                                  às 20h de Brasília (o plano Hobby dispara dentro da hora e só uma vez
+//                                  por dia cada). Só age no dia da semana e a partir da hora escolhidos no
+//                                  painel (sem escolha, segunda às 14h); com CRON_SECRET na Vercel, só com a
+//                                  senha. As chamadas seguintes do mesmo dia enviam só o que ficou para trás.
 //   /api/rh?modulo=faltasemail&t=...   painel, só a conta do Raphael:
 //     GET  painel    semana anterior, áreas, e-mails, cópias e a situação de cada envio
 //     GET  previa    o e-mail pronto de uma área e período (nada é enviado)
 //     POST area      e-mail do supervisor e nome da saudação de uma área
 //     POST copias    quem vai em cópia
 //     POST auto      liga/desliga o envio automático (desligado até ele ligar)
+//     POST agenda    dia da semana e hora (6h a 20h, Brasília) do envio automático; sem escolha, segunda às 14h
+//     POST teste_areas  teste de todas as áreas de uma vez, para quem ele escolher (nada vai ao supervisor)
 //     POST conta     a conta de e-mail que envia (e-mail e senha; a senha fica criptografada)
 //     POST assinatura a imagem da assinatura do e-mail (ou null para tirar)
 //     POST enviar    envio oficial da semana anterior: áreas e cópias escolhidas
@@ -61,6 +63,11 @@ const ACAO_ASSINATURA = "FALTAS_EMAIL_ASSINATURA"; // imagem da assinatura, no c
 const ACAO_AREA = "FALTAS_EMAIL_AREA";         // e-mail e nome da saudação de uma área (o e-mail vai também para a jv_supervisores)
 const ACAO_LINK = "FALTAS_EMAIL_LINK";         // endereço do painel para o botão "Abrir no Painel ServCamp" (guardado ao abrir o painel)
 const ACAO_RESUMO = "FALTAS_EMAIL_RESUMO";     // resumo semanal das medidas geradas para a coordenação: { ligado, para: [{ nome, email }] }
+const ACAO_AGENDA = "FALTAS_EMAIL_AGENDA";     // dia da semana e hora do envio automático: { dia (0 = domingo), hora (de Brasília) }
+// Envio automático: sem escolha, segunda às 14h (o que valia antes). A Vercel (plano Hobby) dispara um agendamento por
+// hora, uma vez por dia cada, e é a regra daqui que decide se aquela hora é a do envio. Hora de 6 a 20 (Brasília).
+const AGENDA_PADRAO = { dia: 1, hora: 14 };
+const HORA_MIN = 6, HORA_MAX = 20;
 const CHAVE_RESUMO = "#RESUMO";                // na chave do envio ("semana|#RESUMO"): nunca é uma área (área é só letra, número e espaço)
 const ACOES_ENVIO = [ACAO_RESERVA, ACAO_ENVIADO, ACAO_FALHOU];
 
@@ -192,6 +199,18 @@ const assinaturaNaPrevia = a => (a ? { src: "data:" + a.tipo + ";base64," + a.ba
 async function lerAuto(db) {
   const [e] = await db.obter(`fm_auditoria?select=depois&acao=eq.${ACAO_AUTO}&order=id.desc&limit=1`);
   return !!(e && e.depois && e.depois.ligado === true); // sem registro = desligado
+}
+const agendaValida = a => !!a && Number.isInteger(a.dia) && a.dia >= 0 && a.dia <= 6 && Number.isInteger(a.hora) && a.hora >= HORA_MIN && a.hora <= HORA_MAX;
+async function lerAgenda(db) {
+  const [e] = await db.obter(`fm_auditoria?select=depois&acao=eq.${ACAO_AGENDA}&order=id.desc&limit=1`);
+  return e && agendaValida(e.depois) ? { dia: e.depois.dia, hora: e.depois.hora } : { ...AGENDA_PADRAO };
+}
+// Próximo envio automático: hoje, se ainda não chegou a hora, ou no próximo dia marcado.
+function proximoEnvio(agenda, agora) {
+  const hoje = diaSP(agora);
+  let dias = (agenda.dia - diaDaSemana(hoje) + 7) % 7;
+  if (dias === 0 && horaSP(agora) >= agenda.hora) dias = 7;
+  return { dia: R.somaDias(hoje, dias), hora: agenda.hora };
 }
 
 // ── quais faltas entram ─────────────────────────────────────────────────────
@@ -504,11 +523,14 @@ async function cron(req, res) {
   // endereço por fora do agendamento consegue, no máximo, adiantar em minutos o mesmo envio.
   if (segredo && cab !== "Bearer " + segredo) return erro(res, 401, "Não autorizado.", "NAO_AUTORIZADO");
   const agora = agoraAtual();
-  if (diaDaSemana(diaSP(agora)) !== 1) return res.status(200).json({ ok: true, ignorado: "NAO_E_SEGUNDA" });
-  if (horaSP(agora) < 14) return res.status(200).json({ ok: true, ignorado: "ANTES_DAS_14H" });
   const db = ponto.conectar();
   if (!db) return erro(res, 500, "SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY não configuradas.", "CONFIG_AUSENTE");
   try {
+    // dia e hora escolhidos no painel; a Vercel chama a cada hora e daqui em diante, no mesmo dia, cada chamada
+    // só envia o que ficou para trás (área já enviada não sai de novo)
+    const agenda = await lerAgenda(db);
+    if (diaDaSemana(diaSP(agora)) !== agenda.dia) return res.status(200).json({ ok: true, ignorado: "NAO_E_O_DIA" });
+    if (horaSP(agora) < agenda.hora) return res.status(200).json({ ok: true, ignorado: "ANTES_DO_HORARIO" });
     if (!(await lerAuto(db))) return res.status(200).json({ ok: true, ignorado: "AUTO_DESLIGADO" });
     if (!pronta(await lerConta(db))) return res.status(200).json({ ok: false, motivo: SEM_CONTA });
     const copias = (await lerCopias(db)).map(c => c.email);
@@ -534,11 +556,12 @@ async function verPainel({ req, res, db, ator }) {
     const [u] = await db.obter(`fm_auditoria?select=depois&acao=eq.${ACAO_LINK}&order=id.desc&limit=1`);
     if (!(u && u.depois && u.depois.link === origem)) await db.inserir("fm_auditoria", [ev(ator, ACAO_LINK, "link", { link: origem }, u ? u.depois : null)]);
   }
-  const [areas, faltas, copias, auto, envios, historico, conta, assinatura, resumo, link] = await Promise.all([
+  const [areas, faltas, copias, auto, agenda, envios, historico, conta, assinatura, resumo, link] = await Promise.all([
     lerAreas(db, hoje),
     faltasDoPeriodo(db, semana.inicio, semana.fim, fimDoDiaSP(semana.fim)),
     lerCopias(db),
     lerAuto(db),
+    lerAgenda(db),
     eventos(db, ACOES_ENVIO, `&criado_em=gte.${semana.inicio}T00:00:00Z`),
     db.obter(`fm_auditoria?select=id,ator,acao,chave,depois,criado_em&acao=in.(${ACAO_ENVIADO},${ACAO_TESTE})&order=id.desc&limit=30`),
     lerConta(db),
@@ -565,7 +588,7 @@ async function verPainel({ req, res, db, ator }) {
     };
   });
   return res.status(200).json({
-    ok: true, hoje, semana, configurado: pronta(conta), auto, copias, areas: lista,
+    ok: true, hoje, semana, configurado: pronta(conta), auto, agenda: { ...agenda, proximo: proximoEnvio(agenda, agora), horas: [HORA_MIN, HORA_MAX] }, copias, areas: lista,
     // a senha nunca sai daqui; "ilegivel" = guardada com outra chave do login, precisa cadastrar de novo
     conta: conta ? { origem: conta.origem, email: conta.user, host: conta.host, port: conta.port, em: conta.em || null, ilegivel: !conta.pass } : null,
     assinatura: assinatura ? { src: assinaturaNaPrevia(assinatura).src, largura: assinatura.largura, altura: assinatura.altura, bytes: assinatura.bytes, em: assinatura.em } : null,
@@ -704,6 +727,15 @@ async function salvarAuto({ res, db, ator, body }) {
   return res.status(200).json({ ok: true, auto: body.ligado });
 }
 
+// Dia da semana e hora do envio automático. O aviso sempre traz a semana anterior (segunda a domingo).
+async function salvarAgenda({ res, db, ator, body }) {
+  const nova = { dia: Number(body.dia), hora: Number(body.hora) };
+  if (!agendaValida(nova)) return erro(res, 400, `Escolha o dia da semana e uma hora entre ${HORA_MIN}h e ${HORA_MAX}h.`, "AGENDA_INVALIDA");
+  const antes = await lerAgenda(db);
+  if (antes.dia !== nova.dia || antes.hora !== nova.hora) await db.inserir("fm_auditoria", [ev(ator, ACAO_AGENDA, "agenda", nova, antes)]);
+  return res.status(200).json({ ok: true, agenda: { ...nova, proximo: proximoEnvio(nova, agoraAtual()) } });
+}
+
 // Envio oficial à mão: sempre a semana anterior. Área já enviada não sai de novo.
 async function enviarManual({ res, db, ator, body }) {
   if (body.confirmar !== true) return erro(res, 400, "Confirme o envio.", "SEM_CONFIRMACAO");
@@ -758,6 +790,46 @@ async function enviarTeste({ res, db, ator, body }) {
   await db.inserir("fm_auditoria", [ev(ator, ACAO_TESTE, a.area, { nome: a.nome, de: p.inicio, ate: p.fim, para, qtd: m.faltas.length, ok: !!(r && r.ok), erro: r && !r.ok ? (r.erro || "não confirmado") : null })]);
   if (!r || !r.ok) return res.status(502).json({ ok: false, error: "O servidor de e-mail não confirmou o envio do teste.", codigo: "FALHA_NO_ENVIO" });
   return res.status(200).json({ ok: true, para: para.length, faltas: m.faltas.length, periodo: p });
+}
+
+// Teste de todas as áreas de uma vez, para quem ele escolher (a coordenação acompanhar o que cada supervisor
+// recebe). Um e-mail por área, com o conteúdo real; nada vai para o supervisor e nada fica marcado como envio oficial.
+async function enviarTesteAreas({ res, db, ator, body }) {
+  const conta = await lerConta(db);
+  if (!pronta(conta)) return erro(res, 409, SEM_CONTA, "SEM_CONTA");
+  const agora = agoraAtual();
+  const p = periodoDe(body.de, body.ate, agora);
+  if (p.erro) return erro(res, 400, p.erro[0], p.erro[1]);
+  const para = [];
+  for (const x of Array.isArray(body.para) ? body.para : []) {
+    let e = String(x == null ? "" : x).trim();
+    if (e === "@eu") e = conta.user;
+    else { e = emailLimpo(e); if (!emailValido(e)) return erro(res, 400, "E-mail inválido: " + String(x).slice(0, 80), "EMAIL_INVALIDO"); }
+    if (e && !para.includes(e)) para.push(e);
+  }
+  if (!para.length) return erro(res, 400, "Escolha ao menos um destinatário.", "SEM_DESTINO");
+  if (para.length > MAX_DESTINOS) return erro(res, 400, `No máximo ${MAX_DESTINOS} destinatários.`, "MUITOS_DESTINOS");
+  const areas = await lerAreas(db, diaSP(agora));
+  if (!areas.length) return erro(res, 404, "Nenhuma área nas planilhas recentes.", "SEM_AREA");
+  const corte = Math.min(fimDoDiaSP(p.fim), agora.getTime());
+  const [faltas, assinatura, hist] = await Promise.all([faltasDoPeriodo(db, p.inicio, p.fim, corte), lerAssinatura(db), historicoDoAno(db, diaSP(agora))]);
+  const correio = abrirCorreio(conta), registros = [];
+  let enviados = 0, falhas = 0, comFaltas = 0;
+  try {
+    for (const a of areas) {
+      const m = await montarEmail(db, { area: a, inicio: p.inicio, fim: p.fim, faltas, teste: true, agoraMs: agora.getTime(), comAtualizacoes: HTML.ehSemanaCheia(p.inicio, p.fim), assinatura: assinaturaNoEmail(assinatura), hist });
+      let r;
+      try { r = await correio.enviar({ para, cc: [], responderPara: [conta.user], assinatura, assunto: m.assunto, html: m.html, texto: m.texto }); }
+      catch (e) { r = { ok: false, erro: String((e && e.message) || e).slice(0, 200) }; }
+      const ok = !!(r && r.ok);
+      if (ok) enviados++; else falhas++;
+      if (m.faltas.length) comFaltas++;
+      registros.push(ev(ator, ACAO_TESTE, a.area, { nome: a.nome, de: p.inicio, ate: p.fim, para, qtd: m.faltas.length, ok, erro: ok ? null : ((r && r.erro) || "não confirmado"), todasAsAreas: true }));
+    }
+  } finally { correio.fechar(); }
+  await db.inserir("fm_auditoria", registros);
+  if (!enviados) return res.status(502).json({ ok: false, error: "O servidor de e-mail não confirmou o envio do teste.", codigo: "FALHA_NO_ENVIO" });
+  return res.status(200).json({ ok: true, areas: areas.length, enviados, falhas, comFaltas, para: para.length, periodo: p });
 }
 
 // Resumo da coordenação no painel: quem recebe e liga/desliga; prévia; teste; envio oficial da semana.
@@ -829,6 +901,8 @@ const ROTAS = {
   "POST area": salvarArea,
   "POST copias": salvarCopias,
   "POST auto": salvarAuto,
+  "POST agenda": salvarAgenda,
+  "POST teste_areas": enviarTesteAreas,
   "POST conta": salvarConta,
   "POST assinatura": salvarAssinatura,
   "POST enviar": enviarManual,
