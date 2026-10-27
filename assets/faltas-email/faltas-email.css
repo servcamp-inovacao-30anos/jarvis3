@@ -469,3 +469,19 @@ html[data-theme="dark"] .fe-ov{--mut:#b4c3da;--faint:#9db0cb}
 .fe-sec-h .fe-mut{color:var(--mut)}
 .fe-ta-h{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
 .fe-ta-h span{display:flex;gap:6px;flex-wrap:wrap}
+
+/* Enviar agora e testar: um fluxo só (tipo de envio, áreas, destinatários, conferência) */
+.fe-modos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.fe-modo{display:grid;grid-template-columns:auto 1fr;column-gap:12px;align-items:start;text-align:left;padding:14px 16px;border:1.5px solid var(--ln);border-radius:14px;background:var(--bg);color:var(--tx);cursor:pointer;font:inherit;transition:border-color .18s,box-shadow .18s,background .18s}
+.fe-modo:hover{border-color:var(--acc)}
+.fe-modo.on{border-color:var(--acc);background:var(--accbg);box-shadow:0 6px 16px -10px rgba(46,143,239,.7)}
+.fe-modo-ic{grid-row:span 2;display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:var(--sf);color:var(--acc)}
+.fe-modo.on .fe-modo-ic{background:var(--acc);color:#fff}
+.fe-modo-ic svg{width:18px;height:18px}
+.fe-modo b{font-size:.92rem;font-weight:800}
+.fe-modo span:last-child{font-size:.76rem;line-height:1.45;color:var(--mut)}
+.fe-chip.off{opacity:.55;cursor:not-allowed}
+.fe-resumo-env{padding:12px 16px;border-radius:12px;background:var(--sf);border:1px solid var(--ln);margin-bottom:12px}
+.fe-resumo-env p{margin:4px 0 0;font-size:.86rem;line-height:1.5}
+.fe-falta-env{margin:10px 0 0;font-size:.76rem;color:var(--mut)}
+@media(max-width:640px){.fe-modos{grid-template-columns:1fr}}
