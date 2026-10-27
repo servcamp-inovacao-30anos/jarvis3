@@ -43,7 +43,7 @@ const IC={
   ADVERTENCIA_VERBAL:svg('<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1.1-4.6A8 8 0 1 1 21 12z"/><path d="M9 11h6M9 14h4"/>'),
   ADVERTENCIA_ESCRITA:svg('<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="m9 16 1.5-3.5L16 7l2 2-5.5 5.5z"/>'),
   SUSPENSAO:svg('<rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4M10 14v4M14 14v4"/>'),
-  menos:svg('<path d="M5 12h14"/>'),mais:svg('<path d="M12 5v14M5 12h14"/>'),
+  seta:svg('<path d="m9 6 6 6-6 6"/>'),menos:svg('<path d="M5 12h14"/>'),mais:svg('<path d="M12 5v14M5 12h14"/>'),
   ajustar:svg('<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>'),
   info:svg('<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>')
 };
@@ -165,7 +165,7 @@ function motivoAuto(E){
 function abrir(k){
   const c=casoDe(k);if(!c){alert("Não encontrei esta ocorrência. Atualize a tela.");return;}
   const fl=[...new Set(c.faltas||[])].sort();
-  MDS.ed={c,k,tipo:"",dias:1,inicio:hojeSP(),docData:hojeSP(),empresa:c.empresa||"",faltas:new Set(fl),sits:new Set(["FALTA_INJUSTIFICADA"]),motivo:"",manual:false,confirma:false,sair:false,enviando:false,erro:null,repetida:null,gerada:null};
+  MDS.ed={c,k,foco:"tipo",tipo:"",dias:1,inicio:hojeSP(),docData:hojeSP(),empresa:c.empresa||"",faltas:new Set(fl),sits:new Set(["FALTA_INJUSTIFICADA"]),motivo:"",manual:false,confirma:false,sair:false,enviando:false,erro:null,repetida:null,gerada:null};
   MDS.ed.motivo=motivoAuto(MDS.ed);
   injetaCss();
   const ov=document.createElement("div");ov.id="md-ov";ov.className="md-ov";
@@ -239,19 +239,31 @@ function pintaForm(){
   const dts=fl.map(d=>`<button type="button" class="md-chip dt${E.faltas.has(d)?" on":""}" data-md="falta" data-v="${d}" aria-pressed="${E.faltas.has(d)}"${trava?" disabled":""}>${esc(typeof fmDdS==="function"?fmDdS(d):dm(d))}</button>`).join("");
   const sits=Object.keys(SITUACOES).map(s=>`<button type="button" class="md-chip${E.sits.has(s)?" on":""}" data-md="sit" data-v="${s}" aria-pressed="${E.sits.has(s)}"${trava?" disabled":""}>${esc(SITUACOES[s])}</button>`).join("");
   const conta=E.motivo.length,limite=1500;
+  // Um foco por vez: o passo aberto aparece completo; os outros viram uma linha com o resumo e "Editar".
+  const foco=E.gerada?null:(E.foco||"tipo"),ORDEM=["tipo","datas","ocor","motivo"];
+  const resumo={
+    tipo:()=>E.tipo?TIPOS[E.tipo].rot+(E.tipo==="SUSPENSAO"?" · "+E.dias+(E.dias===1?" dia":" dias"):""):"Nenhum tipo escolhido",
+    datas:()=>(E.inicio?dma(E.inicio):"sem data")+" · "+(String(E.empresa).trim()||"sem empresa"),
+    ocor:()=>E.faltas.size+(E.faltas.size===1?" falta":" faltas")+(E.sits.size?" · "+[...E.sits].slice(0,2).map(s=>SITUACOES[s]).join(", ")+(E.sits.size>2?"…":""):""),
+    motivo:()=>String(E.motivo).trim()?String(E.motivo).trim().slice(0,80)+(String(E.motivo).trim().length>80?"…":""):"Motivo ainda em branco"
+  };
+  const TIT={tipo:"Qual medida aplicar?",datas:E.tipo==="SUSPENSAO"?"Quando começa e em qual empresa?":"Quando e em qual empresa?",ocor:"O que aconteceu?",motivo:"Motivo que vai no documento"};
+  const SUB={tipo:"Escolha o tipo. Na suspensão, diga também quantos dias.",datas:"A data da medida, a data impressa no documento e a empresa do cabeçalho.",ocor:"Marque as faltas desta ocorrência e o que mais houve. O motivo, no passo 4, se monta sozinho.",motivo:"Já vem escrito a partir do passo 3. Pode reescrever com as suas palavras: o texto sai igual no papel."};
+  const passo=(k,corpo)=>{
+    const i=ORDEM.indexOf(k),ok=P[i].ok;
+    if(foco!==k)return `<button type="button" class="md-res${ok?" ok":" pend"}" id="md-p-${k}" data-md="foco" data-v="${k}"${trava?" disabled":""}><span class="md-n${ok?" ok":""}">${ok?IC.ok:i+1}</span><span class="t"><b>${TIT[k]}</b><small>${esc(resumo[k]())}</small></span><em>${trava?"":ok?"Editar":"Preencher"}</em></button>`;
+    const prox=ORDEM[i+1],cont=prox?`<div class="md-cont"><button type="button" class="md-b pri" data-md="prox" data-v="${prox}"${ok?"":" disabled"} title="${ok?"":"Falta preencher este passo"}">Continuar ${IC.seta}</button>${ok?"":`<span class="md-falta">Falta preencher este passo</span>`}</div>`:"";
+    return `<section class="md-sec foco" id="md-p-${k}">${cabPasso(k,i+1,TIT[k],SUB[k],ok)}<p class="md-sub">${SUB[k]}</p>${corpo}${cont}</section>`;
+  };
+  const corpoTipo=`<div class="md-tipos" role="group" aria-label="Tipo da medida">${tipos}</div>${dias}${prov}`;
+  const corpoDatas=`<div class="md-grid2"><label class="md-campo">${E.tipo==="SUSPENSAO"?"Suspenso a partir de":"Data da medida"}<input class="md-in" type="date" value="${E.inicio}" data-md="inicio"${trava?" disabled":""}></label><label class="md-campo">Data do documento<input class="md-in" type="date" value="${E.docData}" data-md="docData"${trava?" disabled":""}></label></div>`+
+    `<label class="md-campo" style="margin-top:14px">Empresa (vai no cabeçalho)<input class="md-in" value="${esc(E.empresa)}" placeholder="Ex.: SERV CAMP TERCEIRIZAÇÃO" data-md="empresa" maxlength="80"${trava?" disabled":""}></label>${E.empresa?"":`<p class="md-dica at">A empresa não veio na última planilha para este colaborador: preencha.</p>`}`;
+  const corpoOcor=`<span class="md-rot">Faltas desta ocorrência</span><div class="md-chips">${dts||'<span class="md-dica">Sem datas.</span>'}</div><span class="md-rot" style="margin-top:16px">Situações</span><div class="md-chips">${sits}</div>`;
+  const corpoMotivo=`<div class="md-ta-h"><span class="md-tag ${E.manual?"man":"auto"}">${E.manual?"Escrito por você":"Texto automático"}</span>${E.manual&&!trava?`<button type="button" data-md="refaz">Voltar ao texto automático</button>`:""}<small class="md-conta${conta>limite*.9?" quase":""}">${conta}/${limite}</small></div>`+
+    `<textarea class="md-ta" data-md="motivo" maxlength="${limite}" placeholder="Descreva o motivo da medida"${trava?" disabled":""}>${esc(E.motivo)}</textarea>`;
   el.innerHTML=
-    `<section class="md-sec md-ctx"><div class="md-sec-h"><h5>Histórico no ano</h5><small class="md-sec-d">clique num número para ver a lista</small></div>`+
-      `<div class="md-hist">${hist}</div>${avisoAnt}</section>`+
-    `<section class="md-sec" id="md-p-tipo">${cabPasso("tipo",1,"Qual medida aplicar?","Escolha o tipo. Na suspensão, diga também quantos dias.",P[0].ok)}<div class="md-tipos" role="group" aria-label="Tipo da medida">${tipos}</div>${dias}${prov}</section>`+
-    `<section class="md-sec" id="md-p-datas">${cabPasso("datas",2,E.tipo==="SUSPENSAO"?"Quando começa e em qual empresa?":"Quando e em qual empresa?","A data que vale para a medida, a data impressa no documento e a empresa do cabeçalho.",P[1].ok)}`+
-      `<div class="md-grid2"><label class="md-campo">${E.tipo==="SUSPENSAO"?"Suspenso a partir de":"Data da medida"}<input class="md-in" type="date" value="${E.inicio}" data-md="inicio"${trava?" disabled":""}></label><label class="md-campo">Data do documento<input class="md-in" type="date" value="${E.docData}" data-md="docData"${trava?" disabled":""}></label></div>`+
-      `<label class="md-campo" style="margin-top:12px">Empresa (vai no cabeçalho)<input class="md-in" value="${esc(E.empresa)}" placeholder="Ex.: SERV CAMP TERCEIRIZAÇÃO" data-md="empresa" maxlength="80"${trava?" disabled":""}></label>${E.empresa?"":`<p class="md-dica at">A empresa não veio na última planilha para este colaborador: preencha.</p>`}</section>`+
-    `<section class="md-sec" id="md-p-ocor">${cabPasso("ocor",3,"O que aconteceu?","Marque as faltas desta ocorrência e o que mais houve. O texto do motivo, no passo 4, se monta sozinho.",P[2].ok)}`+
-      `<span class="md-rot">Faltas desta ocorrência</span><div class="md-chips">${dts||'<span class="md-dica">Sem datas.</span>'}</div>`+
-      `<span class="md-rot" style="margin-top:14px">Situações</span><div class="md-chips">${sits}</div></section>`+
-    `<section class="md-sec" id="md-p-motivo">${cabPasso("motivo",4,"Motivo que vai no documento","Já vem escrito a partir do passo 3. Pode reescrever com as suas palavras: o texto sai igual no papel.",P[3].ok)}`+
-      `<div class="md-ta-h"><span class="md-tag ${E.manual?"man":"auto"}">${E.manual?"Escrito por você":"Texto automático"}</span>${E.manual&&!trava?`<button type="button" data-md="refaz">Voltar ao texto automático</button>`:""}<small class="md-conta${conta>limite*.9?" quase":""}">${conta}/${limite}</small></div>`+
-      `<textarea class="md-ta" data-md="motivo" maxlength="${limite}" placeholder="Descreva o motivo da medida"${trava?" disabled":""}>${esc(E.motivo)}</textarea></section>`;
+    `<section class="md-sec md-ctx"><div class="md-sec-h"><h5>Histórico no ano</h5><small class="md-sec-d">clique num número para ver a lista</small></div><div class="md-hist">${hist}</div>${avisoAnt}</section>`+
+    passo("tipo",corpoTipo)+passo("datas",corpoDatas)+passo("ocor",corpoOcor)+passo("motivo",corpoMotivo);
 }
 function pintaPrev(mudou){
   const E=MDS.ed,el=document.getElementById("md-prev");if(!E||!el)return;
@@ -312,7 +324,7 @@ function cliqueEd(e){
   if(a==="ficar"){E.sair=false;pintaRod();return;}
   if(a==="ver"){E.ver=E.ver===v?null:v;const fm=document.getElementById("md-form"),y=fm?fm.scrollTop:0;pintaForm();if(fm)fm.scrollTop=y;return;}
   if(a==="descartar"){fecharEd(true);return;}
-  if(a==="ir"){const s=document.getElementById("md-p-"+v);if(s){s.scrollIntoView({behavior:"smooth",block:"start"});s.classList.remove("realce");void s.offsetWidth;s.classList.add("realce");}return;}
+  if(a==="ir"||a==="foco"||a==="prox"){if(E.gerada)return;E.foco=v;const fm=document.getElementById("md-form");pintaForm();const s=document.getElementById("md-p-"+v);if(s){s.classList.add("abre");if(fm)fm.scrollTo({top:Math.max(0,s.offsetTop-12),behavior:"smooth"});}return;}
   if(a==="zoom"){
     const pv=document.getElementById("md-prev"),ajuste=pv?Math.min(1,Math.max(.35,(pv.clientWidth-56)/794)):1;
     MDS.zoom=v==="fit"?null:Math.min(1.5,Math.max(.35,Math.round(((MDS.zoom||ajuste)+Number(v)*.1)*10)/10));

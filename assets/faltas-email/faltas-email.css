@@ -459,3 +459,11 @@ html[data-theme="dark"] .fe-frase p b{color:var(--acc)}
 /* título e números com cor sólida: o degradê recortado no texto cortava as letras com perna (g, p, j) */
 .fe-top h2,.fe-kpi b{background:none;-webkit-background-clip:border-box;background-clip:border-box;-webkit-text-fill-color:currentColor;color:var(--tx);line-height:1.25;padding-bottom:.04em}
 .fe-kpi.alerta b{color:var(--am);-webkit-text-fill-color:var(--am)}
+
+/* texto de apoio mais escuro e maior: não some no fundo claro */
+.fe-ov{--mut:#3d5170;--faint:#4f6685}
+html[data-theme="dark"] .fe-ov{--mut:#b4c3da;--faint:#9db0cb}
+.fe-mut{font-size:.84rem}
+.fe-sub,.fe-nv-t small{font-size:.76rem}
+.fe-eyebrow,.fe-tab th{color:var(--faint);font-weight:800}
+.fe-sec-h .fe-mut{color:var(--mut)}

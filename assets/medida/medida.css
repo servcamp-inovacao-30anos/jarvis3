@@ -448,3 +448,60 @@ html[data-theme="dark"] .md-prev{background:#0a1626}
 html[data-theme="dark"] .md-prev-h{background:#13253d}
 html[data-theme="dark"] .md-passo .n{background:#13253d;color:#8cc6ff}
 html[data-theme="dark"] .md-passo .r b{color:#9fb0c8}
+
+/* ═══ v7: FOCO, RESPIRO E LEITURA ═════════════════════════════════════════════════════════════════════════════
+   Um passo aberto por vez (os outros viram uma linha com o resumo), mais espaço e menos divisórias, texto de
+   apoio mais escuro e maior (não some no fundo claro), âmbar só para o que pede atenção, uma só família de
+   cantos (12 nos controles, 14 nos cartões) e a prévia com mais largura. */
+.md-win{--md-mut:#3a4f6b;--md-tx2:#1d3250;--md-ln2:#d3e1f3}
+html[data-theme="dark"] .md-win{--md-mut:#b4c3da;--md-tx2:#dbe6f5}
+.md-corpo{grid-template-columns:minmax(340px,410px) minmax(0,1fr)}
+.md-form{padding:18px 18px 32px;display:flex;flex-direction:column;gap:14px}
+.md-sec{margin:0;padding:20px 20px 22px;border-radius:14px;box-shadow:0 8px 22px -14px rgba(13,31,53,.4)}
+.md-sec-h{margin-bottom:6px;padding-bottom:0;border-bottom:0}
+.md-sec-h h5{font-size:1.06rem;font-weight:750;letter-spacing:-.01em;color:#0d1f35}
+html[data-theme="dark"] .md-sec-h h5{color:#fff}
+.md-sub{margin:0 0 16px 34px;font-size:.8rem;line-height:1.5;color:var(--md-mut)}
+.md-sec-d{font-size:.74rem;font-weight:600;color:var(--md-mut)}
+.md-rot{font-size:.7rem;font-weight:800;letter-spacing:.12em;color:#2d4868}
+html[data-theme="dark"] .md-rot{color:#b4c3da}
+.md-campo{font-size:.78rem;font-weight:700;color:var(--md-tx2)}
+.md-dica{font-size:.78rem;color:var(--md-mut)}
+.md-dica.at{color:#9a4a00;font-weight:700}
+.md-hk span{font-size:.76rem;color:var(--md-mut)}
+.md-hist-l em,.md-prev-h span,.md-tag,.md-conta{color:var(--md-mut)}
+.md-hist-l em{font-size:.74rem}
+.md-in,.md-ta,.md-tipo,.md-hk,.md-dias,.md-step{border-radius:12px}
+.md-in,.md-ta{border-width:1.5px;color:#0d1f35;font-weight:500}
+
+/* foco: o passo aberto se destaca */
+.md-sec.foco{border:1.5px solid #2e8fef;border-top-width:4px;box-shadow:0 0 0 5px rgba(46,143,239,.13),0 14px 30px -16px rgba(30,77,140,.5)}
+@keyframes mdAbre{from{opacity:0;transform:translateY(-8px) scale(.99)}to{opacity:1;transform:none}}
+.md-sec.abre{animation:mdAbre .32s cubic-bezier(.2,.8,.2,1)!important}
+.md-cont{display:flex;align-items:center;gap:12px;margin-top:20px}
+.md-cont .md-b{min-height:40px;padding:0 18px 0 20px}
+.md-cont .md-b svg{width:16px;height:16px}
+.md-falta{font-size:.78rem;font-weight:700;color:#9a4a00}
+
+/* passo recolhido: uma linha com o resumo */
+.md-res{display:grid;grid-template-columns:28px minmax(0,1fr) auto;align-items:center;gap:12px;width:100%;padding:13px 16px;border:1px solid var(--contorno);border-radius:14px;background:#fff;color:inherit;font:inherit;text-align:left;cursor:pointer;
+  box-shadow:0 4px 12px -10px rgba(13,31,53,.45);transition:border-color .15s,transform .15s,box-shadow .15s}
+.md-res:hover:not(:disabled){border-color:#2e8fef;transform:translateY(-1px);box-shadow:0 10px 20px -12px rgba(30,77,140,.5)}
+.md-res .t b{display:block;font-size:.9rem;font-weight:750;color:#0d1f35}
+.md-res .t small{display:block;margin-top:2px;font-size:.8rem;color:var(--md-mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.md-res em{font-style:normal;font-size:.76rem;font-weight:800;color:#1e5fc0}
+.md-res.pend{border-left:4px solid #f79009}
+.md-res.pend em{color:#9a4a00}
+.md-res.pend .md-n{background:#fff;border-color:#f79009;color:#9a4a00}
+.md-res:disabled{cursor:default;opacity:.85}
+html[data-theme="dark"] .md-res{background:#13253d}
+html[data-theme="dark"] .md-res .t b{color:#fff}
+html[data-theme="dark"] .md-res em{color:#8cc6ff}
+
+/* o rodapé diz o que falta em âmbar, e o resto em azul */
+.md-rod-txt>span{font-size:.78rem;color:var(--md-mut)}
+.md-rod-txt>b{color:#0d1f35}
+html[data-theme="dark"] .md-rod-txt>b{color:#fff}
+.md-passo .r b{color:#2d4868;font-weight:650}
+.md-ctx .md-sec-h{flex-wrap:wrap;gap:2px 10px;margin-bottom:12px}
+.md-ctx .md-sec-d{margin-left:0;flex-basis:100%}
