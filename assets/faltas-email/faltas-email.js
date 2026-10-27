@@ -261,22 +261,25 @@ function secAgenda(p){
 /* Teste de todas as áreas: um e-mail por área, com o conteúdo real, só para quem for escolhido. */
 function secTesteAreas(p){
   const t=FE.ta||(FE.ta={de:p.semana.inicio,ate:p.semana.fim,eu:false,cc:new Set(),outro:""});
-  const com=p.areas.length,destinos=[];
+  const sel=t.areas||(t.areas=new Set(p.areas.map(a=>a.area)));  // por padrão todas; marque quantas quiser
+  const com=p.areas.filter(a=>sel.has(a.area)).length,destinos=[];
   if(t.eu)destinos.push(p.conta&&p.conta.email||"a conta de envio");
   p.copias.filter(c=>t.cc.has(c.email)).forEach(c=>destinos.push(c.nome));
   String(t.outro||"").split(/[,;\s]+/).map(x=>x.trim()).filter(Boolean).forEach(x=>destinos.push(x));
   const chips='<label class="fe-chip"><input type="checkbox" data-fe="ta-eu"'+(t.eu?" checked":"")+'> <b>Eu</b> <span class="fe-mut">'+esc(p.conta&&p.conta.email||"a conta de envio")+'</span></label>'+
     p.copias.map(c=>'<label class="fe-chip"><input type="checkbox" data-fe="ta-cc" data-email="'+esc(c.email)+'"'+(t.cc.has(c.email)?" checked":"")+'> <b>'+esc(c.nome)+'</b> <span class="fe-mut">'+esc(c.email)+'</span></label>').join("");
-  let h='<div class="fe-sec fe-destaque">'+cab("dest","Mandar para a coordenação o aviso de todas as áreas","Quem você marcar recebe "+com+" e-mails, um por área, iguais aos que cada supervisor recebe. Assim dá para acompanhar tudo sem estar em cópia. Nenhum supervisor é avisado e nada conta como envio oficial.")+
-    '<p class="fe-eyebrow" style="margin:0 0 10px">Para quem vai</p><div class="fe-chips">'+chips+'</div>'+
+  const areasChips=p.areas.map(a=>'<label class="fe-chip"><input type="checkbox" data-fe="ta-area" data-area="'+esc(a.area)+'"'+(sel.has(a.area)?" checked":"")+'> <b>'+esc(a.nome)+'</b> <span class="fe-mut">'+a.faltas+(a.faltas===1?" falta":" faltas")+'</span></label>').join("");
+  let h='<div class="fe-sec fe-destaque">'+cab("dest","Mandar o aviso das áreas para a coordenação","Marque quantas áreas quiser e para quem vai. Quem você escolher recebe um e-mail por área, igual ao que o supervisor recebe, sem estar em cópia. Nenhum supervisor é avisado e nada conta como envio oficial.")+
+    '<div class="fe-ta-h"><p class="fe-eyebrow" style="margin:0">1. Quais áreas ('+com+' de '+p.areas.length+')</p><span><button type="button" class="fe-b sm" data-fe="ta-todas">Marcar todas</button> <button type="button" class="fe-b sm" data-fe="ta-comfaltas">Só com faltas</button> <button type="button" class="fe-b sm" data-fe="ta-nenhuma">Limpar</button></span></div><div class="fe-chips">'+areasChips+'</div>'+
+    '<p class="fe-eyebrow" style="margin:18px 0 10px">2. Para quem vai</p><div class="fe-chips">'+chips+'</div>'+
     '<div class="fe-linha"><input class="fe-in l" type="text" inputmode="email" autocomplete="off" data-fe-campo="ta.outro" placeholder="Outros e-mails (opcional; separe por vírgula)" value="'+esc(t.outro)+'"></div>'+
     '<div class="fe-grade" style="margin-top:14px;max-width:460px"><div><label for="feTaDe">De</label><input id="feTaDe" class="fe-in" type="date" data-fe-campo="ta.de" value="'+esc(t.de)+'"></div><div><label for="feTaAte">Até</label><input id="feTaAte" class="fe-in" type="date" data-fe-campo="ta.ate" value="'+esc(t.ate)+'"></div></div>';
-  if(FE.taConf&&destinos.length){
+  if(FE.taConf&&destinos.length&&com){
     h+='<div class="fe-conf"><b>Enviar '+com+' e-mail(s) de teste?</b><p class="fe-mut" style="margin:6px 0 0">Para: '+destinos.map(esc).join(", ")+'. Período de '+esc(dma(t.de))+' a '+esc(dma(t.ate))+'.</p>'+
       '<div class="fe-linha"><button class="fe-b fe-pri" data-fe="ta-confirmar"'+(FE.ocupado?" disabled":"")+'>'+(FE.ocupado?"Enviando…":"Enviar agora")+'</button><button class="fe-b" data-fe="ta-voltar"'+(FE.ocupado?" disabled":"")+'>Voltar</button></div></div>';
   }else{
-    h+='<div class="fe-linha"><button class="fe-b fe-pri" data-fe="ta-enviar"'+(destinos.length&&p.configurado&&com&&!FE.ocupado?"":" disabled")+'>'+IC.enviar+'Enviar o teste das '+com+' áreas</button>'+
-      (destinos.length?'<span class="fe-mut">Vai para '+destinos.length+' destinatário(s)</span>':'<span class="fe-mut">Escolha ao menos um destinatário</span>')+'</div>';
+    h+='<div class="fe-linha"><button class="fe-b fe-pri" data-fe="ta-enviar"'+(destinos.length&&p.configurado&&com&&!FE.ocupado?"":" disabled")+'>'+IC.enviar+'Enviar o teste de '+com+(com===1?" área":" áreas")+'</button>'+
+      (!com?'<span class="fe-mut">Marque ao menos uma área</span>':destinos.length?'<span class="fe-mut">'+com+(com===1?" e-mail":" e-mails")+' para '+destinos.length+' destinatário(s)</span>':'<span class="fe-mut">Escolha ao menos um destinatário</span>')+'</div>';
   }
   return h+'</div>';
 }
@@ -513,6 +516,9 @@ function clique(e){
   if(q==="ag-hora"){(FE.ag||(FE.ag={})).hora=Number(b.getAttribute("data-hora"));render();return;}
   if(q==="ag-descartar"){FE.ag={dia:p.agenda.dia,hora:p.agenda.hora};render();return;}
   if(q==="ag-salvar"){const a=FE.ag;acao(()=>api("agenda","POST",{dia:a.dia,hora:a.hora}),()=>"Agendamento salvo: "+DIAS[a.dia].toLowerCase()+" às "+horaTxt(a.hora)+".",true);return;}
+  if(q==="ta-todas"){FE.ta.areas=new Set(p.areas.map(a=>a.area));FE.taConf=false;render();return;}
+  if(q==="ta-nenhuma"){FE.ta.areas=new Set();FE.taConf=false;render();return;}
+  if(q==="ta-comfaltas"){FE.ta.areas=new Set(p.areas.filter(a=>a.faltas>0).map(a=>a.area));FE.taConf=false;render();return;}
   if(q==="ta-enviar"){FE.taConf=true;FE.msg=null;render();return;}
   if(q==="ta-voltar"){FE.taConf=false;render();return;}
   if(q==="ta-confirmar"){
@@ -520,7 +526,7 @@ function clique(e){
     if(t.eu)para.push("@eu");
     t.cc.forEach(e=>para.push(e));
     String(t.outro||"").split(/[,;\s]+/).map(x=>x.trim()).filter(Boolean).forEach(x=>para.push(x));
-    acao(()=>api("teste_areas","POST",{de:t.de,ate:t.ate,para:para}),r=>r.enviados+" e-mail(s) de teste enviado(s), um por área"+(r.falhas?" · "+r.falhas+" falharam: tente de novo":"")+" · "+r.comFaltas+" com faltas no período.",true).then(()=>{FE.taConf=false;render();});
+    acao(()=>api("teste_areas","POST",{de:t.de,ate:t.ate,para:para,areas:[...t.areas]}),r=>r.enviados+" e-mail(s) de teste enviado(s), um por área"+(r.falhas?" · "+r.falhas+" falharam: tente de novo":"")+" · "+r.comFaltas+" com faltas no período.",true).then(()=>{FE.taConf=false;render();});
     return;
   }
   if(q==="editar-area"){const a=p.areas.find(x=>x.area===area);if(a){FE.edit={area:a.area,email:a.email||"",saudacao:a.saudacao||""};render();}return;}
@@ -575,6 +581,7 @@ function mudou(e){
   if(q==="ass-arquivo"){enviarAssinatura(el.files&&el.files[0]);return;}
   if(q==="rs-ligado"){const v=el.checked;acao(()=>api("resumo","POST",{ligado:v}),v?"Resumo da coordenação ligado: sai junto com o aviso automático.":"Resumo da coordenação desligado.",true);return;}
   if(q==="auto"){const v=el.checked,a=FE.p&&FE.p.agenda;acao(()=>api("auto","POST",{ligado:v}),v?"Envio automático ligado"+(a?": "+DIAS[a.dia].toLowerCase()+" às "+horaTxt(a.hora)+".":"."):"Envio automático desligado.",true);return;}
+  if(q==="ta-area"){const a=el.getAttribute("data-area");if(el.checked)FE.ta.areas.add(a);else FE.ta.areas.delete(a);FE.taConf=false;render();return;}
   if(q==="ta-eu"){FE.ta.eu=el.checked;FE.taConf=false;render();return;}
   if(q==="ta-cc"){const m=el.getAttribute("data-email");if(el.checked)FE.ta.cc.add(m);else FE.ta.cc.delete(m);FE.taConf=false;render();return;}
   if(q==="sel"){const a=el.getAttribute("data-area");if(el.checked)FE.sel.add(a);else FE.sel.delete(a);FE.confirmar=false;render();return;}

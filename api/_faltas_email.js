@@ -221,15 +221,24 @@ function proximoEnvio(agenda, agora) {
 //   • sem atestado registrado à mão no JARVIS cobrindo o dia e não anteriores à
 //     admissão de quem tem o RE hoje (RE reaproveitado) — as mesmas contas da tela.
 async function faltasDoPeriodo(db, inicio, fim, corteMs) {
-  const [faltas, adm, atest, viradas] = await Promise.all([
+  const [faltas, adm, atest, viradas, medidas] = await Promise.all([
     db.listar(`fm_faltas?select=re,data,codigo,nome,cargo,posto,supervisor,escala,criado_em&data=gte.${inicio}&data=lte.${fim}&order=re.asc,data.asc`),
     db.listar("fm_admissoes?select=re,admissao&order=re.asc"),
     db.listar(`fm_auditoria?select=id,ator,acao,chave,depois,criado_em&acao=in.(${faltasMod.ACOES_ATESTADO.join(",")})&order=criado_em.asc,id.asc`),
-    db.listar(`fm_auditoria?select=id,chave,criado_em&acao=eq.${faltasMod.ACAO_VIROU_I}&criado_em=gte.${inicio}T00:00:00Z&order=id.asc`)
+    db.listar(`fm_auditoria?select=id,chave,criado_em&acao=eq.${faltasMod.ACAO_VIROU_I}&criado_em=gte.${inicio}T00:00:00Z&order=id.asc`),
+    db.listar(`fm_medidas?select=re,data,fase&data=gte.${inicio}&order=re.asc,data.asc`)
   ]);
   const admissao = {};
   adm.forEach(a => { if (a.admissao) admissao[String(a.re)] = iso(a.admissao); });
   const { ativos: atestados } = R.dobrarAtestados(atest);
+  // Falta já tratada: medida disciplinar lançada a partir do dia da falta (o dia seguinte, por exemplo) encerra
+  // a falta. A mesma regra da tela e da TV: a primeira medida a partir da falta decide, então não é cobrada de novo.
+  const tratadaAte = {};
+  medidas.forEach(m => {
+    if (/CANCEL/i.test(String(m.fase || ""))) return;
+    const re = String(m.re), d = iso(m.data);
+    if (!tratadaAte[re] || d > tratadaAte[re]) tratadaAte[re] = d;
+  });
   const virou = {};
   viradas.forEach(v => { virou[v.chave] = Math.max(virou[v.chave] || 0, Date.parse(v.criado_em) || 0); });
   return faltas.map(f => ({ ...f, data: iso(f.data) })).filter(f => {
@@ -237,6 +246,7 @@ async function faltasDoPeriodo(db, inicio, fim, corteMs) {
     const adm = admissao[String(f.re)];
     if (adm && f.data < adm) return false;
     if (atestados.some(a => a.re === String(f.re) && f.data >= a.inicio && f.data <= a.fim)) return false;
+    if (tratadaAte[String(f.re)] && tratadaAte[String(f.re)] >= f.data) return false; // já tem medida lançada a partir desta falta
     const injustificadaDesde = Math.max(Date.parse(f.criado_em) || 0, virou[f.re + "|" + f.data] || 0);
     return injustificadaDesde <= corteMs;
   }).map(f => ({ ...f, area: chaveArea(f.supervisor), areaNome: nomeArea(f.supervisor) }))
@@ -315,17 +325,15 @@ async function atualizacoesDa(db, area, inicio, agoraMs) {
     const l = linhaDe.get(k(f.re, f.data));
     const base = { nome: (l && l.nome) || f.nome, re: f.re, data: iso(f.data) };
     if (!l) { itens.push({ ...base, tipo: "RETIRADA", detalhe: "Lançamento retirado no SAR2G" }); return; }
-    if (!contaHoje.has(k(f.re, f.data))) {
-      const c = String(l.codigo || "").toUpperCase().trim();
-      itens.push({ ...base, tipo: "ABONADA", detalhe: ABONO[c] || "Atestado registrado no JARVIS" });
-      return;
-    }
     const m = medidas.filter(x => String(x.re) === String(f.re) && iso(x.data) >= iso(f.data) && !String(x.fase || "").toUpperCase().includes("CANCEL"))
       .sort((a, b) => iso(a.data).localeCompare(iso(b.data)))[0];
-    if (m) {
+    const c = String(l.codigo || "").toUpperCase().trim();
+    if (m && c === "I") { // continua injustificada no SAR2G e já tem medida: tratada (não é mais cobrada)
       const d = R.descreverMedida({ TIPO: m.tipo, GRAU: m.grau, DIAS: m.dias });
       itens.push({ ...base, tipo: "MEDIDA", detalhe: d.charAt(0).toUpperCase() + d.slice(1) + " · lançada em " + ddmmaaaa(m.data) });
+      return;
     }
+    if (!contaHoje.has(k(f.re, f.data))) itens.push({ ...base, tipo: "ABONADA", detalhe: ABONO[c] || "Atestado registrado no JARVIS" });
   });
   atuais.filter(f => f.area === area && !jaAvisada.has(k(f.re, f.data)))
     .forEach(f => itens.push({ nome: f.nome, re: f.re, data: f.data, tipo: "NOVA", detalhe: "Lançada depois do envio do aviso" }));
@@ -811,12 +819,16 @@ async function enviarTesteAreas({ res, db, ator, body }) {
   if (para.length > MAX_DESTINOS) return erro(res, 400, `No máximo ${MAX_DESTINOS} destinatários.`, "MUITOS_DESTINOS");
   const areas = await lerAreas(db, diaSP(agora));
   if (!areas.length) return erro(res, 404, "Nenhuma área nas planilhas recentes.", "SEM_AREA");
+  // quantas áreas quiser: sem lista vão todas; com lista, só as escolhidas (as que não existem são ignoradas)
+  const pedidas = Array.isArray(body.areas) ? new Set(body.areas.map(normalizar)) : null;
+  const escolhidas = pedidas ? areas.filter(a => pedidas.has(a.area)) : areas;
+  if (!escolhidas.length) return erro(res, 400, "Escolha ao menos uma área.", "SEM_AREA");
   const corte = Math.min(fimDoDiaSP(p.fim), agora.getTime());
   const [faltas, assinatura, hist] = await Promise.all([faltasDoPeriodo(db, p.inicio, p.fim, corte), lerAssinatura(db), historicoDoAno(db, diaSP(agora))]);
   const correio = abrirCorreio(conta), registros = [];
   let enviados = 0, falhas = 0, comFaltas = 0;
   try {
-    for (const a of areas) {
+    for (const a of escolhidas) {
       const m = await montarEmail(db, { area: a, inicio: p.inicio, fim: p.fim, faltas, teste: true, agoraMs: agora.getTime(), comAtualizacoes: HTML.ehSemanaCheia(p.inicio, p.fim), assinatura: assinaturaNoEmail(assinatura), hist });
       let r;
       try { r = await correio.enviar({ para, cc: [], responderPara: [conta.user], assinatura, assunto: m.assunto, html: m.html, texto: m.texto }); }
@@ -829,7 +841,7 @@ async function enviarTesteAreas({ res, db, ator, body }) {
   } finally { correio.fechar(); }
   await db.inserir("fm_auditoria", registros);
   if (!enviados) return res.status(502).json({ ok: false, error: "O servidor de e-mail não confirmou o envio do teste.", codigo: "FALHA_NO_ENVIO" });
-  return res.status(200).json({ ok: true, areas: areas.length, enviados, falhas, comFaltas, para: para.length, periodo: p });
+  return res.status(200).json({ ok: true, areas: escolhidas.length, enviados, falhas, comFaltas, para: para.length, periodo: p });
 }
 
 // Resumo da coordenação no painel: quem recebe e liga/desliga; prévia; teste; envio oficial da semana.
