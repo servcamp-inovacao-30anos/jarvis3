@@ -10266,7 +10266,7 @@ function kbDrop(ev,col){
   if(!p||p.status===st)return;
   const antigo=p.status;
   const patch={status:st};
-  if(st==="FECHADO")patch.fechado_em=ymd(new Date());
+  if(st==="FECHADO"){const impl=comPedirImplantacao(p.nome,p.data_implantacao);if(!impl)return;patch.fechado_em=ymd(new Date());patch.data_implantacao=impl;}
   if(st==="PERDIDO"){const m=prompt("Motivo da perda de "+(p.nome||"")+":");if(m===null)return;patch.motivo_perda=(m||"").toUpperCase();}
   p.status=st;comRenderKanban();comRadar();
   comLogEvento(p.id,`Status: ${antigo} → ${st}`);
@@ -10383,6 +10383,13 @@ function comSalvar(e){
   // kanban funcionava, porque aquele caminho não aplicava a regra. Em vez de
   // reescrever a escolha em silêncio, apenas avisamos quando a combinação é
   // incomum (voltar para uma etapa anterior ao envio).
+  if(body.status==="FECHADO"){
+    const orig=id?COM_P.find(p=>String(p.id)===String(id)):null;
+    const impl=(orig&&orig.data_implantacao)||comPedirImplantacao(body.nome,null);
+    if(!impl){const m=document.getElementById("cp-form-msg");m.style.color="#dc2626";m.textContent="Para fechar o contrato, informe a data de implantação.";return;}
+    body.data_implantacao=impl;
+    if(!(orig&&orig.fechado_em))body.fechado_em=ymd(new Date());
+  }
   const _voltouAntesDoEnvio=!!body.data_envio_proposta&&["LEAD","PROSPECÇÃO"].includes(body.status);
   if(id){const orig=COM_P.find(p=>String(p.id)===String(id));if(orig&&orig.status!==body.status)comLogEvento(Number(id),`Status: ${orig.status} → ${body.status}`);}
   const msg=document.getElementById("cp-form-msg");
@@ -10553,8 +10560,22 @@ function comRespondeu(id){
 function comFechou(id){
   const x=COM_P.find(p=>p.id===id);if(!x)return;
   if(!confirm("🎉 Confirmar FECHAMENTO do contrato com "+(x.nome||"")+"?"))return;
-  comLogEvento(id,"Contrato FECHADO 🎉"+(COM_VALORES&&x.valor?" · "+fmtBRL0(x.valor):""));
-  _comPatch(id,{status:"FECHADO",fechado_em:ymd(new Date())});
+  const impl=comPedirImplantacao(x.nome,x.data_implantacao);if(!impl)return;
+  comLogEvento(id,"Contrato FECHADO 🎉"+(COM_VALORES&&x.valor?" · "+fmtBRL0(x.valor):"")+" · implantação "+rhFmt(impl));
+  _comPatch(id,{status:"FECHADO",fechado_em:ymd(new Date()),data_implantacao:impl});
+}
+/* Fechar contrato exige a data de implantação. Aceita dd/mm/aaaa (ou aaaa-mm-dd) e devolve
+   aaaa-mm-dd; cancelar devolve null e o fechamento não acontece. */
+function comPedirImplantacao(nome,atual){
+  let ini=atual?String(atual).slice(0,10).split("-").reverse().join("/"):"";
+  while(true){
+    const v=prompt("Data de implantação do contrato com "+(nome||"o cliente")+" (dd/mm/aaaa) — obrigatória:",ini);
+    if(v===null)return null;
+    const s=v.trim(),m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    const iso=m?m[3]+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0"):(/^\d{4}-\d{2}-\d{2}$/.test(s)?s:null);
+    if(iso){const d=new Date(iso+"T12:00:00Z");if(!isNaN(d)&&d.toISOString().slice(0,10)===iso)return iso;}
+    alert("Data inválida. Use o formato dd/mm/aaaa, por exemplo 03/11/2026.");ini=s;
+  }
 }
 function comPerdido(id){
   const x=COM_P.find(p=>p.id===id);if(!x)return;

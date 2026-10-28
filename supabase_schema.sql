@@ -358,3 +358,10 @@ create table if not exists public.com_meta_anual (
 alter table public.com_meta_anual enable row level security;
 revoke all on public.com_meta_anual from anon, authenticated;
 grant select, insert, update, delete on public.com_meta_anual to service_role;
+
+-- ============================================================================
+-- Comercial: data de implantação do contrato fechado
+-- Obrigatória ao marcar a proposta como FECHADO (botão, kanban ou formulário).
+-- Só acrescenta a coluna; pode rodar de novo.
+-- ============================================================================
+alter table public.com_propostas add column if not exists data_implantacao date;
