@@ -315,6 +315,16 @@ test("teste: qualquer período, destinatários escolhidos na hora (qualquer e-ma
   assert.equal(c.body.enviados, 4, "o teste não conta como envio oficial");
 });
 
+test("histórico no e-mail: mesma regra do aviso (sem falta anterior à admissão), datas à mostra e nunca menor que a semana", async () => {
+  const t = base({ faltas: [falta(101, "2026-09-01", "JEAN KLEBER", { nome: "ANA PAULA DE SOUZA" }), falta(101, "2025-12-01", "JEAN KLEBER", { nome: "ANA PAULA DE SOUZA" })] });
+  t.fm_admissoes.push({ re: 101, admissao: "2026-01-05" });
+  const r = await api("previa", { usuario: RESP, query: { area: "JEAN KLEBER" } });
+  assert.equal(r.statusCode, 200, JSON.stringify(r.body));
+  const txt = r.body.html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+  assert.match(txt, /Histórico: 3 faltas injustificadas Medidas disciplinares: nenhuma/, "20/10 e 22/10 da semana + 01/09; a de 2025 é de antes da admissão");
+  assert.match(txt, /22\/10\/26, 20\/10\/26, 01\/09\/26/, "as datas que formam o número aparecem");
+  assert.doesNotMatch(txt, /01\/12\/25/);
+});
 test("prévia: e-mail pronto com a logo embutida, sem enviar nada", async () => {
   base();
   const r = await api("previa", { usuario: RESP, query: { area: "JEAN KLEBER" } });

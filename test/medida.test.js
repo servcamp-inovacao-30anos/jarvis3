@@ -180,6 +180,14 @@ test("quando a planilha diária traz a medida, ela sai de pendente sozinha", asy
   assert.deepEqual([r.geradas[0].status, r.geradas[0].lancadaPor, r.minhasPendentes], ["LANCADA", "planilha", 0]);
 });
 
+test("e-mail: o selo da situação mostra a quantidade real de medidas (nunca '1 MEDIDA' com 2 na tabela)", () => {
+  const HTML = require("../api/_faltas_email_html");
+  const h = { ...MD.historicoDe(3, "ANA", [{ re: 3, data: "2025-03-01", tipo: "ADVERTÊNCIA", grau: "VERBAL" }, { re: 3, data: "2025-12-23", tipo: "ADVERTÊNCIA", grau: "ESCRITA" }], [{ re: 3, data: "2026-10-20" }], 2026) };
+  h.txt = MD.historicoTxt(h);
+  const m = HTML.montar({ area: "X", inicio: "2026-10-19", fim: "2026-10-25", linhas: [{ re: 3, nome: "ANA", posto: "P", cargo: "C", escala: "12X36", datas: ["2026-10-20"], hist: h }], logo: "x", link: null });
+  assert.match(m.html, />2 MEDIDAS</);
+  assert.doesNotMatch(m.html, />1 MEDIDA</);
+});
 // ── e-mail semanal: histórico do ano e o botão do painel ────────────────────
 test("e-mail: tabela de reincidência no ano, selo de reincidente e botão para o painel", () => {
   const HTML = require("../api/_faltas_email_html");
@@ -191,7 +199,7 @@ test("e-mail: tabela de reincidência no ano, selo de reincidente e botão para 
   assert.match(m.html, /REINCIDENTE/);
   assert.match(m.html, /Suspensão de 2 dias/);
   assert.match(m.html, /href="https:\/\/painel\.exemplo\.com\.br\/\?pg=faltassup"/);
-  assert.match(m.texto, /Histórico: 2 faltas injustificadas · 2 medidas \(1 advertência escrita e 1 suspensão \(2 dias\)\)/);
+  assert.match(m.texto, /Histórico: 2 faltas injustificadas \(01\/05\/2026, 20\/10\/2026\) · medidas disciplinares: 2 \(1 advertência escrita e 1 suspensão \(2 dias\)\)/);
   const sem = HTML.montar({ area: "X", inicio: "2026-10-19", fim: "2026-10-25", linhas: linhas.map(l => ({ ...l, hist: null })), logo: "x", link: null });
   assert.doesNotMatch(sem.html, /Histórico dos colaboradores|Abrir no Painel/, "sem histórico e sem endereço: o e-mail sai como antes");
 });
