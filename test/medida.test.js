@@ -185,8 +185,8 @@ test("e-mail: o selo da situação mostra a quantidade real de medidas (nunca '1
   const h = { ...MD.historicoDe(3, "ANA", [{ re: 3, data: "2025-03-01", tipo: "ADVERTÊNCIA", grau: "VERBAL" }, { re: 3, data: "2025-12-23", tipo: "ADVERTÊNCIA", grau: "ESCRITA" }], [{ re: 3, data: "2026-10-20" }], 2026) };
   h.txt = MD.historicoTxt(h);
   const m = HTML.montar({ area: "X", inicio: "2026-10-19", fim: "2026-10-25", linhas: [{ re: 3, nome: "ANA", posto: "P", cargo: "C", escala: "12X36", datas: ["2026-10-20"], hist: h }], logo: "x", link: null });
-  assert.match(m.html, />2 MEDIDAS</);
-  assert.doesNotMatch(m.html, />1 MEDIDA</);
+  assert.match(m.html, />2 MEDIDAS DISCIPLINARES</);
+  assert.doesNotMatch(m.html, />1 MEDIDA DISCIPLINAR</);
 });
 // ── e-mail semanal: histórico do ano e o botão do painel ────────────────────
 test("e-mail: tabela de reincidência no ano, selo de reincidente e botão para o painel", () => {

@@ -121,25 +121,25 @@ function tabelaReincidencia(linhas) {
   const lbl = t => `<span class="lbl" style="display:none">${t}</span>`;
   const corpo = ord.map((l, i) => {
     const h = l.hist, ult = i === ord.length - 1, b = ult ? "" : `border-bottom:1px solid ${LINHA};`;
-    const sit = h.reincidente ? SELO_REIN
-      : h.medidas ? `<span style="display:inline-block;padding:2px 8px;border:1px solid #fedf89;border-radius:10px;background:#fffaeb;color:#93370d;font-size:10px;line-height:14px;font-weight:700;letter-spacing:.5px;white-space:nowrap">${h.medidas} ${h.medidas === 1 ? "MEDIDA" : "MEDIDAS"}</span>`
-      : `<span style="display:inline-block;padding:2px 8px;border:1px solid #d3dbe6;border-radius:10px;background:#f4f7fb;color:#3a4a5e;font-size:10px;line-height:14px;font-weight:700;letter-spacing:.5px;white-space:nowrap">SEM MEDIDA</span>`;
+    const sit = h.reincidente ? SELO_REIN + `<div style="font-size:10px;line-height:14px;color:${CLARO};padding-top:4px">2 ou mais medidas disciplinares no ano</div>`
+      : h.medidas ? `<span style="display:inline-block;padding:2px 8px;border:1px solid #fedf89;border-radius:10px;background:#fffaeb;color:#93370d;font-size:10px;line-height:14px;font-weight:700;letter-spacing:.5px;white-space:nowrap">${h.medidas} ${h.medidas === 1 ? "MEDIDA DISCIPLINAR" : "MEDIDAS DISCIPLINARES"}</span>`
+      : `<span style="display:inline-block;padding:2px 8px;border:1px solid #d3dbe6;border-radius:10px;background:#f4f7fb;color:#3a4a5e;font-size:10px;line-height:14px;font-weight:700;letter-spacing:.5px;">SEM MEDIDA DISCIPLINAR</span>`;
     const td = (cls, alin, estilo, html) => `<td${cls ? ` class="${cls}"` : ""} align="${alin}" valign="top" style="padding:12px 10px;${b}${estilo};font-family:${FONTE}">${html}</td>`;
     return `<tr>
       ${td("nome", "left", `font-weight:700;color:${MARINHO}`, esc(l.nome) + `<div style="font-size:11px;line-height:16px;font-weight:400;color:${CLARO}">RE ${esc(l.re)}</div>`)}
-      ${td("", "center", `font-weight:700;color:${MARINHO};font-size:15px`, lbl("Faltas") + h.faltasAno + datasHist(h))}
-      ${td("", "left", "", lbl("Medidas") + (h.medidas ? `<b style="color:${MARINHO}">${h.medidas}</b> · ${esc(h.txt)}` : `<span style="color:${CLARO}">Nenhuma</span>`))}
-      ${td("", "left", "white-space:nowrap", lbl("Última") + (h.ultima ? esc(medidaTxt(h.ultima)) + `<div style="font-size:11px;line-height:16px;color:${CLARO}">${esc(ddmmaaaa(h.ultima.data))}</div>` : "—"))}
+      ${td("", "center", `font-weight:700;color:${MARINHO};font-size:15px`, lbl("Faltas injust.") + h.faltasAno + datasHist(h))}
+      ${td("", "left", "", lbl("Medidas discipl.") + (h.medidas ? `<b style="color:${MARINHO}">${h.medidas}</b> · ${esc(h.txt)}` : `<span style="color:${CLARO}">Nenhuma medida disciplinar</span>`))}
+      ${td("", "left", "white-space:nowrap", lbl("Última medida") + (h.ultima ? esc(medidaTxt(h.ultima)) + `<div style="font-size:11px;line-height:16px;color:${CLARO}">${esc(ddmmaaaa(h.ultima.data))}</div>` : `<span style="color:${CLARO}">Nenhuma</span>`))}
       ${td("ult", "left", "", sit)}
     </tr>`;
   }).join("\n");
   return `<tr><td class="px" style="padding:30px 40px 0;font-family:${FONTE}">
   <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0">
     <tr><td style="font-size:11px;line-height:14px;font-weight:700;letter-spacing:2px;color:${CINZA};text-transform:uppercase;padding-bottom:4px;font-family:${FONTE}">Histórico dos colaboradores</td></tr>
-    <tr><td style="font-size:12px;line-height:18px;color:#6b7e96;padding-bottom:12px;font-family:${FONTE}">Faltas injustificadas e medidas disciplinares de cada colaborador (abonos, afastamentos e medidas canceladas não contam).</td></tr>
+    <tr><td style="font-size:12px;line-height:18px;color:#6b7e96;padding-bottom:12px;font-family:${FONTE}">Faltas injustificadas e medidas disciplinares (advertências e suspensões) já aplicadas a cada colaborador, em todo o histórico (abonos, afastamentos e medidas canceladas não contam).</td></tr>
   </table>
   <table role="presentation" class="rt" width="100%" border="0" cellpadding="0" cellspacing="0" style="border:1px solid ${LINHA};border-radius:12px;border-collapse:separate;font-size:12.5px;line-height:19px;color:#3a4a5e">
-    <thead><tr>${th("Colaborador", "28%", "left", "12px 0 0 0")}${th("Faltas injust.", "11%", "center", "")}${th("Medidas", "31%", "left", "")}${th("Última", "16%", "left", "")}${th("Situação", "14%", "left", "0 12px 0 0")}</tr></thead>
+    <thead><tr>${th("Colaborador", "25%", "left", "12px 0 0 0")}${th("Faltas injustificadas", "14%", "center", "")}${th("Medidas disciplinares", "27%", "left", "")}${th("Última medida disciplinar", "17%", "left", "")}${th("Situação", "17%", "left", "0 12px 0 0")}</tr></thead>
     <tbody>
 ${corpo}
     </tbody>
@@ -294,7 +294,7 @@ const ESTILO = `<style>
     .rt td{display:block!important;width:auto!important;border:0!important;padding:4px 14px!important;text-align:left!important;background:#ffffff!important}
     .rt td.nome{padding-top:14px!important;font-size:15px!important}
     .rt td.ult{padding-bottom:14px!important}
-    .rt .lbl{display:inline-block!important;width:64px;font-size:10px!important;letter-spacing:1px;text-transform:uppercase;color:#6b7e96!important}
+    .rt .lbl{display:inline-block!important;width:118px;font-size:10px!important;letter-spacing:1px;text-transform:uppercase;color:#6b7e96!important}
   }
 </style>`;
 
