@@ -4203,6 +4203,7 @@ if(sessionStorage.getItem("logged")==="1"){
   document.getElementById("loginOverlay").classList.add("hidden");
   applyUserUI();
   vgContrato();
+  _celebrarContrato(); // sessão já aberta (recarregou a página): o aviso também aparece, uma vez por contrato
 }
 function _cnt(arr,key,n){var m={};arr.forEach(function(x){var v=x[key]||"—";m[v]=(m[v]||0)+1;});return Object.entries(m).sort(function(a,b){return b[1]-a[1]}).slice(0,n||10).map(function(e){return e[0]+": "+e[1]}).join("; ");}
 function _chatContext(){
