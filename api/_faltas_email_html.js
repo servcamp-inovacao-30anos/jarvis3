@@ -95,7 +95,15 @@ const pl = (n, um, v) => n + " " + (n === 1 ? um : v);
 const SELO_REIN = `<span style="display:inline-block;padding:2px 8px;border:1px solid #f4b4ad;border-radius:10px;background:#fdecea;color:#b42318;font-size:10px;line-height:14px;font-weight:700;letter-spacing:.5px;white-space:nowrap">REINCIDENTE</span>`;
 function noAno(h) {
   if (!h) return "";
-  return `<div style="font-size:11px;line-height:16px;font-weight:400;color:${CINZA};padding-top:5px">${h.reincidente ? SELO_REIN + "<br>" : ""}Histórico: ${pl(h.faltasAno, "falta injustificada", "faltas injustificadas")} · ${pl(h.medidas, "medida", "medidas")}</div>`;
+  return `<div style="font-size:11px;line-height:16px;font-weight:400;color:${CINZA};padding-top:5px">${h.reincidente ? SELO_REIN + "<br>" : ""}Histórico: ${pl(h.faltasAno, "falta injustificada", "faltas injustificadas")}<br>Medidas disciplinares: ${h.medidas ? h.medidas : "nenhuma"}</div>`;
+}
+// As datas por baixo do número: quem lê confere de onde vem a contagem (as 5 mais recentes).
+function datasHist(h) {
+  const ds = [...(h.datasFaltas || [])].sort().reverse();
+  if (!ds.length) return "";
+  const dm = d => { const s = iso(d); return s.slice(8, 10) + "/" + s.slice(5, 7) + "/" + s.slice(2, 4); };
+  const txt = ds.slice(0, 5).map(dm).join(", ") + (ds.length > 5 ? " e mais " + (ds.length - 5) : "");
+  return `<div style="font-size:10px;line-height:14px;font-weight:400;color:${CLARO};padding-top:4px">${esc(txt)}</div>`;
 }
 function medidaTxt(m) {
   if (!m) return "";
@@ -114,12 +122,12 @@ function tabelaReincidencia(linhas) {
   const corpo = ord.map((l, i) => {
     const h = l.hist, ult = i === ord.length - 1, b = ult ? "" : `border-bottom:1px solid ${LINHA};`;
     const sit = h.reincidente ? SELO_REIN
-      : h.medidas ? `<span style="display:inline-block;padding:2px 8px;border:1px solid #fedf89;border-radius:10px;background:#fffaeb;color:#93370d;font-size:10px;line-height:14px;font-weight:700;letter-spacing:.5px;white-space:nowrap">1 MEDIDA</span>`
+      : h.medidas ? `<span style="display:inline-block;padding:2px 8px;border:1px solid #fedf89;border-radius:10px;background:#fffaeb;color:#93370d;font-size:10px;line-height:14px;font-weight:700;letter-spacing:.5px;white-space:nowrap">${h.medidas} ${h.medidas === 1 ? "MEDIDA" : "MEDIDAS"}</span>`
       : `<span style="display:inline-block;padding:2px 8px;border:1px solid #d3dbe6;border-radius:10px;background:#f4f7fb;color:#3a4a5e;font-size:10px;line-height:14px;font-weight:700;letter-spacing:.5px;white-space:nowrap">SEM MEDIDA</span>`;
     const td = (cls, alin, estilo, html) => `<td${cls ? ` class="${cls}"` : ""} align="${alin}" valign="top" style="padding:12px 10px;${b}${estilo};font-family:${FONTE}">${html}</td>`;
     return `<tr>
       ${td("nome", "left", `font-weight:700;color:${MARINHO}`, esc(l.nome) + `<div style="font-size:11px;line-height:16px;font-weight:400;color:${CLARO}">RE ${esc(l.re)}</div>`)}
-      ${td("", "center", `font-weight:700;color:${MARINHO};font-size:15px`, lbl("Faltas") + h.faltasAno)}
+      ${td("", "center", `font-weight:700;color:${MARINHO};font-size:15px`, lbl("Faltas") + h.faltasAno + datasHist(h))}
       ${td("", "left", "", lbl("Medidas") + (h.medidas ? `<b style="color:${MARINHO}">${h.medidas}</b> · ${esc(h.txt)}` : `<span style="color:${CLARO}">Nenhuma</span>`))}
       ${td("", "left", "white-space:nowrap", lbl("Última") + (h.ultima ? esc(medidaTxt(h.ultima)) + `<div style="font-size:11px;line-height:16px;color:${CLARO}">${esc(ddmmaaaa(h.ultima.data))}</div>` : "—"))}
       ${td("ult", "left", "", sit)}
@@ -367,7 +375,7 @@ ${fecho(o.assinatura)}
     t.push(`FALTAS INJUSTIFICADAS — ÁREA ${area.toUpperCase()}`, `Período: ${periodo}`, `Ocorrências: ${faltas} · Colaboradores: ${linhas.length}`, "");
     linhas.forEach(l => {
       t.push(`- ${l.nome} · RE ${l.re} · ${l.posto} · ${l.cargo} · ${l.escala} · ${l.datas.length > 1 ? "Faltas" : "Falta"}: ${l.datas.map(d => ddmmaaaa(d) + " (" + diaDaSemana(d) + ")").join(", ")}`);
-      if (l.hist) t.push(`  Histórico: ${l.hist.faltasAno} ${l.hist.faltasAno === 1 ? "falta injustificada" : "faltas injustificadas"} · ${l.hist.medidas ? l.hist.medidas + (l.hist.medidas === 1 ? " medida" : " medidas") + " (" + l.hist.txt + ")" : "nenhuma medida"}${l.hist.ultima ? " · última em " + ddmmaaaa(l.hist.ultima.data) : ""}${l.hist.reincidente ? " · REINCIDENTE" : ""}`);
+      if (l.hist) t.push(`  Histórico: ${l.hist.faltasAno} ${l.hist.faltasAno === 1 ? "falta injustificada" : "faltas injustificadas"} (${(l.hist.datasFaltas || []).map(ddmmaaaa).join(", ")}) · medidas disciplinares: ${l.hist.medidas ? l.hist.medidas + " (" + l.hist.txt + ")" : "nenhuma"}${l.hist.ultima ? " · última em " + ddmmaaaa(l.hist.ultima.data) : ""}${l.hist.reincidente ? " · REINCIDENTE" : ""}`);
     });
     t.push("");
     if (o.link) t.push(`Gerar a medida disciplinar no Painel ServCamp: ${o.link}`, "");

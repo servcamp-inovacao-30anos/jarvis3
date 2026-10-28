@@ -190,7 +190,7 @@ function historicoDe(re, nome, medidas, faltasI, ano) {
     else cont.escrita++;
   });
   const faltas = [...new Set((faltasI || []).filter(mesma).map(f => iso(f.data)))].sort();
-  return { medidas: val.length, ...cont, ultima: val[0] ? { data: iso(val[0].data), tipo: val[0].tipo, grau: val[0].grau, dias: Number(val[0].dias) || 0 } : null, faltasAno: faltas.length, reincidente: noAno >= 2 }; // mesmo corte da tela: 2 ou mais medidas no ano
+  return { medidas: val.length, ...cont, ultima: val[0] ? { data: iso(val[0].data), tipo: val[0].tipo, grau: val[0].grau, dias: Number(val[0].dias) || 0 } : null, faltasAno: faltas.length, datasFaltas: faltas, reincidente: noAno >= 2 }; // mesmo corte da tela: 2 ou mais medidas no ano
 }
 // "1 advertência verbal, 2 escritas e 1 suspensão (3 dias)" — curto, para o e-mail.
 function historicoTxt(h) {

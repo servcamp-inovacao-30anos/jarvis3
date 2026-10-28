@@ -255,20 +255,34 @@ async function faltasDoPeriodo(db, inicio, fim, corteMs) {
     .filter(f => !areaFora(f.area)); // RT de turno, Coordenação e RH: fora do aviso
 }
 
-// Histórico do ano de todos os colaboradores, lido uma vez por rodada de envio: medidas desde
-// 01/01 (sem repetir a que veio no histórico importado e na planilha diária) e faltas que
-// continuam injustificadas (a apuração já tirou demitido, abono e afastamento).
+// Histórico de todos os colaboradores, lido uma vez por rodada de envio: medidas (sem repetir a que veio no
+// histórico importado e na planilha diária) e faltas que continuam injustificadas. As faltas passam pelas MESMAS
+// regras do aviso da semana (nada anterior à admissão de quem tem o RE hoje, nada coberto por atestado lançado
+// à mão), para o número do histórico nunca contar o que o aviso não contaria.
 async function historicoDoAno(db, hoje) {
-  const ano = String(hoje).slice(0, 4), desde = ano + "-01-01";
-  const [medidas, faltasI] = await Promise.all([
+  const ano = String(hoje).slice(0, 4);
+  const [medidas, faltasI, adm, atest] = await Promise.all([
     db.listar(`fm_medidas?select=chave,re,data,tipo,grau,dias,fase,nome&order=re.asc,data.asc,chave.asc`),
-    db.listar(`fm_faltas?select=re,data,nome&codigo=eq.I&order=re.asc,data.asc`)
+    db.listar(`fm_faltas?select=re,data,nome&codigo=eq.I&order=re.asc,data.asc`),
+    db.listar("fm_admissoes?select=re,admissao&order=re.asc"),
+    db.listar(`fm_auditoria?select=id,ator,acao,chave,depois,criado_em&acao=in.(${faltasMod.ACOES_ATESTADO.join(",")})&order=criado_em.asc,id.asc`)
   ]);
-  return { ano, medidas: R.dedupMedidas(medidas).map(m => ({ ...m, data: iso(m.data) })), faltasI };
+  const admissao = {};
+  adm.forEach(a => { if (a.admissao) admissao[String(a.re)] = iso(a.admissao); });
+  const { ativos: atestados } = R.dobrarAtestados(atest);
+  const validas = faltasI.map(f => ({ ...f, data: iso(f.data) })).filter(f => {
+    const ad = admissao[String(f.re)];
+    if (ad && f.data < ad) return false;
+    return !atestados.some(a => a.re === String(f.re) && f.data >= a.inicio && f.data <= a.fim);
+  });
+  return { ano, medidas: R.dedupMedidas(medidas).map(m => ({ ...m, data: iso(m.data) })), faltasI: validas };
 }
-function historicoDaLinha(hist, re, nome) {
+// `datasSemana`: as faltas que estão neste aviso entram sempre no histórico (o histórico nunca pode ter menos
+// faltas que a semana que está sendo avisada).
+function historicoDaLinha(hist, re, nome, datasSemana) {
   if (!hist) return null;
-  const h = MD.historicoDe(re, nome, hist.medidas, hist.faltasI, hist.ano);
+  const extra = (datasSemana || []).map(d => ({ re, nome, data: d }));
+  const h = MD.historicoDe(re, nome, hist.medidas, [...hist.faltasI, ...extra], hist.ano);
   return { ...h, txt: MD.historicoTxt(h) };
 }
 
@@ -300,7 +314,7 @@ function agrupar(faltas, hist) {
     p.escala = f.escala || p.escala;
   });
   return [...porRE.values()]
-    .map(p => ({ ...p, datas: [...new Set(p.datas)].sort(), hist: historicoDaLinha(hist, p.re, p.nome) }))
+    .map(p => ({ ...p, datas: [...new Set(p.datas)].sort(), hist: historicoDaLinha(hist, p.re, p.nome, p.datas) }))
     .sort((a, b) => a.datas[0].localeCompare(b.datas[0]) || String(a.nome || "").localeCompare(String(b.nome || "")));
 }
 
