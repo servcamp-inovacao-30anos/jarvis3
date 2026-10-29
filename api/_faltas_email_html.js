@@ -43,7 +43,7 @@ const plural = (n, um, varios) => n + " " + (n === 1 ? um : varios);
 
 // ── pedaços do cartão ────────────────────────────────────────────────────────
 function cabecalho(o) {
-  const rotulo = o.teste ? "Envio de teste" : (o.rotulo || "Aviso semanal");
+  const rotulo = o.teste ? "Prévia" : (o.rotulo || "Aviso semanal");
   const direita = `<div style="font-size:10px;line-height:14px;font-weight:700;letter-spacing:2px;color:#7fb3f5;text-transform:uppercase">${rotulo}</div>` +
     `<div style="font-size:13px;line-height:20px;font-weight:600;color:#ffffff;padding-top:3px;white-space:nowrap">${esc(periodoCurto(o.inicio, o.fim))}</div>`;
   return `<tr><td bgcolor="#0d1f35" class="px" style="background:#0d1f35;background-image:linear-gradient(180deg,#14304f 0%,#0b1a2e 100%);border-radius:18px 18px 0 0;padding:26px 30px">
@@ -311,11 +311,11 @@ function montar(o) {
   const periodo = ddmmaaaa(o.inicio) + " a " + ddmmaaaa(o.fim);
   const atual = o.atualizacoes && o.atualizacoes.itens && o.atualizacoes.itens.length
     ? { ...o.atualizacoes, itens: o.atualizacoes.itens.map(x => ({ ...x, nome: titulo(x.nome) || "Sem nome" })) } : null;
-  const assunto = (o.teste ? "[TESTE] " : "") + "Aviso semanal de faltas injustificadas — " + area;
+  const assunto = (o.teste ? "Prévia: " : "") + "Aviso semanal de faltas injustificadas — " + area;
   const rodape = "Envio automatizado"; // pedido do Raphael (23/10/2026), no automático e no manual
 
   const p = t => `<p style="margin:0 0 14px">${t}</p>`;
-  const mensagem = (o.teste ? `<p style="margin:0 0 18px;padding:10px 14px;border:1px solid #d3dbe6;border-left:4px solid ${AZUL};border-radius:8px;background:#f4f7fb;font-size:13px;line-height:20px;color:#3a4a5e"><b style="color:${MARINHO}">Envio de teste.</b> Período escolhido no painel; não substitui o aviso oficial da semana.</p>` : "") +
+  const mensagem = (o.teste ? `<p style="margin:0 0 18px;padding:10px 14px;border:1px solid #d3dbe6;border-left:4px solid ${AZUL};border-radius:8px;background:#f4f7fb;font-size:13px;line-height:20px;color:#3a4a5e"><b style="color:${MARINHO}">Prévia.</b> Período escolhido no painel; não substitui o aviso oficial da semana.</p>` : "") +
     p(`Olá, ${esc(saudacao)}.`) +
     (linhas.length
       ? p(`Segue o aviso das faltas injustificadas registradas na sua área, referentes ao período de ${esc(periodo)}.`) +
@@ -367,7 +367,7 @@ ${fecho(o.assinatura)}
 
   // versão em texto simples: quem lê o e-mail sem HTML vê o mesmo conteúdo
   const t = [];
-  if (o.teste) t.push("[ENVIO DE TESTE — período escolhido no painel; não substitui o aviso oficial da semana]", "");
+  if (o.teste) t.push("[PRÉVIA — período escolhido no painel; não substitui o aviso oficial da semana]", "");
   t.push(`Olá, ${saudacao}.`, "");
   if (linhas.length) {
     t.push(`Segue o aviso das faltas injustificadas registradas na sua área, referentes ao período de ${periodo}.`, "");
@@ -410,7 +410,7 @@ function montarResumo(o) {
   const semAss = vivas.filter(g => !g.assinado);
   const atras = pend.filter(g => (g.diasPendente || 0) >= 3).length;
   const periodo = ddmmaaaa(ini) + " a " + ddmmaaaa(fim);
-  const assunto = (o.teste ? "[TESTE] " : "") + "Resumo semanal das medidas disciplinares — " + (pend.length ? pl(pend.length, "medida falta", "medidas faltam") + " lançar no SAR2G" : "nada pendente no SAR2G");
+  const assunto = (o.teste ? "Prévia: " : "") + "Resumo semanal das medidas disciplinares — " + (pend.length ? pl(pend.length, "medida falta", "medidas faltam") + " lançar no SAR2G" : "nada pendente no SAR2G");
 
   const caixa = (rot, val, cor, borda) => `<td class="k" width="25%" valign="top" style="padding:16px 14px;${borda ? "border-left:1px solid #e3eaf3;" : ""}font-family:${FONTE}">
       <div style="font-size:10px;line-height:14px;font-weight:700;letter-spacing:1.2px;color:#6b7e96;text-transform:uppercase">${rot}</div>
@@ -499,7 +499,7 @@ ${pend.map((g, i) => {
     `<tr><td height="5" bgcolor="${AZUL}" style="height:5px;line-height:5px;font-size:0;background:${AZUL};border-radius:0 0 18px 18px">&nbsp;</td></tr>`
   ].join("\n");
   const sauda = titulo(o.saudacao || "") || "coordenação";
-  const mensagem = (o.teste ? `<p style="margin:0 0 18px;padding:10px 14px;border:1px solid #d3dbe6;border-left:4px solid ${AZUL};border-radius:8px;background:#f4f7fb;font-size:13px;line-height:20px;color:#3a4a5e"><b style="color:${MARINHO}">Envio de teste.</b> Não substitui o resumo oficial da semana.</p>` : "") +
+  const mensagem = (o.teste ? `<p style="margin:0 0 18px;padding:10px 14px;border:1px solid #d3dbe6;border-left:4px solid ${AZUL};border-radius:8px;background:#f4f7fb;font-size:13px;line-height:20px;color:#3a4a5e"><b style="color:${MARINHO}">Prévia.</b> Não substitui o resumo oficial da semana.</p>` : "") +
     `<p style="margin:0 0 14px">Olá, ${esc(sauda)}.</p>` +
     `<p style="margin:0">${pend.length ? `Segue o resumo das medidas disciplinares geradas no Painel ServCamp: <b>${pl(pend.length, "medida ainda não foi lançada", "medidas ainda não foram lançadas")} no SAR2G</b>${atras ? `, ${atras} há 3 dias ou mais` : ""}.` : "Segue o resumo das medidas disciplinares geradas no Painel ServCamp: nenhuma está pendente de lançamento no SAR2G."}</p>`;
   const html = `<!DOCTYPE html>
@@ -535,7 +535,7 @@ ${fecho(o.assinatura)}
 </body>
 </html>`;
   const t = [];
-  if (o.teste) t.push("[ENVIO DE TESTE — não substitui o resumo oficial da semana]", "");
+  if (o.teste) t.push("[PRÉVIA — não substitui o resumo oficial da semana]", "");
   t.push(`Olá, ${sauda}.`, "", `RESUMO DAS MEDIDAS DISCIPLINARES — semana de ${periodo}`, `Falta lançar no SAR2G: ${pend.length} (${atras} há 3 dias ou mais) · Geradas na semana: ${geradasSem.length} · Lançadas na semana: ${lancadasSem.length} · Sem documento assinado: ${semAss.length}`, "");
   if (pend.length) {
     t.push("FALTA LANÇAR NO SAR2G");

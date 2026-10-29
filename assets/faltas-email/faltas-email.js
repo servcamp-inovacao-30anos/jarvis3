@@ -573,7 +573,7 @@ function envClique(q,b){
     if(e.eu)para.push("@eu");
     e.cc.forEach(m=>para.push(m));
     String(e.outro||"").split(/[,;\s]+/).map(x=>x.trim()).filter(Boolean).forEach(x=>para.push(x));
-    acao(()=>api("teste_areas","POST",{de:e.de,ate:e.ate,para:para,areas:sel}),r=>r.enviados+" e-mail(s) de teste enviado(s), um por área"+(r.falhas?" · "+r.falhas+" falharam: tente de novo":"")+" · "+r.comFaltas+" com faltas no período.",true).then(()=>{e.conf=false;render();});
+    acao(()=>api("teste_areas","POST",{de:e.de,ate:e.ate,para:para,areas:sel}),r=>r.enviados+" e-mail(s) de teste enviado(s), um por área"+(r.falhas?" · "+r.falhas+" falharam: tente de novo":"")+" · "+r.comFaltas+" com faltas no período."+(r.recusados&&r.recusados.length?" ATENÇÃO: o servidor recusou "+r.recusados.join(", ")+" (esses não receberam).":""),true).then(()=>{e.conf=false;render();});
   }
 }
 function envMudou(q,el){
