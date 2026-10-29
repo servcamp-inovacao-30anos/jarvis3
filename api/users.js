@@ -31,6 +31,7 @@ const USUARIOS = [
 // obrigatória). Fica aqui só o HASH, nunca a senha. Quando a senha for gravada no banco
 // (app_users.custom_password), ela passa a valer e esta linha pode sair. Pedido do Raphael, 13/10/2026.
 const SENHA_INICIAL = {
+  rosisantos: "scrypt:16384:8:1:vobcWfZMyPvhKBh/FXN1hg==:EEl3tl/1OdL+WwgHori5bsYDljQWTLugQgxjxs3GqHA=",
   joyce: "scrypt:16384:8:1:aWeD1J+f4aMK+N3kJ1L9oA==:taSS/EJ8t6D2hWaAbbeg0sAb650fIg3K/xAXIKjpA+g="
 };
 
