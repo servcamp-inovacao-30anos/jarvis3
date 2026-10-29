@@ -35,6 +35,9 @@ const SENHA_INICIAL = {
   joyce: "scrypt:16384:8:1:aWeD1J+f4aMK+N3kJ1L9oA==:taSS/EJ8t6D2hWaAbbeg0sAb650fIg3K/xAXIKjpA+g="
 };
 
+// Senha inicial que precisa ser trocada no primeiro acesso (a da Joyce, por pedido, não precisa).
+const INICIAL_COM_TROCA = new Set(["rosisantos"]);
+
 // Troca pendente: sempre para quem está na senha padrão; para quem já tem
 // senha própria, só se must_change estiver marcado no banco.
 function precisaTrocar(row) {
@@ -153,7 +156,7 @@ module.exports = async function handler(req, res) {
         emTextoClaro ? converterParaHash(userKey, password) : null,
         registrarAcesso(userKey, c.row)
       ]);
-      const mustChange = c.inicial ? false : precisaTrocar(c.row);
+      const mustChange = c.inicial ? INICIAL_COM_TROCA.has(userKey) : precisaTrocar(c.row);
       const secret = process.env.AUTH_SECRET;
       return res.status(200).json({
         ok: true,
