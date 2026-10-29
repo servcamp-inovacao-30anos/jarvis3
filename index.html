@@ -964,6 +964,7 @@ aside.sb#sidebar.sb-mini #navRoot .ni{margin:2px 8px;padding:9px 0;}
   <!-- VISÃO GERAL -->
   <div class="page active" id="pg-visao">
     <div id="vg-contrato" hidden></div>
+    <div id="vg-guias-alerta" hidden></div>
     <div class="vg-kpis" style="grid-template-columns:repeat(3,1fr)">
       <div class="sk sk-bl clickable" onclick="skDet('vg','clientes',this)"><div class="sk-top"><span class="sk-ic">🏢</span><span class="sk-tag t-bl">Fixo</span></div><div class="sk-lbl">Clientes Ativos</div><div class="sk-v" id="vg-cl">—</div><div class="sk-sub" id="vg-cls">—</div></div>
       <div class="sk clickable" onclick="_showNovosClientes()" style="background:linear-gradient(135deg,#fff7e6,#ffedcc);border:2px solid #f5a623;box-shadow:0 4px 18px rgba(245,166,35,.25);position:relative;overflow:hidden">
@@ -8192,6 +8193,7 @@ function _checkDataFreshness(){
   setTimeout(()=>{el.style.transition="opacity .3s";el.style.opacity="0";setTimeout(()=>el.remove(),300);},2000);
 }
 function refreshAll(){
+  if(typeof vgGuiasAlerta==="function")vgGuiasAlerta();
   populateAreas();
   ST.mesEscolhido=null; // base nova: o mes escolhido antes pode nem existir
   if(typeof mtCarregaFundo==="function"&&MT_CACHE===null)mtCarregaFundo();
@@ -8207,6 +8209,66 @@ function refreshAll(){
     else if(key!=="visao")rTbl(key);
   }
 }
+/* ── Conferência das guias da planilha ──────────────────────────────────────
+   Uma guia pode chegar quebrada sem o envio falhar: a aba some, vem vazia, ou
+   vem sem a coluna de data (OS Avulsos sem DTPONTO, 27/10: 98 linhas, nenhuma
+   com data, e a guia aparecia zerada em qualquer período). Ninguém percebia
+   até alguém abrir a guia. A conferência roda no envio (pergunta antes de
+   mandar) e na Visão Geral (alerta para todos enquanto a planilha no ar tiver
+   problema, inclusive a que entra pela importação automática). */
+const GUIAS_PLANILHA=[
+  {k:"faltas",n:"Faltas",aba:"FICHA DE PRESENÇA",data:1,atual:1},
+  {k:"cobertura",n:"Coberturas",aba:"FICHA DE PRESENÇA",data:1,atual:1},
+  {k:"fts",n:"FTS",aba:"FICHA DE PRESENÇA",data:1,atual:1},
+  {k:"hrextra",n:"Horas Extras",aba:"HR EXTRA",data:1,atual:1},
+  {k:"os",n:"OS Avulsos",aba:"OS AVULSOS",data:1,atual:1,col:"DTPONTO"},
+  {k:"justif",n:"Justif. Postos Descobertos",aba:"JUSTIFICATIVA VAGA DESCOBERTA",data:1},
+  {k:"dispo",n:"Sem Alocação",aba:"DISPONIBILIDADE DE PLANTÃO",data:1},
+  {k:"bdvCobertura",n:"Relatório de Coberturas (BDV)",aba:"BDV - LANÇAMENTOS",data:1,atual:1},
+  {k:"checklist",n:"Check List",aba:"CHECK LIST",data:1,atual:1,col:"DATAHORA"},
+  {k:"ativos",n:"Funcionários Ativos",aba:"FUNCIONARIOS ATIVOS"},
+  {k:"clientes",n:"Clientes",aba:"CLIENTES"},
+  {k:"restec",n:"Reservas Técnicas",aba:"RESERVAS TECNICAS"}
+];
+const GUIAS_DIAS_ATRASO=5; // guia com o último dia mais velho que isso (contra a planilha) está desatualizada
+function _gDia(v){const s=String(v||"").slice(0,10);return /^\d{4}-\d{2}-\d{2}$/.test(s)?s:"";}
+function _gBR(iso){return iso?iso.slice(8,10)+"/"+iso.slice(5,7):"—";}
+/* Devolve [{n,aba,t}] com o problema de cada guia. ant: a planilha anterior (só no envio), para pegar queda brusca. */
+function guiasProblemas(d,ant){
+  if(!d)return[];
+  const ult=g=>(d[g]||[]).reduce((m,r)=>{const x=_gDia(r&&r.DATA);return x>m?x:m;},"");
+  // até que dia a planilha vai: o último dia da Ficha de Presença (a base de tudo)
+  const fim=["faltas","cobertura","fts"].map(ult).reduce((m,x)=>x>m?x:m,"");
+  const out=[];
+  GUIAS_PLANILHA.forEach(g=>{
+    const arr=d[g.k];
+    if(!Array.isArray(arr))return; // guia que esta versão da planilha não traz: não acusa
+    const n=arr.length,aba='aba "'+g.aba+'"';
+    if(!n){out.push({n:g.n,aba:g.aba,t:"veio vazia — a "+aba+" não foi encontrada ou está sem linhas"});return;}
+    if(g.data){
+      const comData=arr.filter(r=>_gDia(r&&r.DATA)).length;
+      if(!comData){out.push({n:g.n,aba:g.aba,t:n+" linha(s), mas nenhuma com data — confira a coluna "+(g.col||"de data")+" na "+aba});return;}
+      if(comData<n*0.5)out.push({n:g.n,aba:g.aba,t:(n-comData)+" de "+n+" linhas sem data — confira a coluna "+(g.col||"de data")+" na "+aba});
+      if(g.atual&&fim){const u=ult(g.k);
+        if(u&&(Date.parse(fim)-Date.parse(u))/864e5>GUIAS_DIAS_ATRASO)out.push({n:g.n,aba:g.aba,t:"desatualizada — o último dia é "+_gBR(u)+", e a planilha vai até "+_gBR(fim)});}
+    }
+    const a=ant&&Array.isArray(ant[g.k])?ant[g.k].length:0;
+    if(a>=50&&n<a*0.5)out.push({n:g.n,aba:g.aba,t:"caiu de "+a+" para "+n+" linhas em relação à planilha anterior"});
+  });
+  return out;
+}
+function vgGuiasAlerta(){
+  const el=document.getElementById("vg-guias-alerta");if(!el)return;
+  const p=(typeof DASHBOARD_DATA!=="undefined")?guiasProblemas(DASHBOARD_DATA):[];
+  if(!p.length){el.hidden=true;el.innerHTML="";return;}
+  el.innerHTML='<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:12px;padding:12px 16px;border-radius:12px;background:#fff5f5;border:2px solid #fca5a5">'+
+    '<span style="font-size:1.4rem;line-height:1">⚠️</span><div style="flex:1;min-width:220px">'+
+    '<div style="font-size:.72rem;font-weight:900;letter-spacing:.5px;text-transform:uppercase;color:#b91c1c">A última planilha veio com problema em '+p.length+' guia'+(p.length>1?'s':'')+'</div>'+
+    '<div style="font-size:.74rem;color:#7f1d1d;margin:3px 0 4px">Os números destas guias podem estar zerados ou errados até a planilha ser corrigida e enviada de novo:</div>'+
+    '<ul style="margin:0;padding-left:18px;font-size:.74rem;color:#450a0a">'+p.map(x=>'<li><b>'+_esc(x.n)+'</b>: '+_esc(x.t)+'</li>').join("")+'</ul>'+
+    '</div></div>';
+  el.hidden=false;
+}
 function handleUp(evt){
   const file=evt.target.files&&evt.target.files[0];
   if(!file)return;
@@ -8220,6 +8282,17 @@ function handleUp(evt){
       if(!newData.ativos||!newData.ativos.length){
         throw new Error("Aba FUNCIONARIOS ATIVOS não encontrada ou vazia. Verifique se a planilha segue o mesmo padrão do arquivo original.");
       }
+      // guia quebrada (vazia, sem data, desatualizada) não pode passar calada: pergunta antes de mandar
+      const _probs=guiasProblemas(newData,DASHBOARD_DATA);
+      if(_probs.length&&!confirm("ATENÇÃO: a planilha tem problema em "+_probs.length+" guia(s):
+
+"+_probs.map(p=>"• "+p.n+": "+p.t).join("
+")+"
+
+Essas guias vão aparecer zeradas ou erradas no painel.
+
+OK = enviar mesmo assim
+Cancelar = não enviar e corrigir a planilha")){updateStatusLabel();evt.target.value="";return;}
       DASHBOARD_DATA=newData;
       saveToStorage(newData,file.name);
       updateStatusLabel();
@@ -8240,6 +8313,7 @@ function handleUp(evt){
   reader.readAsArrayBuffer(file);
 }
 function renderAfterLoad(){
+  if(typeof vgGuiasAlerta==="function")vgGuiasAlerta();
   if(typeof vgContrato==="function")vgContrato(); // a data de implantação da planilha já está disponível
   populateAreas();
   // Mesma base de sempre (só reabrindo o painel): mantém o período e o mês
