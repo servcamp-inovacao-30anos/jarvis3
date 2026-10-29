@@ -402,7 +402,9 @@ function abrirCorreio(c) {
         attachments: [{ filename: "servcamp.png", content: Buffer.from(LOGO, "base64"), contentType: "image/png", cid: CID_LOGO }]
           .concat(m.assinatura ? [{ filename: "assinatura." + (m.assinatura.tipo === "image/jpeg" ? "jpg" : "png"), content: Buffer.from(m.assinatura.base64, "base64"), contentType: m.assinatura.tipo, cid: CID_ASSINATURA }] : [])
       });
-      return { ok: !!(info && info.accepted && info.accepted.length), id: (info && info.messageId) || null };
+      // o servidor pode aceitar parte dos endereços e recusar outros: guarda os dois para ninguém achar que recebeu sem ter recebido
+      const lista = x => (Array.isArray(x) ? x : []).map(e => String((e && e.address) || e).toLowerCase());
+      return { ok: !!(info && info.accepted && info.accepted.length), id: (info && info.messageId) || null, aceitos: lista(info && info.accepted), recusados: lista(info && info.rejected) };
     },
     fechar() { try { tx.close(); } catch (e) { /* já fechou */ } }
   };
@@ -460,6 +462,8 @@ async function enviarSemana(db, { semana, escolhidas, copias, origem, ator, agor
       } catch (e) {
         r = { ok: false, erro: String((e && e.message) || e).slice(0, 200) };
       }
+      // o supervisor precisa estar entre os aceitos: cópia aceita com o supervisor recusado não conta como enviado
+      if (r && r.ok && r.aceitos && !r.aceitos.includes(String(a.email).toLowerCase())) r = { ok: false, erro: "o servidor de e-mail recusou o endereço do supervisor (" + a.email + ")" };
       if (!r || !r.ok) {
         await db.inserir("fm_auditoria", [ev(ator, ACAO_FALHOU, chave, { lote, origem, erro: (r && r.erro) || "o servidor de e-mail não confirmou o envio" })]);
         console.error("[faltas-email] envio não confirmado para a área " + a.area);
@@ -811,9 +815,9 @@ async function enviarTeste({ res, db, ator, body }) {
   catch (e) { r = { ok: false, erro: String((e && e.message) || e).slice(0, 200) }; }
   finally { correio.fechar(); }
   // teste não reserva nem marca nada: não bloqueia o oficial nem entra nas atualizações
-  await db.inserir("fm_auditoria", [ev(ator, ACAO_TESTE, a.area, { nome: a.nome, de: p.inicio, ate: p.fim, para, qtd: m.faltas.length, ok: !!(r && r.ok), erro: r && !r.ok ? (r.erro || "não confirmado") : null })]);
+  await db.inserir("fm_auditoria", [ev(ator, ACAO_TESTE, a.area, { nome: a.nome, de: p.inicio, ate: p.fim, para, qtd: m.faltas.length, ok: !!(r && r.ok), erro: r && !r.ok ? (r.erro || "não confirmado") : null, recusados: (r && r.recusados) || [] })]);
   if (!r || !r.ok) return res.status(502).json({ ok: false, error: "O servidor de e-mail não confirmou o envio do teste.", codigo: "FALHA_NO_ENVIO" });
-  return res.status(200).json({ ok: true, para: para.length, faltas: m.faltas.length, periodo: p });
+  return res.status(200).json({ ok: true, para: para.length, faltas: m.faltas.length, recusados: (r && r.recusados) || [], periodo: p });
 }
 
 // Teste de todas as áreas de uma vez, para quem ele escolher (a coordenação acompanhar o que cada supervisor
@@ -841,7 +845,7 @@ async function enviarTesteAreas({ res, db, ator, body }) {
   if (!escolhidas.length) return erro(res, 400, "Escolha ao menos uma área.", "SEM_AREA");
   const corte = Math.min(fimDoDiaSP(p.fim), agora.getTime());
   const [faltas, assinatura, hist] = await Promise.all([faltasDoPeriodo(db, p.inicio, p.fim, corte), lerAssinatura(db), historicoDoAno(db, diaSP(agora))]);
-  const correio = abrirCorreio(conta), registros = [];
+  const correio = abrirCorreio(conta), registros = [], recusados = new Set();
   let enviados = 0, falhas = 0, comFaltas = 0;
   try {
     for (const a of escolhidas) {
@@ -851,13 +855,14 @@ async function enviarTesteAreas({ res, db, ator, body }) {
       catch (e) { r = { ok: false, erro: String((e && e.message) || e).slice(0, 200) }; }
       const ok = !!(r && r.ok);
       if (ok) enviados++; else falhas++;
+      ((r && r.recusados) || []).forEach(e => recusados.add(e));
       if (m.faltas.length) comFaltas++;
-      registros.push(ev(ator, ACAO_TESTE, a.area, { nome: a.nome, de: p.inicio, ate: p.fim, para, qtd: m.faltas.length, ok, erro: ok ? null : ((r && r.erro) || "não confirmado"), todasAsAreas: true }));
+      registros.push(ev(ator, ACAO_TESTE, a.area, { nome: a.nome, de: p.inicio, ate: p.fim, para, qtd: m.faltas.length, ok, erro: ok ? null : ((r && r.erro) || "não confirmado"), recusados: (r && r.recusados) || [], todasAsAreas: true }));
     }
   } finally { correio.fechar(); }
   await db.inserir("fm_auditoria", registros);
   if (!enviados) return res.status(502).json({ ok: false, error: "O servidor de e-mail não confirmou o envio do teste.", codigo: "FALHA_NO_ENVIO" });
-  return res.status(200).json({ ok: true, areas: escolhidas.length, enviados, falhas, comFaltas, para: para.length, periodo: p });
+  return res.status(200).json({ ok: true, areas: escolhidas.length, enviados, falhas, comFaltas, para: para.length, recusados: [...recusados], periodo: p });
 }
 
 // Resumo da coordenação no painel: quem recebe e liga/desliga; prévia; teste; envio oficial da semana.

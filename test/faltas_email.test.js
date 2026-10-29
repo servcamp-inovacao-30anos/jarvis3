@@ -28,8 +28,11 @@ FE.definirRelogio(() => agora);
 // cada e-mail "enviado" fica aqui; falhar(m) simula o servidor de e-mail recusando
 let enviados = [], falhar = () => false;
 FE.definirCorreio(async m => {
-  if (falhar(m)) return { ok: false, erro: "falha simulada" };
+  const f = falhar(m);
+  if (f === true) return { ok: false, erro: "falha simulada" };
   enviados.push(m);
+  // { recusar: [...] }: o servidor aceita a mensagem mas recusa esses endereços
+  if (f && f.recusar) { const todos = [...m.para, ...(m.cc || [])]; return { ok: true, id: "<id-" + enviados.length + "@teste>", aceitos: todos.filter(e => !f.recusar.includes(e)), recusados: f.recusar }; }
   return { ok: true, id: "<id-" + enviados.length + "@teste>" };
 });
 
@@ -324,6 +327,22 @@ test("histórico no e-mail: mesma regra do aviso (sem falta anterior à admissã
   assert.match(txt, /Histórico: 3 faltas injustificadas Medidas disciplinares: nenhuma/, "20/10 e 22/10 da semana + 01/09; a de 2025 é de antes da admissão");
   assert.match(txt, /22\/10\/26, 20\/10\/26, 01\/09\/26/, "as datas que formam o número aparecem");
   assert.doesNotMatch(txt, /01\/12\/25/);
+});
+test("envio oficial: supervisor recusado pelo servidor (só a cópia aceita) não conta como enviado", async () => {
+  const t = base();
+  falhar = m => m.para[0] === "jean@exemplo.com.br" ? { recusar: ["jean@exemplo.com.br"] } : false;
+  const r = await api("enviar", { method: "POST", usuario: RESP, body: { areas: ["JEAN KLEBER"], copias: ["copia1@exemplo.com.br"], confirmar: true } });
+  assert.equal(r.body.enviados, 0, JSON.stringify(r.body));
+  assert.equal(r.body.falhas, 1);
+  assert.ok(t.fm_auditoria.some(e => e.acao === "FALTAS_EMAIL_FALHOU" && /recusou o endereço do supervisor/.test(JSON.stringify(e.depois))));
+});
+
+test("teste de áreas: devolve quem o servidor recusou", async () => {
+  base();
+  falhar = () => ({ recusar: ["fulano@exemplo.com.br"] });
+  const r = await api("teste_areas", { method: "POST", usuario: RESP, body: { para: ["@eu", "fulano@exemplo.com.br"], areas: ["JEAN KLEBER"] } });
+  assert.equal(r.statusCode, 200, JSON.stringify(r.body));
+  assert.deepEqual(r.body.recusados, ["fulano@exemplo.com.br"]);
 });
 test("prévia: e-mail pronto com a logo embutida, sem enviar nada", async () => {
   base();
