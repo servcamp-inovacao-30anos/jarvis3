@@ -4114,8 +4114,8 @@ function _ctLinha(p){
 function vgContrato(){
   const el=document.getElementById("vg-contrato");if(!el)return;
   contratosRecentes().then(lista=>{
-    if(!lista.length){el.hidden=true;el.innerHTML="";return;}
-    _ctConfete();
+    if(!lista.length){_ctConfeteParar();el.hidden=true;el.innerHTML="";return;}
+    el.style.cssText="position:relative;overflow:hidden;border-radius:14px";
     el.innerHTML=lista.slice(0,3).map(p=>{const l=_ctLinha(p);return(
       '<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:12px;padding:14px 18px;border-radius:14px;'+
       'background:linear-gradient(135deg,#fff7e6,#ffedcc);border:2px solid #f5a623;box-shadow:0 4px 18px rgba(245,166,35,.22)">'+
@@ -4127,33 +4127,33 @@ function vgContrato(){
         '</div>'+
       '</div>');}).join("");
     el.hidden=false;
+    _ctConfete(el);
   });
 }
-/* Confete caindo no dashboard enquanto houver contrato no destaque. Canvas
-   por cima de tudo, mas sem capturar clique; pausa com a aba escondida e não
-   roda para quem pediu menos movimento no sistema. */
-let _ctConfeteLigado=false;
-function _ctConfete(){
-  // Aparece mesmo com "reduzir animações" do sistema ligado: pedido da
-  // diretoria (o Windows desligava o confete sem ninguém perceber).
-  if(_ctConfeteLigado)return;
-  _ctConfeteLigado=true;
+/* Confete caindo só dentro da área do card de contrato fechado (não no painel
+   inteiro). Canvas sobre o card, sem capturar clique; pausa com a aba escondida. */
+let _ctConfeteRaf=0,_ctConfeteCv=null;
+function _ctConfeteParar(){if(_ctConfeteRaf)cancelAnimationFrame(_ctConfeteRaf);_ctConfeteRaf=0;if(_ctConfeteCv){_ctConfeteCv.remove();_ctConfeteCv=null;}}
+function _ctConfete(alvo){
+  _ctConfeteParar();
   const cv=document.createElement("canvas");
   cv.id="contratoConfete";
   cv.setAttribute("aria-hidden","true");
-  cv.style.cssText="position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:9000";
-  document.body.appendChild(cv);
+  cv.style.cssText="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2";
+  alvo.appendChild(cv);_ctConfeteCv=cv;
   const cx=cv.getContext("2d"),cor=["#f5a623","#2e8fef","#16a34a","#fbbf24","#e11d48","#8b5cf6"];
   let W=0,H=0,dpr=1;
-  const medir=()=>{dpr=window.devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*dpr;cv.height=H*dpr;cx.setTransform(dpr,0,0,dpr,0,0);};
+  const medir=()=>{dpr=window.devicePixelRatio||1;W=alvo.clientWidth;H=alvo.clientHeight;cv.width=W*dpr;cv.height=H*dpr;cx.setTransform(dpr,0,0,dpr,0,0);};
   medir();addEventListener("resize",medir);
   const novo=topo=>({x:Math.random()*W,y:topo?-20-Math.random()*H*.2:Math.random()*H,w:5+Math.random()*5,h:8+Math.random()*6,
     vy:.6+Math.random()*1.1,vx:-.4+Math.random()*.8,r:Math.random()*6.28,vr:-.06+Math.random()*.12,c:cor[Math.floor(Math.random()*cor.length)]});
-  const pecas=Array.from({length:Math.min(60,Math.round(W/22))},()=>novo(false));
+  const pecas=Array.from({length:Math.max(12,Math.min(40,Math.round(W/22)))},()=>novo(false));
   let ant=0;
   (function passo(t){
-    requestAnimationFrame(passo);
+    if(cv!==_ctConfeteCv)return;
+    _ctConfeteRaf=requestAnimationFrame(passo);
     if(document.hidden)return;
+    if(W!==alvo.clientWidth||H!==alvo.clientHeight)medir();
     const dt=Math.min(3,ant?(t-ant)/16.7:1);ant=t;
     cx.clearRect(0,0,W,H);
     for(const p of pecas){
@@ -4166,8 +4166,8 @@ function _ctConfete(){
 // Cartão de comemoração: aparece UMA vez por contrato em cada navegador (não a cada login). A faixa fixa na
 // Visão Geral e o confete seguem durante os 30 dias do destaque.
 const _ctChave=p=>String(p.id||p.nome||"")+"|"+String(p.fechado_em||"").slice(0,10);
-function _ctVistos(){try{return JSON.parse(localStorage.getItem("ctVistos")||"[]");}catch(e){return[];}}
-function _ctMarcar(lista){try{localStorage.setItem("ctVistos",JSON.stringify([...new Set(_ctVistos().concat(lista.map(_ctChave)))].slice(-40)));}catch(e){}}
+function _ctVistos(){try{return JSON.parse(localStorage.getItem("ctVistos2")||"[]");}catch(e){return[];}}
+function _ctMarcar(lista){try{localStorage.setItem("ctVistos2",JSON.stringify([...new Set(_ctVistos().concat(lista.map(_ctChave)))].slice(-40)));}catch(e){}}
 function _celebrarContrato(){
   contratosRecentes().then(lista=>{
     const vistos=_ctVistos(),novos=lista.filter(p=>vistos.indexOf(_ctChave(p))<0);
