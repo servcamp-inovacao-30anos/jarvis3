@@ -848,7 +848,10 @@ async function enviarTesteAreas({ res, db, ator, body }) {
   const correio = abrirCorreio(conta), registros = [], recusados = new Set();
   let enviados = 0, falhas = 0, comFaltas = 0;
   try {
-    for (const a of escolhidas) {
+    for (const [i, a] of escolhidas.entries()) {
+      // vários e-mails quase iguais, para as mesmas pessoas, em poucos segundos parecem envio em massa e o antispam
+      // segura: um intervalo entre eles (até ~35 s no total, dentro do limite de 60 s da função)
+      if (i && !correioDeTeste) await new Promise(ok => setTimeout(ok, Math.min(2500, Math.floor(35000 / escolhidas.length))));
       const m = await montarEmail(db, { area: a, inicio: p.inicio, fim: p.fim, faltas, teste: true, agoraMs: agora.getTime(), comAtualizacoes: HTML.ehSemanaCheia(p.inicio, p.fim), assinatura: assinaturaNoEmail(assinatura), hist });
       let r;
       try { r = await correio.enviar({ para, cc: [], responderPara: [conta.user], assinatura, assunto: m.assunto, html: m.html, texto: m.texto }); }

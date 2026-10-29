@@ -316,7 +316,7 @@ test("resumo: o painel cadastra quem recebe; ligado, sai com o aviso automático
   assert.match((await painel("previa_resumo")).body.html, /Falta lançar no SAR2G/);
   enviados = [];
   const tt = await painel("resumo_teste", { method: "POST", body: { para: ["@eu"] } });
-  assert.deepEqual([tt.statusCode, enviados[0].para, /^\[TESTE\]/.test(enviados[0].assunto)], [200, ["remetente@gruposervcamp.com.br"], true]);
+  assert.deepEqual([tt.statusCode, enviados[0].para, /^Prévia: /.test(enviados[0].assunto)], [200, ["remetente@gruposervcamp.com.br"], true]);
   FE.definirRelogio(null);
 });
 

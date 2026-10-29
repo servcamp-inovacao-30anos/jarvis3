@@ -309,8 +309,8 @@ test("teste: qualquer período, destinatários escolhidos na hora (qualquer e-ma
   assert.equal(r.statusCode, 200, JSON.stringify(r.body));
   assert.equal(enviados.length, 1);
   assert.deepEqual(enviados[0].para, ["remetente@gruposervcamp.com.br", "jean@exemplo.com.br", "copia2@exemplo.com.br", "alguem@gmail.com"], "e-mail de fora da empresa vale no teste");
-  assert.match(enviados[0].assunto, /^\[TESTE\] Aviso semanal de faltas injustificadas — Jean Kleber$/);
-  assert.match(enviados[0].html, /Envio de teste\./);
+  assert.match(enviados[0].assunto, /^Prévia: Aviso semanal de faltas injustificadas — Jean Kleber$/);
+  assert.match(enviados[0].html, /Prévia\./);
   assert.match(enviados[0].html, /Gil Semana Passada/, "período escolhido: entra a falta de 18/10");
   assert.ok(t.fm_auditoria.some(e => e.acao === "FALTAS_EMAIL_TESTE"));
   enviados = [];
@@ -603,7 +603,7 @@ test("teste de todas as áreas: um e-mail por área só para quem foi escolhido,
   assert.equal(r.body.enviados, r.body.areas, "uma por área");
   assert.ok(r.body.areas >= 4);
   assert.equal(enviados.length, r.body.areas);
-  enviados.forEach(m => { assert.deepEqual(m.para, ["jussilene@exemplo.com.br"]); assert.deepEqual(m.cc, []); assert.ok(/teste/i.test(m.assunto), "assunto marca teste: " + m.assunto); });
+  enviados.forEach(m => { assert.deepEqual(m.para, ["jussilene@exemplo.com.br"]); assert.deepEqual(m.cc, []); assert.ok(/^Prévia: /.test(m.assunto), "assunto marca prévia: " + m.assunto); });
   for (const sup of ["jean@", "frank@", "carlos@", "paulo@"]) assert.ok(!enviados.some(m => m.para.some(p => p.startsWith(sup))), "nada vai ao supervisor " + sup);
   for (const fora of ["rt-diurna@", "rt-noturna@", "rh@", "coord@"]) assert.ok(!enviados.some(m => m.para.some(p => p.startsWith(fora))));
   assert.equal(envios(t).length, 0, "teste não conta como envio oficial");
