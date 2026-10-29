@@ -8284,15 +8284,7 @@ function handleUp(evt){
       }
       // guia quebrada (vazia, sem data, desatualizada) não pode passar calada: pergunta antes de mandar
       const _probs=guiasProblemas(newData,DASHBOARD_DATA);
-      if(_probs.length&&!confirm("ATENÇÃO: a planilha tem problema em "+_probs.length+" guia(s):
-
-"+_probs.map(p=>"• "+p.n+": "+p.t).join("
-")+"
-
-Essas guias vão aparecer zeradas ou erradas no painel.
-
-OK = enviar mesmo assim
-Cancelar = não enviar e corrigir a planilha")){updateStatusLabel();evt.target.value="";return;}
+      if(_probs.length&&!confirm("ATENÇÃO: a planilha tem problema em "+_probs.length+" guia(s):\n\n"+_probs.map(p=>"• "+p.n+": "+p.t).join("\n")+"\n\nEssas guias vão aparecer zeradas ou erradas no painel.\n\nOK = enviar mesmo assim\nCancelar = não enviar e corrigir a planilha")){updateStatusLabel();evt.target.value="";return;}
       DASHBOARD_DATA=newData;
       saveToStorage(newData,file.name);
       updateStatusLabel();
