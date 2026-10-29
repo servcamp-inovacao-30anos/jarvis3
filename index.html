@@ -3982,7 +3982,7 @@ function _abrirSessao(u){
   applyUserUI();
   if(typeof hqBeat==="function")hqBeat(); // já aparece na Sede Virtual
   tvModoChecar(); ftvChecar(); // se abriu a TV sem estar logado ainda, ativa só depois do login
-  _contratosRecentes=null; // busca de novo com o token novo: a lista de antes do login pode estar vazia ou velha
+  _contratosFechados=null; // busca de novo com o token novo: a lista de antes do login pode estar vazia ou velha
   vgContrato();
   if(typeof feAposLogin==="function")feAposLogin(); // aviso semanal por e-mail: o botão só aparece para a conta do responsável
   // A planilha é buscada ao abrir a página; sem login o servidor recusa. Busca de novo agora.
@@ -4091,21 +4091,33 @@ function showWelcome(){
    no dashboard e, a cada login, um cartão logo depois das boas-vindas. Sem
    valores em R$ (COM_VALORES segue desligado). */
 const CONTRATO_DIAS_DESTAQUE=30;
-let _contratosRecentes=null;
 function _ctEsc(t){return String(t==null?"":t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
 function _ctTitulo(t){return String(t||"").toLowerCase().replace(/(^|\s)\S/g,c=>c.toUpperCase());}
 function _ctData(iso){const s=String(iso||"");return s.length>=10?s.slice(8,10)+"/"+s.slice(5,7):"—";}
+/* Data de implantação do contrato: a da proposta ou, se vazia, a da aba NOVOS CLIENTES da planilha (pelo nome). */
+function _ctNorm(s){return String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase().replace(/[^A-Z0-9]/g,"");}
+function _ctImplantacao(p){
+  if(p.data_implantacao)return String(p.data_implantacao).slice(0,10);
+  const n=_ctNorm(p.nome);if(!n)return"";
+  const r=((typeof DASHBOARD_DATA!=="undefined"&&DASHBOARD_DATA.novosClientes)||[]).find(c=>{const k=_ctNorm(c.CLIENTE);return k&&(k.indexOf(n)>=0||n.indexOf(k)>=0);});
+  return r&&r.DATA?String(r.DATA).slice(0,10):"";
+}
+let _contratosFechados=null;
 function contratosRecentes(){
-  if(!_contratosRecentes){
+  if(!_contratosFechados){
     // resposta com erro (ex.: 401 com o login vencido) não pode ficar guardada como "nenhum contrato"
-    _contratosRecentes=fetch("/api/comercial?t=propostas").then(r=>{if(!r.ok)throw new Error("HTTP "+r.status);return r.json();}).then(j=>{
-      const hoje=new Date(Date.now()-3*3600000).toISOString().slice(0,10); // Brasília
-      const limite=new Date(Date.parse(hoje+"T12:00:00Z")-(CONTRATO_DIAS_DESTAQUE-1)*86400000).toISOString().slice(0,10);
-      return ((j&&j.rows)||[]).filter(p=>p.status==="FECHADO"&&p.fechado_em&&String(p.fechado_em).slice(0,10)>=limite&&String(p.fechado_em).slice(0,10)<=hoje)
-        .sort((a,b)=>String(b.fechado_em)<String(a.fechado_em)?-1:1);
-    }).catch(()=>{_contratosRecentes=null;return[];});
+    _contratosFechados=fetch("/api/comercial?t=propostas").then(r=>{if(!r.ok)throw new Error("HTTP "+r.status);return r.json();})
+      .then(j=>((j&&j.rows)||[]).filter(p=>p.status==="FECHADO"&&p.fechado_em))
+      .catch(()=>{_contratosFechados=null;return[];});
   }
-  return _contratosRecentes;
+  // filtra na hora: a data de implantação da planilha pode chegar depois da lista de propostas
+  return _contratosFechados.then(todos=>{
+    const hoje=new Date(Date.now()-3*3600000).toISOString().slice(0,10); // Brasília
+    const limite=new Date(Date.parse(hoje+"T12:00:00Z")-(CONTRATO_DIAS_DESTAQUE-1)*86400000).toISOString().slice(0,10);
+    // fica no destaque 30 dias após o fechamento ou até o início da implantação, o que for mais tarde
+    return todos.filter(p=>{const f=String(p.fechado_em).slice(0,10),im=_ctImplantacao(p);return f<=hoje&&(f>=limite||(im&&hoje<=im));})
+      .sort((a,b)=>String(b.fechado_em)<String(a.fechado_em)?-1:1);
+  });
 }
 function _ctLinha(p){
   const det=[p.servico&&_ctTitulo(p.servico),p.cidade&&_ctTitulo(p.cidade)].filter(Boolean).join(" · ");
@@ -8228,6 +8240,7 @@ function handleUp(evt){
   reader.readAsArrayBuffer(file);
 }
 function renderAfterLoad(){
+  if(typeof vgContrato==="function")vgContrato(); // a data de implantação da planilha já está disponível
   populateAreas();
   // Mesma base de sempre (só reabrindo o painel): mantém o período e o mês
   // que a pessoa deixou escolhido, restaurados do localStorage acima.
