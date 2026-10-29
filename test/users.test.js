@@ -306,3 +306,55 @@ test("as senhas padrão antigas não aparecem em nenhum arquivo servido", () => 
     assert.doesNotMatch(txt, /servcamp2026|Joaoygor1/, arq);
   }
 });
+
+// ── Configurações: redefinir senha e criar usuário (só administrador) ──
+const comoAdmin = () => _auth.sign("joaoygor", SEGREDO, 1);
+const comoComum = () => _auth.sign("raphaelvictor", SEGREDO, 1);
+const acao = (body, token) => chamar("POST", { body, token });
+
+test("admin_reset: só admin; gera senha temporária com troca obrigatória", async () => {
+  sb.semear("raphaelvictor", { custom_password: await _senha.hash("senha-antiga-1"), must_change: false });
+  assert.equal((await acao({ action: "admin_reset", userKey: "raphaelvictor" })).status, 403, "sem token");
+  assert.equal((await acao({ action: "admin_reset", userKey: "raphaelvictor" }, comoComum())).status, 403, "não admin");
+  assert.equal((await acao({ action: "admin_reset", userKey: "naoexiste" }, comoAdmin())).status, 404);
+  const r = await acao({ action: "admin_reset", userKey: "raphaelvictor" }, comoAdmin());
+  assert.equal(r.status, 200);
+  assert.match(r.dados.senha, /^[a-z2-9]{8}$/);
+  assert.equal((await entrar("raphaelvictor", "senha-antiga-1")).status, 401, "a senha antiga deixa de valer");
+  const e = await entrar("raphaelvictor", r.dados.senha);
+  assert.equal(e.status, 200);
+  assert.equal(e.dados.must_change, true, "troca obrigatória no primeiro acesso");
+  assert.equal(e.dados.token, null, "token só depois da troca");
+});
+
+test("create_user: só admin; entra com a senha temporária, troca obrigatória e perfil vem do banco", async () => {
+  const novo = { action: "create_user", nome: "Maria  da Silva", cargo: "Financeiro", perms: { com: true, admin: false, inventada: true } };
+  assert.equal((await acao(novo)).status, 403, "sem token");
+  assert.equal((await acao(novo, comoComum())).status, 403, "não admin");
+  assert.equal((await acao({ ...novo, nome: "Jo" }, comoAdmin())).status, 400, "nome curto");
+  assert.equal((await acao({ ...novo, nome: "Joyce" }, comoAdmin())).status, 409, "chave de usuário fixo");
+  const r = await acao(novo, comoAdmin());
+  assert.equal(r.status, 200);
+  assert.equal(r.dados.userKey, "mariadasilva");
+  assert.equal((await acao(novo, comoAdmin())).status, 409, "não cria duas vezes");
+  const e = await entrar("mariadasilva", r.dados.senha);
+  assert.equal(e.status, 200);
+  assert.equal(e.dados.must_change, true);
+  assert.deepEqual(e.dados.perfil, { nome: "Maria da Silva", cargo: "Financeiro", perms: { com: true } }, "só permissões válidas e verdadeiras");
+  assert.equal((await entrar("mariadasilva", "errada123")).status, 401);
+  const t = await trocar("mariadasilva", r.dados.senha, "minha-senha-nova");
+  assert.equal(t.status, 200);
+  const e2 = await entrar("mariadasilva", "minha-senha-nova");
+  assert.equal(e2.dados.must_change, false);
+  assert.ok(e2.dados.token, "depois da troca, entra com token");
+  // inativo não entra
+  sb.semear("mariadasilva", { ...[...sb.linhas.values()].find(l => l.user_key === "mariadasilva"), ativo: false });
+  assert.equal((await entrar("mariadasilva", "minha-senha-nova")).status, 401, "inativo não entra");
+});
+
+test("criado pela tela com admin no banco também redefine senhas", async () => {
+  sb.semear("chefe", { nome: "Chefe", cargo: "Diretoria", perms: { admin: true }, ativo: true, custom_password: await _senha.hash("x1234567") });
+  sb.semear("raphaelvictor", { custom_password: await _senha.hash("senha-antiga-1") });
+  const r = await acao({ action: "admin_reset", userKey: "raphaelvictor" }, _auth.sign("chefe", SEGREDO, 1));
+  assert.equal(r.status, 200);
+});

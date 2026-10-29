@@ -33,7 +33,7 @@ class SupabaseFalso {
     const filtros = [];
     let select = null;
     for (const [k, v] of u.searchParams) {
-      if (k === "select") select = v.split(",");
+      if (k === "select") select = v.trim() === "*" ? null : v.split(","); // * = todas as colunas, como o PostgREST
       else filtros.push([k, v]);
     }
     const casa = linha => filtros.every(([col, expr]) => confere(linha[col], expr));

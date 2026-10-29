@@ -3899,6 +3899,9 @@ const USERS={
   "ronaldocimadon":{nome:"Ronaldo Cimadon",cargo:"Supervisor",admin:false,sup:true},
   "joyce":{nome:"Joyce",cargo:"Inovação",admin:false,fm:true,bdv:true,rh:true,rhDash:true,com:true,comDash:true,prj:true,qual:true,lig:true,metas:true}
 };
+// Usuário criado pela tela de Configurações não está na lista acima: o perfil veio
+// do servidor no login e fica na sessão, para sobreviver a um recarregar da página.
+try{const _pk=sessionStorage.getItem("userKey"),_pp=JSON.parse(sessionStorage.getItem("userPerfil")||"null");if(_pk&&_pp&&!USERS[_pk])USERS[_pk]=_pp;}catch(e){}
 function _normUser(s){return(s||"").toUpperCase().trim().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^A-Z0-9]/g,"").toLowerCase();}
 /* ── Autenticação das APIs: injeta o token (Bearer) em toda chamada a /api/*.
    Um único ponto cobre TODOS os fetch existentes, sem editar cada um. ── */
@@ -3941,7 +3944,7 @@ async function doLogin(e){
   const u=_normUser(document.getElementById("loginUser").value);
   const p=document.getElementById("loginPass").value;
   const errEl=document.getElementById("loginError");
-  if(!USERS[u]||!p){errEl.textContent="Usuário ou senha incorretos";return false;}
+  if(!u||!p){errEl.textContent="Usuário ou senha incorretos";return false;}
   const btn=document.querySelector("#loginOverlay .login-btn");
   if(btn){btn.disabled=true;btn.textContent="Entrando...";}
   // a senha é conferida no servidor, que devolve o token assinado das APIs
@@ -3952,6 +3955,9 @@ async function doLogin(e){
   }catch(err){}
   if(btn){btn.disabled=false;btn.textContent="Entrar";}
   if(!ar||!ar.ok){errEl.textContent=(ar&&ar.error)||"Não foi possível entrar agora. Tente novamente.";return false;}
+  // criado pela tela de Configurações: o perfil (nome, cargo, permissões) vem do servidor
+  if(ar.perfil){USERS[u]=Object.assign({nome:ar.perfil.nome,cargo:ar.perfil.cargo||"",admin:false},ar.perfil.perms||{});try{sessionStorage.setItem("userPerfil",JSON.stringify(USERS[u]));}catch(e){}}
+  if(!USERS[u]){errEl.textContent="Usuário ou senha incorretos";return false;}
   errEl.textContent="";
   // sem token = troca pendente (o token sai na troca) ou AUTH_SECRET ausente (modo graça)
   if(ar.token)sessionStorage.setItem("authToken",ar.token);else sessionStorage.removeItem("authToken");
@@ -10833,8 +10839,68 @@ function cfgLoad(){
   const el=document.getElementById("cfg-content");
   if(el)el.innerHTML='<div style="padding:40px;text-align:center;color:#94a3b8;font-size:.85rem">Carregando acessos…</div>';
   fetch("/api/users?all=1").then(r=>r.ok?r.json():{users:[]}).then(j=>{
-    CFG_AUDIT={};((j&&j.users)||[]).forEach(u=>{CFG_AUDIT[u.user_key]=u;});
+    CFG_AUDIT={};((j&&j.users)||[]).forEach(u=>{CFG_AUDIT[u.user_key]=u;
+      if(u.nome&&!USERS[u.user_key])USERS[u.user_key]=Object.assign({nome:u.nome,cargo:u.cargo||"",admin:false},u.perms||{});});
   }).catch(()=>{CFG_AUDIT={};}).finally(cfgRender);
+}
+/* Novo usuário e redefinir senha (só administrador; o servidor confere pelo token).
+   As duas ações geram uma senha temporária, mostrada UMA vez; no primeiro acesso
+   a pessoa cria a própria senha. */
+const CFG_PERMS=[["admin","Administrador"],["rh","RH Cadastro"],["rhDash","Painel RH"],["com","Comercial"],["comDash","Painel Comercial"],["metas","Metas"],["fm","Faltas x Medidas"],["bdv","Relatório de Coberturas"],["sup","Supervisor"],["prj","Projetos"],["qual","Auditoria"],["lig","Ligações (SAC)"]];
+function cfgNovoUsuarioHtml(){
+  return '<div style="background:#fff;border:1px solid #e5e9f0;border-radius:14px;padding:18px 20px;margin-bottom:16px">'+
+    '<div style="font-size:.82rem;font-weight:800;color:#0d1f35;margin-bottom:4px">➕ Novo usuário</div>'+
+    '<div style="font-size:.66rem;color:#94a3b8;margin-bottom:12px">O sistema gera uma senha temporária. No primeiro acesso, a pessoa cria a própria senha.</div>'+
+    '<form onsubmit="return cfgCriarUsuario(event)" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">'+
+      '<div><label class="rhf-l" for="cfg-nu-nome">Nome completo</label><input class="rhf-i" id="cfg-nu-nome" required minlength="3" maxlength="80" style="width:230px" placeholder="Ex: Maria da Silva"></div>'+
+      '<div><label class="rhf-l" for="cfg-nu-cargo">Cargo</label><input class="rhf-i" id="cfg-nu-cargo" maxlength="80" style="width:190px" placeholder="Ex: Supervisor"></div>'+
+      '<div style="flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.72rem;color:#334155"><span style="font-weight:800;color:#64748b">Acessos:</span>'+
+        CFG_PERMS.map(p=>'<label style="display:flex;gap:5px;align-items:center;cursor:pointer"><input type="checkbox" class="cfg-nu-perm" value="'+p[0]+'">'+p[1]+'</label>').join("")+
+      '</div>'+
+      '<button type="submit" class="rh-btn" id="cfg-nu-btn" style="padding:8px 16px">Criar usuário</button>'+
+      '<span id="cfg-nu-msg" role="status" style="font-size:.72rem;font-weight:700"></span>'+
+    '</form></div>';
+}
+function cfgCriarUsuario(ev){
+  ev.preventDefault();
+  const nome=document.getElementById("cfg-nu-nome").value.trim(),cargo=document.getElementById("cfg-nu-cargo").value.trim();
+  const perms={};document.querySelectorAll(".cfg-nu-perm:checked").forEach(c=>{perms[c.value]=true;});
+  const msg=document.getElementById("cfg-nu-msg"),btn=document.getElementById("cfg-nu-btn");
+  if(perms.admin&&!confirm("Dar acesso de ADMINISTRADOR para "+nome+"? Administrador vê tudo, cria usuários e redefine senhas."))return false;
+  btn.disabled=true;msg.style.color="#64748b";msg.textContent="Criando…";
+  fetch("/api/users",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"create_user",nome,cargo,perms})})
+    .then(r=>r.json().catch(()=>({})).then(j=>{if(!r.ok||!j.ok)throw new Error(j.error||("HTTP "+r.status));return j;}))
+    .then(j=>{msg.textContent="";cfgMostrarSenha(j.nome,j.userKey,j.senha,"Usuário criado");cfgLoad();})
+    .catch(e=>{msg.style.color="#dc2626";msg.textContent=(e&&e.message)||"Não foi possível criar o usuário.";})
+    .finally(()=>{btn.disabled=false;});
+  return false;
+}
+function cfgRedefinirSenha(k){
+  const nome=(USERS[k]||{}).nome||k;
+  if(!confirm("Redefinir a senha de "+nome+"?\n\nA senha atual deixa de valer. O sistema gera uma senha temporária e "+nome+" cria a própria no próximo acesso."))return;
+  fetch("/api/users",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"admin_reset",userKey:k})})
+    .then(r=>r.json().catch(()=>({})).then(j=>{if(!r.ok||!j.ok)throw new Error(j.error||("HTTP "+r.status));return j;}))
+    .then(j=>{cfgMostrarSenha(nome,k,j.senha,"Senha redefinida");cfgLoad();})
+    .catch(e=>{alert("Não foi possível redefinir a senha: "+((e&&e.message)||e));});
+}
+function cfgMostrarSenha(nome,k,senha,titulo){
+  const div=document.createElement("div");
+  div.style.cssText="position:fixed;inset:0;background:rgba(13,31,53,.75);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px";
+  div.innerHTML='<div style="background:#fff;border-radius:16px;padding:26px 28px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.35)">'+
+    '<div style="font-size:.72rem;font-weight:900;letter-spacing:.6px;text-transform:uppercase;color:#16a34a;margin-bottom:6px">✅ '+_esc(titulo)+'</div>'+
+    '<div style="font-size:1.05rem;font-weight:900;color:#0d1f35;margin-bottom:14px">'+_esc(nome)+'</div>'+
+    '<div style="font-size:.72rem;color:#64748b">Usuário para entrar</div>'+
+    '<div style="font-size:.95rem;font-weight:800;color:#0d1f35;margin-bottom:10px">'+_esc(nome)+' <span style="font-size:.7rem;color:#94a3b8;font-weight:600">(ou '+_esc(k)+')</span></div>'+
+    '<div style="font-size:.72rem;color:#64748b">Senha temporária</div>'+
+    '<div style="display:flex;gap:8px;align-items:center;margin-bottom:12px"><code id="cfg-senha-tmp" style="font-size:1.3rem;font-weight:900;letter-spacing:2px;background:#f1f5f9;padding:6px 12px;border-radius:8px;color:#0d1f35">'+_esc(senha)+'</code>'+
+    '<button type="button" class="rh-btn" style="padding:6px 12px" id="cfg-senha-copiar">Copiar</button></div>'+
+    '<div style="font-size:.7rem;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px;margin-bottom:14px">Anote ou copie agora: esta senha não aparece de novo. No primeiro acesso, o sistema pede que a pessoa crie a própria senha.</div>'+
+    '<button type="button" class="rh-btn" style="width:100%;padding:10px" id="cfg-senha-ok">Fechar</button></div>';
+  document.body.appendChild(div);
+  document.getElementById("cfg-senha-ok").onclick=()=>div.remove();
+  document.getElementById("cfg-senha-copiar").onclick=function(){
+    const b=this;(navigator.clipboard?navigator.clipboard.writeText(senha):Promise.reject()).then(()=>{b.textContent="Copiada ✓";}).catch(()=>{b.textContent="Selecione e copie";});
+  };
 }
 function cfgRender(){
   const el=document.getElementById("cfg-content");if(!el)return;
@@ -10857,6 +10923,7 @@ function cfgRender(){
     const lista=keys.filter(k=>{const a=CFG_AUDIT[k];return !(a&&a.has_custom);}).map(k=>USERS[k].nome).join(", ");
     h+=`<div style="background:#fff7ed;border:1px solid #fed7aa;border-left:4px solid #f97316;border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:.76rem;color:#9a3412"><b>⚠️ ${semSenha} usuário(s) ainda com a senha padrão</b>: ${lista}. Enquanto não trocarem, quem souber a senha padrão entra por eles — peça para entrarem e criarem a própria.</div>`;
   }
+  h+=cfgNovoUsuarioHtml();
   /* matriz de acessos */
   h+=`<div style="background:#fff;border:1px solid #e5e9f0;border-radius:14px;padding:18px 20px;margin-bottom:16px;overflow-x:auto">
     <div style="font-size:.82rem;font-weight:800;color:#0d1f35;margin-bottom:4px">🔐 Matriz de Acessos</div>
@@ -10867,6 +10934,7 @@ function cfgRender(){
       ${CFG_PANEIS.map(p=>`<th style="padding:9px 8px;text-align:center;color:#64748b;font-size:.58rem;border-bottom:1px solid #e5e9f0" title="${p.lbl}">${p.ic}<div style="font-weight:600;text-transform:none;letter-spacing:0;margin-top:2px">${p.lbl}</div></th>`).join("")}
       <th style="padding:9px 10px;text-align:left;color:#64748b;font-size:.6rem;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid #e5e9f0">Último acesso</th>
       <th style="padding:9px 10px;text-align:center;color:#64748b;font-size:.6rem;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid #e5e9f0">Senha</th>
+      <th style="padding:9px 10px;text-align:center;color:#64748b;font-size:.6rem;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid #e5e9f0">Ações</th>
     </tr></thead><tbody>`;
   keys.forEach(k=>{
     const u=USERS[k],perf=cfgPerfil(u),a=CFG_AUDIT[k]||{},ac=cfgFmtAcesso(a.last_login);
@@ -10876,13 +10944,14 @@ function cfgRender(){
       ${CFG_PANEIS.map(p=>`<td style="padding:8px 8px;text-align:center;font-size:.9rem">${p.has(u)?'<span style="color:#16a34a;font-weight:900">✓</span>':'<span style="color:#e2e8f0">·</span>'}</td>`).join("")}
       <td style="padding:8px 10px"><div style="color:${ac.cor};font-weight:${ac.peso};font-size:.7rem">${ac.desde||""}</div><div style="font-size:.6rem;color:#94a3b8">${ac.desde?ac.txt:""}</div></td>
       <td style="padding:8px 10px;text-align:center">${a.has_custom?'<span title="Senha própria" style="color:#16a34a">🔒</span>':'<span title="Ainda na senha padrão" style="color:#f97316">🔓</span>'}</td>
+      <td style="padding:8px 10px;text-align:center"><button type="button" class="rh-btn" style="padding:5px 10px;font-size:.64rem;white-space:nowrap" onclick="cfgRedefinirSenha('${k}')">🔑 Redefinir senha</button></td>
     </tr>`;
   });
   h+=`</tbody></table></div>`;
   /* rodapé: o que vem na próxima fase */
   h+=`<div style="background:linear-gradient(135deg,#0d1f35,#1e4d8c);border-radius:14px;padding:16px 20px;color:#fff">
     <div style="font-size:.8rem;font-weight:800;margin-bottom:6px">🚧 Em breve nesta tela</div>
-    <div style="font-size:.72rem;color:#c7d6ec;line-height:1.6">Criar e editar usuários direto por aqui · ligar/desligar painéis com um clique · perfis prontos (Diretoria, RH, Comercial) · forçar troca de senha. Hoje esta tela é <b>somente leitura</b> — os usuários ainda vêm do código.</div>
+    <div style="font-size:.72rem;color:#c7d6ec;line-height:1.6">Editar permissões e desativar usuários · ligar/desligar painéis com um clique · perfis prontos (Diretoria, RH, Comercial) · forçar troca de senha. Hoje esta tela é <b>somente leitura</b> — os usuários ainda vêm do código.</div>
   </div>`;
   el.innerHTML=h;
 }

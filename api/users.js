@@ -16,6 +16,7 @@
 
 const _auth = require("./_auth");
 const _senha = require("./_senha");
+const crypto = require("crypto");
 
 // Quem pode entrar: as mesmas chaves do USERS do index.html (test/users.test.js
 // avisa se as duas listas se desencontrarem). Sem esta lista, qualquer nome
@@ -26,6 +27,25 @@ const USUARIOS = [
   "raphaelvictor", "sandraalves", "testejoao", "rafaelandrade", "adrianomacedo",
   "edneyferraz", "frankpimentel", "carlos", "jeankleber", "paulosergio", "ronaldocimadon", "joyce"
 ];
+
+// Administradores fixos: os mesmos com admin:true no USERS do index.html. Quem é
+// criado pela tela de Configurações ganha admin pelo campo perms do banco.
+const ADMINS = ["joaoygor"];
+// Permissões que a tela de Configurações pode dar (as mesmas chaves do USERS).
+const PERMS_VALIDAS = ["admin", "rh", "rhDash", "com", "comDash", "prj", "qual", "lig", "sup", "fm", "bdv", "metas"];
+// Mesma regra do _normUser do index.html: "Maria da Silva" -> "mariadasilva".
+function chaveDe(nome) {
+  return String(nome || "").toUpperCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Z0-9]/g, "").toLowerCase();
+}
+// Senha temporária: 8 letras/números sem os que se confundem (l, 1, o, 0, i).
+function senhaTemporaria() {
+  const a = "abcdefghjkmnpqrstuvwxyz23456789";
+  let s = "";
+  for (let i = 0; i < 8; i++) s += a[crypto.randomInt(a.length)];
+  return s;
+}
+// Usuário criado pela tela: existe só no banco (tem nome lá).
+function criadoPelaTela(row) { return !!(row && row.nome); }
 
 // Senha inicial própria de quem ainda não tem senha no banco (entra no lugar da padrão e sem troca
 // obrigatória). Fica aqui só o HASH, nunca a senha. Quando a senha for gravada no banco
@@ -62,7 +82,7 @@ module.exports = async function handler(req, res) {
   // Lança se o Supabase falhar: "não consegui ler" NÃO pode virar "não tem
   // senha própria", senão a senha padrão abriria qualquer conta num soluço do banco.
   async function lerUsuario(userKey) {
-    const r = await fetch(`${TABELA}?user_key=eq.${encodeURIComponent(userKey)}&select=custom_password,must_change,login_count`, { headers });
+    const r = await fetch(`${TABELA}?user_key=eq.${encodeURIComponent(userKey)}&select=*`, { headers });
     if (!r.ok) throw new Error("Supabase " + r.status);
     const rows = await r.json();
     return rows[0] || null;
@@ -71,7 +91,15 @@ module.exports = async function handler(req, res) {
   // Confere a senha de userKey: a própria, se já tiver; senão, a padrão.
   // Devolve { ok, row, padrao } ou, quando não dá para conferir, { erro, status }.
   async function conferirSenha(userKey, senha) {
-    if (USUARIOS.indexOf(userKey) < 0) return { ok: false };
+    if (USUARIOS.indexOf(userKey) < 0) {
+      // criado pela tela de Configurações: só entra se existir no banco, ativo e com senha
+      let r;
+      try { r = await lerUsuario(userKey); } catch (e) {
+        return { erro: "Não foi possível conferir a senha agora. Tente novamente.", status: 502 };
+      }
+      if (!criadoPelaTela(r) || r.ativo === false || !r.custom_password) return { ok: false };
+      return { ok: await _senha.verify(senha, r.custom_password), row: r };
+    }
     let row;
     try { row = await lerUsuario(userKey); } catch (e) {
       return { erro: "Não foi possível conferir a senha agora. Tente novamente.", status: 502 };
@@ -110,13 +138,26 @@ module.exports = async function handler(req, res) {
     } catch (e) {}
   }
 
+  // Quem está logado (pelo token) e é administrador? Devolve a chave ou null.
+  async function adminDoToken() {
+    const a = _auth.requireAuth(req);
+    const k = a.ok && a.user && a.user.u;
+    if (!k) return null;
+    if (ADMINS.indexOf(k) >= 0) return k;
+    try {
+      const r = await lerUsuario(k);
+      if (criadoPelaTela(r) && r.ativo !== false && r.perms && r.perms.admin === true) return k;
+    } catch (e) {}
+    return null;
+  }
+
   if (req.method === "GET") {
     // Painel de Configuração (admin): lista todos os usuários com campos SEGUROS
     // (nunca a senha) — só quem já tem senha própria, se deve trocar e o último acesso.
     if (req.query.all === "1") {
       const _ga = _auth.requireAuth(req);
       if (!_ga.ok) return res.status(401).json({ error: "Não autenticado." });
-      const url = `${TABELA}?select=user_key,must_change,last_login,login_count,updated_at,custom_password`;
+      const url = `${TABELA}?select=*`;
       const resp = await fetch(url, { headers });
       if (!resp.ok) return res.status(resp.status).json({ error: "Erro ao consultar Supabase." });
       const rows = await resp.json();
@@ -126,7 +167,9 @@ module.exports = async function handler(req, res) {
         must_change: precisaTrocar(r),
         last_login: r.last_login || null,
         login_count: r.login_count || 0,
-        updated_at: r.updated_at || null
+        updated_at: r.updated_at || null,
+        // criados pela tela de Configurações: o perfil mora no banco
+        ...(r.nome ? { nome: r.nome, cargo: r.cargo || null, perms: r.perms || {}, ativo: r.ativo !== false } : {})
       }));
       return res.status(200).json({ users: safe });
     }
@@ -164,8 +207,68 @@ module.exports = async function handler(req, res) {
         has_custom: !c.padrao,
         // sem token: troca pendente (sai na troca) ou AUTH_SECRET ausente (modo graça)
         token: secret && !mustChange ? _auth.sign(userKey, secret, 12) : null,
-        grace: !secret
+        grace: !secret,
+        // criado pela tela: a tela não conhece o perfil, então ele vai junto
+        perfil: criadoPelaTela(c.row) ? { nome: c.row.nome, cargo: c.row.cargo || "", perms: c.row.perms || {} } : null
       });
+    }
+
+    // Redefinir senha (só administrador): gera uma senha temporária, mostrada uma
+    // única vez para o administrador; no primeiro acesso a pessoa cria a própria.
+    if (body.action === "admin_reset") {
+      const admin = await adminDoToken();
+      if (!admin) return res.status(403).json({ error: "Só administradores podem redefinir senhas." });
+      if (!userKey) return res.status(400).json({ error: "userKey é obrigatório." });
+      let row;
+      try { row = await lerUsuario(userKey); } catch (e) { return res.status(502).json({ error: "Erro ao consultar Supabase." }); }
+      if (USUARIOS.indexOf(userKey) < 0 && !criadoPelaTela(row)) return res.status(404).json({ error: "Usuário não encontrado." });
+      const senha = senhaTemporaria();
+      const resp = await fetch(TABELA, {
+        method: "POST",
+        headers: { ...headers, Prefer: "resolution=merge-duplicates,return=minimal" },
+        body: JSON.stringify({ user_key: userKey, custom_password: await _senha.hash(senha), must_change: true, updated_at: new Date().toISOString() })
+      });
+      if (!resp.ok) {
+        console.error("users: erro ao redefinir senha", resp.status, (await resp.text()).slice(0, 200));
+        return res.status(502).json({ error: "Erro ao salvar a senha temporária." });
+      }
+      console.log("users: senha redefinida", userKey, "por", admin);
+      return res.status(200).json({ ok: true, userKey, senha });
+    }
+
+    // Criar usuário (só administrador): grava no banco com senha temporária e
+    // troca obrigatória no primeiro acesso.
+    if (body.action === "create_user") {
+      const admin = await adminDoToken();
+      if (!admin) return res.status(403).json({ error: "Só administradores podem criar usuários." });
+      const nome = String(body.nome || "").trim().replace(/\s+/g, " ");
+      const cargo = String(body.cargo || "").trim().slice(0, 80);
+      if (nome.length < 3 || nome.length > 80) return res.status(400).json({ error: "Informe o nome completo (3 a 80 caracteres)." });
+      const chave = chaveDe(nome);
+      if (chave.length < 3) return res.status(400).json({ error: "O nome precisa ter letras." });
+      let row;
+      try { row = await lerUsuario(chave); } catch (e) { return res.status(502).json({ error: "Erro ao consultar Supabase." }); }
+      if (USUARIOS.indexOf(chave) >= 0 || row) return res.status(409).json({ error: "Já existe um usuário com esse nome." });
+      const perms = {};
+      PERMS_VALIDAS.forEach(p => { if (body.perms && body.perms[p] === true) perms[p] = true; });
+      const senha = senhaTemporaria();
+      const agora = new Date().toISOString();
+      const resp = await fetch(TABELA, {
+        method: "POST",
+        headers: { ...headers, Prefer: "return=minimal" },
+        body: JSON.stringify({ user_key: chave, nome, cargo, perms, ativo: true, custom_password: await _senha.hash(senha),
+                               must_change: true, criado_por: admin, criado_em: agora, updated_at: agora })
+      });
+      if (!resp.ok) {
+        const t = (await resp.text()).slice(0, 300);
+        console.error("users: erro ao criar usuário", resp.status, t);
+        if (/column|nome|perms|ativo|criado/i.test(t)) {
+          return res.status(503).json({ error: "O banco ainda não está preparado para usuários novos: falta rodar o SQL que cria as colunas nome, cargo, perms, ativo, criado_por e criado_em em app_users." });
+        }
+        return res.status(502).json({ error: "Erro ao criar o usuário." });
+      }
+      console.log("users: usuário criado", chave, "por", admin);
+      return res.status(200).json({ ok: true, userKey: chave, nome, senha });
     }
 
     // Troca de senha: exige a senha atual — a própria, ou a padrão no primeiro
@@ -206,7 +309,7 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true, token: secret ? _auth.sign(userKey, secret, 12) : null });
     }
 
-    return res.status(400).json({ error: "action inválida (use authenticate ou change_password)." });
+    return res.status(400).json({ error: "action inválida (use authenticate, change_password, admin_reset ou create_user)." });
   }
 
   res.setHeader("Allow", "GET, POST");
