@@ -365,3 +365,9 @@ grant select, insert, update, delete on public.com_meta_anual to service_role;
 -- Só acrescenta a coluna; pode rodar de novo.
 -- ============================================================================
 alter table public.com_propostas add column if not exists data_implantacao date;
+
+-- ============================================================================
+-- Usuários criados pela tela de Configurações (perfil mora no banco; os fixos
+-- continuam no código). Só acrescenta colunas; pode rodar de novo.
+-- ============================================================================
+alter table public.app_users add column if not exists nome text, add column if not exists cargo text, add column if not exists perms jsonb, add column if not exists ativo boolean not null default true, add column if not exists criado_por text, add column if not exists criado_em timestamptz;
