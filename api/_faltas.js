@@ -38,6 +38,16 @@ const DIAS_CHAVE_XL = 90;
 const MAX_HISTORICO = 5000; // linhas por envio
 const ACAO_HISTORICO_FALTAS = "HISTORICO_FALTAS_IMPORTADO"; // separada da das medidas: "Último envio" da aba Histórico é o das medidas
 const TIPO_HISTORICO = "HISTORICO"; // fm_faltas.tipo das faltas importadas só para o histórico do colaborador
+// Cobrança excluída no modo TV por estar incorreta: a falta (RE|dia) deixa de contar em tudo (tela, TV, e-mail,
+// histórico), para não haver número diferente em cada lugar. Só a conta do Raphael exclui (pedido dele).
+const ACAO_EXCLUIDA = "COBRANCA_EXCLUIDA";
+const QUEM_EXCLUI = "raphaelvictor";
+const MAX_DIAS_EXCLUIR = 62;
+async function lerExcluidas(db) {
+  const l = await db.listar(`fm_auditoria?select=chave&acao=eq.${ACAO_EXCLUIDA}&order=id.asc`);
+  return new Set(l.map(e => String(e.chave)));
+}
+const excluida = (set, re, data) => set.has(String(R.reDe(re)) + "|" + String(data).slice(0, 10));
 const MAX_FALTAS_HISTORICO = 20000;
 const MAX_OCORRENCIAS = 20000; // ocorrências por envio (o relatório completo tem ~3 mil linhas)
 const JANELA_DIAS = 150; // o que a tela carrega: casos mais antigos já se encerraram
@@ -433,9 +443,10 @@ const postoOuReserva = (posto, sup) => (semPosto(posto) ? (sup ? "Reserva técni
 async function verCasos({ res, db, ator }) {
   const hoje = hojeSP(), desde = R.somaDias(hoje, -JANELA_DIAS);
   const areasAtivos = await areasDaUltimaPlanilha(db);
+  const excluidas = await lerExcluidas(db);
   const [faltas, dias, medidasLidas, adm, feriados, trocas, eventosAtestado, horarios, situacoes, empresas] = await Promise.all([
-    // falta importada só para o histórico (antes de o módulo existir) não abre caso nem prazo
-    db.listar(`fm_faltas?select=re,data,codigo,nome,cargo,posto,supervisor,escala,tipo&data=gte.${desde}&order=re.asc,data.asc`).then(l => l.filter(f => f.tipo !== TIPO_HISTORICO)),
+    // falta importada só para o histórico (antes de o módulo existir) não abre caso nem prazo; cobrança excluída não conta
+    db.listar(`fm_faltas?select=re,data,codigo,nome,cargo,posto,supervisor,escala,tipo&data=gte.${desde}&order=re.asc,data.asc`).then(l => l.filter(f => f.tipo !== TIPO_HISTORICO && !excluida(excluidas, f.re, f.data))),
     db.listar(`fm_dias?select=re,data,situacao&data=gte.${desde}&order=re.asc,data.asc`),
     db.listar(`fm_medidas?select=chave,re,data,tipo,grau,dias,fase,motivo_sar2g,obs,motivo,motivo_editado_por,motivo_editado_em&data=gte.${desde}&order=re.asc,data.asc,chave.asc`),
     db.listar("fm_admissoes?select=re,admissao&order=re.asc"),
@@ -524,7 +535,7 @@ async function verCasos({ res, db, ator }) {
     ok: true, hoje, dataBase: r.dataBase, vazio: faltas.length === 0 && dias.length === 0, resumo, casos: r.casos, abonadas: r.abonadas,
     // abonadas juntadas pelo período que o atestado/justificativa cobriu
     abonos, atestados: restrito ? atestados.filter(a => reVisiveis.has(String(a.re))) : atestados,
-    dias: diasDosCasos, historico, feriados, pode_editar: !!(ator && ponto.APROVADORES.has(ator)),
+    dias: diasDosCasos, historico, feriados, pode_editar: !!(ator && ponto.APROVADORES.has(ator)), pode_excluir: ator === QUEM_EXCLUI,
     // medida disciplinar: quem pode gerar e se vê todas as áreas (coordenação) ou só a dele
     medida: { pode_gerar: MD.podeGerar(ator), coordenacao: MD.ehCoordenacao(ator), restrito }
   });
@@ -533,13 +544,15 @@ async function verCasos({ res, db, ator }) {
 // Histórico: todas as advertências e suspensões desde 1º de janeiro (importadas + planilha diária).
 async function verHistorico({ res, db, ator }) {
   const hoje = hojeSP(), desde = hoje.slice(0, 4) + "-01-01";
-  const [lidas, ult, recentes, injust] = await Promise.all([
+  const excluidas = await lerExcluidas(db);
+  const [lidas, ult, recentes, injustTodas] = await Promise.all([
     db.listar(`fm_medidas?select=chave,re,data,tipo,grau,dias,fase,motivo_sar2g,obs,nome,local&data=gte.${desde}&order=re.asc,data.asc,chave.asc`),
     db.obter(`fm_auditoria?select=ator,depois,criado_em&acao=eq.${ACAO_HISTORICO}&order=criado_em.desc,id.desc&limit=1`),
     db.listar(`fm_faltas?select=re,data,posto,supervisor&data=gte.${R.somaDias(hoje, -JANELA_DIAS)}&order=data.asc,re.asc`),
     // faltas que continuam injustificadas no ano (já sem demitido, abono e afastamento), para o histórico de cada colaborador
     db.listar(`fm_faltas?select=re,data,nome,posto,supervisor&codigo=eq.I&data=gte.${desde}&order=re.asc,data.asc`)
   ]);
+  const injust = injustTodas.filter(f => !excluida(excluidas, f.re, f.data));
   // Quem cuida da área hoje: pelo RE (quem faltou há pouco) ou, na falta disso, pelo posto da medida.
   const supDoRE = {}, supDoPosto = {};
   recentes.forEach(f => { f.supervisor = R.supervisorAtual(f.supervisor); });
@@ -914,6 +927,20 @@ async function verAssinado({ req, res, db, ator }) {
   return res.status(200).json({ ok: true, tipo: d.tipo, base64: d.base64, nome: d.nome || "", numero: g.numero });
 }
 
+// Exclui a cobrança de uma pessoa (as faltas dela nos dias informados). Fica registrado quem e quando.
+async function excluirCobranca({ res, db, ator, body }) {
+  if (ator !== QUEM_EXCLUI) return erro(res, 403, "Só a conta do responsável pode excluir uma cobrança.", "NAO_AUTORIZADO");
+  const re = reNum(body.re);
+  if (re == null) return erro(res, 400, "RE inválido.", "RE_INVALIDO");
+  const datas = [...new Set((Array.isArray(body.datas) ? body.datas : []).map(d => String(d || "").slice(0, 10)))];
+  if (!datas.length || datas.length > MAX_DIAS_EXCLUIR || !datas.every(ehData)) return erro(res, 400, "Informe as datas das faltas a excluir.", "DATAS_INVALIDAS");
+  const ja = await lerExcluidas(db);
+  const novas = datas.filter(d => !ja.has(re + "|" + d));
+  const nome = String(body.nome == null ? "" : body.nome).trim().slice(0, 120);
+  if (novas.length) await db.inserir("fm_auditoria", novas.map(d => ({ ator, acao: ACAO_EXCLUIDA, entidade: "fm_faltas", chave: re + "|" + d, antes: null, depois: { re, data: d, nome } })));
+  return res.status(200).json({ ok: true, excluidas: novas.length });
+}
+
 // Documento gerado por engano: sai da lista de pendentes, mas o registro fica (com o motivo).
 function cancelarGerada(ctx) {
   const motivo = String(ctx.body.motivo == null ? "" : ctx.body.motivo).trim().slice(0, 300);
@@ -933,6 +960,7 @@ const ROTAS = {
   "POST feriados": { aprovador: true, fn: salvarFeriado },
   "POST atestado": { aprovador: true, fn: salvarAtestado },
   "POST demitido": { aprovador: true, fn: marcarDemitido },
+  "POST excluir_cobranca": { fn: excluirCobranca }, // só a conta do Raphael (conferido dentro)
   "GET planilha": { fn: verPlanilha },
   "POST chave_excel": { fn: criarChaveExcel }, // qualquer pessoa logada que abre a tela (pedido do Raphael, 15/10/2026); cancelar todas as chaves segue só dos aprovadores
   "POST revogar_excel": { aprovador: true, fn: revogarChavesExcel },
@@ -967,4 +995,7 @@ module.exports.lerGeradas = lerGeradas; // o resumo semanal da coordenação (ap
 // eventos de atestado registrados à mão: o aviso semanal por e-mail (api/_faltas_email.js) desconta as faltas cobertas, igual à tela
 module.exports.ACOES_ATESTADO = [ACAO_ATESTADO, ACAO_ATESTADO_FIM, ACAO_ATESTADO_LANCADO];
 module.exports.ACAO_VIROU_I = ACAO_VIROU_I;
+// cobranças excluídas: o aviso por e-mail também deixa de contar essas faltas
+module.exports.lerExcluidas = lerExcluidas;
+module.exports.excluida = excluida;
 module.exports.ACAO_REAPURADA = ACAO_REAPURADA;

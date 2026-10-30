@@ -17085,7 +17085,25 @@ function ftvDetLinha(i,hoje,sup){
     (sup?`<div><b>${_esc(fmNomeCard(i.sup))}</b><small>${_esc(c.posto||"Sem posto")}</small></div>`:`<div><b>${_esc(c.posto||"Sem posto")}</b>${c.horario?`<small>vaga ${_esc(c.horario)}</small>`:""}</div>`)+
     `<div><b>${ftvPl(i.fl.length,"falta","faltas")}</b><div class="ftv-fd">${i.fl.map(d=>`<span>${_esc(fmDdS(d))}</span>`).join("")}</div></div>`+
     `<div class="ftv-sit"><b>${_esc(FTV_SIT[i.cat])}</b></div>`+
-    `<div class="ftv-dp"><b>${_esc(p.b)}</b><small>${_esc(p.s)}</small></div><div>${ftvHist(c.re)}</div></div>`;
+    `<div class="ftv-dp"><b>${_esc(p.b)}</b><small>${_esc(p.s)}</small></div><div>${ftvHist(c.re)}${ftvBtExcluir(i)}</div></div>`;
+}
+/* Excluir uma cobrança incorreta: só a conta do Raphael vê o botão (o servidor confere de novo).
+   Primeiro toque pede confirmação; o segundo exclui as faltas desta cobrança em tudo (tela, TV e e-mail). */
+function ftvBtExcluir(i){
+  if(!(FM.dados&&FM.dados.pode_excluir))return"";
+  return`<button type="button" class="ftv-exc" data-re="${_esc(i.c.re)}" data-datas="${_esc(i.fl.join(","))}" data-nome="${_esc(i.c.nome||"")}" onclick="event.stopPropagation();ftvExcluir(this)" title="Excluir esta cobrança (está incorreta)">Excluir</button>`;
+}
+function ftvExcluir(b){
+  if(b.disabled)return;
+  if(!b.classList.contains("conf")){
+    b.classList.add("conf");b.textContent="Confirmar exclusão";
+    clearTimeout(b._t);b._t=setTimeout(()=>{b.classList.remove("conf");b.textContent="Excluir";},6000);
+    return;
+  }
+  clearTimeout(b._t);b.disabled=true;b.textContent="Excluindo…";
+  fmPedir("POST","excluir_cobranca",{re:b.dataset.re,datas:b.dataset.datas.split(",").filter(Boolean),nome:b.dataset.nome})
+    .then(()=>ftvAtualiza())
+    .catch(e=>{b.disabled=false;b.classList.remove("conf");b.textContent="Não excluiu: "+(e&&e.message||"erro");b.title=b.textContent;setTimeout(()=>{b.textContent="Excluir";},6000);});
 }
 /* Um grupo (título + tabela). g: { cls, h, tit, em, itens, nota } */
 function ftvDetGrupo(g,hoje,sup){
