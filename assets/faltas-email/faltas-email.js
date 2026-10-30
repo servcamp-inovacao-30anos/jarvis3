@@ -252,7 +252,7 @@ function secAgenda(p){
     '<span class="fe-eyebrow" style="margin-top:14px">Próximos envios</span><ol class="fe-prox">'+prox3+'</ol></div>';
   const faq='<details class="fe-faq"><summary>Dúvidas comuns sobre o envio automático</summary>'+
     '<div><b>E se o servidor de e-mail falhar?</b><span>A cada hora, no mesmo dia, o sistema tenta de novo e envia só o que ficou para trás.</span></div>'+
-    '<div><b>O supervisor pode receber o mesmo aviso duas vezes?</b><span>Não. Área que já recebeu o aviso da semana não recebe de novo, mesmo que alguém clique em enviar.</span></div>'+
+    '<div><b>O supervisor pode receber o mesmo aviso duas vezes?</b><span>Pelo automático, não: área que já recebeu o aviso da semana não recebe de novo. Pela aba Enviar agora, você pode mandar de novo quantas vezes quiser.</span></div>'+
     '<div><b>O e-mail sai exatamente no minuto escolhido?</b><span>Sai na primeira verificação do sistema depois do horário. A verificação padrão (Vercel gratuita) acontece uma vez por hora; com a verificação a cada 5 minutos ativada (ver docs/envio-por-minuto.md), o atraso fica em poucos minutos.</span></div>'+
     '<div><b>Qual semana vai no e-mail?</b><span>Sempre a semana anterior completa, de segunda a domingo, já sem abonos, afastamentos e demitidos.</span></div></details>';
   const barra=mudou?'<div class="fe-salvar" role="region" aria-label="Alteração não salva"><div><b>Você mudou o agendamento</b><span>De '+esc(DIAS_C[salvo.dia].toLowerCase())+' às '+horaTxt(salvo.hora,salvo.minuto)+' para '+esc(DIAS_C[a.dia].toLowerCase())+' às '+horaTxt(a.hora,a.minuto)+'. Ainda não está salvo.</span></div>'+
@@ -270,12 +270,19 @@ function envInicial(p){
   return{modo:"oficial",areas:new Set(FE.sel?[...FE.sel]:p.areas.filter(a=>a.email&&a.status!=="ENVIADO").map(a=>a.area)),de:p.semana.inicio,ate:p.semana.fim,
     eu:false,cc:new Set(p.copias.filter(c=>/jussilene/i.test(c.nome+" "+c.email)).map(c=>c.email)),outro:"",prev:"",conf:false};
 }
-const envPode=(e,a)=>e.modo!=="oficial"||(!!a.email&&a.status!=="ENVIADO"); // no oficial: só quem tem e-mail e ainda não recebeu
+const envPode=(e,a)=>e.modo!=="oficial"||!!a.email; // no oficial: só quem tem e-mail (pode mandar de novo para quem já recebeu)
+// quem pode ir em cópia (ou receber o teste): a lista de cópias e os supervisores com e-mail cadastrado
+function envPessoas(p){
+  const vistos=new Set(p.copias.map(c=>String(c.email).toLowerCase()));
+  const sups=[];
+  p.areas.forEach(a=>{const m=String(a.email||"").toLowerCase();if(m&&!vistos.has(m)){vistos.add(m);sups.push({nome:a.nome,email:a.email,sup:true});}});
+  return p.copias.map(c=>({nome:c.nome,email:c.email,sup:false})).concat(sups);
+}
 function envSel(p,e){return p.areas.filter(a=>e.areas.has(a.area)&&envPode(e,a));}
 function envDestinos(p,e){
   const d=[];
   if(e.eu)d.push(p.conta&&p.conta.email||"a conta de envio");
-  p.copias.filter(c=>e.cc.has(c.email)).forEach(c=>d.push(c.nome));
+  envPessoas(p).filter(c=>e.cc.has(c.email)).forEach(c=>d.push(c.nome));
   String(e.outro||"").split(/[,;\s]+/).map(x=>x.trim()).filter(Boolean).forEach(x=>d.push(x));
   return d;
 }
@@ -283,25 +290,31 @@ function secEnviar(p){
   const e=FE.env||(FE.env=envInicial(p)),of=e.modo==="oficial",sel=envSel(p,e);
   const passo=(n,tit,sub,ok,corpo)=>'<section class="fe-sec fe-passo"><div class="fe-passo-h"><span class="fe-passo-n'+(ok?" ok":"")+'">'+(ok?"✓":n)+'</span><div><small>Passo '+n+'</small><b>'+tit+'</b><span class="fe-mut">'+sub+'</span></div></div>'+corpo+'</section>';
   const modos='<div class="fe-modos" role="group" aria-label="Tipo de envio">'+
-    '<button type="button" class="fe-modo'+(of?" on":"")+'" data-fe="env-modo" data-modo="oficial" aria-pressed="'+of+'"><span class="fe-modo-ic">'+IC.envio+'</span><b>Aviso oficial</b><span>Sai para cada supervisor, com a semana da área dele. Conta como enviado e a área não recebe de novo.</span></button>'+
+    '<button type="button" class="fe-modo'+(of?" on":"")+'" data-fe="env-modo" data-modo="oficial" aria-pressed="'+of+'"><span class="fe-modo-ic">'+IC.envio+'</span><b>Aviso oficial</b><span>Sai para cada supervisor, com a semana da área dele. Pode enviar de novo quantas vezes quiser; o automático não repete a área que já recebeu na semana.</span></button>'+
     '<button type="button" class="fe-modo'+(of?"":" on")+'" data-fe="env-modo" data-modo="teste" aria-pressed="'+(!of)+'"><span class="fe-modo-ic">'+IC.prev+'</span><b>Teste</b><span>Só para quem você escolher (a coordenação, por exemplo). Nenhum supervisor é avisado e nada conta como enviado.</span></button></div>';
   const chips=p.areas.map(a=>{
-    const ok=envPode(e,a),nota=!ok?(a.status==="ENVIADO"?"já recebeu":"sem e-mail"):a.faltas+(a.faltas===1?" falta":" faltas");
+    const ok=envPode(e,a),nota=!ok?"sem e-mail":a.faltas+(a.faltas===1?" falta":" faltas")+(of&&a.status==="ENVIADO"?" · já recebeu":"");
     return '<label class="fe-chip'+(ok?"":" off")+'"><input type="checkbox" data-fe="env-area" data-area="'+esc(a.area)+'"'+(e.areas.has(a.area)&&ok?" checked":"")+(ok?"":" disabled")+'> <b>'+esc(a.nome)+'</b> <span class="fe-mut">'+nota+'</span></label>';
   }).join("");
   const periodo=of?'<p class="fe-mut" style="margin:14px 0 0">Período: <b>'+esc(dma(p.semana.inicio))+' a '+esc(dma(p.semana.fim))+'</b> (a semana anterior, de segunda a domingo).</p>':
     '<div class="fe-grade" style="margin-top:14px;max-width:460px"><div><label for="feEnvDe">De</label><input id="feEnvDe" class="fe-in" type="date" data-fe-campo="env.de" value="'+esc(e.de)+'"></div><div><label for="feEnvAte">Até</label><input id="feEnvAte" class="fe-in" type="date" data-fe-campo="env.ate" value="'+esc(e.ate)+'"></div></div><p class="fe-mut" style="margin:8px 0 0">Até 31 dias.</p>';
   const p1=passo(1,"Qual envio e de quais áreas?","Escolha o tipo de envio e marque quantas áreas quiser.",sel.length>0,modos+
     '<div class="fe-ta-h" style="margin-top:18px"><p class="fe-eyebrow" style="margin:0">Áreas ('+sel.length+' marcadas de '+p.areas.filter(a=>envPode(e,a)).length+')</p><span><button type="button" class="fe-b sm" data-fe="env-todas">Marcar todas</button> <button type="button" class="fe-b sm" data-fe="env-comfaltas">Só com faltas</button> <button type="button" class="fe-b sm" data-fe="env-nenhuma">Limpar</button></span></div><div class="fe-chips">'+chips+'</div>'+periodo);
-  const ccOficial=p.copias.map(c=>'<label class="fe-chip"><input type="checkbox" data-fe="cc" data-email="'+esc(c.email)+'"'+(FE.cc.has(c.email)?" checked":"")+'> <b>'+esc(c.nome)+'</b> <span class="fe-mut">'+esc(c.email)+'</span></label>').join("");
+  const pessoas=envPessoas(p),grupo=(lista,campo,marcado)=>{
+    const chip=c=>'<label class="fe-chip"><input type="checkbox" data-fe="'+campo+'" data-email="'+esc(c.email)+'"'+(marcado(c.email)?" checked":"")+'> <b>'+esc(c.nome)+'</b> <span class="fe-mut">'+esc(c.email)+'</span></label>';
+    const cp=lista.filter(c=>!c.sup),sp=lista.filter(c=>c.sup);
+    return (cp.length?'<div class="fe-chips">'+cp.map(chip).join("")+'</div>':'')+
+      (sp.length?'<p class="fe-eyebrow" style="margin:14px 0 8px">Supervisores</p><div class="fe-chips">'+sp.map(chip).join("")+'</div>':'');
+  };
+  const ccOficial=grupo(pessoas,"cc",m=>FE.cc.has(m));
   const ccTeste='<label class="fe-chip"><input type="checkbox" data-fe="env-eu"'+(e.eu?" checked":"")+'> <b>Eu</b> <span class="fe-mut">'+esc(p.conta&&p.conta.email||"a conta de envio")+'</span></label>'+
-    p.copias.map(c=>'<label class="fe-chip"><input type="checkbox" data-fe="env-cc" data-email="'+esc(c.email)+'"'+(e.cc.has(c.email)?" checked":"")+'> <b>'+esc(c.nome)+'</b> <span class="fe-mut">'+esc(c.email)+'</span></label>').join("");
-  const dest=envDestinos(p,e),ccN=p.copias.filter(c=>FE.cc.has(c.email));
+    '';
+  const dest=envDestinos(p,e),ccN=pessoas.filter(c=>FE.cc.has(c.email));
   const p2=of?
     passo(2,"Quem recebe cópia?","Cada supervisor recebe o e-mail da própria área. Marque quem acompanha em cópia, ou desmarque para este envio.",true,
-      (p.copias.length?'<div class="fe-chips">'+ccOficial+'</div>':'<p class="fe-mut" style="margin:0">Ninguém em cópia. Cadastre na aba Cópias.</p>')):
+      (pessoas.length?ccOficial:'<p class="fe-mut" style="margin:0">Ninguém em cópia. Cadastre na aba Cópias.</p>')):
     passo(2,"Para quem vai o teste?","Marque quem recebe um e-mail por área. Pode incluir qualquer endereço.",dest.length>0,
-      '<div class="fe-chips">'+ccTeste+'</div><div class="fe-linha"><input class="fe-in l" type="text" inputmode="email" autocomplete="off" data-fe-campo="env.outro" placeholder="Outros e-mails (opcional; separe por vírgula)" value="'+esc(e.outro)+'"></div>');
+      '<div class="fe-chips">'+ccTeste+'</div>'+grupo(pessoas,"env-cc",m=>e.cc.has(m))+'<div class="fe-linha"><input class="fe-in l" type="text" inputmode="email" autocomplete="off" data-fe-campo="env.outro" placeholder="Outros e-mails (opcional; separe por vírgula)" value="'+esc(e.outro)+'"></div>');
   const prontoEnviar=p.configurado&&sel.length&&(of||dest.length);
   const resumo=of?sel.length+(sel.length===1?" e-mail":" e-mails")+', um para cada supervisor'+(ccN.length?", com "+ccN.map(c=>esc(c.nome)).join(", ")+" em cópia":", sem cópia")+".":
     sel.length+(sel.length===1?" e-mail":" e-mails")+' de teste para '+(dest.length?dest.map(esc).join(", "):"ninguém ainda")+".";

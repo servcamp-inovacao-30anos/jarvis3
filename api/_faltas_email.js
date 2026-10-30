@@ -223,12 +223,13 @@ function proximoEnvio(agenda, agora) {
 //   • sem atestado registrado à mão no JARVIS cobrindo o dia e não anteriores à
 //     admissão de quem tem o RE hoje (RE reaproveitado) — as mesmas contas da tela.
 async function faltasDoPeriodo(db, inicio, fim, corteMs) {
-  const [faltas, adm, atest, viradas, medidas] = await Promise.all([
+  const [faltas, adm, atest, viradas, medidas, excluidas] = await Promise.all([
     db.listar(`fm_faltas?select=re,data,codigo,nome,cargo,posto,supervisor,escala,criado_em&data=gte.${inicio}&data=lte.${fim}&order=re.asc,data.asc`),
     db.listar("fm_admissoes?select=re,admissao&order=re.asc"),
     db.listar(`fm_auditoria?select=id,ator,acao,chave,depois,criado_em&acao=in.(${faltasMod.ACOES_ATESTADO.join(",")})&order=criado_em.asc,id.asc`),
     db.listar(`fm_auditoria?select=id,chave,criado_em&acao=eq.${faltasMod.ACAO_VIROU_I}&criado_em=gte.${inicio}T00:00:00Z&order=id.asc`),
-    db.listar(`fm_medidas?select=re,data,fase&data=gte.${inicio}&order=re.asc,data.asc`)
+    db.listar(`fm_medidas?select=re,data,fase&data=gte.${inicio}&order=re.asc,data.asc`),
+    faltasMod.lerExcluidas(db)
   ]);
   const admissao = {};
   adm.forEach(a => { if (a.admissao) admissao[String(a.re)] = iso(a.admissao); });
@@ -245,6 +246,7 @@ async function faltasDoPeriodo(db, inicio, fim, corteMs) {
   viradas.forEach(v => { virou[v.chave] = Math.max(virou[v.chave] || 0, Date.parse(v.criado_em) || 0); });
   return faltas.map(f => ({ ...f, data: iso(f.data) })).filter(f => {
     if (String(f.codigo || "").toUpperCase().trim() !== "I") return false;
+    if (faltasMod.excluida(excluidas, f.re, f.data)) return false; // cobrança excluída no modo TV
     const adm = admissao[String(f.re)];
     if (adm && f.data < adm) return false;
     if (atestados.some(a => a.re === String(f.re) && f.data >= a.inicio && f.data <= a.fim)) return false;
@@ -261,11 +263,12 @@ async function faltasDoPeriodo(db, inicio, fim, corteMs) {
 // à mão), para o número do histórico nunca contar o que o aviso não contaria.
 async function historicoDoAno(db, hoje) {
   const ano = String(hoje).slice(0, 4);
-  const [medidas, faltasI, adm, atest] = await Promise.all([
+  const [medidas, faltasI, adm, atest, excluidas] = await Promise.all([
     db.listar(`fm_medidas?select=chave,re,data,tipo,grau,dias,fase,nome&order=re.asc,data.asc,chave.asc`),
     db.listar(`fm_faltas?select=re,data,nome&codigo=eq.I&order=re.asc,data.asc`),
     db.listar("fm_admissoes?select=re,admissao&order=re.asc"),
-    db.listar(`fm_auditoria?select=id,ator,acao,chave,depois,criado_em&acao=in.(${faltasMod.ACOES_ATESTADO.join(",")})&order=criado_em.asc,id.asc`)
+    db.listar(`fm_auditoria?select=id,ator,acao,chave,depois,criado_em&acao=in.(${faltasMod.ACOES_ATESTADO.join(",")})&order=criado_em.asc,id.asc`),
+    faltasMod.lerExcluidas(db)
   ]);
   const admissao = {};
   adm.forEach(a => { if (a.admissao) admissao[String(a.re)] = iso(a.admissao); });
@@ -273,6 +276,7 @@ async function historicoDoAno(db, hoje) {
   const validas = faltasI.map(f => ({ ...f, data: iso(f.data) })).filter(f => {
     const ad = admissao[String(f.re)];
     if (ad && f.data < ad) return false;
+    if (faltasMod.excluida(excluidas, f.re, f.data)) return false; // cobrança excluída no modo TV
     return !atestados.some(a => a.re === String(f.re) && f.data >= a.inicio && f.data <= a.fim);
   });
   return { ano, medidas: R.dedupMedidas(medidas).map(m => ({ ...m, data: iso(m.data) })), faltasI: validas };
@@ -431,7 +435,7 @@ const eventosDoEnvio = (db, chave) => eventos(db, ACOES_ENVIO, `&chave=eq.${enco
 
 // Envio oficial de uma semana. escolhidas: chaves de área (null = todas com e-mail).
 // Devolve só contagens e nomes de área: nunca nome de colaborador.
-async function enviarSemana(db, { semana, escolhidas, copias, origem, ator, agora }) {
+async function enviarSemana(db, { semana, escolhidas, copias, origem, ator, agora, repetir }) {
   agora = agora || agoraAtual();
   const agoraMs = agora.getTime();
   const [areas, faltas, conta, assinatura, hist, base] = await Promise.all([lerAreas(db, diaSP(agora)), faltasDoPeriodo(db, semana.inicio, semana.fim, fimDoDiaSP(semana.fim)), lerConta(db), lerAssinatura(db), historicoDoAno(db, diaSP(agora)), lerLink(db)]);
@@ -449,12 +453,12 @@ async function enviarSemana(db, { semana, escolhidas, copias, origem, ator, agor
       if (!a.email) { tot.semEmail.push(a.nome); continue; }
       const chave = semana.inicio + "|" + a.area;
       let est = estadoEnvio(await eventosDoEnvio(db, chave), Date.now());
-      if (est.enviado) { tot.jaEnviados++; continue; }
+      if (est.enviado && !repetir) { tot.jaEnviados++; continue; }
       if (est.dono) { tot.emAndamento++; continue; }
       const lote = crypto.randomBytes(6).toString("hex");
       await db.inserir("fm_auditoria", [ev(ator, ACAO_RESERVA, chave, { lote, origem })]);
       est = estadoEnvio(await eventosDoEnvio(db, chave), Date.now());
-      if (est.enviado || est.dono !== lote) { tot.emAndamento++; continue; } // outra chamada chegou antes
+      if ((est.enviado && !repetir) || est.dono !== lote) { tot.emAndamento++; continue; } // outra chamada chegou antes
       let m = null, r;
       try {
         m = await montarEmail(db, { area: a, inicio: semana.inicio, fim: semana.fim, faltas, comAtualizacoes: true, agoraMs, assinatura: assinaturaNoEmail(assinatura), hist, link });
@@ -764,17 +768,20 @@ async function salvarAgenda({ res, db, ator, body }) {
   return res.status(200).json({ ok: true, agenda: { ...nova, proximo: proximoEnvio(nova, agoraAtual()) } });
 }
 
-// Envio oficial à mão: sempre a semana anterior. Área já enviada não sai de novo.
+// Envio oficial à mão: sempre a semana anterior. Pode repetir quantas vezes quiser (pedido do Raphael);
+// só o automático deixa de mandar para a área que já recebeu na semana.
+// Cópia: alguém da lista de cópias ou o e-mail de um supervisor cadastrado.
 async function enviarManual({ res, db, ator, body }) {
   if (body.confirmar !== true) return erro(res, 400, "Confirme o envio.", "SEM_CONFIRMACAO");
   if (!pronta(await lerConta(db))) return erro(res, 409, SEM_CONTA, "SEM_CONTA");
   const areas = Array.isArray(body.areas) ? [...new Set(body.areas.map(normalizar).filter(Boolean))] : [];
   if (!areas.length) return erro(res, 400, "Escolha ao menos uma área.", "SEM_AREA");
-  const guardadas = new Set((await lerCopias(db)).map(c => c.email));
+  const [lista, areasCad] = await Promise.all([lerCopias(db), lerAreas(db, diaSP(agoraAtual()))]);
+  const guardadas = new Set([...lista.map(c => c.email), ...areasCad.filter(a => a.email).map(a => emailLimpo(a.email))]);
   const copias = Array.isArray(body.copias) ? [...new Set(body.copias.map(emailLimpo))] : [];
   if (copias.some(c => !guardadas.has(c))) return erro(res, 400, "Cópia fora da lista cadastrada no painel.", "COPIA_DESCONHECIDA");
   const semana = semanaAnterior(agoraAtual());
-  const t = await enviarSemana(db, { semana, escolhidas: areas, copias, origem: "manual", ator });
+  const t = await enviarSemana(db, { semana, escolhidas: areas, copias, origem: "manual", ator, repetir: true });
   return res.status(200).json({ ok: true, semana, ...t });
 }
 
