@@ -69,6 +69,7 @@ function carregar(forcar){
   return MDS.carregando;
 }
 const geradasDoCaso=k=>(MDS.lista||[]).filter(g=>g.caso===k&&g.status!=="CANCELADA");
+window.mdGeradasDoCaso=geradasDoCaso; // o comunicado semanal (assets/comunicado) mostra as medidas já geradas de cada colaborador
 
 /* ═════════ documento ═════════
    O mesmo HTML na prévia e na impressão. Suspensão: modelo oficial transcrito do PDF de 26/10/2026.
@@ -181,7 +182,7 @@ function abrir(k){
     `<div class="md-corpo"><div class="md-form" id="md-form"></div><div class="md-prev" id="md-prev"></div></div><div class="md-rod" id="md-rod"></div></div>`;
   ov.addEventListener("click",cliqueEd);ov.addEventListener("input",digitouEd);ov.addEventListener("change",mudouEd);
   document.body.appendChild(ov);document.body.style.overflow="hidden";
-  document.addEventListener("keydown",teclaEd);window.addEventListener("resize",escala);
+  document.addEventListener("keydown",teclaEd);window.addEventListener("resize",aoRedimensionar);
   pintaForm();pintaPrev();pintaRod();
   setTimeout(()=>{const b=ov.querySelector(".md-tipo");if(b)b.focus({preventScroll:true});},60);
   setTimeout(()=>ov.classList.add("pintou"),500); // a entrada em cascata só na abertura, não a cada clique
@@ -193,7 +194,7 @@ function fecharEd(forcar){
   const E=MDS.ed;
   if(!forcar&&E&&!E.gerada&&(E.tipo||E.manual)){E.sair=true;E.confirma=false;pintaRod();const b=document.querySelector('#md-rod [data-md="ficar"]');if(b)b.focus();return;}
   const ov=document.getElementById("md-ov");
-  document.body.style.overflow="";document.removeEventListener("keydown",teclaEd);window.removeEventListener("resize",escala);
+  document.body.style.overflow="";document.removeEventListener("keydown",teclaEd);window.removeEventListener("resize",aoRedimensionar);
   MDS.ed=null;
   if(ov){ov.classList.add("sai");setTimeout(()=>ov.remove(),180);}
 }
@@ -270,12 +271,18 @@ function pintaForm(){
     `<section class="md-sec md-ctx"><div class="md-sec-h"><h5>Histórico no ano</h5><small class="md-sec-d">clique num número para ver a lista</small></div><div class="md-hist">${hist}</div>${avisoAnt}</section>`+
     passo("tipo",corpoTipo)+passo("datas",corpoDatas)+passo("ocor",corpoOcor)+passo("motivo",corpoMotivo);
 }
+// No celular o documento aparece em texto, numa coluna, no tamanho de leitura: a folha A4 encolhida e rolando para o
+// lado não se lê sem pinça. É o MESMO documento (o mesmo HTML), só reflui para caber; "Ver como fica impresso" volta à folha A4.
+const estreita=()=>!!(window.matchMedia&&window.matchMedia("(max-width:760px)").matches);
+const leitura=()=>estreita()&&!MDS.a4;
+function aoRedimensionar(){const e=estreita();if(MDS.estreitaAntes!==e)pintaPrev();else escala();}
 function pintaPrev(mudou){
   const E=MDS.ed,el=document.getElementById("md-prev");if(!E||!el)return;
-  const z=MDS.zoom;
-  el.innerHTML=`<div class="md-prev-h"><div><b>Prévia do documento</b><span>${E.gerada?"Documento "+esc(E.gerada.numero)+" · pronto para imprimir":"Folha A4 · muda na hora conforme você preenche"}</span></div>`+
-    `<div class="md-zoom" role="group" aria-label="Zoom da prévia"><button type="button" data-md="zoom" data-v="-1" aria-label="Diminuir">${IC.menos}</button><span id="md-zoom-v">${z?Math.round(z*100)+"%":"Ajustado"}</span><button type="button" data-md="zoom" data-v="1" aria-label="Aumentar">${IC.mais}</button><button type="button" data-md="zoom" data-v="fit" aria-label="Ajustar à largura" title="Ajustar à largura">${IC.ajustar}</button></div></div>`+
-    `<div id="md-cx"><div class="md-papel${mudou?" mudou":""}" id="md-papel">${docHtml(docDoEd(E))}</div></div>`;
+  const z=MDS.zoom,lei=leitura();MDS.estreitaAntes=estreita();
+  const controles=lei?`<button type="button" class="md-b" data-md="a4">Ver como fica impresso</button>`
+    :(estreita()?`<button type="button" class="md-b" data-md="a4">Ver em texto</button>`:"")+`<div class="md-zoom" role="group" aria-label="Zoom da prévia"><button type="button" data-md="zoom" data-v="-1" aria-label="Diminuir">${IC.menos}</button><span id="md-zoom-v">${z?Math.round(z*100)+"%":"Ajustado"}</span><button type="button" data-md="zoom" data-v="1" aria-label="Aumentar">${IC.mais}</button><button type="button" data-md="zoom" data-v="fit" aria-label="Ajustar à largura" title="Ajustar à largura">${IC.ajustar}</button></div>`;
+  el.innerHTML=`<div class="md-prev-h"><div><b>${lei?"Leitura do documento":"Prévia do documento"}</b><span>${E.gerada?"Documento "+esc(E.gerada.numero)+" · pronto para imprimir":lei?"Muda na hora conforme você preenche":"Folha A4 · muda na hora conforme você preenche"}</span></div>${controles}</div>`+
+    `<div id="md-cx"${lei?' class="md-leitura"':""}><div class="md-papel${mudou?" mudou":""}" id="md-papel">${docHtml(docDoEd(E))}</div></div>`;
   escala();
 }
 // Ajuste automático: a folha inteira cabe na área da prévia quando a tela deixa (largura E altura); em tela baixa
@@ -288,6 +295,7 @@ function ajusteDe(){
 }
 function escala(){
   const p=document.getElementById("md-papel"),cx=document.getElementById("md-cx"),pv=document.getElementById("md-prev");if(!p||!cx||!pv)return;
+  if(leitura()){p.style.transform="";cx.style.width="";cx.style.height="";return;} // texto em coluna: sem folha A4 para escalar
   const s=MDS.zoom||ajusteDe();
   p.style.transform="scale("+s+")";p.style.transformOrigin="top left";cx.style.width=(794*s)+"px";cx.style.height=(p.offsetHeight*s)+"px";
   const v=document.getElementById("md-zoom-v");if(v)v.textContent=MDS.zoom?Math.round(s*100)+"%":"Ajustado ("+Math.round(s*100)+"%)";
@@ -338,6 +346,7 @@ function cliqueEd(e){
   if(a==="ver"){E.ver=E.ver===v?null:v;const fm=document.getElementById("md-form"),y=fm?fm.scrollTop:0;pintaForm();if(fm)fm.scrollTop=y;return;}
   if(a==="descartar"){fecharEd(true);return;}
   if(a==="ir"||a==="foco"||a==="prox"){if(E.gerada)return;E.foco=v;const fm=document.getElementById("md-form");pintaForm();const s=document.getElementById("md-p-"+v);if(s){s.classList.add("abre");if(fm)fm.scrollTo({top:Math.max(0,s.offsetTop-12),behavior:"smooth"});}return;}
+  if(a==="a4"){MDS.a4=!MDS.a4;pintaPrev();return;}
   if(a==="zoom"){
     const ajuste=ajusteDe();
     MDS.zoom=v==="fit"?null:Math.min(1.5,Math.max(.35,Math.round(((MDS.zoom||ajuste)+Number(v)*.1)*10)/10));
@@ -587,11 +596,12 @@ window.mdIrPendentes=function(){
   if(typeof navTo==="function")navTo("faltassup",document.querySelector('.ni[data-pg="faltassup"]'));
 };
 
-/* ── link do e-mail: /?pg=faltassup abre as faltas em aberto (onde fica "Gerar medida") depois do login ── */
+/* ── link do e-mail: /?pg=faltassup&aba=COMUNICADO abre o comunicado da semana (cada colaborador com "Gerar medida");
+   sem aba abre as faltas em aberto; aba=MEDIDA, as medidas geradas. Vale depois do login, que a sessão salva dispensa no celular ── */
 (function(){
   try{
     const q=new URLSearchParams(location.search),pg=q.get("pg");
-    if(pg==="faltassup"){sessionStorage.setItem("mdIr",JSON.stringify({pg,aba:q.get("aba")==="MEDIDA"?"MEDIDA":"ABERTAS"}));history.replaceState(null,"",location.pathname);}
+    if(pg==="faltassup"){sessionStorage.setItem("mdIr",JSON.stringify({pg,aba:["MEDIDA","COMUNICADO"].indexOf(q.get("aba"))>=0?q.get("aba"):"ABERTAS"}));history.replaceState(null,"",location.pathname);}
   }catch(e){}
 })();
 function irDoLink(){

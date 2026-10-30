@@ -21,6 +21,7 @@ const esc=s=>String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").rep
 const uk=()=>sessionStorage.getItem("userKey")||"";
 const logado=()=>sessionStorage.getItem("logged")==="1";
 const dma=d=>{const s=String(d||"");return /^\d{4}-\d{2}-\d{2}/.test(s)?s.slice(8,10)+"/"+s.slice(5,7)+"/"+s.slice(0,4):"—";};
+const nomeUsuario=k=>{try{return(USERS[k]&&USERS[k].nome)||k;}catch(e){return k;}};
 const quando=iso=>{const t=Date.parse(iso);if(!t)return"";const sp=new Date(t-3*3600000).toISOString();return sp.slice(8,10)+"/"+sp.slice(5,7)+" às "+sp.slice(11,16);};
 const STATUS={ENVIADO:"Enviado",PENDENTE:"Pendente",SEM_EMAIL:"Sem e-mail",FALHOU:"Falhou",EM_ANDAMENTO:"Enviando"};
 
@@ -395,7 +396,8 @@ function secAreas(p){
     const pode=!!a.email&&a.status!=="ENVIADO";
     const st='<span class="fe-st '+a.status+'">'+STATUS[a.status]+'</span>'+
       (a.enviado?'<span class="fe-sub">'+esc(quando(a.enviado.em))+' · '+(a.enviado.origem==="auto"?"automático":"manual")+'</span>':'')+
-      (a.falha?'<span class="fe-sub" title="'+esc(a.falha.erro)+'">última tentativa '+esc(quando(a.falha.em))+'</span>':'');
+      (a.falha?'<span class="fe-sub" title="'+esc(a.falha.erro)+'">última tentativa '+esc(quando(a.falha.em))+'</span>':'')+
+      (a.enviado?'<span class="fe-sub" title="Abrir o comunicado no painel é como o supervisor confirma que leu">'+(a.aberto?'Aberto no painel por '+esc(nomeUsuario(a.aberto.por))+' · '+esc(quando(a.aberto.em)):'Ainda não aberto no painel')+'</span>':'');
     if(ed)return '<tr><td></td><td><b>'+esc(a.nome)+'</b></td>'+
       '<td><input class="fe-in" data-fe-campo="edit.saudacao" maxlength="60" placeholder="'+esc(a.nome)+'" value="'+esc(FE.edit.saudacao)+'"></td>'+
       '<td><input class="fe-in" data-fe-campo="edit.email" type="email" maxlength="120" placeholder="supervisor@gruposervcamp.com.br" value="'+esc(FE.edit.email)+'"></td>'+

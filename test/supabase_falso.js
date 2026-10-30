@@ -11,6 +11,7 @@ class SupabaseFalso {
   constructor(base) {
     this.base = base;
     this.linhas = new Map();   // user_key → linha
+    this.auditoria = [];       // linhas de fm_auditoria (só o que a API de login lê e grava)
     this.chamadas = [];        // { metodo, url, corpo } de cada requisição
     this.falhar = null;
     this.fetch = this.fetch.bind(this);
@@ -24,6 +25,7 @@ class SupabaseFalso {
     const metodo = (opt.method || "GET").toUpperCase();
     this.chamadas.push({ metodo, url: String(url), corpo: opt.body || null });
     const u = new URL(url);
+    if (u.origin === this.base && u.pathname === "/rest/v1/fm_auditoria") return this.fetchAuditoria(u, metodo, opt);
     if (u.origin !== this.base || u.pathname !== "/rest/v1/app_users") {
       return resposta(404, { message: "rota desconhecida no Supabase falso: " + u.pathname });
     }
@@ -64,6 +66,30 @@ class SupabaseFalso {
     return resposta(405, { message: "método não suportado no Supabase falso" });
   }
 }
+
+// fm_auditoria: insere (id e criado_em automáticos) e lista com eq.X, order=id.desc|asc e limit.
+SupabaseFalso.prototype.fetchAuditoria = async function (u, metodo, opt) {
+  const st = this.falhar && this.falhar(metodo, String(u));
+  if (st) return resposta(st, { message: "falha simulada" });
+  if (metodo === "POST") {
+    for (const item of [].concat(JSON.parse(opt.body || "[]"))) {
+      this.auditoria.push({ id: this.auditoria.length + 1, criado_em: new Date().toISOString(), ...item });
+    }
+    return resposta(201, null);
+  }
+  if (metodo !== "GET") return resposta(405, { message: "método não suportado no Supabase falso" });
+  const filtros = [];
+  let ordem = "id.asc", limite = Infinity;
+  for (const [k, v] of u.searchParams) {
+    if (k === "select") continue;
+    if (k === "order") ordem = v;
+    else if (k === "limit") limite = Number(v);
+    else filtros.push([k, v]);
+  }
+  let rows = this.auditoria.filter(l => filtros.every(([col, expr]) => confere(l[col], expr)));
+  rows = rows.sort((a, b) => (ordem === "id.desc" ? b.id - a.id : a.id - b.id)).slice(0, limite);
+  return resposta(200, rows.map(r => ({ ...r })));
+};
 
 // Filtros PostgREST usados pela API: eq.X, is.null e not.like.prefixo*
 function confere(valor, expr) {

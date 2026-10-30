@@ -21,6 +21,7 @@ const ponto = require("./_ponto");
 const _auth = require("./_auth");
 const XL = require("./_faltas_excel");
 const MD = require("./_medida_regras");
+const COM = require("./_comunicado");
 
 const ACAO_ABONO_TARDIO = "FALTA_ABONADA_DEPOIS";
 const ACAO_VIROU_I = "FALTA_VIROU_INJUSTIFICADA"; // tinha outro código e passou a "I" (veja anotarViradasInjustificada)
@@ -845,6 +846,19 @@ async function verGeradas({ res, db, ator }) {
   return res.status(200).json({ ok: true, hoje: hojeSP(), coordenacao: MD.ehCoordenacao(ator), geradas: todas, minhasPendentes: minhas, tipos: MD.TIPOS, situacoes: MD.SITUACOES });
 }
 
+// Comunicado semanal dentro do painel: a cópia do que cada área recebeu no e-mail oficial (api/_comunicado.js).
+async function verComunicados({ res, db, ator }) {
+  return res.status(200).json({ ok: true, hoje: hojeSP(), coordenacao: MD.ehCoordenacao(ator), comunicados: await COM.listar(db, ator) });
+}
+async function verComunicado({ req, res, db, ator }) {
+  const q = req.query || {};
+  const c = await COM.ler(db, ator, String(q.semana || ""), String(q.area || ""));
+  if (!c) return erro(res, 404, "Comunicado não encontrado.", "SEM_COMUNICADO"); // não existe, ou é de outra área: a resposta é a mesma
+  try { await COM.registrarAbertura(db, ator, c); }
+  catch (e) { console.error("[faltas] abertura do comunicado não registrada: " + (e && e.message ? e.message : e)); } // ler não pode falhar por causa do registro
+  return res.status(200).json({ ok: true, comunicado: c });
+}
+
 async function gerarMedida({ res, db, ator, body }) {
   const v = MD.validar(body, hojeSP());
   if (v.erro) return erro(res, 400, v.erro[0], v.erro[1]);
@@ -938,6 +952,8 @@ const ROTAS = {
   "POST revogar_excel": { aprovador: true, fn: revogarChavesExcel },
   // medida disciplinar: Raphael, Jussilene, João e os supervisores (pedido do Raphael, 26/10/2026)
   "GET medidas_geradas": { gerador: true, fn: verGeradas },
+  "GET comunicados": { gerador: true, fn: verComunicados },
+  "GET comunicado": { gerador: true, fn: verComunicado },
   "POST medida": { gerador: true, fn: gerarMedida },
   "POST medida_lancada": { gerador: true, fn: marcarLancada },
   "POST medida_cancelar": { gerador: true, fn: cancelarGerada },

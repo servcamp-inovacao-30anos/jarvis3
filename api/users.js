@@ -50,6 +50,13 @@ function criadoPelaTela(row) { return !!(row && row.nome); }
 function bloqueado(row) { return !!(row && row.ativo === false); }
 const MSG_BLOQUEADO = "Seu acesso está bloqueado. Fale com o administrador.";
 
+// Sessão: 12 h no navegador (some ao fechar). "Manter conectado" (celular do supervisor): fica guardada
+// no aparelho por 30 dias, renovados a cada uso (ação renew). Quem decide o prazo é o servidor.
+const HORAS_SESSAO = 12;
+const DIAS_SESSAO_SALVA = 30;
+const emitirSessao = (userKey, secret, manter) =>
+  manter ? _auth.sign(userKey, secret, DIAS_SESSAO_SALVA * 24, { m: 1 }) : _auth.sign(userKey, secret, HORAS_SESSAO);
+
 // Senha inicial própria de quem ainda não tem senha no banco (entra no lugar da padrão e sem troca
 // obrigatória). Fica aqui só o HASH, nunca a senha. Quando a senha for gravada no banco
 // (app_users.custom_password), ela passa a valer e esta linha pode sair. Pedido do Raphael, 13/10/2026.
@@ -214,7 +221,8 @@ module.exports = async function handler(req, res) {
         must_change: mustChange,
         has_custom: !c.padrao,
         // sem token: troca pendente (sai na troca) ou AUTH_SECRET ausente (modo graça)
-        token: secret && !mustChange ? _auth.sign(userKey, secret, 12) : null,
+        token: secret && !mustChange ? emitirSessao(userKey, secret, body.manter === true) : null,
+        manter: body.manter === true,
         grace: !secret,
         // criado pela tela: a tela não conhece o perfil, então ele vai junto
         perfil: criadoPelaTela(c.row) ? { nome: c.row.nome, cargo: c.row.cargo || "", perms: c.row.perms || {} } : null,
@@ -242,6 +250,8 @@ module.exports = async function handler(req, res) {
         console.error("users: erro ao redefinir senha", resp.status, (await resp.text()).slice(0, 200));
         return res.status(502).json({ error: "Erro ao salvar a senha temporária." });
       }
+      // a senha antiga deixa de abrir o painel em qualquer aparelho que tenha ficado conectado
+      try { await _auth.revogarSessoes(userKey, admin); } catch (e) { console.error("users: não consegui encerrar as sessões de", userKey, e.message); }
       console.log("users: senha redefinida", userKey, "por", admin);
       return res.status(200).json({ ok: true, userKey, senha });
     }
@@ -343,6 +353,26 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true, userKey, ativo: body.ativo });
     }
 
+    // Renovar a sessão salva no aparelho: quem usa o painel continua conectado, quem some por 30 dias volta ao login.
+    // Só renova token de "manter conectado"; bloqueado ou encerrado não renova.
+    if (body.action === "renew") {
+      const a = _auth.requireAuth(req);
+      if (!a.ok) return res.status(401).json({ ok: false, error: "Sessão vencida. Entre de novo." });
+      if (!a.enforced || !a.user || a.user.s || !a.user.m) return res.status(400).json({ ok: false, error: "Esta sessão não é de \"manter conectado\"." });
+      const v = await _auth.sessaoValida(a.user);
+      if (!v.ok) return res.status(401).json({ ok: false, bloqueado: !!v.bloqueado, encerrada: !!v.encerrada, error: v.bloqueado ? MSG_BLOQUEADO : "Sessão encerrada. Entre de novo." });
+      return res.status(200).json({ ok: true, token: emitirSessao(a.user.u, process.env.AUTH_SECRET, true) });
+    }
+
+    // Sair de todos os aparelhos: as sessões emitidas até agora (inclusive esta) deixam de valer.
+    if (body.action === "logout_all") {
+      const a = _auth.requireAuth(req);
+      if (!a.ok || !a.user || !a.user.u || a.user.s) return res.status(401).json({ ok: false, error: "Sessão vencida. Entre de novo." });
+      try { await _auth.revogarSessoes(a.user.u, a.user.u); }
+      catch (e) { console.error("users: encerrar sessões falhou", e.message); return res.status(502).json({ ok: false, error: "Não consegui encerrar as sessões agora. Tente de novo." }); }
+      return res.status(200).json({ ok: true });
+    }
+
     // Troca de senha: exige a senha atual — a própria, ou a padrão no primeiro
     // acesso. Sem essa prova ninguém troca a senha de ninguém. Sem "action" é o
     // formato antigo do front, que agora também precisa da senha atual.
@@ -377,12 +407,14 @@ module.exports = async function handler(req, res) {
         console.error("users: erro ao salvar senha", resp.status, (await resp.text()).slice(0, 200));
         return res.status(502).json({ error: "Erro ao salvar senha." });
       }
+      // quem trocou a senha sai dos outros aparelhos (o token novo é emitido depois do encerramento, então continua valendo)
+      try { await _auth.revogarSessoes(userKey, userKey); } catch (e) { console.error("users: não consegui encerrar as sessões de", userKey, e.message); }
       // já devolve um token válido: quem acabou de definir a senha entra autenticado
       const secret = process.env.AUTH_SECRET;
-      return res.status(200).json({ ok: true, token: secret ? _auth.sign(userKey, secret, 12) : null });
+      return res.status(200).json({ ok: true, token: secret ? emitirSessao(userKey, secret, body.manter === true) : null });
     }
 
-    return res.status(400).json({ error: "action inválida (use authenticate, change_password, admin_reset, create_user, set_active ou set_guias)." });
+    return res.status(400).json({ error: "action inválida (use authenticate, renew, logout_all, change_password, admin_reset, create_user, set_active ou set_guias)." });
   }
 
   res.setHeader("Allow", "GET, POST");

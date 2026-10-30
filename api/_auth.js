@@ -22,8 +22,11 @@ function unb64url(s) {
 // Emite um token {u: userKey, exp: epoch_ms}. Validade padrão: 12h.
 // "extra" acrescenta campos ao token; com {s: "xl"} ele vira uma chave de ESCOPO RESTRITO:
 // só vale na rota que pedir esse escopo (veja requireAuth) e é recusado em todas as outras.
+// "iat" (quando foi emitido) permite encerrar de uma vez todas as sessões antigas de alguém
+// (sair de todos os aparelhos, troca ou redefinição de senha): veja sessaoValida.
 function sign(userKey, secret, horas, extra) {
-  const payload = Object.assign({ u: String(userKey), exp: Date.now() + (horas || 12) * 3600000 }, extra || {});
+  const agora = Date.now();
+  const payload = Object.assign({ u: String(userKey), iat: agora, exp: agora + (horas || 12) * 3600000 }, extra || {});
   const body = b64url(JSON.stringify(payload));
   const sig = b64url(crypto.createHmac("sha256", secret).update(body).digest());
   return body + "." + sig;
@@ -66,42 +69,88 @@ function requireAuth(req, escopo, daQuery) {
   return { ok: true, user: p, enforced: true };
 }
 
-// Bloqueado pela tela de Configurações (app_users.ativo = false): o token de sessão
-// e as chaves do Excel dele deixam de valer em TODAS as rotas, e não só na tela.
-// requireAuth é síncrono e não lê o banco; por isso esta conferência vem logo depois
-// dele em cada rota. Cache de 30 s por instância, para não ler o banco a cada chamada.
+// Estado do acesso de um usuário: bloqueado na tela de Configurações (app_users.ativo = false)
+// e quando ele mandou encerrar todas as sessões (evento SESSAO_REVOGADA na fm_auditoria).
+// O token de sessão e as chaves do Excel de quem está bloqueado deixam de valer em TODAS as rotas,
+// e não só na tela. requireAuth é síncrono e não lê o banco; por isso esta conferência vem logo
+// depois dele em cada rota. Cache de 30 s por instância, para não ler o banco a cada chamada.
 // Se o banco falhar, vale o último estado conhecido (sem ele, deixa passar): um
 // soluço do Supabase não pode derrubar o painel de todo mundo.
-const _cacheAtivo = new Map(); // userKey -> { bloq, em }
+const _cacheAtivo = new Map(); // userKey -> { bloq, revogadaEm, em }
 const CACHE_ATIVO_MS = 30000;
-async function estaBloqueado(userKey) {
-  if (!userKey) return false;
+const ACAO_SESSAO_REVOGADA = "SESSAO_REVOGADA";
+async function estadoDoAcesso(userKey) {
+  const vazio = { bloq: false, revogadaEm: 0 };
+  if (!userKey) return vazio;
   const c = _cacheAtivo.get(userKey);
-  if (c && Date.now() - c.em < CACHE_ATIVO_MS) return c.bloq;
+  if (c && Date.now() - c.em < CACHE_ATIVO_MS) return c;
   const url = process.env.SUPABASE_URL, key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return false;
-  try {
-    const r = await fetch(`${url}/rest/v1/app_users?user_key=eq.${encodeURIComponent(userKey)}&select=user_key,ativo`,
-      { headers: { apikey: key, Authorization: `Bearer ${key}` } });
-    if (!r.ok) throw new Error("app_users " + r.status);
-    const rows = await r.json();
-    const row = Array.isArray(rows) ? rows.find(x => x && x.user_key === userKey) : null;
-    const bloq = !!(row && row.ativo === false);
-    _cacheAtivo.set(userKey, { bloq, em: Date.now() });
-    return bloq;
-  } catch (e) {
-    console.error("auth: não consegui conferir o bloqueio de", userKey, e.message);
-    return c ? c.bloq : false;
-  }
+  if (!url || !key) return vazio;
+  const h = { apikey: key, Authorization: `Bearer ${key}` };
+  const [bloq, revogadaEm] = await Promise.all([
+    (async () => {
+      try {
+        const r = await fetch(`${url}/rest/v1/app_users?user_key=eq.${encodeURIComponent(userKey)}&select=user_key,ativo`, { headers: h });
+        if (!r.ok) throw new Error("app_users " + r.status);
+        const rows = await r.json();
+        const row = Array.isArray(rows) ? rows.find(x => x && x.user_key === userKey) : null;
+        return !!(row && row.ativo === false);
+      } catch (e) {
+        console.error("auth: não consegui conferir o bloqueio de", userKey, e.message);
+        return c ? c.bloq : false;
+      }
+    })(),
+    (async () => {
+      try {
+        const r = await fetch(`${url}/rest/v1/fm_auditoria?select=depois&acao=eq.${ACAO_SESSAO_REVOGADA}&chave=eq.${encodeURIComponent(userKey)}&order=id.desc&limit=1`, { headers: h });
+        if (!r.ok) throw new Error("fm_auditoria " + r.status);
+        const rows = await r.json();
+        return Number(rows && rows[0] && rows[0].depois && rows[0].depois.em) || 0;
+      } catch (e) {
+        console.error("auth: não consegui conferir o encerramento de sessões de", userKey, e.message);
+        return c ? c.revogadaEm : 0;
+      }
+    })()
+  ]);
+  const novo = { bloq, revogadaEm, em: Date.now() };
+  _cacheAtivo.set(userKey, novo);
+  return novo;
+}
+async function estaBloqueado(userKey) { return (await estadoDoAcesso(userKey)).bloq; }
+
+// A sessão ainda vale? Falha se o acesso foi bloqueado ou se foi encerrada depois de emitida.
+// Chave de escopo restrito (a do Excel) não é sessão de aparelho: só o bloqueio a derruba.
+// Token sem "iat" (de antes desta regra) vive no máximo 12 h e não é atingido pelo encerramento.
+async function sessaoValida(user) {
+  const u = user && user.u;
+  if (!u) return { ok: true };
+  const e = await estadoDoAcesso(u);
+  if (e.bloq) return { ok: false, bloqueado: true };
+  if (!user.s && user.iat && user.iat < e.revogadaEm) return { ok: false, encerrada: true };
+  return { ok: true };
 }
 // Uso: if (await _auth.recusarSeBloqueado(req, res, _ga)) return;
 async function recusarSeBloqueado(req, res, ga) {
-  const u = ga && ga.user && ga.user.u;
-  if (!u || !(await estaBloqueado(u))) return false;
-  res.status(401).json({ error: "Acesso bloqueado.", bloqueado: true });
+  const v = await sessaoValida(ga && ga.user);
+  if (v.ok) return false;
+  if (v.bloqueado) res.status(401).json({ error: "Acesso bloqueado.", bloqueado: true });
+  else res.status(401).json({ error: "Sessão encerrada. Entre de novo.", encerrada: true });
   return true;
+}
+// Encerra TODAS as sessões emitidas até agora para este usuário (os outros aparelhos pedem login de novo).
+// Lança se não conseguir gravar: quem pediu precisa saber que não valeu.
+async function revogarSessoes(userKey, ator) {
+  const url = process.env.SUPABASE_URL, key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key || !userKey) throw new Error("sem banco para registrar o encerramento");
+  const r = await fetch(`${url}/rest/v1/fm_auditoria`, {
+    method: "POST",
+    headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json", Prefer: "return=minimal" },
+    body: JSON.stringify([{ ator: ator || userKey, acao: ACAO_SESSAO_REVOGADA, entidade: "sessao", chave: String(userKey), antes: null, depois: { em: Date.now() } }])
+  });
+  if (!r.ok) throw new Error("fm_auditoria " + r.status);
+  _cacheAtivo.delete(userKey);
 }
 // set_active chama ao bloquear/liberar: nesta instância vale na hora (nas outras, em até 30 s)
 function esquecerBloqueio(userKey) { if (userKey) _cacheAtivo.delete(userKey); else _cacheAtivo.clear(); }
 
-module.exports = { sign, verify, tokenFrom, requireAuth, estaBloqueado, recusarSeBloqueado, esquecerBloqueio };
+module.exports = { sign, verify, tokenFrom, requireAuth, estaBloqueado, estadoDoAcesso, sessaoValida, recusarSeBloqueado, revogarSessoes, esquecerBloqueio, ACAO_SESSAO_REVOGADA };
