@@ -10922,6 +10922,8 @@ function cfgGuias(k){
 const CFG_ADMINS_FIXOS=["joaoygor"];
 function cfgBotaoAcesso(k,bloq){
   if(k===sessionStorage.getItem("userKey")||CFG_ADMINS_FIXOS.indexOf(k)>=0)return "";
+  // o botão de bloquear saiu (pedido de 30/10); quem já estiver bloqueado ainda pode ser liberado
+  if(!bloq)return "";
   return bloq
     ?'<button type="button" class="rh-btn" style="padding:5px 10px;font-size:.64rem;white-space:nowrap;margin-left:6px;background:linear-gradient(135deg,#16a34a,#15803d)" onclick="cfgAlternarAcesso(\''+k+'\',true)">✅ Liberar acesso</button>'
     :'<button type="button" class="rh-btn" style="padding:5px 10px;font-size:.64rem;white-space:nowrap;margin-left:6px;background:linear-gradient(135deg,#dc2626,#b91c1c)" onclick="cfgAlternarAcesso(\''+k+'\',false)">🚫 Bloquear acesso</button>';
