@@ -3908,7 +3908,11 @@ let _expirouAvisado=false;
 function _sessaoExpirou(msg){
   if(_expirouAvisado)return;_expirouAvisado=true;
   const manter=sessionStorage.getItem("introVisto");
-  try{sessionStorage.clear();if(manter)sessionStorage.setItem("introVisto",manter);}catch(e){}
+  // Modo TV aberto: ele fica por cima do login, e a TV seguiria mostrando o dado velho sem ninguém perceber.
+  // Sai do modo TV para o login aparecer e, depois de entrar de novo, a TV volta sozinha.
+  const tvAberta=typeof FTV!=="undefined"&&FTV.on;
+  if(tvAberta)try{ftvFechar();}catch(e){}
+  try{sessionStorage.clear();if(manter)sessionStorage.setItem("introVisto",manter);if(tvAberta)sessionStorage.setItem("ftvVoltar","1");}catch(e){}
   const ov=document.getElementById("loginOverlay");if(ov)ov.classList.remove("hidden");
   const er=document.getElementById("loginError");if(er)er.textContent=msg||"Sua sessão expirou. Entre de novo.";
   setTimeout(function(){_expirouAvisado=false;},2000);
@@ -3966,6 +3970,8 @@ function _abrirSessao(u){
   applyUserUI();
   if(typeof hqBeat==="function")hqBeat(); // já aparece na Sede Virtual
   tvModoChecar(); ftvChecar(); // se abriu a TV sem estar logado ainda, ativa só depois do login
+  // o login tinha vencido com o modo TV aberto: volta para ele
+  try{if(sessionStorage.getItem("ftvVoltar")==="1"){sessionStorage.removeItem("ftvVoltar");if(!FTV.on&&fsPermitido()){navTo("faltassup",null);ftvAbrir();}}}catch(e){}
   _contratosFechados=null; // busca de novo com o token novo: a lista de antes do login pode estar vazia ou velha
   vgContrato();
   if(typeof feAposLogin==="function")feAposLogin(); // aviso semanal por e-mail: o botão só aparece para a conta do responsável
