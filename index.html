@@ -3899,18 +3899,18 @@ function _normUser(s){return(s||"").toUpperCase().trim().normalize("NFD").replac
     // Login vencido (dura 12h) ou sessão antiga sem token: o servidor responde 401.
     // Em vez de deixar as telas vazias, volta para o login com o aviso.
     if(typeof url==="string"&&url.indexOf("/api/")===0&&url.indexOf("/api/users")!==0){
-      p.then(function(r){if(r&&r.status===401&&sessionStorage.getItem("logged")==="1")_sessaoExpirou();}).catch(function(){});
+      p.then(function(r){if(r&&r.status===401&&sessionStorage.getItem("logged")==="1")r.clone().json().then(function(j){_sessaoExpirou(j&&j.bloqueado?"Seu acesso foi bloqueado pelo administrador.":"");}).catch(function(){_sessaoExpirou("");});}).catch(function(){});
     }
     return p;
   };
 })();
 let _expirouAvisado=false;
-function _sessaoExpirou(){
+function _sessaoExpirou(msg){
   if(_expirouAvisado)return;_expirouAvisado=true;
   const manter=sessionStorage.getItem("introVisto");
   try{sessionStorage.clear();if(manter)sessionStorage.setItem("introVisto",manter);}catch(e){}
   const ov=document.getElementById("loginOverlay");if(ov)ov.classList.remove("hidden");
-  const er=document.getElementById("loginError");if(er)er.textContent="Sua sessão expirou. Entre de novo.";
+  const er=document.getElementById("loginError");if(er)er.textContent=msg||"Sua sessão expirou. Entre de novo.";
   setTimeout(function(){_expirouAvisado=false;},2000);
 }
 // senha digitada no login, só em memória: é a prova que o servidor exige na troca obrigatória
@@ -10851,6 +10851,27 @@ function cfgCriarUsuario(ev){
     .finally(()=>{btn.disabled=false;});
   return false;
 }
+/* Bloquear / liberar o acesso de quem já existe. Bloqueado não entra e quem está com o
+   painel aberto volta ao login em ~15 s. Senha e permissões ficam guardadas: liberar
+   devolve tudo como estava. */
+const CFG_ADMINS_FIXOS=["joaoygor"];
+function cfgBotaoAcesso(k,bloq){
+  if(k===sessionStorage.getItem("userKey")||CFG_ADMINS_FIXOS.indexOf(k)>=0)return "";
+  return bloq
+    ?'<button type="button" class="rh-btn" style="padding:5px 10px;font-size:.64rem;white-space:nowrap;margin-left:6px;background:linear-gradient(135deg,#16a34a,#15803d)" onclick="cfgAlternarAcesso(\''+k+'\',true)">✅ Liberar acesso</button>'
+    :'<button type="button" class="rh-btn" style="padding:5px 10px;font-size:.64rem;white-space:nowrap;margin-left:6px;background:linear-gradient(135deg,#dc2626,#b91c1c)" onclick="cfgAlternarAcesso(\''+k+'\',false)">🚫 Bloquear acesso</button>';
+}
+function cfgAlternarAcesso(k,liberar){
+  const nome=(USERS[k]||{}).nome||k;
+  const txt=liberar
+    ?"Liberar o acesso de "+nome+"?\n\n"+nome+" volta a entrar com a mesma senha e as mesmas permissões de antes."
+    :"Bloquear o acesso de "+nome+"?\n\n"+nome+" não consegue mais entrar, e se estiver com o painel aberto volta para a tela de login em alguns segundos. A senha e as permissões ficam guardadas para quando o acesso for liberado.";
+  if(!confirm(txt))return;
+  fetch("/api/users",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"set_active",userKey:k,ativo:!!liberar})})
+    .then(r=>r.json().catch(()=>({})).then(j=>{if(!r.ok||!j.ok)throw new Error(j.error||("HTTP "+r.status));return j;}))
+    .then(()=>{if(typeof hqToast==="function")hqToast(liberar?"✅ Acesso de "+nome+" liberado":"🚫 Acesso de "+nome+" bloqueado");cfgLoad();})
+    .catch(e=>{alert("Não foi possível "+(liberar?"liberar":"bloquear")+" o acesso: "+((e&&e.message)||e));});
+}
 function cfgRedefinirSenha(k){
   const nome=(USERS[k]||{}).nome||k;
   if(!confirm("Redefinir a senha de "+nome+"?\n\nA senha atual deixa de valer. O sistema gera uma senha temporária e "+nome+" cria a própria no próximo acesso."))return;
@@ -10889,7 +10910,8 @@ function cfgRender(){
   let h='';
   /* resumo */
   h+=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">`;
-  h+=card("👥","Usuários",total,"cadastrados no sistema","#2e8fef");
+  const bloqueados=keys.filter(k=>CFG_AUDIT[k]&&CFG_AUDIT[k].ativo===false).length;
+  h+=card("👥","Usuários",total,bloqueados?bloqueados+" com acesso bloqueado":"cadastrados no sistema","#2e8fef");
   h+=card("🟢","Online agora",online,"ativos nos últimos 8 min","#16a34a");
   h+=card("🔑","Senha própria",comSenha+"/"+total,semSenha?`${semSenha} ainda na senha padrão`:"todos trocaram","#7c3aed");
   h+=card("🕐","Já acessaram",jaAcessou+"/"+total,(total-jaAcessou)+" nunca entraram","#f97316");
@@ -10913,14 +10935,14 @@ function cfgRender(){
       <th style="padding:9px 10px;text-align:center;color:#64748b;font-size:.6rem;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid #e5e9f0">Ações</th>
     </tr></thead><tbody>`;
   keys.forEach(k=>{
-    const u=USERS[k],perf=cfgPerfil(u),a=CFG_AUDIT[k]||{},ac=cfgFmtAcesso(a.last_login);
-    h+=`<tr style="border-bottom:1px solid #f1f5f9">
-      <td style="padding:8px 10px"><div style="font-weight:800;color:#0d1f35">${u.nome}</div><div style="font-size:.62rem;color:#94a3b8">${u.cargo||""} · @${k}</div></td>
+    const u=USERS[k],perf=cfgPerfil(u),a=CFG_AUDIT[k]||{},ac=cfgFmtAcesso(a.last_login),bloq=a.ativo===false;
+    h+=`<tr style="border-bottom:1px solid #f1f5f9${bloq?";opacity:.55;background:#fff5f5":""}">
+      <td style="padding:8px 10px"><div style="font-weight:800;color:#0d1f35">${_esc(u.nome)}${bloq?' <span class="rh-badge" style="background:#fee2e2;color:#b91c1c;font-weight:800;margin-left:4px">🚫 Bloqueado</span>':""}</div><div style="font-size:.62rem;color:#94a3b8">${_esc(u.cargo||"")} · @${_esc(k)}</div></td>
       <td style="padding:8px 10px"><span class="rh-badge" style="background:${perf.cor}18;color:${perf.cor};font-weight:800">${perf.lbl}</span></td>
       ${CFG_PANEIS.map(p=>`<td style="padding:8px 8px;text-align:center;font-size:.9rem">${p.has(u)?'<span style="color:#16a34a;font-weight:900">✓</span>':'<span style="color:#e2e8f0">·</span>'}</td>`).join("")}
       <td style="padding:8px 10px"><div style="color:${ac.cor};font-weight:${ac.peso};font-size:.7rem">${ac.desde||""}</div><div style="font-size:.6rem;color:#94a3b8">${ac.desde?ac.txt:""}</div></td>
       <td style="padding:8px 10px;text-align:center">${a.has_custom?'<span title="Senha própria" style="color:#16a34a">🔒</span>':'<span title="Ainda na senha padrão" style="color:#f97316">🔓</span>'}</td>
-      <td style="padding:8px 10px;text-align:center"><button type="button" class="rh-btn" style="padding:5px 10px;font-size:.64rem;white-space:nowrap" onclick="cfgRedefinirSenha('${k}')">🔑 Redefinir senha</button></td>
+      <td style="padding:8px 10px;text-align:center;white-space:nowrap"><button type="button" class="rh-btn" style="padding:5px 10px;font-size:.64rem;white-space:nowrap" onclick="cfgRedefinirSenha('${k}')">🔑 Redefinir senha</button>${cfgBotaoAcesso(k,bloq)}</td>
     </tr>`;
   });
   h+=`</tbody></table></div>`;

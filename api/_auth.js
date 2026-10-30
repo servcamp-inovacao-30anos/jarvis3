@@ -66,4 +66,42 @@ function requireAuth(req, escopo, daQuery) {
   return { ok: true, user: p, enforced: true };
 }
 
-module.exports = { sign, verify, tokenFrom, requireAuth };
+// Bloqueado pela tela de Configurações (app_users.ativo = false): o token de sessão
+// e as chaves do Excel dele deixam de valer em TODAS as rotas, e não só na tela.
+// requireAuth é síncrono e não lê o banco; por isso esta conferência vem logo depois
+// dele em cada rota. Cache de 30 s por instância, para não ler o banco a cada chamada.
+// Se o banco falhar, vale o último estado conhecido (sem ele, deixa passar): um
+// soluço do Supabase não pode derrubar o painel de todo mundo.
+const _cacheAtivo = new Map(); // userKey -> { bloq, em }
+const CACHE_ATIVO_MS = 30000;
+async function estaBloqueado(userKey) {
+  if (!userKey) return false;
+  const c = _cacheAtivo.get(userKey);
+  if (c && Date.now() - c.em < CACHE_ATIVO_MS) return c.bloq;
+  const url = process.env.SUPABASE_URL, key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return false;
+  try {
+    const r = await fetch(`${url}/rest/v1/app_users?user_key=eq.${encodeURIComponent(userKey)}&select=user_key,ativo`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}` } });
+    if (!r.ok) throw new Error("app_users " + r.status);
+    const rows = await r.json();
+    const row = Array.isArray(rows) ? rows.find(x => x && x.user_key === userKey) : null;
+    const bloq = !!(row && row.ativo === false);
+    _cacheAtivo.set(userKey, { bloq, em: Date.now() });
+    return bloq;
+  } catch (e) {
+    console.error("auth: não consegui conferir o bloqueio de", userKey, e.message);
+    return c ? c.bloq : false;
+  }
+}
+// Uso: if (await _auth.recusarSeBloqueado(req, res, _ga)) return;
+async function recusarSeBloqueado(req, res, ga) {
+  const u = ga && ga.user && ga.user.u;
+  if (!u || !(await estaBloqueado(u))) return false;
+  res.status(401).json({ error: "Acesso bloqueado.", bloqueado: true });
+  return true;
+}
+// set_active chama ao bloquear/liberar: nesta instância vale na hora (nas outras, em até 30 s)
+function esquecerBloqueio(userKey) { if (userKey) _cacheAtivo.delete(userKey); else _cacheAtivo.clear(); }
+
+module.exports = { sign, verify, tokenFrom, requireAuth, estaBloqueado, recusarSeBloqueado, esquecerBloqueio };

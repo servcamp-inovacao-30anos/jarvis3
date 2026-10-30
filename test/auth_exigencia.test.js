@@ -38,7 +38,8 @@ test("index.html é público: a cópia embutida da planilha vai vazia", () => {
 
 test("sessão vencida volta para o login, e depois do login a planilha é buscada de novo", () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8").replace(/\r\n/g, "\n");
-  assert.ok(html.includes('if(r&&r.status===401&&sessionStorage.getItem("logged")==="1")_sessaoExpirou();'));
+  assert.ok(html.includes('if(r&&r.status===401&&sessionStorage.getItem("logged")==="1")r.clone().json().then(function(j){_sessaoExpirou('));
+  assert.ok(html.includes('"Seu acesso foi bloqueado pelo administrador."'), "bloqueio na Configuração tem aviso próprio");
   assert.ok(html.includes('"Sua sessão expirou. Entre de novo."'));
   assert.ok(html.includes("if(!_dadosDoServidor&&typeof loadFromSupabase===\"function\")loadFromSupabase()"));
 });

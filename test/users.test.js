@@ -349,7 +349,8 @@ test("create_user: só admin; entra com a senha temporária, troca obrigatória 
   assert.ok(e2.dados.token, "depois da troca, entra com token");
   // inativo não entra
   sb.semear("mariadasilva", { ...[...sb.linhas.values()].find(l => l.user_key === "mariadasilva"), ativo: false });
-  assert.equal((await entrar("mariadasilva", "minha-senha-nova")).status, 401, "inativo não entra");
+  assert.equal((await entrar("mariadasilva", "minha-senha-nova")).status, 403, "inativo não entra (avisa bloqueado só com a senha certa)");
+  assert.equal((await entrar("mariadasilva", "senha-errada-9")).status, 401, "senha errada continua genérica");
 });
 
 test("criado pela tela com admin no banco também redefine senhas", async () => {
@@ -357,4 +358,57 @@ test("criado pela tela com admin no banco também redefine senhas", async () => 
   sb.semear("raphaelvictor", { custom_password: await _senha.hash("senha-antiga-1") });
   const r = await acao({ action: "admin_reset", userKey: "raphaelvictor" }, _auth.sign("chefe", SEGREDO, 1));
   assert.equal(r.status, 200);
+});
+
+// ── Configurações: bloquear e liberar acesso (só administrador) ──
+test("set_active: só admin, nunca a si mesmo nem o admin fixo, e só usuário que existe", async () => {
+  const ajusta = (userKey, ativo, token) => acao({ action: "set_active", userKey, ativo }, token);
+  assert.equal((await ajusta("raphaelvictor", false)).status, 403, "sem token");
+  assert.equal((await ajusta("raphaelvictor", false, comoComum())).status, 403, "não admin");
+  assert.equal((await ajusta("raphaelvictor", "false", comoAdmin())).status, 400, "ativo precisa ser booleano");
+  assert.equal((await ajusta("joaoygor", false, comoAdmin())).status, 400, "não bloqueia a si mesmo");
+  sb.semear("chefe", { nome: "Chefe", perms: { admin: true }, ativo: true, custom_password: await _senha.hash("x1234567") });
+  assert.equal((await ajusta("joaoygor", false, _auth.sign("chefe", SEGREDO, 1))).status, 400, "admin fixo não é bloqueado");
+  assert.equal((await ajusta("naoexiste", false, comoAdmin())).status, 404);
+});
+
+test("bloqueado não entra (aviso só com a senha certa), não troca senha, aparece na lista e volta ao liberar", async () => {
+  sb.semear("raphaelvictor", { custom_password: await _senha.hash("senha-dele-1"), must_change: false });
+  const b = await acao({ action: "set_active", userKey: "raphaelvictor", ativo: false }, comoAdmin());
+  assert.equal(b.status, 200);
+  assert.equal(b.dados.ativo, false);
+  const e = await entrar("raphaelvictor", "senha-dele-1");
+  assert.equal(e.status, 403);
+  assert.match(e.dados.error, /bloqueado/i);
+  assert.equal(e.dados.token, undefined, "bloqueado não recebe token");
+  assert.equal((await entrar("raphaelvictor", "senha-errada-1")).status, 401, "senha errada: mensagem genérica, sem revelar o bloqueio");
+  assert.equal((await trocar("raphaelvictor", "senha-dele-1", "outra-senha-2")).status, 403, "bloqueado não troca a senha");
+  const lista = await chamar("GET", { query: { all: "1" }, token: comoAdmin() });
+  assert.equal(lista.dados.users.find(u => u.user_key === "raphaelvictor").ativo, false, "a Configuração enxerga o bloqueio");
+  // senha preservada: bloquear não apaga a senha
+  const l = await acao({ action: "set_active", userKey: "raphaelvictor", ativo: true }, comoAdmin());
+  assert.equal(l.status, 200);
+  const e2 = await entrar("raphaelvictor", "senha-dele-1");
+  assert.equal(e2.status, 200, "liberado entra de novo com a mesma senha");
+  assert.ok(e2.dados.token);
+});
+
+test("bloquear usuário fixo que nunca entrou cria a linha só com o bloqueio", async () => {
+  const r = await acao({ action: "set_active", userKey: "sandraalves", ativo: false }, comoAdmin());
+  assert.equal(r.status, 200);
+  const linha = [...sb.linhas.values()].find(l => l.user_key === "sandraalves");
+  assert.equal(linha.ativo, false);
+  assert.equal(linha.custom_password, null, "não inventa senha");
+  assert.equal((await entrar("sandraalves", PADRAO)).status, 403, "nem com a senha padrão");
+});
+
+test("create_user: nome e cargo só com texto (aparecem no painel de todos)", async () => {
+  assert.equal((await acao({ action: "create_user", nome: "Maria <img src=x onerror=alert(1)>", cargo: "" }, comoAdmin())).status, 400, "HTML no nome");
+  assert.equal((await acao({ action: "create_user", nome: "Maria da Silva", cargo: "<b>Chefe</b>" }, comoAdmin())).status, 400, "HTML no cargo");
+  assert.equal((await acao({ action: "create_user", nome: "Ana D'Ávila-Souza", cargo: "Auxiliar ADM (RH) / Financeiro" }, comoAdmin())).status, 200, "acentos, apóstrofo, hífen e parênteses valem");
+});
+
+test("GET ?all=1 (com quem está bloqueado) é só para administrador", async () => {
+  assert.equal((await chamar("GET", { query: { all: "1" }, token: comoComum() })).status, 403, "não admin");
+  assert.equal((await chamar("GET", { query: { all: "1" }, token: comoAdmin() })).status, 200, "admin");
 });

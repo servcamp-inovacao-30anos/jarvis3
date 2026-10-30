@@ -6,6 +6,8 @@ const _auth = require("./_auth");
 module.exports = async function handler(req, res) {
   const _ga = _auth.requireAuth(req);
   if (!_ga.ok) return res.status(401).json({ error: "Não autenticado." });
+  // bloqueado na Configuração: o batimento do front recebe 401 e a tela volta ao login
+  if (await _auth.recusarSeBloqueado(req, res, _ga)) return;
   const SUPABASE_URL = process.env.SUPABASE_URL;
   const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!SUPABASE_URL || !KEY) {

@@ -44,6 +44,7 @@ const _auth = require("./_auth");
 module.exports = async function handler(req, res) {
   const _ga = _auth.requireAuth(req);
   if (!_ga.ok) return res.status(401).json({ error: "Não autenticado." });
+  if (await _auth.recusarSeBloqueado(req, res, _ga)) return; // bloqueado na Configuração (inclui chave do Excel)
   const SUPABASE_URL = process.env.SUPABASE_URL;
   const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 

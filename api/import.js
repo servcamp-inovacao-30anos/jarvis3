@@ -104,6 +104,7 @@ module.exports = async function handler(req, res) {
   } else {
     const _ga = _auth.requireAuth(req);
     if (!_ga.ok) return res.status(401).json({ error: "Não autenticado." });
+    if (await _auth.recusarSeBloqueado(req, res, _ga)) return; // bloqueado na Configuração
   }
 
   // ── obter os dados já interpretados ───────────────────────────────────────

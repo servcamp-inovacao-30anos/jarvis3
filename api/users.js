@@ -46,6 +46,9 @@ function senhaTemporaria() {
 }
 // Usuário criado pela tela: existe só no banco (tem nome lá).
 function criadoPelaTela(row) { return !!(row && row.nome); }
+// Bloqueado pela tela de Configurações (vale para fixos e para criados pela tela).
+function bloqueado(row) { return !!(row && row.ativo === false); }
+const MSG_BLOQUEADO = "Seu acesso está bloqueado. Fale com o administrador.";
 
 // Senha inicial própria de quem ainda não tem senha no banco (entra no lugar da padrão e sem troca
 // obrigatória). Fica aqui só o HASH, nunca a senha. Quando a senha for gravada no banco
@@ -97,7 +100,7 @@ module.exports = async function handler(req, res) {
       try { r = await lerUsuario(userKey); } catch (e) {
         return { erro: "Não foi possível conferir a senha agora. Tente novamente.", status: 502 };
       }
-      if (!criadoPelaTela(r) || r.ativo === false || !r.custom_password) return { ok: false };
+      if (!criadoPelaTela(r) || !r.custom_password) return { ok: false };
       return { ok: await _senha.verify(senha, r.custom_password), row: r };
     }
     let row;
@@ -157,6 +160,8 @@ module.exports = async function handler(req, res) {
     if (req.query.all === "1") {
       const _ga = _auth.requireAuth(req);
       if (!_ga.ok) return res.status(401).json({ error: "Não autenticado." });
+      // a lista (com quem está bloqueado) é da tela de Configurações: só administrador
+      if (_ga.enforced && !(await adminDoToken())) return res.status(403).json({ error: "Só administradores." });
       const url = `${TABELA}?select=*`;
       const resp = await fetch(url, { headers });
       if (!resp.ok) return res.status(resp.status).json({ error: "Erro ao consultar Supabase." });
@@ -169,7 +174,7 @@ module.exports = async function handler(req, res) {
         login_count: r.login_count || 0,
         updated_at: r.updated_at || null,
         // criados pela tela de Configurações: o perfil mora no banco
-        ...(r.nome ? { nome: r.nome, cargo: r.cargo || null, perms: r.perms || {}, ativo: r.ativo !== false } : {})
+        ...(r.nome ? { nome: r.nome, cargo: r.cargo || null, perms: r.perms || {}, ativo: r.ativo !== false } : (r.ativo === false ? { ativo: false } : {}))
       }));
       return res.status(200).json({ users: safe });
     }
@@ -194,6 +199,8 @@ module.exports = async function handler(req, res) {
       const c = await conferirSenha(userKey, password);
       if (c.erro) return res.status(c.status).json({ ok: false, error: c.erro });
       if (!c.ok) return res.status(401).json({ ok: false, error: "Usuário ou senha incorretos" });
+      // bloqueado na tela de Configurações: só avisa depois da senha certa
+      if (bloqueado(c.row)) return res.status(403).json({ ok: false, error: MSG_BLOQUEADO });
       const emTextoClaro = !!(c.row && c.row.custom_password) && !_senha.isHash(c.row.custom_password);
       await Promise.all([
         emTextoClaro ? converterParaHash(userKey, password) : null,
@@ -246,6 +253,8 @@ module.exports = async function handler(req, res) {
       if (nome.length < 3 || nome.length > 80) return res.status(400).json({ error: "Informe o nome completo (3 a 80 caracteres)." });
       const chave = chaveDe(nome);
       if (chave.length < 3) return res.status(400).json({ error: "O nome precisa ter letras." });
+      if (!/^[\p{L} .'-]+$/u.test(nome)) return res.status(400).json({ error: "Use só letras no nome (sem números ou símbolos)." });
+      if (!/^[\p{L}\p{N} .,'()&\/-]*$/u.test(cargo)) return res.status(400).json({ error: "Use só letras e números no cargo." });
       let row;
       try { row = await lerUsuario(chave); } catch (e) { return res.status(502).json({ error: "Erro ao consultar Supabase." }); }
       if (USUARIOS.indexOf(chave) >= 0 || row) return res.status(409).json({ error: "Já existe um usuário com esse nome." });
@@ -271,6 +280,34 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true, userKey: chave, nome, senha });
     }
 
+    // Bloquear ou liberar o acesso (só administrador). Bloqueado não entra, e quem
+    // já está com o painel aberto cai no próximo batimento do /api/hq (~15 s).
+    // Ninguém bloqueia a si mesmo nem um administrador fixo: o sistema não pode
+    // ficar sem ninguém que consiga liberar os outros.
+    if (body.action === "set_active") {
+      const admin = await adminDoToken();
+      if (!admin) return res.status(403).json({ error: "Só administradores podem bloquear ou liberar acessos." });
+      if (!userKey) return res.status(400).json({ error: "userKey é obrigatório." });
+      if (typeof body.ativo !== "boolean") return res.status(400).json({ error: "ativo deve ser true ou false." });
+      if (!body.ativo && userKey === admin) return res.status(400).json({ error: "Você não pode bloquear o seu próprio acesso." });
+      if (!body.ativo && ADMINS.indexOf(userKey) >= 0) return res.status(400).json({ error: "Este administrador não pode ser bloqueado." });
+      let row;
+      try { row = await lerUsuario(userKey); } catch (e) { return res.status(502).json({ error: "Erro ao consultar Supabase." }); }
+      if (USUARIOS.indexOf(userKey) < 0 && !criadoPelaTela(row)) return res.status(404).json({ error: "Usuário não encontrado." });
+      const resp = await fetch(TABELA, {
+        method: "POST",
+        headers: { ...headers, Prefer: "resolution=merge-duplicates,return=minimal" },
+        body: JSON.stringify({ user_key: userKey, ativo: body.ativo, updated_at: new Date().toISOString() })
+      });
+      if (!resp.ok) {
+        console.error("users: erro ao bloquear/liberar", resp.status, (await resp.text()).slice(0, 200));
+        return res.status(502).json({ error: "Erro ao salvar." });
+      }
+      _auth.esquecerBloqueio(userKey);
+      console.log("users:", body.ativo ? "acesso liberado" : "acesso bloqueado", userKey, "por", admin);
+      return res.status(200).json({ ok: true, userKey, ativo: body.ativo });
+    }
+
     // Troca de senha: exige a senha atual — a própria, ou a padrão no primeiro
     // acesso. Sem essa prova ninguém troca a senha de ninguém. Sem "action" é o
     // formato antigo do front, que agora também precisa da senha atual.
@@ -284,6 +321,7 @@ module.exports = async function handler(req, res) {
       const c = await conferirSenha(userKey, atual);
       if (c.erro) return res.status(c.status).json({ error: c.erro });
       if (!c.ok) return res.status(401).json({ error: "Senha atual incorreta." });
+      if (bloqueado(c.row)) return res.status(403).json({ error: MSG_BLOQUEADO });
       if (nova === atual) return res.status(400).json({ error: "A nova senha precisa ser diferente da atual." });
       // a senha padrão é compartilhada: não pode virar a senha própria de ninguém
       const padrao = process.env.DEFAULT_PASSWORD_HASH;
@@ -309,7 +347,7 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true, token: secret ? _auth.sign(userKey, secret, 12) : null });
     }
 
-    return res.status(400).json({ error: "action inválida (use authenticate, change_password, admin_reset ou create_user)." });
+    return res.status(400).json({ error: "action inválida (use authenticate, change_password, admin_reset, create_user ou set_active)." });
   }
 
   res.setHeader("Allow", "GET, POST");

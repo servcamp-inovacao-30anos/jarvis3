@@ -2,6 +2,7 @@ const _auth = require("./_auth");
 module.exports = async function handler(req, res) {
   const _ga = _auth.requireAuth(req);
   if (!_ga.ok) return res.status(401).json({ error: "Não autenticado." });
+  if (await _auth.recusarSeBloqueado(req, res, _ga)) return; // bloqueado na Configuração (inclui chave do Excel)
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Use POST" });
   }
