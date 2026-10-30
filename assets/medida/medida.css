@@ -555,3 +555,32 @@ html[data-theme="dark"] .md-rod-txt>b{color:#fff}
   #pg-faltasmed .fm-acoes{width:100%}
   #pg-faltasmed .fm-acoes .fm-btn{flex:1 1 auto;justify-content:center}
 }
+
+/* ── celular: o documento em coluna de texto, campos de 16 px (o iPhone não dá zoom ao tocar), botões de 48 px e o
+   botão principal sempre à vista, no rodapé ── */
+.md-leitura{width:100%}
+.md-leitura .md-papel{width:100%;box-shadow:none;border-radius:12px;transform:none!important}
+.md-leitura .md-doc{width:auto;min-height:0;padding:22px 18px 26px;font-size:16px;line-height:1.6;box-sizing:border-box}
+.md-leitura .md-doc .logo svg{width:190px}
+.md-leitura .md-doc p,.md-leitura .md-doc .mv{text-align:left} /* justificado em coluna estreita abre buracos entre as palavras */
+.md-leitura .md-doc .ass{grid-template-columns:1fr;gap:26px}
+.md-leitura .md-doc .rod{position:static;margin-top:26px;flex-wrap:wrap}
+.md-leitura .md-doc .lc{flex-wrap:wrap;gap:6px 14px}
+@media (max-width:760px){
+  .md-prev-h{flex-wrap:wrap;position:static}
+  .md-prev-h .md-b{min-height:44px}
+}
+@media (max-width:560px){
+  .md-in,.md-ta,.md-step input{font-size:16px}
+  .md-in{min-height:48px}
+  .md-tipo,.md-chip,.md-res{min-height:48px}
+  .md-rod{position:sticky;bottom:0;z-index:3;padding-bottom:max(12px,env(safe-area-inset-bottom));box-shadow:0 -6px 16px -10px rgba(13,31,53,.35)}
+  .md-rod-txt{flex:1 1 100%}
+  .md-rod .md-b{min-height:48px;flex:1 1 40%}
+  .md-hd{padding-top:max(10px,env(safe-area-inset-top))}
+}
+/* a regra de duas colunas mais acima vem depois da de tela pequena e a anulava: no celular a prévia ficava com 0 de largura */
+@media (max-width:1000px){
+  .md-corpo{grid-template-columns:minmax(0,1fr);grid-auto-rows:max-content;align-content:start} /* cada bloco do tamanho do que tem dentro; quem rola é a janela */
+  .md-prev{padding:14px 12px 24px}
+}

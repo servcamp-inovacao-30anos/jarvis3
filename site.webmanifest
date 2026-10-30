@@ -5,6 +5,7 @@
   "description": "Painel de gestão operacional do Grupo ServCamp: faltas, coberturas, checklist, RH e comercial.",
   "start_url": "/",
   "scope": "/",
+  "launch_handler": { "client_mode": ["navigate-existing", "auto"] },
   "display": "standalone",
   "orientation": "any",
   "lang": "pt-BR",

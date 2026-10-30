@@ -661,3 +661,108 @@ test("teste de várias áreas: só as escolhidas, quantas quiser; sem lista vão
   const todas = await pedir({ para: ["j@exemplo.com.br"] });
   assert.ok(todas.body.areas >= 4 && enviados.length === todas.body.areas, "sem lista, todas");
 });
+
+// ── comunicado semanal dentro do painel ─────────────────────────────────────
+const faltasApi = (t, o) => chamar(rh, { ...o, query: { modulo: "faltas", t, ...(o && o.query) } });
+const oficial = () => api("enviar", { method: "POST", usuario: RESP, body: { areas: ["JEAN KLEBER", "FRANK PIMENTEL"], copias: [], confirmar: true } });
+const copiasDoComunicado = t => t.fm_auditoria.filter(e => e.acao === "FALTAS_EMAIL_COMUNICADO");
+
+test("comunicado: o envio oficial guarda uma cópia por área, separada do registro do envio", async () => {
+  const t = base();
+  const r = await oficial();
+  assert.equal(r.body.enviados, 2, JSON.stringify(r.body));
+  const cs = copiasDoComunicado(t);
+  assert.equal(cs.length, 2);
+  const jean = cs.find(c => c.depois.area === "JEAN KLEBER");
+  assert.equal(jean.chave, "2026-10-19|JEAN KLEBER");
+  assert.equal(jean.depois.semana, "2026-10-19");
+  assert.equal(jean.depois.colaboradores, jean.depois.linhas.length);
+  assert.ok(jean.depois.linhas.length >= 1);
+  const ana = jean.depois.linhas.find(l => l.re === 101);
+  assert.deepEqual(ana.datas, ["2026-10-20", "2026-10-22"], "as datas do e-mail");
+  assert.ok(ana.hist && typeof ana.hist.txt === "string", "o histórico do ano vai junto, como no e-mail");
+  // o registro do envio continua leve: é lido inteiro a cada abertura do painel do aviso
+  envios(t).forEach(e => assert.equal(e.depois.linhas, undefined, "o envio não carrega o comunicado"));
+  assert.ok(JSON.stringify(envios(t)).length < JSON.stringify(cs).length, "a cópia pesada fica fora do registro do envio");
+});
+
+test("comunicado: supervisor abre o da própria área; o de outra área e o inexistente dão a mesma resposta", async () => {
+  const t = base();
+  await oficial();
+  const lista = await faltasApi("comunicados", { usuario: "jeankleber" });
+  assert.equal(lista.statusCode, 200, JSON.stringify(lista.body));
+  assert.deepEqual(lista.body.comunicados.map(c => c.area), ["JEAN KLEBER"], "só a área dele");
+  assert.equal(lista.body.comunicados[0].linhas, undefined, "a lista é leve: sem as linhas");
+  const q = { semana: "2026-10-19", area: "JEAN KLEBER" };
+  const meu = await faltasApi("comunicado", { usuario: "jeankleber", query: q });
+  assert.equal(meu.statusCode, 200);
+  assert.ok(meu.body.comunicado.linhas.some(l => l.re === 101));
+  const alheio = await faltasApi("comunicado", { usuario: "jeankleber", query: { semana: "2026-10-19", area: "FRANK PIMENTEL" } });
+  const nenhum = await faltasApi("comunicado", { usuario: "jeankleber", query: { semana: "2026-10-19", area: "NAO EXISTE" } });
+  assert.equal(alheio.statusCode, 404);
+  assert.equal(nenhum.statusCode, 404);
+  assert.deepEqual(alheio.body, nenhum.body, "não revela se a área existe");
+  assert.equal((await faltasApi("comunicado", { usuario: "jeankleber", query: { semana: "x", area: "JEAN KLEBER" } })).statusCode, 404);
+  // quem não gera medida nem entra
+  assert.equal((await faltasApi("comunicado", { usuario: "eduardocipriano", query: q })).statusCode, 403);
+  assert.equal((await faltasApi("comunicados", {})).statusCode, 401, "sem login");
+  // a coordenação vê todas as áreas
+  const coord = await faltasApi("comunicados", { usuario: RESP });
+  assert.deepEqual(coord.body.comunicados.map(c => c.area).sort(), ["FRANK PIMENTEL", "JEAN KLEBER"]);
+});
+
+test("comunicado: se houver mais de uma cópia da mesma semana e área, vale a mais recente e a lista traz uma só", async () => {
+  const t = base();
+  await oficial();
+  const velha = copiasDoComunicado(t).find(c => c.depois.area === "JEAN KLEBER");
+  // um segundo envio oficial da mesma semana (o manual pode se repetir) grava outra cópia, com id maior
+  t.fm_auditoria.push({ ...velha, id: 9999, criado_em: "2026-10-26T18:00:00Z", depois: { ...velha.depois, qtd: 99, enviadoEm: "2026-10-26T18:00:00Z" } });
+  const lista = await faltasApi("comunicados", { usuario: RESP });
+  assert.equal(lista.body.comunicados.length, 2, "uma por área");
+  assert.equal(lista.body.comunicados.find(c => c.area === "JEAN KLEBER").qtd, 99, "a mais recente");
+  const um = await faltasApi("comunicado", { usuario: "jeankleber", query: { semana: "2026-10-19", area: "JEAN KLEBER" } });
+  assert.equal(um.body.comunicado.qtd, 99);
+});
+
+test("comunicado: abrir fica registrado uma vez por supervisor; a coordenação olhando não conta; o painel do aviso mostra", async () => {
+  const t = base();
+  await oficial();
+  const q = { semana: "2026-10-19", area: "JEAN KLEBER" };
+  const antes = await api("painel", { usuario: RESP });
+  assert.equal(antes.body.areas.find(a => a.area === "JEAN KLEBER").aberto, null, "ainda ninguém abriu");
+  await faltasApi("comunicado", { usuario: RESP, query: q });
+  assert.equal(t.fm_auditoria.filter(e => e.acao === "FALTAS_COMUNICADO_ABERTO").length, 0, "a coordenação olhando não conta como leitura");
+  await faltasApi("comunicado", { usuario: "jeankleber", query: q });
+  await faltasApi("comunicado", { usuario: "jeankleber", query: q });
+  const abertos = t.fm_auditoria.filter(e => e.acao === "FALTAS_COMUNICADO_ABERTO");
+  assert.equal(abertos.length, 1, "abrir de novo não grava de novo");
+  assert.equal(abertos[0].ator, "jeankleber");
+  assert.equal(abertos[0].chave, "2026-10-19|JEAN KLEBER");
+  const depois = await api("painel", { usuario: RESP });
+  assert.equal(depois.body.areas.find(a => a.area === "JEAN KLEBER").aberto.por, "jeankleber");
+  assert.equal(depois.body.areas.find(a => a.area === "FRANK PIMENTEL").aberto, null, "a outra área não abriu");
+});
+
+test("comunicado: se a cópia não grava, o e-mail já enviado continua valendo", async () => {
+  const t = base();
+  supabaseFalso(t, { falhar: (m, tabela) => m === "POST" && tabela === "fm_auditoria" && false });
+  const original = global.fetch;
+  global.fetch = async (url, init = {}) => {
+    if ((init.method || "GET") === "POST" && String(url).includes("fm_auditoria") && String(init.body || "").includes("FALTAS_EMAIL_COMUNICADO")) return { ok: false, status: 500, json: async () => ({}), text: async () => "falha" };
+    return original(url, init);
+  };
+  const r = await oficial();
+  assert.equal(r.body.enviados, 2, "os dois e-mails foram marcados como enviados");
+  assert.equal(copiasDoComunicado(t).length, 0);
+  assert.equal(envios(t).length, 2);
+});
+
+test("o botão do e-mail abre o comunicado da semana, com um link só e sem nada do caso na URL", async () => {
+  base({ extras: [reg("FALTAS_EMAIL_LINK", "link", { link: "https://painel.exemplo.com.br" })] });
+  await oficial();
+  const m = para("jean@exemplo.com.br")[0];
+  const links = [...m.html.matchAll(/href="(https:\/\/painel\.exemplo\.com\.br[^"]*)"/g)].map(x => x[1]);
+  assert.ok(links.length >= 1);
+  [...new Set(links.map(l => l.replace(/&amp;/g, "&")))].forEach(l => assert.equal(l, "https://painel.exemplo.com.br/?pg=faltassup&aba=COMUNICADO", "um único endereço, sem RE, nome ou data"));
+  assert.ok(!/ANA PAULA|\b101\b/.test(links.join(" ")));
+});

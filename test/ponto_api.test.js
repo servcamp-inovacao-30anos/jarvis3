@@ -96,8 +96,9 @@ test("api/rh.js desvia ?modulo=ponto para o módulo de ponto", async () => {
   const r = await chamar(rh, { query: { modulo: "ponto", t: "contatos" }, usuario: "outra.pessoa" });
   assert.equal(r.statusCode, 403);
   assert.equal(r.body.codigo, "NAO_AUTORIZADO");
-  // só a conferência de bloqueio (app_users) acontece antes da recusa; nenhum dado do ponto é lido
-  assert.equal(log.filter(l => l.tabela !== "app_users").length, 0);
+  // só a conferência de acesso (bloqueio em app_users e encerramento de sessões na fm_auditoria) acontece antes da recusa; nenhum dado do ponto é lido
+  const doAcesso = l => l.tabela === "app_users" || (l.tabela === "fm_auditoria" && l.query.includes("SESSAO_REVOGADA"));
+  assert.equal(log.filter(l => !doAcesso(l)).length, 0);
 });
 
 test("carga vazia é recusada", async () => {

@@ -46,6 +46,7 @@ const faltasMod = require("./_faltas");
 const HTML = require("./_faltas_email_html");
 const LOGO = require("./_faltas_email_logo");
 const MD = require("./_medida_regras");
+const COM = require("./_comunicado");
 
 // Só a conta do Raphael envia à mão, cadastra e-mails e liga o automático (pedido dele).
 // A checagem é AQUI, no servidor: esconder o botão na tela é conveniência, não segurança.
@@ -296,7 +297,9 @@ async function lerLink(db) {
   const v = ev && ev.depois && ev.depois.link;
   return v && LINK_OK.test(v) ? v : null;
 }
-const linkDaTela = base => (base ? base + "/?pg=faltassup" : null); // abre as faltas em aberto da área, onde fica "Gerar medida"
+// O botão do e-mail abre o comunicado da semana no painel (o mesmo do e-mail, como foi enviado), onde cada colaborador tem o "Gerar medida".
+// É um link só e sem nada do caso: nome, RE e motivo nunca vão no endereço, e a checagem de área é do servidor.
+const linkDaTela = base => (base ? base + "/?pg=faltassup&aba=COMUNICADO" : null);
 
 // Uma linha por colaborador, com todas as datas de falta dele (pedido do Raphael);
 // os dados do posto/cargo/escala são os da falta mais recente.
@@ -475,6 +478,10 @@ async function enviarSemana(db, { semana, escolhidas, copias, origem, ator, agor
         qtd: m.faltas.length, colaboradores: m.linhas.length, atualizacoes: m.atualizacoes ? m.atualizacoes.itens.length : 0,
         faltas: m.faltas.map(f => ({ re: f.re, data: f.data, nome: f.nome || null }))
       })]);
+      // a cópia do comunicado, para o supervisor abrir no painel o mesmo que recebeu; se não gravar, o e-mail já saiu e vale
+      try {
+        await COM.guardar(db, ator, { semana: semana.inicio, area: a.area, nome: a.nome, inicio: semana.inicio, fim: semana.fim, origem, qtd: m.faltas.length, colaboradores: m.linhas.length, linhas: m.linhas, atualizacoes: m.atualizacoes });
+      } catch (e) { console.error("[faltas-email] cópia do comunicado não gravada para a área " + a.area + ": " + (e && e.message ? e.message : e)); }
       tot.enviados++;
       tot.faltas += m.faltas.length;
       if (!m.faltas.length) tot.semFaltas++;
@@ -584,7 +591,7 @@ async function verPainel({ req, res, db, ator }) {
     const [u] = await db.obter(`fm_auditoria?select=depois&acao=eq.${ACAO_LINK}&order=id.desc&limit=1`);
     if (!(u && u.depois && u.depois.link === origem)) await db.inserir("fm_auditoria", [ev(ator, ACAO_LINK, "link", { link: origem }, u ? u.depois : null)]);
   }
-  const [areas, faltas, copias, auto, agenda, envios, historico, conta, assinatura, resumo, link] = await Promise.all([
+  const [areas, faltas, copias, auto, agenda, envios, historico, conta, assinatura, resumo, link, abertos] = await Promise.all([
     lerAreas(db, hoje),
     faltasDoPeriodo(db, semana.inicio, semana.fim, fimDoDiaSP(semana.fim)),
     lerCopias(db),
@@ -595,7 +602,8 @@ async function verPainel({ req, res, db, ator }) {
     lerConta(db),
     lerAssinatura(db),
     lerResumo(db),
-    lerLink(db)
+    lerLink(db),
+    COM.aberturas(db, semana.inicio)
   ]);
   const estResumo = estadoEnvio(envios.filter(e => e.chave === semana.inicio + "|" + CHAVE_RESUMO), Date.now());
   const porChave = new Map();
@@ -612,6 +620,7 @@ async function verPainel({ req, res, db, ator }) {
       area: a.area, nome: a.nome, email: a.email, saudacao: a.saudacao,
       faltas: minhas.length, colaboradores: new Set(minhas.map(f => String(f.re))).size, status,
       enviado: env ? { em: env.criado_em, origem: env.depois.origem, por: env.ator, cc: env.depois.cc || [] } : null,
+      aberto: abertos.get(semana.inicio + "|" + a.area) || null, // quando o supervisor abriu o comunicado no painel (null = ainda não)
       falha: !env && est.ultimaFalha ? { em: est.ultimaFalha.criado_em, erro: est.ultimaFalha.depois.erro } : null
     };
   });

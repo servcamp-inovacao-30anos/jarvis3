@@ -1,0 +1,47 @@
+/* Comunicado semanal dentro do painel (assets/comunicado/comunicado.js). Usa as cores de assets/medida/medida.css,
+   claro e escuro. Celular primeiro: uma coluna, botão de 48 px; a partir de 760 px os cartões ficam em duas colunas. */
+.co{display:flex;flex-direction:column;gap:12px;padding-top:14px}
+.co-sels{display:flex;flex-wrap:wrap;gap:10px}
+.co-sel{display:flex;flex-direction:column;gap:4px;font-size:.7rem;font-weight:700;color:var(--md-mut);text-transform:uppercase;letter-spacing:.4px;flex:1 1 180px}
+.co-sel select{min-height:44px;padding:0 12px;border:1px solid var(--md-ln);border-radius:10px;background:var(--md-bg);color:var(--md-tx);font:inherit;font-size:16px;text-transform:none;letter-spacing:0;font-weight:600}
+.co-top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+.co-top h4{margin:0;font-size:1.02rem;color:var(--md-tx)}
+.co-top p{margin:3px 0 0;font-size:.8rem;color:var(--md-mut)}
+.co-n{display:flex;align-items:baseline;gap:6px;font-size:.74rem;color:var(--md-mut)}
+.co-n b{font-size:1.25rem;color:var(--md-pri)}
+.co-n span+b{margin-left:10px}
+.co-nota{margin:0;padding:9px 12px;border-radius:10px;background:var(--md-prisf);color:var(--md-tx2);font-size:.78rem;line-height:1.45}
+.co-c{background:var(--md-bg);border:1px solid var(--md-ln);border-radius:14px;padding:14px 14px 12px;display:flex;flex-direction:column;gap:8px}
+.co-c header{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 10px}
+.co-c header b{font-size:.98rem;color:var(--md-tx)}
+.co-c header span{font-size:.76rem;color:var(--md-mut);font-weight:600}
+.co-meta{font-size:.76rem;color:var(--md-mut);line-height:1.4}
+.co-rot{font-size:.66rem;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--md-mut)}
+.co-dts{display:flex;flex-wrap:wrap;gap:6px}
+.co-dt{display:inline-flex;align-items:center;min-height:28px;padding:0 10px;border-radius:8px;background:var(--md-erbg);border:1px solid var(--md-erbd);color:var(--md-er);font-size:.78rem;font-weight:700}
+.co-h{display:flex;flex-direction:column;gap:3px;padding:9px 11px;border-radius:10px;background:var(--md-sf);font-size:.78rem;color:var(--md-tx2);line-height:1.4}
+.co-h b{color:var(--md-tx)}
+.co-h .md-pill{align-self:flex-start;margin-top:3px}
+.co-c footer{display:flex;flex-direction:column;gap:10px;margin-top:2px;padding-top:10px;border-top:1px dashed var(--md-ln)}
+.co-sit{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.co-st{display:inline-flex;align-items:center;min-height:24px;padding:0 10px;border-radius:12px;font-size:.72rem;font-weight:700;border:1px solid transparent}
+.co-st.abe{background:var(--md-ambg);border-color:var(--md-ambd);color:var(--md-am)}
+.co-st.ok{background:var(--md-okbg);border-color:var(--md-okbd);color:var(--md-ok)}
+.co-st.mut{background:var(--md-grbg);color:var(--md-gr)}
+.co-gerar{min-height:48px;width:100%;font-size:.9rem}
+.co-vz{display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:22px 16px;border:1px dashed var(--md-ln);border-radius:14px;color:var(--md-mut);font-size:.84rem;line-height:1.5}
+.co-vz b{color:var(--md-tx);font-size:.95rem}
+.co-at{background:var(--md-bg);border:1px solid var(--md-ln);border-radius:14px;padding:14px}
+.co-at h5{margin:0 0 8px;font-size:.84rem;color:var(--md-tx)}
+.co-ai{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--md-ln2);font-size:.8rem;color:var(--md-tx2)}
+.co-ai:first-of-type{border-top:0}
+.co-ai small{display:block;color:var(--md-mut);margin-top:2px}
+.co-tag{flex:none;display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:11px;font-size:.66rem;font-weight:800;text-transform:uppercase;letter-spacing:.3px;background:var(--md-grbg);color:var(--md-gr)}
+.co-tag.nova{background:var(--md-erbg);color:var(--md-er)}
+.co-tag.medida{background:var(--md-okbg);color:var(--md-ok)}
+.co-tag.abonada{background:var(--md-prisf);color:var(--md-pri)}
+@media(min-width:760px){
+  .co{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
+  .co>.co-sels,.co>.co-top,.co>.co-nota,.co>.co-at,.co>.co-vz,.co>.md-alerta{grid-column:1/-1}
+  .co-gerar{width:auto;align-self:flex-start;min-height:40px}
+}

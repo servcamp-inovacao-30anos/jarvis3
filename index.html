@@ -12,6 +12,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0d1f35">
 <link rel="manifest" href="/site.webmanifest">
+<script src="/assets/sessao/sessao.js"></script>
 <!-- Leaflet (mapa). Vem do mesmo CDN já liberado para o Chart.js; o CSS e os
      tiles do OpenStreetMap precisaram entrar na política de segurança em
      vercel.json, senão o mapa carrega em branco sem erro visível. -->
@@ -582,6 +583,8 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
 .login-logo svg{filter:drop-shadow(0 2px 8px rgba(46,143,239,.3));}
 .login-subtitle{font-size:.72rem;color:rgba(255,255,255,.4);letter-spacing:1.5px;text-transform:uppercase;font-weight:600;margin-bottom:28px;}
 .login-field{position:relative;margin-bottom:16px;text-align:left;}
+.login-manter{display:flex;align-items:center;gap:9px;margin:-4px 0 14px;font-size:.78rem;color:rgba(255,255,255,.75);cursor:pointer;text-align:left;min-height:32px}
+.login-manter input{width:18px;height:18px;margin:0;accent-color:#2e8fef;flex:none}
 .login-field label{display:block;font-size:.65rem;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;}
 .login-field input{width:100%;padding:11px 14px 11px 38px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#fff;font-size:.85rem;outline:none;transition:border-color .2s,box-shadow .2s;}
 .login-field input:focus{border-color:rgba(46,143,239,.6);box-shadow:0 0 0 3px rgba(46,143,239,.15);}
@@ -792,6 +795,7 @@ aside.sb#sidebar.sb-mini #navRoot .ni{margin:2px 8px;padding:9px 0;}
         <span class="lf-ic">🔒</span>
         <input type="password" id="loginPass" placeholder="Digite sua senha" autocomplete="current-password">
       </div>
+      <label class="login-manter"><input type="checkbox" id="loginManter"> Manter conectado neste aparelho</label>
       <button type="submit" class="login-btn">Entrar</button>
       <div class="login-error" id="loginError"></div>
     </form>
@@ -820,6 +824,8 @@ aside.sb#sidebar.sb-mini #navRoot .ni{margin:2px 8px;padding:9px 0;}
       <div class="sb-perfil-on">Sistema Online</div>
       <a class="sb-perfil-senha" href="#" onclick="showForcePasswordChange(sessionStorage.getItem('userKey'),'voluntaria');return false">🔑 Trocar senha</a>
       <a class="sb-perfil-senha" id="sbFeEmail" href="#" style="display:none" onclick="feAbrir();return false">✉️ Aviso semanal por e-mail</a>
+      <a class="sb-perfil-senha" href="#" onclick="sessaoSair();return false">🚪 Sair</a>
+      <a class="sb-perfil-senha" href="#" onclick="sessaoSairDeTodos();return false">📵 Sair de todos os aparelhos</a>
     </div>
   </div>
   <nav id="navRoot">
@@ -3899,7 +3905,7 @@ function _normUser(s){return(s||"").toUpperCase().trim().normalize("NFD").replac
     // Login vencido (dura 12h) ou sessão antiga sem token: o servidor responde 401.
     // Em vez de deixar as telas vazias, volta para o login com o aviso.
     if(typeof url==="string"&&url.indexOf("/api/")===0&&url.indexOf("/api/users")!==0){
-      p.then(function(r){if(r&&r.status===401&&sessionStorage.getItem("logged")==="1")r.clone().json().then(function(j){_sessaoExpirou(j&&j.bloqueado?"Seu acesso foi bloqueado pelo administrador.":"");}).catch(function(){_sessaoExpirou("");});}).catch(function(){});
+      p.then(function(r){if(r&&r.status===401&&sessionStorage.getItem("logged")==="1")r.clone().json().then(function(j){_sessaoExpirou(j&&j.bloqueado?"Seu acesso foi bloqueado pelo administrador.":(j&&j.encerrada?"Sua sessão foi encerrada. Entre de novo.":""));}).catch(function(){_sessaoExpirou("");});}).catch(function(){});
     }
     return p;
   };
@@ -3914,7 +3920,7 @@ function _sessaoExpirou(msg){
   setTimeout(function(){_expirouAvisado=false;},2000);
 }
 // senha digitada no login, só em memória: é a prova que o servidor exige na troca obrigatória
-let _pwLogin="";
+let _pwLogin="",_manterLogin=false;
 async function doLogin(e){
   e.preventDefault();
   const u=_normUser(document.getElementById("loginUser").value);
@@ -3926,7 +3932,7 @@ async function doLogin(e){
   // a senha é conferida no servidor, que devolve o token assinado das APIs
   let ar=null;
   try{
-    const r=await fetch("/api/users",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"authenticate",userKey:u,password:p})});
+    const r=await fetch("/api/users",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"authenticate",userKey:u,password:p,manter:_manterLogin=!!(document.getElementById("loginManter")||{}).checked})});
     ar=await r.json().catch(()=>null);
   }catch(err){}
   if(btn){btn.disabled=false;btn.textContent="Entrar";}
@@ -4008,11 +4014,11 @@ async function _savePassword(userKey){
   btn.disabled=true;btn.textContent="Salvando...";
   try{
     // o servidor só troca com a senha atual (no primeiro acesso, a padrão digitada no login)
-    const r=await fetch("/api/users",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"change_password",userKey:userKey,currentPassword:atual,newPassword:p1})});
+    const r=await fetch("/api/users",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"change_password",userKey:userKey,currentPassword:atual,newPassword:p1,manter:_manterLogin||(typeof sessaoManter==="function"&&sessaoManter())})});
     const d=await r.json().catch(()=>({}));
     if(!r.ok||!d.ok){errEl.textContent=d.error||"Erro ao salvar senha.";btn.disabled=false;btn.textContent=lbl;return;}
     // quem acabou de definir a senha já sai autenticado (token no retorno)
-    if(d.token)sessionStorage.setItem("authToken",d.token);
+    if(d.token){sessionStorage.setItem("authToken",d.token);if(typeof sessaoAtualizar==="function")sessaoAtualizar();} // a cópia guardada no aparelho acompanha o token novo
     document.getElementById("pwChangeOverlay").remove();
     if(campoAtual){if(typeof hqToast==="function")hqToast("🔑 Senha alterada");return;}
     _pwLogin="";
@@ -19382,5 +19388,6 @@ document.addEventListener("DOMContentLoaded",init);
 <!-- Aviso semanal de faltas por e-mail: fora do index.html, que está no limite de tamanho -->
 <script src="/assets/faltas-email/faltas-email.js"></script>
 <link rel="stylesheet" href="/assets/medida/medida.css"><script src="/assets/medida/medida.js"></script>
+<link rel="stylesheet" href="/assets/comunicado/comunicado.css"><script src="/assets/comunicado/comunicado.js"></script>
 </body>
 </html>

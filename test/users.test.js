@@ -432,3 +432,106 @@ test("set_guias: só admin; guarda só guias válidas, ignora Configurações e 
   assert.equal((await g({}, comoAdmin())).status, 200, "voltar ao padrão");
   assert.deepEqual((await entrar("raphaelvictor", "senha-dele-1")).dados.guias, {});
 });
+
+// ── sessão salva no aparelho (manter conectado) ─────────────────────────────
+const HORA = 3600000;
+const pedidoCom = token => ({ headers: { authorization: "Bearer " + token } });
+// o que uma rota protegida faz: confere o token e depois o bloqueio/encerramento
+async function rotaProtegida(token, escopo) {
+  let status = 200, dados;
+  const res = { status(s) { status = s; return this; }, json(d) { dados = d; return this; } };
+  const ga = _auth.requireAuth(pedidoCom(token), escopo);
+  if (!ga.ok) return { status: 401, dados: { semToken: true } };
+  if (await _auth.recusarSeBloqueado(pedidoCom(token), res, ga)) return { status, dados };
+  return { status: 200, dados: {} };
+}
+async function semearRaphael() {
+  sb.semear("raphaelvictor", { custom_password: await _senha.hash("senha-dele-1"), must_change: false });
+}
+
+test("manter conectado: o servidor emite sessão de 30 dias marcada; sem marcar, segue 12 h", async () => {
+  await semearRaphael();
+  _auth.esquecerBloqueio();
+  const normal = (await entrar("raphaelvictor", "senha-dele-1")).dados;
+  const pn = _auth.verify(normal.token, SEGREDO);
+  assert.equal(pn.m, undefined);
+  assert.ok(Math.abs(pn.exp - pn.iat - 12 * HORA) < 1000, "12 h");
+  const salvo = (await chamar("POST", { body: { action: "authenticate", userKey: "raphaelvictor", password: "senha-dele-1", manter: true } })).dados;
+  const ps = _auth.verify(salvo.token, SEGREDO);
+  assert.equal(ps.m, 1);
+  assert.ok(Math.abs(ps.exp - ps.iat - 30 * 24 * HORA) < 1000, "30 dias");
+  const lixo = (await chamar("POST", { body: { action: "authenticate", userKey: "raphaelvictor", password: "senha-dele-1", manter: "sim" } })).dados;
+  assert.equal(_auth.verify(lixo.token, SEGREDO).m, undefined, "só o booleano true liga");
+});
+
+test("renew: devolve sessão nova de 30 dias; recusa sessão comum, token ruim, bloqueado e encerrada", async () => {
+  await semearRaphael();
+  const antiga = _auth.sign("raphaelvictor", SEGREDO, 30 * 24, { m: 1 });
+  const r = await chamar("POST", { body: { action: "renew" }, token: antiga });
+  assert.equal(r.status, 200);
+  const p = _auth.verify(r.dados.token, SEGREDO);
+  assert.equal(p.u, "raphaelvictor");
+  assert.equal(p.m, 1);
+  assert.ok(Math.abs(p.exp - Date.now() - 30 * 24 * HORA) < 5000, "volta a valer 30 dias a partir de agora");
+
+  assert.equal((await chamar("POST", { body: { action: "renew" } })).status, 401, "sem token");
+  assert.equal((await chamar("POST", { body: { action: "renew" }, token: _auth.sign("raphaelvictor", SEGREDO, -1, { m: 1 }) })).status, 401, "vencido");
+  assert.equal((await chamar("POST", { body: { action: "renew" }, token: _auth.sign("raphaelvictor", SEGREDO, 12) })).status, 400, "sessão comum não vira de 30 dias");
+  assert.equal((await chamar("POST", { body: { action: "renew" }, token: _auth.sign("raphaelvictor", "outra-chave", 24, { m: 1 }) })).status, 401, "assinatura de outra chave");
+  assert.equal((await chamar("POST", { body: { action: "renew" }, token: _auth.sign("raphaelvictor", SEGREDO, 24, { m: 1, s: "xl" }) })).status, 401, "chave do Excel não renova");
+
+  sb.semear("raphaelvictor", { ativo: false });
+  _auth.esquecerBloqueio();
+  const b = await chamar("POST", { body: { action: "renew" }, token: antiga });
+  assert.equal(b.status, 401);
+  assert.equal(b.dados.bloqueado, true, "bloqueado não renova");
+});
+
+test("sair de todos os aparelhos: sessões emitidas antes deixam de valer em qualquer rota; entrar de novo funciona", async () => {
+  await semearRaphael();
+  _auth.esquecerBloqueio();
+  const celular = _auth.sign("raphaelvictor", SEGREDO, 30 * 24, { m: 1 });
+  await new Promise(ok => setTimeout(ok, 5));
+  assert.equal((await rotaProtegida(celular)).status, 200, "antes de sair, vale");
+  const r = await chamar("POST", { body: { action: "logout_all" }, token: celular });
+  assert.equal(r.status, 200);
+  assert.equal(sb.auditoria.filter(e => e.acao === "SESSAO_REVOGADA" && e.chave === "raphaelvictor").length, 1);
+  const velho = await rotaProtegida(celular);
+  assert.equal(velho.status, 401);
+  assert.equal(velho.dados.encerrada, true);
+  assert.equal((await chamar("POST", { body: { action: "renew" }, token: celular })).status, 401, "a sessão encerrada também não se renova");
+  await new Promise(ok => setTimeout(ok, 5));
+  const novo = (await entrar("raphaelvictor", "senha-dele-1")).dados.token;
+  assert.equal((await rotaProtegida(novo)).status, 200, "o login depois do encerramento vale");
+  assert.equal((await chamar("POST", { body: { action: "logout_all" } })).status, 401, "sem token não encerra a sessão de ninguém");
+});
+
+test("a chave do Excel não é sessão de aparelho: sair de todos os aparelhos não a derruba", async () => {
+  await semearRaphael();
+  _auth.esquecerBloqueio();
+  const excel = _auth.sign("raphaelvictor", SEGREDO, 24 * 365, { s: "xl" });
+  await new Promise(ok => setTimeout(ok, 5));
+  await chamar("POST", { body: { action: "logout_all" }, token: _auth.sign("raphaelvictor", SEGREDO, 12) });
+  assert.equal((await rotaProtegida(excel, "xl")).status, 200);
+});
+
+test("trocar a senha encerra os outros aparelhos, mas o token devolvido na troca continua valendo", async () => {
+  await semearRaphael();
+  _auth.esquecerBloqueio();
+  const outroAparelho = _auth.sign("raphaelvictor", SEGREDO, 30 * 24, { m: 1 });
+  await new Promise(ok => setTimeout(ok, 5));
+  const r = await trocar("raphaelvictor", "senha-dele-1", "senha-nova-22");
+  assert.equal(r.status, 200);
+  assert.equal((await rotaProtegida(outroAparelho)).status, 401, "o outro aparelho cai");
+  assert.equal((await rotaProtegida(r.dados.token)).status, 200, "quem trocou segue logado");
+});
+
+test("administrador redefine a senha de alguém: as sessões salvas dessa pessoa caem", async () => {
+  await semearRaphael();
+  _auth.esquecerBloqueio();
+  const dele = _auth.sign("raphaelvictor", SEGREDO, 30 * 24, { m: 1 });
+  await new Promise(ok => setTimeout(ok, 5));
+  const r = await acao({ action: "admin_reset", userKey: "raphaelvictor" }, comoAdmin());
+  assert.equal(r.status, 200);
+  assert.equal((await rotaProtegida(dele)).status, 401);
+});
