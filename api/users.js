@@ -174,7 +174,8 @@ module.exports = async function handler(req, res) {
         login_count: r.login_count || 0,
         updated_at: r.updated_at || null,
         // criados pela tela de Configurações: o perfil mora no banco
-        ...(r.nome ? { nome: r.nome, cargo: r.cargo || null, perms: r.perms || {}, ativo: r.ativo !== false } : (r.ativo === false ? { ativo: false } : {}))
+        ...(r.nome ? { nome: r.nome, cargo: r.cargo || null, perms: r.perms || {}, ativo: r.ativo !== false } : (r.ativo === false ? { ativo: false } : {})),
+        ...(r.perms && r.perms.guias ? { guias: r.perms.guias } : {})
       }));
       return res.status(200).json({ users: safe });
     }
@@ -216,7 +217,9 @@ module.exports = async function handler(req, res) {
         token: secret && !mustChange ? _auth.sign(userKey, secret, 12) : null,
         grace: !secret,
         // criado pela tela: a tela não conhece o perfil, então ele vai junto
-        perfil: criadoPelaTela(c.row) ? { nome: c.row.nome, cargo: c.row.cargo || "", perms: c.row.perms || {} } : null
+        perfil: criadoPelaTela(c.row) ? { nome: c.row.nome, cargo: c.row.cargo || "", perms: c.row.perms || {} } : null,
+        // guias ligadas/desligadas na Configuração (valem por cima da regra do perfil)
+        guias: (c.row && c.row.perms && c.row.perms.guias) || null
       });
     }
 
@@ -278,6 +281,38 @@ module.exports = async function handler(req, res) {
       }
       console.log("users: usuário criado", chave, "por", admin);
       return res.status(200).json({ ok: true, userKey: chave, nome, senha });
+    }
+
+    // Guias que a pessoa vê (só administrador): { pagina: true|false } por cima da regra
+    // do perfil. Só o que difere do padrão é guardado; {} volta tudo ao padrão.
+    // Configurações fica de fora: nenhum administrador pode perder a tela que libera os outros.
+    if (body.action === "set_guias") {
+      const admin = await adminDoToken();
+      if (!admin) return res.status(403).json({ error: "Só administradores podem mudar as guias." });
+      if (!userKey) return res.status(400).json({ error: "userKey é obrigatório." });
+      const g = body.guias;
+      if (!g || typeof g !== "object" || Array.isArray(g)) return res.status(400).json({ error: "guias deve ser um objeto." });
+      const guias = {};
+      for (const [pg, v] of Object.entries(g)) {
+        if (!/^[a-z0-9]{2,24}$/.test(pg) || typeof v !== "boolean") return res.status(400).json({ error: "Guia inválida: " + String(pg).slice(0, 30) });
+        if (pg !== "config") guias[pg] = v;
+      }
+      if (Object.keys(guias).length > 80) return res.status(400).json({ error: "Guias demais." });
+      let row;
+      try { row = await lerUsuario(userKey); } catch (e) { return res.status(502).json({ error: "Erro ao consultar Supabase." }); }
+      if (USUARIOS.indexOf(userKey) < 0 && !criadoPelaTela(row)) return res.status(404).json({ error: "Usuário não encontrado." });
+      const perms = { ...((row && row.perms) || {}), guias };
+      const resp = await fetch(TABELA, {
+        method: "POST",
+        headers: { ...headers, Prefer: "resolution=merge-duplicates,return=minimal" },
+        body: JSON.stringify({ user_key: userKey, perms, updated_at: new Date().toISOString() })
+      });
+      if (!resp.ok) {
+        console.error("users: erro ao salvar guias", resp.status, (await resp.text()).slice(0, 200));
+        return res.status(502).json({ error: "Erro ao salvar." });
+      }
+      console.log("users: guias de", userKey, "alteradas por", admin, JSON.stringify(guias));
+      return res.status(200).json({ ok: true, userKey, guias });
     }
 
     // Bloquear ou liberar o acesso (só administrador). Bloqueado não entra, e quem
@@ -347,7 +382,7 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true, token: secret ? _auth.sign(userKey, secret, 12) : null });
     }
 
-    return res.status(400).json({ error: "action inválida (use authenticate, change_password, admin_reset, create_user ou set_active)." });
+    return res.status(400).json({ error: "action inválida (use authenticate, change_password, admin_reset, create_user, set_active ou set_guias)." });
   }
 
   res.setHeader("Allow", "GET, POST");

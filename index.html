@@ -3934,6 +3934,7 @@ async function doLogin(e){
   // criado pela tela de Configurações: o perfil (nome, cargo, permissões) vem do servidor
   if(ar.perfil){USERS[u]=Object.assign({nome:ar.perfil.nome,cargo:ar.perfil.cargo||"",admin:false},ar.perfil.perms||{});try{sessionStorage.setItem("userPerfil",JSON.stringify(USERS[u]));}catch(e){}}
   if(!USERS[u]){errEl.textContent="Usuário ou senha incorretos";return false;}
+  try{sessionStorage.setItem("userGuias",JSON.stringify(ar.guias||{}));}catch(e){}
   errEl.textContent="";
   // sem token = troca pendente (o token sai na troca) ou AUTH_SECRET ausente (modo graça)
   if(ar.token)sessionStorage.setItem("authToken",ar.token);else sessionStorage.removeItem("authToken");
@@ -4022,6 +4023,7 @@ async function _savePassword(userKey){
     btn.disabled=false;btn.textContent=lbl;
   }
 }
+function _guiasDoUsuario(){try{const g=JSON.parse(sessionStorage.getItem("userGuias")||"{}");return g&&typeof g==="object"?g:{};}catch(e){return{};}}
 function applyUserUI(){
   const isAdmin=sessionStorage.getItem("userAdmin")==="1";
   const isRh=sessionStorage.getItem("userRh")==="1";
@@ -4042,7 +4044,12 @@ function applyUserUI(){
     const isBdv=sessionStorage.getItem("userBdv")==="1";
     const navOk={rh:isAdmin||isRh,rhdash:isAdmin||isRh||isRhDash,com:isAdmin||isCom,comdash:isAdmin||isComDash,prj:isAdmin||isPrj,admin:isAdmin,qual:isAdmin||isQual,lig:isAdmin||isLig,metas:isAdmin||isMetas,fm:isAdmin||isFm,sup:isAdmin||isSup||isLig};
     navOk.bdv=isAdmin||isFm||isBdv;navOk.apres=sessionStorage.getItem("userKey")==="joaoygor"; // fora do literal: test/faltas_supervisao lê só ele
-  document.querySelectorAll('#navRoot [data-perm]').forEach(function(el){el.style.display=navOk[el.dataset.perm]?"":"none";});
+  // guias ligadas/desligadas para a pessoa na Configuração valem por cima da regra do perfil
+  const _g=_guiasDoUsuario();
+  document.querySelectorAll('#navRoot .ni[data-pg]').forEach(function(el){
+    const pg=el.dataset.pg,perm=el.dataset.perm,padrao=perm?!!navOk[perm]:true;
+    el.style.display=(pg!=="config"&&Object.prototype.hasOwnProperty.call(_g,pg)?!!_g[pg]:padrao)?"":"none";
+  });
   if(typeof navCatsAtualiza==="function")navCatsAtualiza(); // categoria sem itens visíveis some
   if(typeof sbPerfilRender==="function")sbPerfilRender();
   if(typeof navFavRender==="function")navFavRender(); // favoritos respeitam as permissões
@@ -4798,6 +4805,7 @@ function navTo(p,btn){
   if(p==="apres"&&!apPermitido()){p="visao";btn=null;}
   if(p==="bdvrel"&&!bdvPermitido()){p="coberturas";btn=null;}
   if(p==="fmrel"&&!fmPermitido()){p="visao";btn=null;}
+  {const _g=_guiasDoUsuario();if(p!=="visao"&&p!=="config"&&_g[p]===false){p="visao";btn=null;}}
   ST.pg=p;
   document.querySelectorAll(".ni").forEach(n=>n.classList.remove("active"));
   document.querySelectorAll('.ni[data-pg="'+(p==="fmrel"?"faltasmed":p)+'"]').forEach(function(n){
@@ -10851,6 +10859,63 @@ function cfgCriarUsuario(ev){
     .finally(()=>{btn.disabled=false;});
   return false;
 }
+/* Guias que cada pessoa vê. O padrão vem do perfil (permissões); aqui o administrador
+   liga ou desliga guia por guia. Só o que difere do padrão é salvo, e vale no próximo
+   login da pessoa. Configurações não entra: é a tela que libera os outros. */
+function cfgPadraoGuia(u,perm){
+  if(!perm)return true;
+  const a=!!u.admin;
+  const r={rh:a||u.rh,rhdash:a||u.rh||u.rhDash,com:a||u.com,comdash:a||u.comDash,prj:a||u.prj,admin:a,qual:a||u.qual,lig:a||u.lig,fm:a||u.fm,sup:a||u.sup||u.lig,bdv:a||u.fm||u.bdv,metas:a||u.metas};
+  return !!r[perm];
+}
+function cfgGuiasLista(){
+  const cats=[];
+  document.querySelectorAll("#navRoot .nav-cat").forEach(c=>{
+    const t=(c.querySelector(".nav-cat-t")||{}).textContent||"";
+    const itens=[...c.querySelectorAll(".ni[data-pg]")].filter(n=>n.dataset.pg!=="config").map(n=>{
+      const sp=n.querySelectorAll("span");return{pg:n.dataset.pg,perm:n.dataset.perm||"",nome:(sp[1]||sp[0]||n).textContent.trim()};
+    });
+    if(itens.length)cats.push({t:t.trim(),itens});
+  });
+  return cats;
+}
+function cfgGuias(k){
+  const u=USERS[k]||{nome:k},g=(CFG_AUDIT[k]&&CFG_AUDIT[k].guias)||{};
+  const cats=cfgGuiasLista();
+  const div=document.createElement("div");
+  div.id="cfgGuiasOv";
+  div.style.cssText="position:fixed;inset:0;background:rgba(13,31,53,.75);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px";
+  div.innerHTML='<div style="background:#fff;border-radius:16px;padding:22px 24px;max-width:640px;width:100%;max-height:88vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.35)">'+
+    '<div style="font-size:.72rem;font-weight:900;letter-spacing:.6px;text-transform:uppercase;color:#1e4d8c">👁️ Guias que '+_esc(u.nome)+' vê</div>'+
+    '<div style="font-size:.7rem;color:#64748b;margin:4px 0 14px">Marque para mostrar, desmarque para esconder. Vale a partir do próximo login. <span style="color:#b45309">●</span> = diferente do padrão do perfil.</div>'+
+    cats.map(c=>'<div style="margin-bottom:12px"><div style="font-size:.66rem;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:6px">'+_esc(c.t)+'</div>'+
+      '<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 14px">'+c.itens.map(i=>{
+        const pad=cfgPadraoGuia(u,i.perm),tem=Object.prototype.hasOwnProperty.call(g,i.pg),ver=tem?!!g[i.pg]:pad;
+        return '<label style="display:flex;gap:6px;align-items:center;font-size:.74rem;color:#0d1f35;cursor:pointer"><input type="checkbox" class="cfg-guia" data-pg="'+_esc(i.pg)+'" data-pad="'+(pad?1:0)+'"'+(ver?" checked":"")+'>'+_esc(i.nome)+(ver!==pad?' <span style="color:#b45309">●</span>':'')+'</label>';
+      }).join("")+'</div></div>').join("")+
+    '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px;flex-wrap:wrap">'+
+      '<button type="button" class="rh-btn rh-btn-sec" id="cfgGuiasPad">Voltar ao padrão</button>'+
+      '<button type="button" class="rh-btn rh-btn-sec" id="cfgGuiasCan">Cancelar</button>'+
+      '<button type="button" class="rh-btn" id="cfgGuiasOk">Salvar</button></div>'+
+    '<div id="cfgGuiasMsg" role="status" style="font-size:.72rem;font-weight:700;margin-top:8px;text-align:right"></div></div>';
+  document.body.appendChild(div);
+  const fechar=()=>div.remove();
+  div.onclick=e=>{if(e.target===div)fechar();};
+  document.getElementById("cfgGuiasCan").onclick=fechar;
+  const salvar=guias=>{
+    const m=document.getElementById("cfgGuiasMsg");m.style.color="#64748b";m.textContent="Salvando…";
+    fetch("/api/users",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"set_guias",userKey:k,guias})})
+      .then(r=>r.json().catch(()=>({})).then(j=>{if(!r.ok||!j.ok)throw new Error(j.error||("HTTP "+r.status));return j;}))
+      .then(()=>{fechar();if(typeof hqToast==="function")hqToast("👁️ Guias de "+(u.nome||k)+" salvas");cfgLoad();})
+      .catch(e=>{m.style.color="#dc2626";m.textContent="Não foi possível salvar: "+((e&&e.message)||e);});
+  };
+  document.getElementById("cfgGuiasPad").onclick=()=>{if(confirm("Voltar as guias de "+(u.nome||k)+" ao padrão do perfil?"))salvar({});};
+  document.getElementById("cfgGuiasOk").onclick=()=>{
+    const guias={};
+    div.querySelectorAll(".cfg-guia").forEach(c=>{const pad=c.dataset.pad==="1";if(c.checked!==pad)guias[c.dataset.pg]=c.checked;});
+    salvar(guias);
+  };
+}
 /* Bloquear / liberar o acesso de quem já existe. Bloqueado não entra e quem está com o
    painel aberto volta ao login em ~15 s. Senha e permissões ficam guardadas: liberar
    devolve tudo como estava. */
@@ -10942,7 +11007,7 @@ function cfgRender(){
       ${CFG_PANEIS.map(p=>`<td style="padding:8px 8px;text-align:center;font-size:.9rem">${p.has(u)?'<span style="color:#16a34a;font-weight:900">✓</span>':'<span style="color:#e2e8f0">·</span>'}</td>`).join("")}
       <td style="padding:8px 10px"><div style="color:${ac.cor};font-weight:${ac.peso};font-size:.7rem">${ac.desde||""}</div><div style="font-size:.6rem;color:#94a3b8">${ac.desde?ac.txt:""}</div></td>
       <td style="padding:8px 10px;text-align:center">${a.has_custom?'<span title="Senha própria" style="color:#16a34a">🔒</span>':'<span title="Ainda na senha padrão" style="color:#f97316">🔓</span>'}</td>
-      <td style="padding:8px 10px;text-align:center;white-space:nowrap"><button type="button" class="rh-btn" style="padding:5px 10px;font-size:.64rem;white-space:nowrap" onclick="cfgRedefinirSenha('${k}')">🔑 Redefinir senha</button>${cfgBotaoAcesso(k,bloq)}</td>
+      <td style="padding:8px 10px;text-align:center;white-space:nowrap"><button type="button" class="rh-btn" style="padding:5px 10px;font-size:.64rem;white-space:nowrap" onclick="cfgRedefinirSenha('${k}')">🔑 Redefinir senha</button><button type="button" class="rh-btn" style="padding:5px 10px;font-size:.64rem;white-space:nowrap;margin-left:6px" onclick="cfgGuias('${k}')">👁️ Guias</button>${cfgBotaoAcesso(k,bloq)}</td>
     </tr>`;
   });
   h+=`</tbody></table></div>`;

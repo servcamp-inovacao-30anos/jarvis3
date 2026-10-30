@@ -412,3 +412,23 @@ test("GET ?all=1 (com quem está bloqueado) é só para administrador", async ()
   assert.equal((await chamar("GET", { query: { all: "1" }, token: comoComum() })).status, 403, "não admin");
   assert.equal((await chamar("GET", { query: { all: "1" }, token: comoAdmin() })).status, 200, "admin");
 });
+
+test("set_guias: só admin; guarda só guias válidas, ignora Configurações e volta no login", async () => {
+  sb.semear("raphaelvictor", { custom_password: await _senha.hash("senha-dele-1"), must_change: false });
+  const g = (guias, token) => acao({ action: "set_guias", userKey: "raphaelvictor", guias }, token);
+  assert.equal((await g({ hrextra: false })).status, 403, "sem token");
+  assert.equal((await g({ hrextra: false }, comoComum())).status, 403, "não admin");
+  assert.equal((await g(["x"], comoAdmin())).status, 400, "lista não vale");
+  assert.equal((await g({ "<b>": true }, comoAdmin())).status, 400, "nome de guia inválido");
+  assert.equal((await g({ hrextra: "nao" }, comoAdmin())).status, 400, "valor precisa ser booleano");
+  assert.equal((await acao({ action: "set_guias", userKey: "naoexiste", guias: {} }, comoAdmin())).status, 404);
+  const r = await g({ hrextra: false, rhvagas: true, config: false }, comoAdmin());
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.dados.guias, { hrextra: false, rhvagas: true }, "config fica de fora");
+  const e = await entrar("raphaelvictor", "senha-dele-1");
+  assert.deepEqual(e.dados.guias, { hrextra: false, rhvagas: true });
+  const l = await chamar("GET", { query: { all: "1" }, token: comoAdmin() });
+  assert.deepEqual(l.dados.users.find(u => u.user_key === "raphaelvictor").guias, { hrextra: false, rhvagas: true });
+  assert.equal((await g({}, comoAdmin())).status, 200, "voltar ao padrão");
+  assert.deepEqual((await entrar("raphaelvictor", "senha-dele-1")).dados.guias, {});
+});
