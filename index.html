@@ -4061,14 +4061,16 @@ function showWelcome(){
     '<div style="color:#9ec5f5;font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Bem-vindo(a) ao Dashboard ServCamp</div>'+
     '<div style="color:#fff;font-size:1.5rem;font-weight:900;margin-bottom:8px">'+nome+'</div>'+
     '<div style="display:inline-block;background:rgba(255,255,255,.15);color:#fff;font-size:.85rem;font-weight:700;padding:6px 18px;border-radius:20px;letter-spacing:.5px">'+cargo+'</div>'+
+    '<div id="welOfensiva"></div>'+
     '</div>'+
     '<style>@keyframes fadeIn{from{opacity:0}to{opacity:1}}@keyframes popIn{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}</style>';
   document.body.appendChild(div);
+  if(typeof ofBoasVindas==="function")ofBoasVindas(); // ofensiva: dias seguidos na tela de boas-vindas
   setTimeout(function(){
     div.style.transition="opacity .4s ease";
     div.style.opacity="0";
     setTimeout(function(){div.remove();_celebrarContrato();},400);
-  },2200);
+  },3200);
 }
 
 /* ── Contrato fechado em destaque ──────────────────────────────────────────

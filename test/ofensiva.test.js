@@ -230,7 +230,7 @@ function navegador(evento) {
   const ctx = {
     console, Promise, setTimeout, clearTimeout, Date, JSON, Map, Set, Intl,
     sessionStorage: { getItem: k => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, String(v)) },
-    document: { readyState: "complete", addEventListener() {}, getElementById: id => (id === "sbOfensiva" || id === "of-ranking" ? el(id) : null) },
+    document: { readyState: "complete", addEventListener() {}, getElementById: id => (id === "sbOfensiva" || id === "of-ranking" || id === "welOfensiva" ? el(id) : null) },
     fetch: async (url, init) => {
       pedidos.push({ url: String(url), metodo: (init && init.method) || "GET", corpo: init && init.body ? JSON.parse(init.body) : null });
       const t = /[?&]t=ranking/.test(String(url));
@@ -286,4 +286,19 @@ test("index.html: ganchos da ofensiva (clique de verdade, cartão do usuário e 
   assert.ok(HTML.indexOf('id="of-ranking"') > HTML.indexOf('id="pg-visao"') && HTML.indexOf('id="of-ranking"') < HTML.indexOf('id="pg-ativos"'), "dentro da Visão Geral");
   assert.ok(HTML.includes('if(p==="visao"&&typeof ofRankingCarregar==="function")ofRankingCarregar();'));
   assert.ok(HTML.includes('/assets/ofensiva/ofensiva.js'));
+});
+
+test("tela: a ofensiva aparece na tela de boas-vindas, mesmo quando o estado chega depois dela abrir", async () => {
+  const { ctx, els } = navegador({ isTrusted: true });
+  ctx.ofBoasVindas(); // a tela abriu antes de o servidor responder: nada para mostrar ainda
+  assert.equal(els.welOfensiva.innerHTML, "");
+  ctx.ofIniciar(); await espera(); // o estado chega e a tela aberta se atualiza
+  assert.ok(els.welOfensiva.innerHTML.includes("4 dias seguidos"));
+  assert.ok(els.welOfensiva.innerHTML.includes("Hoje já está feito"));
+});
+
+test("index.html: a tela de boas-vindas tem o lugar da ofensiva e fica tempo para ler", () => {
+  const HTML = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+  assert.ok(HTML.includes('<div id="welOfensiva"></div>'));
+  assert.ok(HTML.includes('if(typeof ofBoasVindas==="function")ofBoasVindas();'));
 });

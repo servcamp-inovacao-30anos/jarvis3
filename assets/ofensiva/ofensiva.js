@@ -51,7 +51,28 @@ function renderContador(){
   el.title="Ofensiva: dias úteis seguidos em que você abriu "+META+" guias diferentes.\nMelhor sequência: "+(e.melhor||0)+" dia"+((e.melhor||0)===1?"":"s")+".\n"+cong.replace("❄️ ","")+" (o dia útil perdido gasta 1 e a sequência segue).";
   el.innerHTML='<div class="sb-of-n"><span class="sb-of-ic">🔥</span><b>'+n+'</b> dia'+(n===1?"":"s")+' seguido'+(n===1?"":"s")+'</div>'+
     '<div class="sb-of-s">'+esc(linha2)+esc(aviso)+'</div>';
+  renderBoasVindas();
 }
+
+/* ── tela de boas-vindas (logo depois do login) ─────────────────────────── */
+// O servidor responde em instantes; se a tela já estiver aberta quando o estado chegar, o renderContador chama aqui de novo.
+function renderBoasVindas(){
+  const el=document.getElementById("welOfensiva");if(!el)return;
+  const e=OF.est;
+  if(!logado()||!e||!e.ativo){el.innerHTML="";return;}
+  const n=e.sequencia||0;
+  let sub;
+  if(!e.util)sub="Fim de semana: a sua sequência descansa";
+  else if(e.hojeOk)sub="✓ Hoje já está feito";
+  else if(n>0)sub="Abra "+META+" guias hoje para manter a sequência ("+e.guiasHoje+" de "+META+")";
+  else sub="Abra "+META+" guias hoje para começar a sua ofensiva";
+  const frio=n===0;
+  el.innerHTML='<div style="margin-top:16px;padding:12px 18px;border-radius:14px;background:rgba(251,146,60,.16);border:1px solid rgba(251,146,60,.5)">'+
+    '<div style="color:#fff;font-size:1.05rem;font-weight:900"><span style="'+(frio?"filter:grayscale(1);opacity:.6":"")+'">🔥</span> '+(frio?"Sem sequência ainda":n+" dia"+(n===1?"":"s")+" seguido"+(n===1?"":"s"))+'</div>'+
+    '<div style="color:#fdba74;font-size:.72rem;font-weight:700;margin-top:3px">'+esc(sub)+'</div>'+
+    (e.congeladoRecente?'<div style="color:#bfdbfe;font-size:.66rem;margin-top:3px">❄️ Um congelamento salvou a sua sequência ontem</div>':"")+'</div>';
+}
+raiz.ofBoasVindas=renderBoasVindas;
 
 /* ── ranking, só na primeira tela ──────────────────────────────────────── */
 const MEDALHA=["🥇","🥈","🥉"];
