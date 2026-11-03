@@ -81,16 +81,25 @@ function renderRanking(){
   const r=OF.rank;
   if(!logado()||!r||!r.ranking||!r.ranking.length){el.hidden=true;el.innerHTML="";return;}
   const eu=uk();
-  const linhas=r.ranking.map((x,i)=>
-    '<li class="of-it'+(x.user_key===eu?' eu':'')+'"><span class="of-pos">'+(MEDALHA[i]||(i+1)+"º")+'</span>'+
-    '<span class="of-nm">'+esc(nomeDe(x))+'</span>'+
-    (x.hojeOk?'<span class="of-hoje" title="Já completou hoje">✓</span>':'')+
-    '<span class="of-d">🔥 '+x.sequencia+' dia'+(x.sequencia===1?"":"s")+'</span></li>').join("");
-  const voce=r.voce?'Você está em <b>'+r.voce.posicao+'º</b> de '+r.participantes+' · '+r.voce.sequencia+' dia'+(r.voce.sequencia===1?"":"s"):
-    'Abra 3 guias diferentes em um dia útil para entrar no ranking.';
+  // posição de cada um antes de redesenhar: quem subiu desliza até o lugar novo
+  const antes={};
+  if(el.querySelectorAll)el.querySelectorAll("[data-k]").forEach(li=>{antes[li.dataset.k]=li.getBoundingClientRect().top;});
+  const linhas=r.ranking.map((x,i)=>{
+    const prog=x.hojeOk?'<span class="of-hoje" title="Já completou hoje">✓</span>':
+      (r.util===false?'':'<span class="of-prog" title="Guias abertas hoje">'+x.guiasHoje+'/'+META+'</span>');
+    return'<li class="of-it'+(x.user_key===eu?' eu':'')+(x.sequencia===0?' zero':'')+'" data-k="'+esc(x.user_key)+'"><span class="of-pos">'+(i<3&&x.sequencia>0?MEDALHA[i]:(i+1)+"º")+'</span>'+
+      '<span class="of-nm">'+esc(nomeDe(x))+'</span>'+prog+
+      '<span class="of-d">🔥 '+x.sequencia+' dia'+(x.sequencia===1?"":"s")+'</span></li>';
+  }).join("");
+  const voce=r.voce?'Você está em <b>'+r.voce.posicao+'º</b> de '+r.participantes+' · '+r.voce.sequencia+' dia'+(r.voce.sequencia===1?"":"s"):"";
   el.hidden=false;
-  el.innerHTML='<div class="of-card"><div class="of-h"><b>🔥 Ofensiva — quem está firme</b><span>dias úteis seguidos com 3 guias abertas</span></div>'+
+  el.innerHTML='<div class="of-card"><div class="of-h"><b>🔥 Ofensiva — quem está firme</b><span>dias úteis seguidos com 3 guias abertas · a lista se atualiza sozinha</span></div>'+
     '<ol class="of-l">'+linhas+'</ol><div class="of-f">'+voce+'</div></div>';
+  if(el.querySelectorAll)el.querySelectorAll("[data-k]").forEach(li=>{
+    const t0=antes[li.dataset.k];if(t0==null||typeof li.animate!=="function")return;
+    const dy=t0-li.getBoundingClientRect().top;
+    if(Math.abs(dy)>2)li.animate([{transform:"translateY("+dy+"px)",zIndex:2},{transform:"none",zIndex:2}],{duration:600,easing:"cubic-bezier(.2,.8,.2,1)"});
+  });
 }
 
 /* ── carregar ──────────────────────────────────────────────────────────── */
@@ -113,6 +122,12 @@ raiz.ofIniciar=function(){
   checarDono();
   if(!OF.est)carregarEstado();else renderContador();
 };
+
+// Com a Base Virtual aberta, o ranking se atualiza sozinho: quem completa as guias sobe na lista.
+const ATUALIZA_MS=30000;
+setInterval(()=>{
+  try{if(logado()&&typeof ST!=="undefined"&&ST.pg==="sede"&&!document.hidden)raiz.ofRankingCarregar(true);}catch(e){}
+},ATUALIZA_MS);
 
 /* ── registrar a guia aberta ───────────────────────────────────────────── */
 // Só conta troca de guia que veio de um evento do usuário (clique ou tecla): window.event não existe em

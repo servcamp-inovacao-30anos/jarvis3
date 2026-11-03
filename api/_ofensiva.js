@@ -13,6 +13,7 @@
 const _auth = require("./_auth");
 const ponto = require("./_ponto");
 const R = require("./_ofensiva_regras");
+const USUARIOS = require("./users").USUARIOS;
 
 const VISITAS = "ofensiva_visitas"; // uma linha por pessoa, dia e guia (a chave composta evita corrida)
 const DIAS = "ofensiva_dias";       // uma linha por pessoa e dia completo (as 3 guias)
@@ -65,22 +66,28 @@ async function meu({ res, db, ator, hoje }) {
 }
 
 async function ranking({ res, db, ator, hoje }) {
-  const [dias, usuarios] = await Promise.all([
+  const [dias, usuarios, visitas] = await Promise.all([
     db.listar(`${DIAS}?select=user_key,dia&dia=gte.${desde(hoje)}&order=dia.asc,user_key.asc`),
-    db.listar("app_users?select=user_key,nome,ativo&order=user_key.asc")
+    db.listar("app_users?select=user_key,nome,ativo&order=user_key.asc"),
+    R.ehUtil(hoje) ? db.listar(`${VISITAS}?select=user_key,guia&dia=eq.${hoje}&order=user_key.asc,guia.asc`) : Promise.resolve([])
   ]);
   const bloqueados = new Set(usuarios.filter(u => u.ativo === false).map(u => u.user_key));
   const nomes = {};
   usuarios.forEach(u => { if (u.nome) nomes[u.user_key] = u.nome; });
   const por = {};
   dias.forEach(d => { if (!bloqueados.has(d.user_key)) (por[d.user_key] = por[d.user_key] || []).push(d.dia); });
-  const todos = R.ranking(por, hoje, nomes);
+  const guiasHoje = {};
+  visitas.forEach(v => { guiasHoje[v.user_key] = (guiasHoje[v.user_key] || 0) + 1; });
+  // todos os acessos: quem pode entrar (fixos e criados pela tela), menos os bloqueados, mesmo sem nenhum dia ainda
+  const todasChaves = [...new Set(USUARIOS.concat(usuarios.filter(u => u.nome).map(u => u.user_key)))].filter(k => !bloqueados.has(k));
+  const todos = R.ranking(por, hoje, nomes, { todos: todasChaves, guiasHoje });
   const i = todos.findIndex(x => x.user_key === ator);
   return res.status(200).json({
     dia: hoje,
-    ranking: todos.slice(0, 10).map(x => ({ user_key: x.user_key, nome: x.nome, sequencia: x.sequencia, melhor: x.melhor, hojeOk: x.hojeOk })),
+    util: R.ehUtil(hoje),
+    ranking: todos.map(x => ({ user_key: x.user_key, nome: x.nome, sequencia: x.sequencia, melhor: x.melhor, hojeOk: x.hojeOk, guiasHoje: x.guiasHoje })),
     participantes: todos.length,
-    voce: i >= 0 ? { posicao: i + 1, sequencia: todos[i].sequencia } : null
+    voce: i >= 0 ? { posicao: i + 1, sequencia: todos[i].sequencia } : null // quem pede sempre está na lista
   });
 }
 

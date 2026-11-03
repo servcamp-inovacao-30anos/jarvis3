@@ -49,15 +49,23 @@ function calcular(diasOk, hoje, opcoes) {
 }
 function ultimoUtilAntes(dia) { let d = somaDias(dia, -1); while (!ehUtil(d)) d = somaDias(d, -1); return d; }
 
-// porUsuario: { chave: [dias] } → lista ordenada: maior sequência, depois maior recorde, depois nome.
-// Só entra quem tem sequência > 0.
-function ranking(porUsuario, hoje, nomes) {
+// porUsuario: { chave: [dias] } → lista ordenada: maior sequência; no empate, quem já completou hoje e quem
+// está mais perto das 3 guias (é isso que faz a pessoa subir na lista durante o dia); depois o recorde e o nome.
+// opcoes.todos: chaves que entram mesmo sem nenhum dia (sequência 0). Sem isso, só entra quem tem sequência > 0.
+// opcoes.guiasHoje: { chave: quantas guias já abriu hoje }.
+function ranking(porUsuario, hoje, nomes, opcoes) {
+  const o = opcoes || {}, guias = o.guiasHoje || {};
+  const chaves = new Set(Object.keys(porUsuario || {}));
+  (o.todos || []).forEach(k => chaves.add(k));
   const lista = [];
-  for (const k of Object.keys(porUsuario || {})) {
-    const c = calcular(porUsuario[k], hoje);
-    if (c.sequencia > 0) lista.push({ user_key: k, nome: (nomes && nomes[k]) || null, sequencia: c.sequencia, melhor: c.melhor, hojeOk: c.hojeOk });
+  for (const k of chaves) {
+    const c = calcular((porUsuario || {})[k], hoje);
+    if (c.sequencia > 0 || (o.todos && o.todos.indexOf(k) >= 0)) {
+      lista.push({ user_key: k, nome: (nomes && nomes[k]) || null, sequencia: c.sequencia, melhor: c.melhor, hojeOk: c.hojeOk, guiasHoje: c.hojeOk ? META_GUIAS : Math.min(META_GUIAS, guias[k] || 0) });
+    }
   }
-  lista.sort((a, b) => b.sequencia - a.sequencia || b.melhor - a.melhor || String(a.nome || a.user_key).localeCompare(String(b.nome || b.user_key), "pt-BR"));
+  const nomeDe = x => String(x.nome || x.user_key);
+  lista.sort((a, b) => b.sequencia - a.sequencia || (b.hojeOk - a.hojeOk) || b.guiasHoje - a.guiasHoje || b.melhor - a.melhor || nomeDe(a).localeCompare(nomeDe(b), "pt-BR"));
   return lista;
 }
 

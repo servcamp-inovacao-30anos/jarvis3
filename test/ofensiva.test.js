@@ -96,7 +96,18 @@ test("ranking: maior sequência primeiro, empate pelo recorde e depois pelo nome
   assert.deepEqual(r.map(x => x.user_key), ["ana", "beto", "caio"]);
   assert.equal(r[0].sequencia, 3);
   assert.equal(r[0].nome, "Ana");
-  assert.deepEqual(Object.keys(r[0]).sort(), ["hojeOk", "melhor", "nome", "sequencia", "user_key"], "só nome e sequência, nada mais");
+  assert.deepEqual(Object.keys(r[0]).sort(), ["guiasHoje", "hojeOk", "melhor", "nome", "sequencia", "user_key"], "só nome, sequência e o andamento de hoje");
+});
+
+test("ranking com todos: quem tem 0 também aparece, e durante o dia sobe quem já abriu mais guias", () => {
+  const r = R.ranking({ ana: ["2026-11-03"] }, QUARTA, {}, { todos: ["ana", "beto", "caio", "dina"], guiasHoje: { beto: 2, caio: 1 } });
+  assert.deepEqual(r.map(x => x.user_key), ["ana", "beto", "caio", "dina"], "sequência 1 de ontem primeiro; os de 0 por guias abertas hoje");
+  assert.equal(r[1].guiasHoje, 2);
+  assert.equal(r[3].guiasHoje, 0);
+  // beto completa o dia: passa a ter sequência 1 e hojeOk; empata com ana e sobe por ter completado hoje
+  const depois = R.ranking({ ana: ["2026-11-03"], beto: [QUARTA] }, QUARTA, {}, { todos: ["ana", "beto", "caio", "dina"], guiasHoje: { caio: 1 } });
+  assert.deepEqual(depois.map(x => x.user_key), ["beto", "ana", "caio", "dina"]);
+  assert.equal(depois[0].guiasHoje, 3);
 });
 
 test("só guia com nome de guia vale", () => {
@@ -191,10 +202,15 @@ test("API: ranking só traz nome e sequência, sem bloqueados, e diz a posição
   await comRelogio(QUARTA_15H, async () => {
     const r = await pedir({ query: { modulo: "ofensiva", t: "ranking" }, usuario: "carlos" });
     assert.equal(r.statusCode, 200);
-    assert.deepEqual(r.body.ranking.map(x => x.user_key), ["ana", "carlos"], "bloqueado não aparece");
+    const chaves = r.body.ranking.map(x => x.user_key);
+    assert.deepEqual(chaves.slice(0, 2), ["ana", "carlos"]);
+    assert.ok(!chaves.includes("fora"), "bloqueado não aparece");
+    const todosOsAcessos = new Set(require("../api/users").USUARIOS.concat(["ana"]));
+    assert.equal(new Set(chaves).size, todosOsAcessos.size, "todo mundo que pode entrar está na lista, mesmo sem nenhum dia");
+    assert.ok(r.body.ranking.slice(2).every(x => x.sequencia === 0));
     assert.deepEqual(r.body.voce, { posicao: 2, sequencia: 1 });
-    assert.equal(r.body.participantes, 2);
-    assert.ok(!/guia|criado|senha/i.test(JSON.stringify(r.body)), "nada além de nome e sequência");
+    assert.equal(r.body.participantes, todosOsAcessos.size);
+    assert.deepEqual(Object.keys(r.body.ranking[0]).sort(), ["guiasHoje", "hojeOk", "melhor", "nome", "sequencia", "user_key"], "só nome, sequência e o andamento de hoje");
   });
 });
 
@@ -234,11 +250,12 @@ function navegador(evento) {
     fetch: async (url, init) => {
       pedidos.push({ url: String(url), metodo: (init && init.method) || "GET", corpo: init && init.body ? JSON.parse(init.body) : null });
       const t = /[?&]t=ranking/.test(String(url));
-      const corpo = t ? { ranking: [{ user_key: "carlos", nome: "<b>Carlos</b>", sequencia: 4, melhor: 4, hojeOk: true }], participantes: 1, voce: { posicao: 1, sequencia: 4 } }
+      const corpo = t ? { util: true, ranking: [{ user_key: "carlos", nome: "<b>Carlos</b>", sequencia: 4, melhor: 4, hojeOk: true, guiasHoje: 3 }, { user_key: "ana", nome: "Ana", sequencia: 0, melhor: 0, hojeOk: false, guiasHoje: 2 }], participantes: 2, voce: { posicao: 1, sequencia: 4 } }
         : { ativo: true, util: true, meta: 3, guiasHoje: 3, sequencia: 4, melhor: 6, hojeOk: true, congelamentosRestantes: 2, congeladosNoMes: 0, congeladoRecente: false };
       return { ok: true, status: 200, json: async () => corpo };
     },
-    event: evento, toasts: []
+    event: evento, toasts: [], ST: { pg: "visao" },
+    setInterval: f => { ctx.tick = f; return 0; }
   };
   ctx.hqToast = t => ctx.toasts.push(t);
   ctx.window = ctx;
@@ -272,6 +289,8 @@ test("tela: contador no cartão e ranking com o nome escapado; outra pessoa na a
   assert.equal(els["of-ranking"].hidden, false);
   assert.ok(!els["of-ranking"].innerHTML.includes("<b>Carlos</b>"), "nada do banco vira HTML");
   assert.ok(els["of-ranking"].innerHTML.includes("&lt;b&gt;Carlos&lt;/b&gt;"));
+  assert.ok(els["of-ranking"].innerHTML.includes("2/3"), "quem tem 0 aparece, com as guias de hoje");
+  assert.ok(els["of-ranking"].innerHTML.includes("of-it zero"));
   ctx.sessionStorage.setItem("userKey", "outra");
   ctx.sessionStorage.setItem("logged", "0");
   ctx.ofIniciar();
@@ -303,4 +322,17 @@ test("index.html: a tela de boas-vindas tem o lugar da ofensiva e fica tempo par
   const HTML = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
   assert.ok(HTML.includes('<div id="welOfensiva"></div>'));
   assert.ok(HTML.includes('if(typeof ofBoasVindas==="function")ofBoasVindas();'));
+});
+
+test("tela: com a Base Virtual aberta o ranking se atualiza sozinho; em outra guia não busca nada", async () => {
+  const { ctx, pedidos } = navegador({ isTrusted: true });
+  await espera();
+  const antes = () => pedidos.filter(p => /t=ranking/.test(p.url)).length;
+  ctx.tick(); await espera();
+  assert.equal(antes(), 0, "fora da Base Virtual não busca");
+  ctx.ST.pg = "sede";
+  ctx.tick(); await espera();
+  assert.equal(antes(), 1);
+  ctx.tick(); await espera();
+  assert.equal(antes(), 2, "a cada volta do relógio busca de novo");
 });
