@@ -422,3 +422,4 @@ module.exports = async function handler(req, res) {
 };
 
 module.exports.USUARIOS = USUARIOS;
+module.exports.ADMINS = ADMINS; // a guia Celulares (api/_celulares.js) libera as senhas pela mesma lista

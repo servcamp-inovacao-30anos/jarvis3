@@ -867,6 +867,7 @@ aside.sb#sidebar.sb-mini #navRoot .ni{margin:2px 8px;padding:9px 0;}
     <div class="nav-cat-b">
       <div class="ni" data-pg="supdesemp" data-perm="admin" onclick="navTo('supdesemp',this)"><span class="ni-ic">🧭</span><span>Desempenho do Supervisor</span><span class="nib nib-novo">NOVO</span></div>
       <div class="ni" data-pg="saude" data-perm="admin" onclick="navTo('saude',this)"><span class="ni-ic">🩺</span><span>Sa&uacute;de do Cliente</span><span class="nib nib-novo">NOVO</span></div>
+      <div class="ni" data-pg="celulares" data-perm="admin" onclick="navTo('celulares',this)"><span class="ni-ic">📱</span><span>Celulares</span><span class="nib nib-novo">NOVO</span></div>
       <!-- DESATIVADA 17/08 a pedido do Joao: nao ha responsavel definido pela auditoria.
            A pagina e o codigo continuam existindo; para religar, descomente esta linha.
       <div class="ni" data-pg="audqual" data-perm="qual" onclick="navTo('audqual',this)"><span class="ni-ic">✅</span><span>Auditoria de Qualidade</span></div>
@@ -1948,6 +1949,10 @@ aside.sb#sidebar.sb-mini #navRoot .ni{margin:2px 8px;padding:9px 0;}
   <div class="page" id="pg-saude">
     <div class="sec-hd"><div class="sec-ic">🩺</div><div><div class="sec-t">Saúde do Cliente</div><div class="sec-s">Quem está em risco — e por quê. Faltas de contrato, postos descobertos e visita do supervisor nos últimos 30 dias.</div></div></div>
     <div id="sau-content"><div style="padding:40px;text-align:center;color:#94a3b8;font-size:.85rem">Carregando…</div></div>
+  </div>
+  <div class="page" id="pg-celulares">
+    <div class="sec-hd"><div class="sec-ic">📱</div><div><div class="sec-t">Celulares</div><div class="sec-s">Os aparelhos dos postos: o que está faltando, o que conferir, e o número e o login Zello de cada um.</div></div></div>
+    <div id="cel-content"><div style="padding:40px;text-align:center;color:#94a3b8;font-size:.85rem">Carregando…</div></div>
   </div>
   <div class="page" id="pg-faltasmed">
     <style>
@@ -4690,7 +4695,7 @@ function setTurno(t,btn){document.querySelectorAll("#trnoPg .pi").forEach(b=>b.c
 function setArea(){ST.area=document.getElementById("areaS").value;rpg();refresh();}
 function rpg(){Object.keys(ST.tpg).forEach(k=>ST.tpg[k]=1);}
 
-const PTITLES={fmrel:"Relatório de Faltas x Medidas",metas:"Metas da Diretoria",visao:"Visão Geral",ativos:"Funcionários Ativos",clientes:"Clientes",faltas:"Faltas & Top 10",coberturas:"Coberturas",postos:"Justificativa de Postos Descobertos",os:"OS Avulsos",fts:"FTS",dispo:"Sem Alocação",restec:"Reservas Técnicas",hrextra:"Horas Extras",checklist:"Check List",rhvagas:"RH — Controle de Vagas",rhentrev:"RH — Entrevistas & Funil",rhdesl:"RH — Desligamentos",rhres:"RH — Reservas → Efetivação",rhtrein:"RH — Treinamentos",rhdash:"Painel RH — Diretoria",compro:"Comercial — Propostas e Serviços Extras",comdash:"Painel Comercial",config:"Configurações — Acessos & Usuários",sede:"Base Virtual — Equipe",prj:"Projetos — Evolução & Inovação",audqual:"Auditoria de Qualidade",ligacoes:"Feedback de Faltas",faltasmed:"Faltas x Medidas",bdvrel:"Relatório de Coberturas do Supervisor",faltassup:"Acompanhamento de Medidas (Supervisão)",apres:"Apresentação"};
+const PTITLES={fmrel:"Relatório de Faltas x Medidas",metas:"Metas da Diretoria",visao:"Visão Geral",ativos:"Funcionários Ativos",clientes:"Clientes",celulares:"Celulares — Controle dos Aparelhos",faltas:"Faltas & Top 10",coberturas:"Coberturas",postos:"Justificativa de Postos Descobertos",os:"OS Avulsos",fts:"FTS",dispo:"Sem Alocação",restec:"Reservas Técnicas",hrextra:"Horas Extras",checklist:"Check List",rhvagas:"RH — Controle de Vagas",rhentrev:"RH — Entrevistas & Funil",rhdesl:"RH — Desligamentos",rhres:"RH — Reservas → Efetivação",rhtrein:"RH — Treinamentos",rhdash:"Painel RH — Diretoria",compro:"Comercial — Propostas e Serviços Extras",comdash:"Painel Comercial",config:"Configurações — Acessos & Usuários",sede:"Base Virtual — Equipe",prj:"Projetos — Evolução & Inovação",audqual:"Auditoria de Qualidade",ligacoes:"Feedback de Faltas",faltasmed:"Faltas x Medidas",bdvrel:"Relatório de Coberturas do Supervisor",faltassup:"Acompanhamento de Medidas (Supervisão)",apres:"Apresentação"};
 
 /* ── Sidebar 2.0: accordion com estado salvo + busca de módulos ── */
 function navCatToggle(k){
@@ -4829,6 +4834,7 @@ function navTo(p,btn){
   if(["faltas","coberturas","postos","os","fts","dispo","restec","hrextra","checklist"].includes(p)){rTbl(p);updSecCharts(p);}
   else if(p==="ativos"){renderAtivos();}
   else if(p==="clientes"){renderClientes();}
+  else if(p==="celulares"){if(typeof celLoad==="function")celLoad();}
   else if(p==="rhvagas"){rhLoad();}
   else if(p==="rhentrev"){rhEntLoad();}
   else if(p==="rhdesl"){rhDesLoad();}
@@ -4867,7 +4873,8 @@ function refresh(){
     rhres:()=>{rhResRender();rhResRenderTbl();},
     rhtrein:()=>{rhTreRender();rhTreRenderTbl();},
     rhdash:()=>{if(RDASH.loaded)rhDashRender();},
-    compro:()=>{comRenderAll();cpxRender();}, comdash:()=>comDashRender()
+    compro:()=>{comRenderAll();cpxRender();}, comdash:()=>comDashRender(),
+    celulares:()=>{if(typeof celRender==="function")celRender();}
   };
   if(_rer[ST.pg]){try{_rer[ST.pg]();}catch(e){console.error("refiltrar "+ST.pg+":",e);}return;}
   if(ST.pg==="visao")updVGCharts();
@@ -7325,7 +7332,8 @@ const TCFG={
   hrextra:{d:()=>F.hrextra,s:"s-hrextra",cols:["DATA","NOME","TIPO","CLIENTE","AREA","TURNO","MINUTOS"],hdrs:["Data","Funcionário","Tipo","Cliente","Supervisor","Turno","Minutos"],b:["TIPO","TURNO"]},
   checklist:{d:()=>F.checklist,s:"s-checklist",cols:["DATA","CLIENTE","MODELO","FUNCIONARIO","TURNO"],hdrs:["Data","Cliente","Modelo","Funcionário","Turno"],b:["MODELO","TURNO"]},
   ativos:{d:()=>DASHBOARD_DATA.ativos||[],s:"s-ativos",cols:["NOME","RE","CARGO","AREA","LOCAL","ESCALA","TURNO","TIPO"],hdrs:["Nome","RE","Cargo","Área","Local","Escala","Turno","Tipo"],b:["TURNO","TIPO"]},
-  clientes:{d:()=>aggClientesList(),s:"s-clientes",cols:["NOME","TURNO","AREA","EMPRESA"],hdrs:["Cliente","Turno","Supervisor/Área","Empresa"],b:["TURNO"]}
+  clientes:{d:()=>aggClientesList(),s:"s-clientes",cols:["NOME","TURNO","AREA","EMPRESA","CELULAR","ZELLO"],hdrs:["Cliente","Turno","Supervisor/Área","Empresa","Celular","Login Zello"],b:["TURNO"],
+    fmt:{CELULAR:r=>typeof celCelularHtml==="function"?celCelularHtml(r):"—",ZELLO:r=>typeof celZelloHtml==="function"?celZelloHtml(r):"—"}}
 };
 
 function rTbl(key){
@@ -7347,6 +7355,7 @@ function rTbl(key){
       tblEl.innerHTML='<div class="nd">Nenhum registro encontrado</div>';
     }else{
       tblEl.innerHTML=`<table><thead><tr>${cfg.hdrs.map(h=>`<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.map(r=>`<tr>${cfg.cols.map((c,i)=>{
+        if(cfg.fmt&&cfg.fmt[c])return '<td>'+cfg.fmt[c](r)+'</td>';
         let v=r[c];
         if(c==="DATA")v=fd(v);
         if(v===undefined||v===null||v==="")v="—";
@@ -7571,7 +7580,9 @@ function aggClientesList(){
     if(r.EMPRESA&&r.EMPRESA!=="—")m[key].EMPRESAS.add(r.EMPRESA);
   }
   return Object.values(m).map(c=>{
-    return{NOME:c.NOME,AREA:c.AREA,TURNO:[...c.TURNOS].join(" / ")||"—",EMPRESA:[...c.EMPRESAS].join(" / ")||"—"};
+    // celular e login Zello do posto (assets/celulares): aqui só o texto, para a busca achar
+    const ct=typeof celContatosTexto==="function"?celContatosTexto(c.NOME):null;
+    return{NOME:c.NOME,AREA:c.AREA,TURNO:[...c.TURNOS].join(" / ")||"—",EMPRESA:[...c.EMPRESAS].join(" / ")||"—",CELULAR:ct?ct.numeros:"",ZELLO:ct?ct.zellos:""};
   }).sort((a,b)=>a.NOME.localeCompare(b.NOME));
 }
 
@@ -7602,6 +7613,7 @@ function renderClientes(){
   document.getElementById("cl-fac").textContent=fac;
   document.getElementById("cl-facs").innerHTML=totalReal?("<b>"+(fac/totalReal*100).toFixed(0)+"%</b> dos clientes"):"—";
 
+  if(typeof celContatosCarregar==="function")celContatosCarregar(); // número e login Zello de cada posto
   rTbl("clientes");
 }
 
@@ -19392,6 +19404,7 @@ document.addEventListener("DOMContentLoaded",init);
 <script src="/assets/faltas-email/faltas-email.js"></script>
 <link rel="stylesheet" href="/assets/medida/medida.css"><script src="/assets/medida/medida.js"></script>
 <link rel="stylesheet" href="/assets/comunicado/comunicado.css"><script src="/assets/comunicado/comunicado.js"></script>
+<link rel="stylesheet" href="/assets/celulares/celulares.css"><script src="/assets/celulares/celulares.js"></script>
 <link rel="stylesheet" href="/assets/medida/assinatura.css"><script src="/assets/vendor/qrcode-generator.js"></script><script src="/assets/medida/assinatura.js"></script>
 </body>
 </html>
