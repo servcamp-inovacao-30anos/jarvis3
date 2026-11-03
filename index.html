@@ -822,6 +822,7 @@ aside.sb#sidebar.sb-mini #navRoot .ni{margin:2px 8px;padding:9px 0;}
       <div class="sb-perfil-n" id="sbPerfilNome">—</div>
       <div class="sb-perfil-c" id="sbPerfilCargo"></div>
       <div class="sb-perfil-on">Sistema Online</div>
+      <div id="sbOfensiva" class="sb-of" hidden></div>
       <a class="sb-perfil-senha" href="#" onclick="showForcePasswordChange(sessionStorage.getItem('userKey'),'voluntaria');return false">🔑 Trocar senha</a>
       <a class="sb-perfil-senha" id="sbFeEmail" href="#" style="display:none" onclick="feAbrir();return false">✉️ Aviso semanal por e-mail</a>
       <a class="sb-perfil-senha" href="#" onclick="sessaoSair();return false">🚪 Sair</a>
@@ -969,6 +970,7 @@ aside.sb#sidebar.sb-mini #navRoot .ni{margin:2px 8px;padding:9px 0;}
   <div class="page active" id="pg-visao">
     <div id="vg-contrato" hidden></div>
     <div id="vg-guias-alerta" hidden></div>
+    <div id="of-ranking" hidden></div>
     <div class="vg-kpis" style="grid-template-columns:repeat(4,1fr)">
       <div class="sk sk-bl clickable" onclick="skDet('vg','clientes',this)"><div class="sk-top"><span class="sk-ic">🏢</span><span class="sk-tag t-bl">Fixo</span></div><div class="sk-lbl">Clientes Ativos</div><div class="sk-v" id="vg-cl">—</div><div class="sk-sub" id="vg-cls">—</div></div>
       <div class="sk clickable" onclick="_showNovosClientes()" style="background:linear-gradient(135deg,#fff7e6,#ffedcc);border:2px solid #f5a623;box-shadow:0 4px 18px rgba(245,166,35,.25);position:relative;overflow:hidden">
@@ -4720,6 +4722,7 @@ function sbPerfilRender(){
   document.getElementById("sbPerfilNome").textContent=sauda+", "+nome.split(" ")[0];
   document.getElementById("sbPerfilCargo").textContent=sessionStorage.getItem("userCargo")||"";
   box.style.display="";
+  if(typeof ofIniciar==="function")ofIniciar(); // ofensiva: contador do cartão e ranking da primeira tela
 }
 /* favoritos ⭐ com persistência */
 function navFavGet(){try{return JSON.parse(localStorage.getItem("svc_navfav")||"[]");}catch(e){return[];}}
@@ -4801,6 +4804,7 @@ function navTo(p,btn){
   if(p==="fmrel"&&!fmPermitido()){p="visao";btn=null;}
   {const _g=_guiasDoUsuario();if(p!=="visao"&&p!=="config"&&_g[p]===false){p="visao";btn=null;}}
   ST.pg=p;
+  if(typeof ofRegistrar==="function")ofRegistrar(p); // ofensiva: só conta clique/tecla de verdade, nunca temporizador (TV)
   document.querySelectorAll(".ni").forEach(n=>n.classList.remove("active"));
   document.querySelectorAll('.ni[data-pg="'+(p==="fmrel"?"faltasmed":p)+'"]').forEach(function(n){
     n.classList.add("active");
@@ -4837,6 +4841,7 @@ function navTo(p,btn){
   else if(p==="bdvrel"){brLoad();}
   else if(p==="fmrel"){frLoad();}
   else{updVGCharts();}
+  if(p==="visao"&&typeof ofRankingCarregar==="function")ofRankingCarregar(); // ranking da ofensiva só aparece na primeira tela
   if(p!=="sede"&&typeof HQ_TIMER!=="undefined"&&HQ_TIMER){clearInterval(HQ_TIMER);HQ_TIMER=null;}
   if(typeof hqBeat==="function")hqBeat(); // presença: avisa em qual sala estou
 }
@@ -19370,6 +19375,7 @@ document.addEventListener("DOMContentLoaded",init);
 <link rel="stylesheet" href="/assets/medida/medida.css"><script src="/assets/medida/medida.js"></script>
 <link rel="stylesheet" href="/assets/comunicado/comunicado.css"><script src="/assets/comunicado/comunicado.js"></script>
 <link rel="stylesheet" href="/assets/celulares/celulares.css"><script src="/assets/celulares/celulares.js"></script>
+<link rel="stylesheet" href="/assets/ofensiva/ofensiva.css"><script src="/assets/ofensiva/ofensiva.js"></script>
 <link rel="stylesheet" href="/assets/medida/assinatura.css"><script src="/assets/vendor/qrcode-generator.js"></script><script src="/assets/medida/assinatura.js"></script>
 </body>
 </html>

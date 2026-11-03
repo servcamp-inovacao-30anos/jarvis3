@@ -67,6 +67,8 @@ module.exports = async function handler(req, res) {
   if (req.query && req.query.modulo === "faltasemail") return require("./_faltas_email")(req, res);
   // Celulares dos postos (guia Celulares e o número na guia Clientes): mesmo motivo (api/_celulares.js).
   if (req.query && req.query.modulo === "celulares") return require("./_celulares")(req, res);
+  // Ofensiva (dias seguidos de uso): mesmo motivo (api/_ofensiva.js).
+  if (req.query && req.query.modulo === "ofensiva") return require("./_ofensiva")(req, res);
   const SUPABASE_URL = process.env.SUPABASE_URL;
   const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 

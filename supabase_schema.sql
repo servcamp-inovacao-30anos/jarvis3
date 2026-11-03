@@ -408,3 +408,28 @@ revoke all on public.cel_aparelhos from anon, authenticated;
 grant select, insert, update, delete on public.cel_aparelhos to service_role;
 -- (para quem criou a tabela antes desta coluna existir)
 alter table public.cel_aparelhos add column if not exists origem text;
+
+-- ============================================================================
+-- OFENSIVA — dias seguidos de uso do Dashboard (api/_ofensiva.js).
+-- ofensiva_visitas: uma linha por pessoa, dia e guia aberta (no máximo 3 por dia).
+-- ofensiva_dias: uma linha por pessoa e dia completo (3 guias diferentes).
+-- Chave composta: dois cliques ao mesmo tempo não duplicam nem se atropelam.
+-- RLS ligada e sem política: só a service role lê e grava. Só cria; pode rodar de novo.
+-- ============================================================================
+create table if not exists public.ofensiva_visitas (
+  user_key  text        not null,
+  dia       date        not null,
+  guia      text        not null,
+  criado_em timestamptz not null default now(),
+  primary key (user_key, dia, guia)
+);
+create table if not exists public.ofensiva_dias (
+  user_key  text        not null,
+  dia       date        not null,
+  criado_em timestamptz not null default now(),
+  primary key (user_key, dia)
+);
+alter table public.ofensiva_visitas enable row level security;
+alter table public.ofensiva_dias enable row level security;
+revoke all on public.ofensiva_visitas, public.ofensiva_dias from anon, authenticated;
+grant select, insert, update, delete on public.ofensiva_visitas, public.ofensiva_dias to service_role;
