@@ -175,7 +175,7 @@ if(typeof module==="object"&&module.exports){
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const uk=()=>sessionStorage.getItem("userKey")||"";
 const toast=t=>{if(typeof hqToast==="function")hqToast(t);};
-const CEL={lista:null,dono:null,carregando:false,erro:null,f:{q:"",sit:"ATIVO",pend:"",chip:""},pag:1,
+const CEL={lista:null,dono:null,carregando:false,erro:null,f:{q:"",sit:"ATIVO",pend:"",chip:""},col:{},pag:1,
   contatos:null,contatosDono:null,contatosEm:0,pedindo:false,idx:null,idxDe:null};
 const POR_PAGINA=50;
 const SIT={ATIVO:"Ativo",RESERVA:"Reserva",BAIXADO:"Baixado"};
@@ -287,9 +287,25 @@ function comVinculo(lista){
 }
 const chipDe=p=>p.tipo+"|"+String(p.msg).split(":")[0];
 let _temNomes=false; // a planilha do sistema está carregada (dá para ligar aparelho a cliente)
-function filtrar(lista){
+// Filtro de cada coluna (▾ no título, como no Excel): o que aparece na lista de cada uma.
+// CEL.col[coluna] = valores marcados; sem a chave, a coluna não filtra.
+const COLS={
+  cliente:{rot:"Cliente",v:a=>[a.cliente]},
+  modelo:{rot:"Modelo",v:a=>[a.modelo]},
+  numero:{rot:"Número",v:a=>[a.numero?formatarNumero(a.numero):""]},
+  login_zello:{rot:"Login Zello",v:a=>[a.login_zello]},
+  imei:{rot:"IMEI 1 / IMEI 2",v:a=>[a.imei1,a.imei2]},
+  email:{rot:"E-mail",v:a=>[a.email]},
+  situacao:{rot:"Situação",v:a=>[SIT[a.situacao]||a.situacao]},
+  pend:{rot:"Pendências",v:a=>a.pendT.length?a.pendT.map(p=>String(p.msg).split(":")[0]):["✓ completo"]}
+};
+const valCol=(c,a)=>[...new Set(COLS[c].v(a).map(x=>x==null?"":String(x).trim()))];
+// fora: a coluna cuja lista está sendo montada (a lista mostra o que as outras deixaram passar)
+function filtrar(lista,fora){
   const f=CEL.f,q=chave(f.q),qd=f.q.replace(/\D/g,"");
+  const cols=Object.keys(CEL.col).filter(c=>c!==fora&&COLS[c]);
   return lista.filter(a=>{
+    for(const c of cols){const s=CEL.col[c];if(!valCol(c,a).some(x=>s.has(x)))return false;}
     if(f.sit&&a.situacao!==f.sit)return false;
     if(f.pend==="ok"&&a.pendT.length)return false;
     if(f.pend&&f.pend!=="ok"&&!a.pendT.some(p=>p.tipo===f.pend))return false;
@@ -350,20 +366,22 @@ raiz.celRender=function(){
   base.forEach(a=>{new Set(a.pendT.map(chipDe)).forEach(k=>cont.set(k,(cont.get(k)||0)+1));});
   const chips=[...cont.entries()].sort((a,b)=>b[1]-a[1]);
   if(chips.length)h+='<div class="cel-chips">'+chips.map(([k,n])=>{const[t,m]=k.split("|");return'<button type="button" class="cel-chip cel-'+esc(t)+(CEL.f.chip===k?' on':'')+'" data-cel="chip" data-k="'+esc(k)+'">'+esc(m)+' <b>'+n+'</b></button>';}).join("")+'</div>';
+  CEL.todos=todos;
   const lista=filtrar(todos);
   const paginas=Math.max(1,Math.ceil(lista.length/POR_PAGINA));
   if(CEL.pag>paginas)CEL.pag=paginas;
   const ini=(CEL.pag-1)*POR_PAGINA,pagina=lista.slice(ini,ini+POR_PAGINA);
   const sel=(id,ops,v)=>'<select class="cel-sel" id="'+id+'">'+ops.map(([k,t])=>'<option value="'+k+'"'+(v===k?' selected':'')+'>'+t+'</option>').join("")+'</select>';
-  const algum=CEL.f.q||CEL.f.pend||CEL.f.chip||CEL.f.sit!=="ATIVO";
+  const algum=CEL.f.q||CEL.f.pend||CEL.f.chip||CEL.f.sit!=="ATIVO"||Object.keys(CEL.col).length;
+  const th=c=>'<th><button type="button" class="cel-thf'+(CEL.col[c]?' on':'')+'" data-cel="colf" data-c="'+c+'" title="Filtrar por '+esc(COLS[c].rot)+'">'+esc(COLS[c].rot)+' <span class="cel-thf-i">'+(CEL.col[c]?'▼':'▾')+'</span></button></th>';
   h+='<div class="ts"><div class="th2"><div style="display:flex;align-items:center;gap:7px"><div class="chb"></div><span class="ct">Aparelhos</span><span class="cel-n">'+lista.length+' de '+todos.length+'</span></div>'+
     '<div class="cel-filtros"><input class="sb2" type="search" id="cel-q" placeholder="Buscar cliente, número, IMEI, login…" value="'+esc(CEL.qTela!=null?CEL.qTela:CEL.f.q)+'">'+
     sel("cel-sit",[["ATIVO","Ativos"],["RESERVA","Reserva"],["BAIXADO","Baixados"],["","Todas as situações"]],CEL.f.sit)+
     sel("cel-pend",[["","Todas as pendências"],["falta","Com dado faltando"],["conferir","Para conferir"],["vinculo","Sem cliente no sistema"],["ok","Tudo certo"]],CEL.f.pend)+
     (algum?'<button type="button" class="cel-limpar" data-cel="limpar">limpar filtros</button>':'')+'</div></div>';
-  if(!pagina.length)h+='<div class="nd">Nenhum aparelho com esses filtros.</div>';
+  if(!pagina.length)h+='<div class="nd">Nenhum aparelho com esses filtros.'+(Object.keys(CEL.col).length?' <button type="button" class="cel-limpar" data-cel="limpar">limpar filtros</button>':'')+'</div>';
   else{
-    h+='<div class="cel-rola"><table class="cel-tbl"><thead><tr><th>Cliente</th><th>Modelo</th><th>Número</th><th>Login Zello</th><th>IMEI 1 / IMEI 2</th><th>E-mail</th><th>Senhas</th><th>Situação</th><th>Pendências</th><th></th></tr></thead><tbody>'+
+    h+='<div class="cel-rola"><table class="cel-tbl"><thead><tr>'+th("cliente")+th("modelo")+th("numero")+th("login_zello")+th("imei")+th("email")+'<th>Senhas</th>'+th("situacao")+th("pend")+'<th></th></tr></thead><tbody>'+
       pagina.map(linha).join("")+'</tbody></table></div>';
     if(paginas>1){
       h+='<div class="pag"><div class="pi2">'+(ini+1)+'–'+Math.min(ini+POR_PAGINA,lista.length)+' de '+lista.length+'</div><div class="pbs">';
@@ -416,7 +434,8 @@ function ligarEventos(el){
     else if(acao==="pag"){CEL.pag=+b.dataset.p||1;raiz.celRender();}
     else if(acao==="chip"){CEL.f.chip=CEL.f.chip===b.dataset.k?"":b.dataset.k;CEL.pag=1;raiz.celRender();}
     else if(acao==="filtro"){CEL.f.pend=CEL.f.pend===b.dataset.pend?"":b.dataset.pend;CEL.f.sit="ATIVO";CEL.f.chip="";CEL.pag=1;raiz.celRender();}
-    else if(acao==="limpar"){CEL.f={q:"",sit:"ATIVO",pend:"",chip:""};CEL.qTela=null;CEL.pag=1;raiz.celRender();}
+    else if(acao==="limpar"){CEL.f={q:"",sit:"ATIVO",pend:"",chip:""};CEL.col={};CEL.qTela=null;CEL.pag=1;fecharColf();raiz.celRender();}
+    else if(acao==="colf"){const c=b.dataset.c;if(document.getElementById("cel-colf")&&_colfDe===c)fecharColf();else abrirColf(b,c);}
   });
   el.addEventListener("input",e=>{
     if(e.target.id!=="cel-q")return;
@@ -429,6 +448,60 @@ function ligarEventos(el){
   });
 }
 const achar=id=>(CEL.lista||[]).find(a=>String(a.id)===String(id))||null;
+
+/* ── filtro da coluna: procurar digitando e marcar os valores ─────────── */
+let _colfDe=null;
+function fecharColf(){const p=document.getElementById("cel-colf");if(p)p.remove();_colfDe=null;}
+function abrirColf(btn,c){
+  fecharColf();
+  const linhas=filtrar(CEL.todos||[],c),cont=new Map();
+  linhas.forEach(a=>valCol(c,a).forEach(v=>cont.set(v,(cont.get(v)||0)+1)));
+  const vals=[...cont.keys()].sort((x,y)=>x===""?-1:y===""?1:x.localeCompare(y,"pt-BR",{numeric:true}));
+  const atual=CEL.col[c],inicio=new Set(atual?vals.filter(v=>atual.has(v)):vals);
+  let marc=new Set(inicio),vis=vals;
+  const pop=document.createElement("div");
+  pop.className="cel-colf";pop.id="cel-colf";_colfDe=c;
+  pop.innerHTML='<div class="cel-colf-h">'+esc(COLS[c].rot)+'</div>'+
+    '<input type="search" class="cel-colf-q" placeholder="Digite para procurar…" autocomplete="off">'+
+    '<label class="cel-colf-t"><input type="checkbox"> <b>Selecionar todos</b></label>'+
+    '<div class="cel-colf-l"></div><div class="cel-colf-m"></div>'+
+    '<div class="cel-colf-b"><button type="button" class="rh-btn rh-btn-sec" data-a="tirar">Tirar filtro</button><button type="button" class="rh-btn" data-a="ok">Filtrar</button></div>';
+  const inp=pop.querySelector(".cel-colf-q"),tudo=pop.querySelector(".cel-colf-t input"),box=pop.querySelector(".cel-colf-l"),aviso=pop.querySelector(".cel-colf-m");
+  const MAX=400;
+  function desenhar(){
+    box.innerHTML=vis.length?vis.slice(0,MAX).map(v=>'<label><input type="checkbox" data-i="'+vals.indexOf(v)+'"'+(marc.has(v)?' checked':'')+'> <span class="cel-colf-v">'+(v?esc(v):'<i>(vazio)</i>')+'</span><span class="cel-colf-n">'+cont.get(v)+'</span></label>').join(""):'<div class="cel-colf-0">Nada com esse texto.</div>';
+    aviso.textContent=vis.length>MAX?"Mostrando "+MAX+" de "+vis.length+": digite para achar os outros.":"";
+    tudo.checked=vis.length>0&&vis.every(v=>marc.has(v));
+  }
+  inp.addEventListener("input",()=>{
+    const q=chave(inp.value),qd=inp.value.replace(/\D/g,"");
+    if(!inp.value.trim()){vis=vals;marc=new Set(inicio);}
+    else{vis=vals.filter(v=>chave(v).indexOf(q)>=0||(qd.length>=3&&v.replace(/\D/g,"").indexOf(qd)>=0));marc=new Set(vis);} // procurou: já vêm marcados os achados
+    desenhar();
+  });
+  tudo.addEventListener("change",()=>{vis.forEach(v=>tudo.checked?marc.add(v):marc.delete(v));desenhar();});
+  box.addEventListener("change",e=>{const i=e.target.dataset&&e.target.dataset.i;if(i==null)return;const v=vals[+i];e.target.checked?marc.add(v):marc.delete(v);tudo.checked=vis.every(x=>marc.has(x));});
+  function aplicar(){
+    const busca=!!inp.value.trim(),sel=busca?vis.filter(v=>marc.has(v)):vals.filter(v=>marc.has(v));
+    if(!sel.length){aviso.textContent="Marque pelo menos um.";return;}
+    if(!busca&&sel.length===vals.length)delete CEL.col[c];else CEL.col[c]=new Set(sel);
+    fecharColf();CEL.pag=1;raiz.celRender();
+  }
+  pop.addEventListener("click",e=>{
+    const a=e.target.closest("[data-a]");if(!a)return;
+    if(a.dataset.a==="ok")aplicar();
+    else{delete CEL.col[c];fecharColf();CEL.pag=1;raiz.celRender();}
+  });
+  pop.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target===inp){e.preventDefault();aplicar();}else if(e.key==="Escape"){e.stopPropagation();fecharColf();}});
+  desenhar();
+  document.body.appendChild(pop);
+  const r=btn.getBoundingClientRect(),w=pop.offsetWidth;
+  pop.style.top=(r.bottom+window.scrollY+4)+"px";
+  pop.style.left=(Math.max(8,Math.min(r.left,document.documentElement.clientWidth-w-8))+window.scrollX)+"px";
+  inp.focus();
+}
+// clique fora fecha (o ▾ da própria coluna é tratado no clique dele)
+document.addEventListener("mousedown",e=>{const p=document.getElementById("cel-colf");if(p&&!p.contains(e.target)&&!e.target.closest(".cel-thf"))fecharColf();});
 
 /* ── janelas ─────────────────────────────────────────────────────────────── */
 function janela(titulo,html,larga){
@@ -452,7 +525,7 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape"&&document.getElement
 // Sessão caiu (12 h, bloqueio, "sair de todos os aparelhos") ou outra pessoa entrou nesta aba:
 // fecha a janela aberta (pode ser a das senhas) e esquece a lista e os contatos da pessoa anterior.
 function esquecer(){
-  fechar();
+  fechar();fecharColf();CEL.col={};
   CEL.lista=null;CEL.erro=null;CEL.dono=null;CEL.contatos=null;CEL.contatosDono=null;CEL.idx=null;
   const el=conteudo();if(el)el.innerHTML="";
 }
