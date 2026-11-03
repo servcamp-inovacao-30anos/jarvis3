@@ -16,6 +16,7 @@
 
 const _auth = require("./_auth");
 const _senha = require("./_senha");
+const _rec = require("./_recupera");
 const crypto = require("crypto");
 
 // Quem pode entrar: as mesmas chaves do USERS do index.html (test/users.test.js
@@ -182,9 +183,21 @@ module.exports = async function handler(req, res) {
         updated_at: r.updated_at || null,
         // criados pela tela de Configurações: o perfil mora no banco
         ...(r.nome ? { nome: r.nome, cargo: r.cargo || null, perms: r.perms || {}, ativo: r.ativo !== false } : (r.ativo === false ? { ativo: false } : {})),
-        ...(r.perms && r.perms.guias ? { guias: r.perms.guias } : {})
+        ...(r.perms && r.perms.guias ? { guias: r.perms.guias } : {}),
+        // contatos de recuperação ("Esqueci minha senha"): o administrador cadastra por quem não consegue
+        ...(r.rec_email ? { rec_email: r.rec_email } : {}),
+        ...(r.rec_celular ? { rec_celular: _rec.celularFormatado(r.rec_celular) } : {})
       }));
       return res.status(200).json({ users: safe });
+    }
+    // Meus contatos de recuperação (tela do perfil): só os do próprio dono do token.
+    if (req.query.recuperacao === "1") {
+      const a = _auth.requireAuth(req);
+      const k = a.ok && a.user && a.user.u;
+      if (!k || a.user.s) return res.status(401).json({ error: "Não autenticado." });
+      let row;
+      try { row = await lerUsuario(k); } catch (e) { return res.status(502).json({ error: "Erro ao consultar Supabase." }); }
+      return res.status(200).json({ email: (row && row.rec_email) || "", celular: _rec.celularFormatado(row && row.rec_celular) || "" });
     }
     // Estado da senha de um usuário: só os dois booleanos, nunca a senha.
     const userKey = String(req.query.userKey || "");
@@ -373,6 +386,156 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
+    // ── Esqueci minha senha (api/_recupera.js) ──────────────────────────────
+    const existe = row => USUARIOS.indexOf(userKey) >= 0 || criadoPelaTela(row);
+    const MSG_SEM_BANCO_REC = "O banco ainda não está preparado para a recuperação de senha: falta rodar o SQL das colunas rec_* de app_users (supabase_schema.sql).";
+    async function gravar(campos) {
+      const r = await fetch(TABELA, {
+        method: "POST",
+        headers: { ...headers, Prefer: "resolution=merge-duplicates,return=minimal" },
+        body: JSON.stringify({ user_key: userKey, ...campos })
+      });
+      if (r.ok) return null;
+      const t = (await r.text()).slice(0, 300);
+      console.error("users: erro ao gravar (recuperação)", r.status, t);
+      return /rec_|column/i.test(t) ? { status: 503, error: MSG_SEM_BANCO_REC } : { status: 502, error: "Erro ao salvar. Tente de novo." };
+    }
+
+    // Para onde dá para mandar o código: só mascarado, e só o que já estava cadastrado.
+    if (body.action === "recovery_options") {
+      if (!userKey) return res.status(400).json({ error: "Informe o usuário." });
+      let row;
+      try { row = await lerUsuario(userKey); } catch (e) { return res.status(502).json({ error: "Erro ao consultar Supabase." }); }
+      const ok = existe(row);
+      return res.status(200).json({
+        ok: true,
+        email: ok ? _rec.mascararEmail(row && row.rec_email) : null,
+        celular: ok ? _rec.mascararCelular(row && row.rec_celular) : null
+      });
+    }
+
+    // Manda o código pelo canal escolhido (email | sms), para o contato cadastrado.
+    if (body.action === "recovery_send") {
+      const secret = process.env.AUTH_SECRET;
+      if (!secret) return res.status(503).json({ error: "A recuperação de senha não está disponível agora. Fale com o administrador." });
+      const canal = body.canal === "sms" || body.canal === "email" ? body.canal : null;
+      if (!userKey || !canal) return res.status(400).json({ error: "Informe o usuário e escolha e-mail ou SMS." });
+      let row;
+      try { row = await lerUsuario(userKey); } catch (e) { return res.status(502).json({ error: "Erro ao consultar Supabase." }); }
+      if (!existe(row)) return res.status(404).json({ error: "Usuário não encontrado." });
+      const destino = canal === "sms" ? row && row.rec_celular : row && row.rec_email;
+      if (!destino) return res.status(400).json({ error: canal === "sms" ? "Não há celular cadastrado para esta conta." : "Não há e-mail cadastrado para esta conta." });
+      const agora = Date.now();
+      const p = _rec.podeEnviar(row.rec_envios, agora);
+      if (!p.ok) return res.status(429).json({ error: p.erro, espera: p.espera || null });
+      const codigo = _rec.gerarCodigo();
+      // grava antes de enviar: um envio que falhou também conta no limite (ninguém dispara SMS sem fim)
+      const erro = await gravar({
+        rec_codigo: _rec.hashCodigo(userKey, codigo, secret),
+        rec_expira: new Date(agora + _rec.VALIDADE_MIN * 60000).toISOString(),
+        rec_tentativas: 0,
+        rec_envios: p.lista.concat(agora)
+      });
+      if (erro) return res.status(erro.status).json({ error: erro.error });
+      const e = await _rec.enviarCodigo(canal, destino, codigo, row.nome);
+      if (!e.ok) return res.status(502).json({ error: e.erro });
+      console.log("users: código de recuperação enviado", userKey, canal);
+      return res.status(200).json({
+        ok: true, canal, validade_min: _rec.VALIDADE_MIN, intervalo_s: _rec.INTERVALO_S,
+        destino: canal === "sms" ? _rec.mascararCelular(destino) : _rec.mascararEmail(destino)
+      });
+    }
+
+    // Código certo + senha nova → troca a senha e já entra (mesma resposta do login).
+    if (body.action === "recovery_reset") {
+      const secret = process.env.AUTH_SECRET;
+      if (!secret) return res.status(503).json({ error: "A recuperação de senha não está disponível agora. Fale com o administrador." });
+      const codigo = String(body.codigo || "").replace(/\D/g, "");
+      const nova = String(body.newPassword || "");
+      if (!userKey || !codigo) return res.status(400).json({ error: "Informe o código que você recebeu." });
+      if (nova.length < 6) return res.status(400).json({ error: "Senha deve ter ao menos 6 caracteres." });
+      if (nova.length > 200) return res.status(400).json({ error: "Senha deve ter no máximo 200 caracteres." });
+      let row;
+      try { row = await lerUsuario(userKey); } catch (e) { return res.status(502).json({ error: "Erro ao consultar Supabase." }); }
+      if (!existe(row) || !row || !row.rec_codigo) return res.status(400).json({ error: "Peça um código primeiro." });
+      if (!(Date.parse(row.rec_expira) > Date.now())) return res.status(400).json({ error: "O código venceu. Peça outro." });
+      const usadas = Number(row.rec_tentativas) || 0;
+      if (usadas >= _rec.MAX_TENTATIVAS) return res.status(429).json({ error: "Tentativas esgotadas. Peça um código novo." });
+      // Cada tentativa é "reservada" no banco antes de conferir: só passa quem viu o contador
+      // no valor que leu. Pedidos em paralelo não ganham tentativas a mais.
+      let reservou = false;
+      try {
+        const r = await fetch(`${TABELA}?user_key=eq.${encodeURIComponent(userKey)}&rec_codigo=eq.${encodeURIComponent(row.rec_codigo)}&rec_tentativas=eq.${usadas}`, {
+          method: "PATCH",
+          headers: { ...headers, Prefer: "return=representation" },
+          body: JSON.stringify({ rec_tentativas: usadas + 1 })
+        });
+        reservou = r.ok && ((await r.json().catch(() => [])) || []).length === 1;
+      } catch (e) { reservou = false; }
+      if (!reservou) return res.status(409).json({ error: "Não deu para conferir o código agora. Tente de novo." });
+      if (!_rec.codigoConfere(userKey, codigo, row.rec_codigo, secret)) {
+        const restam = _rec.MAX_TENTATIVAS - usadas - 1;
+        return res.status(401).json({ error: "Código incorreto." + (restam > 0 ? ` ${restam === 1 ? "Resta 1 tentativa." : `Restam ${restam} tentativas.`}` : " Peça um código novo."), restam });
+      }
+      if (bloqueado(row)) {
+        await gravar({ rec_codigo: null, rec_expira: null, rec_tentativas: 0 });
+        return res.status(403).json({ ok: false, error: MSG_BLOQUEADO });
+      }
+      const padrao = process.env.DEFAULT_PASSWORD_HASH;
+      if (_senha.isHash(padrao) && await _senha.verify(nova, padrao)) return res.status(400).json({ error: "A nova senha não pode ser a senha padrão." });
+      const erro = await gravar({
+        custom_password: await _senha.hash(nova), must_change: false,
+        rec_codigo: null, rec_expira: null, rec_tentativas: 0, updated_at: new Date().toISOString()
+      });
+      if (erro) return res.status(erro.status).json({ error: erro.error });
+      // a senha esquecida deixa de valer também nos aparelhos que tinham ficado conectados
+      try { await _auth.revogarSessoes(userKey, userKey); } catch (e) { console.error("users: não consegui encerrar as sessões de", userKey, e.message); }
+      await registrarAcesso(userKey, row);
+      console.log("users: senha recriada pelo código", userKey);
+      return res.status(200).json({
+        ok: true,
+        token: emitirSessao(userKey, secret, body.manter === true),
+        manter: body.manter === true,
+        perfil: criadoPelaTela(row) ? { nome: row.nome, cargo: row.cargo || "", perms: row.perms || {} } : null,
+        guias: (row.perms && row.perms.guias) || null
+      });
+    }
+
+    // Cadastrar e-mail/celular de recuperação: a própria pessoa (com a senha atual) ou o administrador.
+    if (body.action === "set_recovery") {
+      const a = _auth.requireAuth(req);
+      const quem = a.ok && a.user && !a.user.s ? a.user.u : null;
+      if (!quem) return res.status(401).json({ error: "Sessão vencida. Entre de novo." });
+      const alvo = userKey || quem;
+      const admin = await adminDoToken();
+      if (alvo !== quem && !admin) return res.status(403).json({ error: "Só administradores cadastram o contato de outra pessoa." });
+      if (alvo === quem && !admin) {
+        const atual = String(body.currentPassword || "");
+        if (!atual) return res.status(401).json({ error: "Confirme com a sua senha atual." });
+        const c = await conferirSenha(quem, atual);
+        if (c.erro) return res.status(c.status).json({ error: c.erro });
+        if (!c.ok) return res.status(401).json({ error: "Senha atual incorreta." });
+      }
+      const em = _rec.lerEmail(body.email), ce = _rec.lerCelular(body.celular);
+      if (!em.ok) return res.status(400).json({ error: em.erro });
+      if (!ce.ok) return res.status(400).json({ error: ce.erro });
+      let row;
+      try { row = await lerUsuario(alvo); } catch (e) { return res.status(502).json({ error: "Erro ao consultar Supabase." }); }
+      if (USUARIOS.indexOf(alvo) < 0 && !criadoPelaTela(row)) return res.status(404).json({ error: "Usuário não encontrado." });
+      const r = await fetch(TABELA, {
+        method: "POST",
+        headers: { ...headers, Prefer: "resolution=merge-duplicates,return=minimal" },
+        body: JSON.stringify({ user_key: alvo, rec_email: em.valor, rec_celular: ce.valor, updated_at: new Date().toISOString() })
+      });
+      if (!r.ok) {
+        const t = (await r.text()).slice(0, 300);
+        console.error("users: erro ao salvar contato de recuperação", r.status, t);
+        return /rec_|column/i.test(t) ? res.status(503).json({ error: MSG_SEM_BANCO_REC }) : res.status(502).json({ error: "Erro ao salvar." });
+      }
+      console.log("users: contato de recuperação de", alvo, "salvo por", quem);
+      return res.status(200).json({ ok: true, userKey: alvo, email: em.valor || "", celular: _rec.celularFormatado(ce.valor) || "" });
+    }
+
     // Troca de senha: exige a senha atual — a própria, ou a padrão no primeiro
     // acesso. Sem essa prova ninguém troca a senha de ninguém. Sem "action" é o
     // formato antigo do front, que agora também precisa da senha atual.
@@ -414,7 +577,7 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true, token: secret ? emitirSessao(userKey, secret, body.manter === true) : null });
     }
 
-    return res.status(400).json({ error: "action inválida (use authenticate, renew, logout_all, change_password, admin_reset, create_user, set_active ou set_guias)." });
+    return res.status(400).json({ error: "action inválida (use authenticate, renew, logout_all, change_password, admin_reset, create_user, set_active, set_guias, set_recovery, recovery_options, recovery_send ou recovery_reset)." });
   }
 
   res.setHeader("Allow", "GET, POST");
