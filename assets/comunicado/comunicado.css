@@ -51,3 +51,28 @@
 .co-push.neg{border-color:var(--md-ambd);background:var(--md-ambg)}
 .co-push .md-b{min-height:48px;width:100%}
 @media(min-width:760px){.co>.co-push{grid-column:1/-1;flex-direction:row;align-items:center;justify-content:space-between}.co-push .md-b{width:auto}}
+
+/* Faltas da Supervisão no celular: menos cabeçalho, para a primeira falta aparecer logo.
+   Só visual (sem mexer em regra): o título já está na barra do topo; o texto da regra fica na tela grande e,
+   no celular, cada falta já traz o seu prazo. */
+@media (max-width:640px){
+  #pg-faltassup .sec-hdr{margin-bottom:8px;padding-bottom:8px}
+  #pg-faltassup .sec-hdr .fm-ic-tile,#pg-faltassup .sec-hdr-sub,#pg-faltassup .sec-hdr .fm-pri{display:none}
+  #pg-faltassup .sec-hdr>div:not([style]){display:none}
+  #pg-faltassup .sec-hdr{justify-content:flex-end;border-bottom:0;padding-bottom:0}
+  #pg-faltassup .fs-top{margin:0 0 10px;gap:8px}
+  #pg-faltassup .fs-top h4{font-size:1.1rem}
+  #pg-faltassup .fs-top p{display:none}
+  #pg-faltassup .fm-tabs{flex-wrap:nowrap;overflow-x:auto;gap:0;margin-bottom:10px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  #pg-faltassup .fm-tabs::-webkit-scrollbar{display:none}
+  #pg-faltassup .fm-tab{flex:0 0 auto;white-space:nowrap;padding:9px 10px;font-size:.8rem}
+  #pg-faltassup .fs-bar{gap:8px;margin:0 0 8px}
+  #pg-faltassup .fs-bar .fm-search{flex:1 1 100%;min-width:0}
+  #pg-faltassup .fs-bar .fm-search .fm-in,#pg-faltassup .fs-bar .fm-seg button{height:38px}
+  #pg-faltassup .fs-bar .fs-calw,#pg-faltassup .fs-bar .fm-seg{flex:1 1 100%;min-width:0}
+  #pg-faltassup .fs-bar .fm-seg button{flex:1}
+  #pg-faltassup .fs-pills{flex-wrap:nowrap;overflow-x:auto;gap:6px;margin:0 0 8px;padding-bottom:2px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  #pg-faltassup .fs-pills::-webkit-scrollbar{display:none}
+  #pg-faltassup .fs-pill{flex:0 0 auto;height:32px}
+  #pg-faltassup .fs-aviso{display:none}
+}

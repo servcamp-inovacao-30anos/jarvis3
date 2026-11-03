@@ -584,3 +584,13 @@ html[data-theme="dark"] .md-rod-txt>b{color:#fff}
   .md-corpo{grid-template-columns:minmax(0,1fr);grid-auto-rows:max-content;align-content:start} /* cada bloco do tamanho do que tem dentro; quem rola é a janela */
   .md-prev{padding:14px 12px 24px}
 }
+
+/* Janela de gerar medida no celular: menos altura por bloco, para a escolha e o botão aparecerem sem rolar tanto. */
+@media (max-width:560px){
+  .md-ov .md-sec-d{display:none}
+  .md-ov .md-ctx{padding:12px 0}
+  .md-ov .md-ctx .md-sec-h{margin-bottom:8px;padding-bottom:8px}
+  .md-ov .md-win .md-tipos .md-tipo{display:flex;flex-direction:row;align-items:center;gap:12px;text-align:left;padding:8px 12px;min-height:0}
+  .md-ov .md-win .md-tipos .md-tipo>b{flex:1;min-width:0;margin:0}
+  .md-ov .md-win .md-tipos .md-tipo>span:not(.ic){display:none}
+}
