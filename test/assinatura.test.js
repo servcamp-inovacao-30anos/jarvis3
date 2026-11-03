@@ -403,3 +403,14 @@ test("a página pública não exige login e a via não aparece no painel de ning
   const vercel = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "vercel.json"), "utf8"));
   assert.ok(vercel.headers[0].headers.some(h => h.key === "Content-Security-Policy"));
 });
+
+test("tela: os botões não dependem de a assinatura já ter carregado (sinal fraco no celular do supervisor)", () => {
+  const md = fs.readFileSync(path.join(__dirname, "..", "assets", "medida", "medida.js"), "utf8");
+  // sem o assinatura.js o botão não fazia nada; sem o .css a janela ficava sem estilo, fora da tela
+  assert.ok(!/onclick="mdAssinar\(|onclick="mdVia\(/.test(md), "o botão passa pela versão que confere os arquivos");
+  assert.ok(!/typeof window\.mdAssinar==="function"\)window\.mdAssinar/.test(md), "depois de gerar, não fecha a janela calado");
+  for (const arq of ["/assets/medida/assinatura.css", "/assets/vendor/qrcode-generator.js", "/assets/medida/assinatura.js"]) {
+    assert.ok(md.includes(arq), "busca de novo " + arq);
+    assert.ok(fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8").includes(arq), "o mesmo arquivo que o index.html carrega: " + arq);
+  }
+});
