@@ -99,7 +99,8 @@ window.addEventListener("online",reenviarFila);
 setInterval(reenviarFila,30000);
 
 /* ═════════ tela ═════════ */
-function dados(g){return Object.assign({},window.mdDocDaGerada(g),{digital:true});}
+// medida ainda não gerada (assinar antes de gerar): o texto é o do editor, sem número; a data impressa é a de hoje
+function dados(g){return Object.assign({},g.pre?g.dados:window.mdDocDaGerada(g),{digital:true});}
 const primeiro=g=>titulo(String(g.nome||"").split(" ")[0]);
 const mostraPerfil=()=>AS.perfil&&AS.perfil.tem;
 let metaVp=null,vpAntes=null;
@@ -120,7 +121,7 @@ function fechar(silencioso){
   Object.values(AS.pads).forEach(p=>p&&p.solta&&p.solta());AS.pads={};
   const ov=document.getElementById("as-ov");if(ov)ov.remove();
   document.body.style.overflow="";travaZoom(false);
-  if(!silencioso)AS.etapa=null;
+  if(!silencioso){AS.etapa=null;if(AS.pre&&AS.pre.aoSair)AS.pre.aoSair();} // saiu antes de gerar: volta ao editor, nada foi gerado
 }
 function etapa(e){
   AS.etapa=e;AS.erro=null;
@@ -141,6 +142,7 @@ function pinta(){
   if(e==="ler")return pintaLer();
   if(e==="recusa")return pintaRecusa();
   if(e==="envio")return pintaEnvio();
+  if(e==="gerar")return pintaGerar();
   if(e==="pronto")return pintaPronto();
 }
 function ligaPad(id,aoMudar){const cv=document.getElementById(id);if(!cv)return null;const p=pad(cv,aoMudar);AS.pads[id]=p;return p;}
@@ -198,6 +200,34 @@ function pintaRecusa(){
 }
 function recusaCompleta(){return AS.recusa.t.every(x=>!x.doc.trim()||x.nome.trim().length>=3)&&AS.recusa.t.every(x=>!x.nome.trim()||x.nome.trim().length>=3);}
 function atualizaRecusa(){const b=document.getElementById("as-ok");if(b&&AS.etapa==="recusa")b.disabled=!recusaCompleta();}
+
+/* 3c · gerar a medida (só quando a assinatura vem antes): as duas assinaturas já estão na memória da tela;
+   a medida é gerada e a coleta segue na mesma hora, com a mesma chave única. */
+function pintaGerar(){
+  cab(AS.gerando?"Gerando a medida…":AS.repetida?"Medida repetida?":"Medida não gerada",AS.g.nome?titulo(AS.g.nome):"");
+  if(AS.gerando){corpo(`<div class="as-vz"><div class="as-gira" aria-hidden="true"></div><b>Gerando a medida…</b><span>Aguarde. As assinaturas já estão prontas e seguem logo depois.</span></div>`);rod("");return;}
+  corpo(`<div class="as-vz"><b>${AS.repetida?"Já existe medida para esta ocorrência":"A medida não foi gerada"}</b><span>${esc(AS.repetida||AS.erro||"Tente de novo.")}</span><span>${AS.repetida?'Se gerar outra, as assinaturas que acabaram de ser feitas valem para ela. Se voltar, o colaborador assina de novo.':'Nada foi enviado ainda. "Tentar de novo" mantém as assinaturas; se voltar, o colaborador assina de novo.'}</span></div>`);
+  rod(`<button type="button" class="as-b" data-as="gerar-voltar">Voltar</button>`+(AS.repetida?`<button type="button" class="as-b pri" data-as="gerar-outra">Gerar outra mesmo assim</button>`:`<button type="button" class="as-b pri" data-as="gerar-de-novo">Tentar de novo</button>`));
+}
+async function gerarESeguir(repetir){
+  const pre=AS.pre,parcial=AS.parcial;if(!pre||!parcial||AS.gerando)return;
+  AS.gerando=true;AS.erro=null;AS.repetida=null;etapa("gerar");
+  let m;
+  try{m=await pre.gerar(!!repetir);}
+  catch(e){
+    AS.gerando=false;
+    if(e&&e.codigo==="JA_GERADA")AS.repetida=e.message;else AS.erro=(e&&e.message)||"Sem conexão.";
+    if(document.getElementById("as-ov"))pintaGerar();
+    return;
+  }
+  AS.gerando=false;AS.g=m;AS.pre=null;AS.parcial=null;
+  enviar(Object.assign({chave:m.chave,idem:AS.idem},parcial));
+}
+// confirma a coleta: antes de gerar, gera primeiro; depois do documento gerado, envia direto
+function seguir(parcial){
+  if(AS.pre){AS.parcial=parcial;gerarESeguir(false);return;}
+  enviar(Object.assign({chave:AS.g.chave,idem:AS.idem},parcial));
+}
 
 /* 4 · envio ao servidor */
 function pintaEnvio(){
@@ -297,6 +327,7 @@ function clique(ev){
   const a=b.dataset.as;
   if(a==="sair"){
     if(AS.etapa==="envio"&&AS.enviando&&!window.confirm("A assinatura ainda não foi confirmada pelo servidor. Ela fica guardada neste celular e é enviada sozinha quando houver sinal. Fechar mesmo assim?"))return;
+    if(AS.etapa==="gerar"&&AS.gerando&&!window.confirm("A medida está sendo gerada. Fechar agora pode deixar a medida gerada sem a assinatura. Fechar mesmo assim?"))return;
     clearInterval(relogio);fechar();return;
   }
   if(a==="limpar"){const p=AS.pads[b.dataset.p];if(p)p.limpa();return;}
@@ -315,12 +346,15 @@ function clique(ev){
   if(a==="col-ok"){
     const p=AS.pads["as-pad-col"];if(!AS.aceite||!p||!p.valido())return;
     AS.col={png:p.png(),metricas:p.metricas(),aceite:true};
-    enviar({chave:AS.g.chave,idem:AS.idem,supervisor:AS.sup,colaborador:AS.col});return;
+    seguir({supervisor:AS.sup,colaborador:AS.col});return;
   }
   if(a==="recusa-ok"){
     if(!recusaCompleta())return;
-    enviar({chave:AS.g.chave,idem:AS.idem,supervisor:AS.sup,recusa:{testemunhas:AS.recusa.t.map(x=>({nome:x.nome.trim(),doc:x.doc.trim()})).filter(x=>x.nome||x.doc),observacao:AS.recusa.obs.trim()}});return;
+    seguir({supervisor:AS.sup,recusa:{testemunhas:AS.recusa.t.map(x=>({nome:x.nome.trim(),doc:x.doc.trim()})).filter(x=>x.nome||x.doc),observacao:AS.recusa.obs.trim()}});return;
   }
+  if(a==="gerar-de-novo"){gerarESeguir(false);return;}
+  if(a==="gerar-outra"){gerarESeguir(true);return;}
+  if(a==="gerar-voltar"){AS.parcial=null;AS.repetida=null;etapa(AS.col?"ler":"recusa");return;}
   if(a==="tentar"){if(AS.espera)AS.espera();return;}
   if(a==="via-qr"){viaCanal("qr",null,b);return;}
   if(a==="via-sms"){viaCanal("sms",null,b);return;}
@@ -335,6 +369,7 @@ window.mdAssinar=async function(x){
   if(g.assinado&&g.assinado.digital){window.mdVia(g);return;}
   // uma coleta guardada no aparelho (sinal ruim) é retomada com a mesma chave: não cria segunda assinatura
   const f=lerFila()[g.chave];
+  AS.pre=null;AS.parcial=null;AS.gerando=false;
   AS.g=g;AS.idem=f?f.idem:novoId();AS.sup=f?f.supervisor:null;AS.col=null;AS.aceite=false;AS.res=null;AS.erro=null;AS.perfil=undefined;AS.sup_novo=false;AS.contato=null;AS.recusa={t:[{nome:"",doc:""},{nome:"",doc:""}],obs:""};
   abrirTela(g);
   if(f){enviar(f);return;}
@@ -342,9 +377,21 @@ window.mdAssinar=async function(x){
   try{AS.perfil=await api("assinatura_perfil");}catch(e){AS.perfil={tem:false};}
   if(AS.etapa==="sup")pintaSup();
 };
+// Assinar ANTES de gerar: pre = { nome, dados (texto do documento), gerar(repetir) → medida gerada, aoSair() }.
+// Supervisor assina, o colaborador lê e assina; só então a medida é gerada (já assinada) e aparece o QR da via.
+window.mdAssinarNovo=async function(pre){
+  AS.pre=pre;AS.parcial=null;AS.gerando=false;AS.repetida=null;
+  AS.g={pre:true,numero:"Nova medida",nome:pre.nome,dados:pre.dados,chave:null};
+  AS.idem=novoId();AS.sup=null;AS.col=null;AS.aceite=false;AS.res=null;AS.erro=null;AS.perfil=undefined;AS.sup_novo=false;AS.contato=null;AS.recusa={t:[{nome:"",doc:""},{nome:"",doc:""}],obs:""};
+  abrirTela(AS.g);
+  etapa("sup");
+  try{AS.perfil=await api("assinatura_perfil");}catch(e){AS.perfil={tem:false};}
+  if(AS.etapa==="sup")pintaSup();
+};
 // a via de uma medida já assinada: QR novo, SMS, e-mail
 window.mdVia=async function(x){
   const g=achar(x);if(!g)return;
+  AS.pre=null;AS.parcial=null;AS.gerando=false;
   AS.g=g;AS.res={resultado:g.assinado&&g.assinado.resultado,sha256:g.assinado&&g.assinado.sha256,via:null};AS.contato=null;AS.erro=null;
   abrirTela(g);etapa("pronto");
   carregaContato();viaCanal("qr",null,null);

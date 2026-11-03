@@ -47,8 +47,12 @@ O plano completo está em `plano-medida-disciplinar-assinatura-digital.md`; aqui
 
 ## Assinatura no celular, PDF selado e via (`api/_assinatura.js`, `api/_via.js`, `assets/medida/assinatura.js`, `via.html`)
 
-- Em "Medidas geradas" (e logo depois de gerar) há **Assinar no celular**: o supervisor assina (a assinatura do perfil, com um
-  toque, ou desenhando), entrega o celular, o colaborador lê o documento inteiro, marca "Li e estou ciente" e assina com o dedo.
+- A assinatura vem **antes** de gerar: depois de preencher os passos, **Assinar e gerar** abre a tela de assinatura (o supervisor assina
+  com a assinatura do perfil, num toque, ou desenhando; entrega o celular; o colaborador lê o documento inteiro, marca "Li e estou ciente"
+  e assina com o dedo). Só então a medida é gerada, já assinada, e aparece o QR da via. Desistir no meio volta ao formulário, sem medida
+  gerada. "Prefiro gerar para imprimir, no papel" segue disponível; em "Medidas geradas" o botão **Assinar no celular** continua para as
+  que já existem. Se já existir medida para a ocorrência, a tela avisa e deixa "Gerar outra mesmo assim" sem perder as assinaturas.
+  Na assinatura digital a data impressa é a de hoje (a do servidor).
 - O colaborador assina **escrevendo o próprio nome com o dedo** no campo da tela.
 - Ou **recusa**: testemunhas são opcionais (até duas; quem for informada precisa ter o nome, o documento é opcional) e
   observação opcional.
