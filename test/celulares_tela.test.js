@@ -72,6 +72,55 @@ test("vincular: exato, sem o posto, pelo começo do nome, ligado à mão — e n
   assert.equal(nome(15), "ASA");
 });
 
+test("vincular: erro de digitação e nome mais curto, sempre com um candidato só (nomes reais do sistema)", () => {
+  const nomes = ["COLOMARTI", "COLOMARTI INDAITUBA", "COND - SAMAMBAIA", "COND - VILLAGE MONET", "COND - PORTAL DAS AMOREIRAS",
+    "COND - SANTOS DUMONT II", "COND - SANTOS DUMONT II SD", "COND - LONDON PARK", "COND - LONDON LOFT", "CCL PARANA"];
+  const casos = {
+    "COLOMARTI - INDAIATUBA": "COLOMARTI INDAITUBA", // o do sistema está com erro de digitação; o prefixo "COLOMARTI" não pode ganhar
+    "COND - SAMANBAIA - PORTARIA": "COND - SAMAMBAIA",
+    "MONET - PORTARIA": "COND - VILLAGE MONET",
+    "PORTAL AMOREIRAS RONDA": "COND - PORTAL DAS AMOREIRAS",
+    "COND - SANTOS DUMONT - PORTARIA": undefined, // "II" e "II SD": dois candidatos, e "II" a mais não é erro de digitação
+    "LONDON PERK": "COND - LONDON PARK",
+    "LONDON": undefined,
+    "CCL - CAMPINAS": undefined
+  };
+  const ap = Object.keys(casos).map((cliente, i) => ({ id: i + 1, cliente }));
+  const v = T.vincular(ap, nomes);
+  ap.forEach(a => assert.equal((v.get(a.id) || {}).nome, casos[a.cliente], a.cliente));
+});
+
+test("vincular: unidade diferente nunca é parecida, e o que é só parecido não vai para o supervisor (revisão)", () => {
+  const nomes = ["COND. SANTOS DUMONT", "COND. SANTOS DUMONT 2", "COND. SANTOS DUMONT SAN DIEGO", "COND. AMBIANCE", "COND. AMBIANCE III",
+    "COND - MAISON RENOIR", "COND - MAISON RENOIR P. PRADO", "CLINICA ESCALADA", "COND - RESIDENCIAL LUGANO", "COND - VILLAGE MONET"];
+  const ap = [
+    { id: 1, cliente: "SANTOS DUMONT II LIMPEZA" },
+    { id: 2, cliente: "SANTOS DUMONT S. DIEGO" },
+    { id: 3, cliente: "AMBIANCE 3 - LIMPEZA" },
+    { id: 4, cliente: "MAISON RENOIR PQ PRADO" },
+    { id: 5, cliente: "CLINICA ESCALADA UNIDADE 2" },
+    { id: 6, cliente: "LAGO DI LUGANO LIMPEZA" },
+    { id: 7, cliente: "PLUTÃO - ZELADOR" },
+    { id: 8, cliente: "MONET - PORTARIA" },
+    { id: 9, cliente: "SANTOS DUMONT - PORTARIA" }
+  ];
+  const v = T.vincular(ap, nomes);
+  assert.deepEqual(v.get(1), { nome: "COND. SANTOS DUMONT 2", como: "nome" }, "II = 2");
+  assert.deepEqual(v.get(2), { nome: "COND. SANTOS DUMONT SAN DIEGO", como: "parecido" });
+  assert.deepEqual(v.get(3), { nome: "COND. AMBIANCE III", como: "nome" }, "3 = III");
+  assert.deepEqual(v.get(4), { nome: "COND - MAISON RENOIR P. PRADO", como: "parecido" }, "P. de PARQUE, e não o MAISON RENOIR");
+  assert.equal(v.has(5), false, "UNIDADE 2 não vira a CLINICA ESCALADA");
+  assert.equal(v.has(6), false, "LAGO DI LUGANO não é o RESIDENCIAL LUGANO");
+  assert.equal(v.has(7), false, "um P sozinho não vira PLUTÃO");
+  assert.deepEqual(v.get(8), { nome: "COND - VILLAGE MONET", como: "parecido" });
+  assert.deepEqual(v.get(9), { nome: "COND. SANTOS DUMONT", como: "nome" });
+  const m = T.contatosPorCliente([
+    { id: 1, cliente: "MONET - PORTARIA", numero: "19900000001", login_zello: "a" },
+    { id: 2, cliente: "MONET - PORTARIA", cliente_vinculado: "COND - VILLAGE MONET", numero: "19900000002", login_zello: "b" }
+  ], nomes);
+  assert.deepEqual(m.get(T.chave("COND - VILLAGE MONET")).map(c => c.numero), ["19900000002"], "só o confirmado aparece");
+});
+
 test("rótulo do posto e contatos agrupados por cliente", () => {
   assert.equal(T.rotuloPosto("AGUAS CLARAS - PORTARIA", "AGUAS CLARAS"), "PORTARIA");
   assert.equal(T.rotuloPosto("COND - TURQUEZA VILLE - PORTARIA APOIO", "TURQUEZA VILLE"), "PORTARIA APOIO");

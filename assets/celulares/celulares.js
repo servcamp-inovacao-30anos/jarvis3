@@ -44,19 +44,44 @@ function nucleo(s){
   }
   return t.join(" ");
 }
+// Número no nome ("II", "2", "02", "III"): unidade diferente nunca é "parecida" ("SANTOS DUMONT II" não é o SANTOS DUMONT).
+const ROMANO={I:"1",II:"2",III:"3",IV:"4",V:"5",VI:"6",VII:"7",VIII:"8",IX:"9",X:"10"};
+const numTok=t=>/^\d+$/.test(t)?String(+t):(ROMANO[t]||null);
+const normTok=t=>numTok(t)||t;
+const numerosDe=toks=>toks.map(numTok).filter(Boolean).sort().join(",");
+// mesma palavra, ou abreviação dela ("P" de PARQUE, "UNID" de UNIDADE, "S" de SAN)
+function tokOk(a,b){
+  a=normTok(a);b=normTok(b);if(a===b)return true;
+  const[c,l]=a.length<b.length?[a,b]:[b,a];
+  return !numTok(c)&&!numTok(l)&&(c.length===1||c.length>=3)&&l.indexOf(c)===0;
+}
+// as palavras de "parte" aparecem em "todo", na mesma ordem. Abreviação só vale acompanhada: no
+// máximo uma, e com pelo menos uma palavra igual ("P" sozinho não pode virar "PLUTÃO").
+function contemEmOrdem(todo,parte){
+  let i=0,abrev=0;
+  for(const t of todo)if(i<parte.length&&tokOk(t,parte[i])){if(normTok(t)!==normTok(parte[i]))abrev++;i++;}
+  return i===parte.length&&abrev<=1&&parte.length-abrev>=1;
+}
 // aparelhos: {id, cliente, cliente_vinculado, tipo}; nomes: clientes da planilha do sistema.
-// Devolve Map id → {nome, como}: "manual" (ligado na tela), "nome" (casou sozinho) ou, quando o
-// cliente ligado na tela saiu da planilha, {nome:null, como:"perdido"}. Na dúvida, não liga.
+// Devolve Map id → {nome, como}:
+//   "manual"   ligado na tela;
+//   "nome"     o nome bate (tirando o posto, o "COND." e acento/pontuação; "3" = "III");
+//   "parecido" só uma SUGESTÃO para confirmar na guia Celulares — não aparece para o supervisor:
+//              erro de digitação, nome mais curto ou mais comprido que o do sistema, abreviação;
+//   {nome:null, como:"perdido"} quando o cliente ligado na tela saiu da planilha.
+// Na dúvida (dois candidatos), não sugere nada.
 function vincular(aparelhos,nomes){
-  const porChave=new Map(),porNucleo=new Map(),porCompacto=new Map();
+  const porChave=new Map(),porNucleo=new Map(),porCompacto=new Map(),porNormal=new Map(),clientes=[];
   const junta=(m,k,n)=>{if(!m.has(k))m.set(k,[]);if(m.get(k).indexOf(n)<0)m.get(k).push(n);};
   for(const n0 of nomes||[]){
     const n=String(n0==null?"":n0).trim();if(!n)continue;
     const c=chave(n),k=nucleoCliente(n);
     if(c&&!porChave.has(c))porChave.set(c,n);
-    if(k){junta(porNucleo,k,n);junta(porCompacto,k.replace(/ /g,""),n);}
+    if(!k)continue;
+    const tk=k.split(" ");
+    if(!porNucleo.has(k))clientes.push({n,k,tk,kc:k.replace(/ /g,""),num:numerosDe(tk)});
+    junta(porNucleo,k,n);junta(porCompacto,k.replace(/ /g,""),n);junta(porNormal,tk.map(normTok).join(" "),n);
   }
-  const nucleos=[...porNucleo.keys()].sort((a,b)=>b.length-a.length); // o mais comprido primeiro
   const unico=l=>l&&l.length===1?l[0]:null;
   const out=new Map();
   for(const a of aparelhos||[]){
@@ -66,12 +91,36 @@ function vincular(aparelhos,nomes){
     const exato=porChave.get(chave(a.cliente));
     if(exato){out.set(a.id,{nome:exato,como:"nome"});continue;}
     const d=nucleo(a.cliente);if(!d)continue;
-    let n=unico(porNucleo.get(d))||unico(porCompacto.get(d.replace(/ /g,"")));
-    if(!n){const k=nucleos.find(k=>k.length>=3&&d.indexOf(k+" ")===0);if(k)n=unico(porNucleo.get(k));}
-    if(!n&&d.length>=5){const c=nucleos.filter(k=>k.indexOf(d+" ")===0);if(c.length===1)n=unico(porNucleo.get(c[0]));}
-    if(n)out.set(a.id,{nome:n,como:"nome"});
+    const td=d.split(" "),dc=d.replace(/ /g,"");
+    const certo=unico(porNucleo.get(d))||unico(porCompacto.get(dc))||unico(porNormal.get(td.map(normTok).join(" ")));
+    if(certo){out.set(a.id,{nome:certo,como:"nome"});continue;}
+    // sugestões: a que tem mais palavras em comum ganha; empate = dúvida
+    const num=numerosDe(td),lim=dc.length>=12?2:1;
+    let melhor=0,quem=[];
+    for(const c of clientes){
+      if(c.num!==num)continue;
+      let s=0;
+      // o do sistema é mais curto: começando pela mesma palavra ("LAGO DI LUGANO" não é o "LUGANO")
+      if(tokOk(td[0],c.tk[0])&&contemEmOrdem(td,c.tk))s=c.tk.length;
+      else if((td.length>1||d.length>=5)&&contemEmOrdem(c.tk,td))s=td.length;           // o do aparelho é mais curto
+      else if(dc.length>=6&&Math.abs(c.kc.length-dc.length)<=1&&distancia(c.kc,dc,lim)<=lim)s=c.tk.length; // digitação
+      if(!s)continue;
+      if(s>melhor){melhor=s;quem=[c];}else if(s===melhor)quem.push(c);
+    }
+    if(quem.length===1){const n=unico(porNucleo.get(quem[0].k));if(n)out.set(a.id,{nome:n,como:"parecido"});}
   }
   return out;
+}
+// Quantas letras trocar/pôr/tirar para ir de a a b (para cedo quando passa do limite).
+function distancia(a,b,lim){
+  let ant=Array.from({length:b.length+1},(_,j)=>j);
+  for(let i=1;i<=a.length;i++){
+    const cur=[i];let menor=i;
+    for(let j=1;j<=b.length;j++){cur[j]=Math.min(ant[j]+1,cur[j-1]+1,ant[j-1]+(a[i-1]===b[j-1]?0:1));if(cur[j]<menor)menor=cur[j];}
+    if(menor>lim)return lim+1;
+    ant=cur;
+  }
+  return ant[b.length];
 }
 // O que sobra do nome do aparelho tirando o cliente: "AGUAS CLARAS - PORTARIA" → "PORTARIA".
 function rotuloPosto(aparelho,cliente){
@@ -97,7 +146,7 @@ function contatosPorCliente(contatos,nomes){
   const v=vincular(lista.map(c=>({id:c.id,cliente:c.cliente,cliente_vinculado:c.cliente_vinculado,tipo:"POSTO"})),nomes);
   const m=new Map();
   for(const c of lista){
-    const x=v.get(c.id);if(!x||!x.nome)continue;
+    const x=v.get(c.id);if(!x||!x.nome||x.como==="parecido")continue; // sugestão sem confirmar não vai para o supervisor
     const k=chave(x.nome);if(!m.has(k))m.set(k,[]);
     m.get(k).push({numero:c.numero||"",login:c.login_zello||"",posto:rotuloPosto(c.cliente,x.nome)});
   }
@@ -144,7 +193,7 @@ async function api(t,metodo,corpo,qs){
 function nomesClientes(){
   try{
     const fora=new Set(typeof CL_EXCL!=="undefined"?[...CL_EXCL].map(chave):[]);
-    return((typeof DASHBOARD_DATA!=="undefined"&&DASHBOARD_DATA&&DASHBOARD_DATA.clientes)||[]).map(r=>r&&r.NOME).filter(n=>n&&!fora.has(chave(n)));
+    return[...new Set(((typeof DASHBOARD_DATA!=="undefined"&&DASHBOARD_DATA&&DASHBOARD_DATA.clientes)||[]).map(r=>r&&r.NOME!=null?String(r.NOME).trim():"").filter(n=>n&&!fora.has(chave(n))))];
   }catch(e){return[];}
 }
 function clientesAtuais(){try{return typeof DASHBOARD_DATA!=="undefined"&&DASHBOARD_DATA?DASHBOARD_DATA.clientes:null;}catch(e){return null;}}
@@ -192,23 +241,35 @@ raiz.celZelloHtml=function(r){
 
 /* ── guia Celulares ─────────────────────────────────────────────────────── */
 const conteudo=()=>document.getElementById("cel-content");
-// Abre com o que já tinha (sem piscar) e busca de novo por trás: outra pessoa pode ter mexido.
+// Abrir a guia (navTo): mostra o que já tinha (sem piscar) e busca de novo por trás — outra pessoa
+// pode ter mexido. Só aqui mexe no filtro geral e no subtítulo: é a guia que está na tela.
 raiz.celLoad=function(){
   const fb=document.querySelector(".fb");if(fb)fb.style.display="none"; // período/turno/área não valem aqui
   const sub=document.getElementById("pgSub");if(sub)sub.textContent="Cadastro e pendências dos aparelhos";
   if(CEL.dono!==uk()){CEL.lista=null;CEL.erro=null;CEL.dono=uk();} // outra pessoa entrou nesta aba
   raiz.celRender();
-  if(CEL.carregando)return;
-  CEL.carregando=true;
-  api("").then(j=>{CEL.lista=Array.isArray(j.aparelhos)?j.aparelhos:[];CEL.erro=null;})
+  carregar();
+};
+// Busca a lista. Pedido no meio de outra busca não se perde: roda de novo logo depois dela
+// (a primeira pode ter saído antes de a última gravação chegar no banco).
+function carregar(){
+  if(CEL.carregando){CEL.denovo=true;return;}
+  CEL.carregando=true;CEL.denovo=false;
+  const dono=uk();
+  api("").then(j=>{if(dono===uk()){CEL.lista=Array.isArray(j.aparelhos)?j.aparelhos:[];CEL.erro=null;}})
     .catch(e=>{
+      if(dono!==uk())return;
       // sem permissão (ou a sessão mudou): some com o que estava na tela
       if(e.status===403||!CEL.lista){CEL.lista=null;CEL.erro=e;}
       else toast("Não consegui atualizar os aparelhos: "+e.message);
     })
-    .then(()=>{CEL.carregando=false;if(typeof ST==="undefined"||ST.pg==="celulares")raiz.celRender();});
-};
-const recarregar=()=>{CEL.contatos=null;CEL.idx=null;raiz.celLoad();};
+    .then(()=>{
+      CEL.carregando=false;
+      if(CEL.denovo){carregar();return;}
+      if(typeof ST==="undefined"||ST.pg==="celulares")raiz.celRender();
+    });
+}
+const recarregar=()=>{CEL.contatos=null;CEL.idx=null;carregar();};
 
 // pendências do servidor + a do vínculo com o cliente do sistema (só a tela conhece a planilha)
 function comVinculo(lista){
@@ -219,6 +280,7 @@ function comVinculo(lista){
     if(temNomes&&a.tipo!=="INTERNO"&&a.situacao==="ATIVO"){
       if(!x)pend.push({campo:"cliente_vinculado",tipo:"vinculo",msg:"Sem cliente no sistema"});
       else if(!x.nome)pend.push({campo:"cliente_vinculado",tipo:"vinculo",msg:"Cliente ligado saiu da planilha"});
+      else if(x.como==="parecido")pend.push({campo:"cliente_vinculado",tipo:"vinculo",msg:"Cliente parecido: confirme"});
     }
     return Object.assign({},a,{vinc:x,pendT:pend});
   });
@@ -258,6 +320,7 @@ raiz.celRender=function(){
   const sub=document.getElementById("pgSub");if(sub&&typeof ST!=="undefined"&&ST.pg==="celulares")sub.textContent="Cadastro e pendências dos aparelhos";
   const todos=comVinculo(CEL.lista),temNomes=nomesClientes().length>0;
   _temNomes=temNomes;
+  CEL.vinc=new Map(todos.map(a=>[String(a.id),a.vinc]));
   const ativos=todos.filter(a=>a.situacao==="ATIVO");
   const nSit=s=>todos.filter(a=>a.situacao===s).length;
   const comFalta=ativos.filter(a=>a.pendT.some(p=>p.tipo==="falta"));
@@ -280,7 +343,7 @@ raiz.celRender=function(){
     cartao("sk-bl","📱","Aparelhos ativos",ativos.length,"<b>"+nSit("RESERVA")+"</b> reserva · <b>"+nSit("BAIXADO")+"</b> baixados · <b>"+internos+"</b> uso interno","")+
     cartao("sk-re","⚠️","Com dado faltando",comFalta.length,"<b>"+campos+"</b> campos em branco","falta")+
     cartao("sk-or","🔎","Para conferir",conferir,"DDD, repetidos, inválidos","conferir")+
-    cartao("sk-pu","🔗","Sem cliente no sistema",temNomes?semVinc:"—",temNomes?"não aparecem na guia Clientes":"carregue a planilha do sistema",temNomes?"vinculo":"")+
+    cartao("sk-pu","🔗","Sem cliente no sistema",temNomes?semVinc:"—",temNomes?"sem cliente ou a confirmar: fora da guia Clientes":"carregue a planilha do sistema",temNomes?"vinculo":"")+
     '</div>';
   // atalhos: cada tipo de pendência, com a contagem dentro da situação escolhida
   const base=todos.filter(a=>!CEL.f.sit||a.situacao===CEL.f.sit),cont=new Map();
@@ -294,7 +357,7 @@ raiz.celRender=function(){
   const sel=(id,ops,v)=>'<select class="cel-sel" id="'+id+'">'+ops.map(([k,t])=>'<option value="'+k+'"'+(v===k?' selected':'')+'>'+t+'</option>').join("")+'</select>';
   const algum=CEL.f.q||CEL.f.pend||CEL.f.chip||CEL.f.sit!=="ATIVO";
   h+='<div class="ts"><div class="th2"><div style="display:flex;align-items:center;gap:7px"><div class="chb"></div><span class="ct">Aparelhos</span><span class="cel-n">'+lista.length+' de '+todos.length+'</span></div>'+
-    '<div class="cel-filtros"><input class="sb2" type="search" id="cel-q" placeholder="Buscar cliente, número, IMEI, login…" value="'+esc(CEL.f.q)+'">'+
+    '<div class="cel-filtros"><input class="sb2" type="search" id="cel-q" placeholder="Buscar cliente, número, IMEI, login…" value="'+esc(CEL.qTela!=null?CEL.qTela:CEL.f.q)+'">'+
     sel("cel-sit",[["ATIVO","Ativos"],["RESERVA","Reserva"],["BAIXADO","Baixados"],["","Todas as situações"]],CEL.f.sit)+
     sel("cel-pend",[["","Todas as pendências"],["falta","Com dado faltando"],["conferir","Para conferir"],["vinculo","Sem cliente no sistema"],["ok","Tudo certo"]],CEL.f.pend)+
     (algum?'<button type="button" class="cel-limpar" data-cel="limpar">limpar filtros</button>':'')+'</div></div>';
@@ -317,6 +380,8 @@ function linha(a){
   const d=x=>x?esc(x):'<span class="cel-sem">—</span>';
   let cli='<b>'+d(a.cliente)+'</b>';
   if(a.tipo==="INTERNO")cli+='<span class="cel-tag">uso interno</span>';
+  else if(a.vinc&&a.vinc.nome&&a.vinc.como==="parecido")cli+='<span class="cel-vin cel-vin-q" title="Sugestão pelo nome parecido: só aparece na guia Clientes depois de confirmada">↳ '+esc(a.vinc.nome)+' ?</span>'+
+    '<span class="cel-acoes"><button type="button" class="cel-lk" data-cel="confirmar" data-id="'+a.id+'">✓ confirmar</button><button type="button" class="cel-lk" data-cel="vincular" data-id="'+a.id+'">trocar</button></span>';
   else if(a.vinc&&a.vinc.nome)cli+='<span class="cel-vin" title="'+(a.vinc.como==="manual"?"Ligado na tela":"Ligado pelo nome")+'">↳ '+esc(a.vinc.nome)+'</span>';
   if(a.tipo!=="INTERNO"&&a.situacao!=="BAIXADO"&&(!a.vinc||!a.vinc.nome)&&_temNomes)cli+='<button type="button" class="cel-lk" data-cel="vincular" data-id="'+a.id+'">🔗 ligar ao cliente</button>';
   const f=formatarNumero(a.numero),h=telHref(a.numero);
@@ -343,6 +408,7 @@ function ligarEventos(el){
     else if(acao==="editar")abrirForm(achar(id));
     else if(acao==="senhas")verSenhas(achar(id));
     else if(acao==="vincular")abrirVinculo(achar(id));
+    else if(acao==="confirmar"){const x=CEL.vinc&&CEL.vinc.get(String(id));if(x&&x.nome)confirmarVinculo(id,x.nome,b);}
     else if(acao==="importar")abrirImportar();
     else if(acao==="exportar")exportar(b);
     else if(acao==="ddd")abrirDDD();
@@ -350,11 +416,11 @@ function ligarEventos(el){
     else if(acao==="pag"){CEL.pag=+b.dataset.p||1;raiz.celRender();}
     else if(acao==="chip"){CEL.f.chip=CEL.f.chip===b.dataset.k?"":b.dataset.k;CEL.pag=1;raiz.celRender();}
     else if(acao==="filtro"){CEL.f.pend=CEL.f.pend===b.dataset.pend?"":b.dataset.pend;CEL.f.sit="ATIVO";CEL.f.chip="";CEL.pag=1;raiz.celRender();}
-    else if(acao==="limpar"){CEL.f={q:"",sit:"ATIVO",pend:"",chip:""};CEL.pag=1;raiz.celRender();}
+    else if(acao==="limpar"){CEL.f={q:"",sit:"ATIVO",pend:"",chip:""};CEL.qTela=null;CEL.pag=1;raiz.celRender();}
   });
   el.addEventListener("input",e=>{
     if(e.target.id!=="cel-q")return;
-    const v=e.target.value;clearTimeout(_debounce);
+    const v=e.target.value;CEL.qTela=v;clearTimeout(_debounce);
     _debounce=setTimeout(()=>{CEL.f.q=v;CEL.pag=1;raiz.celRender();},250);
   });
   el.addEventListener("change",e=>{
@@ -372,11 +438,15 @@ function janela(titulo,html,larga){
   ov.innerHTML='<div class="cel-box'+(larga?' cel-larga':'')+'" role="dialog" aria-modal="true" aria-label="'+esc(titulo)+'">'+
     '<div class="cel-h"><b>'+esc(titulo)+'</b><button type="button" class="cel-x" data-fechar="1" aria-label="Fechar">✕</button></div>'+
     '<div class="cel-c">'+html+'</div></div>';
-  ov.addEventListener("click",e=>{if(e.target===ov||e.target.closest("[data-fechar]"))fechar();});
+  let baixou=null;
+  ov.addEventListener("mousedown",e=>{baixou=e.target;});
+  ov.addEventListener("click",e=>{if((e.target===ov&&baixou===ov)||e.target.closest("[data-fechar]"))fechar();});
   document.body.appendChild(ov);
   return ov;
 }
 function fechar(){const o=document.getElementById("cel-ov");if(o)o.remove();}
+// Resposta que chega depois de a janela fechar não pode fechar a próxima que a pessoa abriu.
+function fecharSe(ov){if(document.getElementById("cel-ov")===ov)fechar();}
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&document.getElementById("cel-ov"))fechar();});
 
 // Sessão caiu (12 h, bloqueio, "sair de todos os aparelhos") ou outra pessoa entrou nesta aba:
@@ -394,12 +464,19 @@ function ligarSessao(){
   }
   if(typeof raiz._abrirSessao==="function"&&!raiz._abrirSessao.__cel){
     const a0=raiz._abrirSessao;
-    raiz._abrirSessao=function(){esquecer();return a0.apply(this,arguments);};
+    raiz._abrirSessao=function(){
+      esquecer();const r=a0.apply(this,arguments);
+      if(typeof ST!=="undefined"&&ST.pg==="celulares")raiz.celLoad();
+      return r;
+    };
     raiz._abrirSessao.__cel=true;
   }
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",ligarSessao);else ligarSessao();
-const msg=(ov,t,erro)=>{const m=ov.querySelector(".cel-msg");if(m){m.textContent=t||"";m.className="cel-msg"+(erro?" cel-erro":"");}};
+const msg=(ov,t,erro)=>{
+  if(!document.body.contains(ov)){if(erro&&t)toast("⚠️ "+t);return;} // a janela já foi fechada
+  const m=ov.querySelector(".cel-msg");if(m){m.textContent=t||"";m.className="cel-msg"+(erro?" cel-erro":"");}
+};
 const ocupado=(b,s)=>{if(b){b.disabled=!!s;if(s){b.dataset.txt=b.textContent;b.textContent=s;}else if(b.dataset.txt)b.textContent=b.dataset.txt;}};
 
 /* cadastro / edição */
@@ -450,7 +527,7 @@ function abrirForm(a){
     if(b.dataset.acao==="apagar"){
       if(!confirm("Apagar o aparelho "+(a.cliente||a.numero||"")+"?\n\nSe ele só saiu de uso, prefira mudar a Situação para Baixado: o cadastro fica guardado."))return;
       ocupado(b,"Apagando…");
-      try{await api("","DELETE",null,"&id="+encodeURIComponent(a.id));fechar();toast("🗑️ Aparelho apagado");recarregar();}
+      try{await api("","DELETE",null,"&id="+encodeURIComponent(a.id));fecharSe(ov);toast("🗑️ Aparelho apagado");recarregar();}
       catch(err){ocupado(b,"");msg(ov,err.message,true);}
     }
   });
@@ -472,7 +549,7 @@ function abrirForm(a){
     const bt=form.querySelector('button[type="submit"]');ocupado(bt,"Salvando…");msg(ov,"");
     try{
       if(novo)await api("","POST",corpo);else await api("","PATCH",corpo,"&id="+encodeURIComponent(a.id));
-      fechar();toast(novo?"📱 Aparelho cadastrado":"✅ Aparelho salvo");recarregar();
+      fecharSe(ov);toast(novo?"📱 Aparelho cadastrado":"✅ Aparelho salvo");recarregar();
     }catch(err){ocupado(bt,"");msg(ov,err.message,true);}
   });
   const pri=form.elements[novo?"cliente":"modelo"];if(pri)pri.focus();
@@ -499,7 +576,8 @@ async function verSenhas(a){
 /* ligar ao cliente do sistema */
 function abrirVinculo(a){
   if(!a)return;
-  const nomes=[...new Set(nomesClientes())].sort((x,y)=>x.localeCompare(y,"pt-BR"));
+  const nomes=nomesClientes().sort((x,y)=>x.localeCompare(y,"pt-BR"));
+  const porChave=new Map(nomes.map(n=>[chave(n),n]));
   const sug=sugestoes(a.cliente,nomes,6);
   const ov=janela("Ligar ao cliente do sistema",
     '<div class="cel-txt">Aparelho: <b>'+esc(a.cliente||"(sem nome)")+'</b>. Escolha o cliente da planilha do sistema: é por ele que o número aparece na guia <b>Clientes</b>.</div>'+
@@ -510,20 +588,27 @@ function abrirVinculo(a){
     (a.cliente_vinculado?'<button type="button" class="rh-btn rh-btn-sec" data-acao="tirar">Tirar o vínculo</button>':'')+
     '<span class="cel-msg" role="status"></span><button type="button" class="rh-btn" data-acao="ligar">Ligar</button></div>');
   const inp=ov.querySelector("#cel-vinc-in");
-  const salvar=async(corpo,b)=>{ocupado(b,"Salvando…");try{await api("","PATCH",corpo,"&id="+encodeURIComponent(a.id));fechar();toast("🔗 Aparelho ligado");recarregar();}catch(err){ocupado(b,"");msg(ov,err.message,true);}};
+  const salvar=async(corpo,b)=>{ocupado(b,"Salvando…");try{await api("","PATCH",corpo,"&id="+encodeURIComponent(a.id));fecharSe(ov);toast("🔗 Aparelho ligado");recarregar();}catch(err){ocupado(b,"");msg(ov,err.message,true);}};
   ov.querySelector(".cel-c").addEventListener("click",e=>{
     const s=e.target.closest("[data-nome]");if(s){inp.value=s.dataset.nome;inp.focus();return;}
     const b=e.target.closest("[data-acao]");if(!b)return;
     if(b.dataset.acao==="ligar"){
-      const v=inp.value.trim();
-      if(!v)return msg(ov,"Escolha um cliente.",true);
-      if(nomes.indexOf(v)<0)return msg(ov,"Esse nome não está na lista de clientes do sistema.",true);
+      if(!inp.value.trim())return msg(ov,"Escolha um cliente.",true);
+      const v=porChave.get(chave(inp.value));
+      if(!v)return msg(ov,"Esse nome não está na lista de clientes do sistema.",true);
       salvar({cliente_vinculado:v},b);
     }
     if(b.dataset.acao==="tirar")salvar({cliente_vinculado:""},b);
     if(b.dataset.acao==="interno")salvar({tipo:"INTERNO",cliente_vinculado:""},b);
   });
   inp.focus();
+}
+
+// ✓ confirmar a sugestão: vira ligação feita na tela (e passa a aparecer na guia Clientes)
+async function confirmarVinculo(id,nome,b){
+  ocupado(b,"…");
+  try{await api("","PATCH",{cliente_vinculado:nome},"&id="+encodeURIComponent(id));toast("🔗 Ligado a "+nome);recarregar();}
+  catch(err){ocupado(b,"");toast("⚠️ "+err.message);}
 }
 
 /* importar a planilha CELULARES (o navegador lê; o servidor confere e grava) */
@@ -557,7 +642,7 @@ function abrirImportar(){
   ov.querySelector(".cel-c").addEventListener("click",async e=>{
     const b=e.target.closest('[data-acao="confirmar"]');if(!b||!linhas)return;
     ocupado(b,"Importando…");
-    try{const j=await api("importar","POST",{linhas,confirmar:true});fechar();toast("📥 "+j.inseridos+" aparelho(s) importado(s)");CEL.f={q:"",sit:"ATIVO",pend:"",chip:""};recarregar();}
+    try{const j=await api("importar","POST",{linhas,confirmar:true});fecharSe(ov);toast("📥 "+j.inseridos+" aparelho(s) importado(s)");CEL.f={q:"",sit:"ATIVO",pend:"",chip:""};recarregar();}
     catch(err){ocupado(b,"");msg(ov,err.message,true);}
   });
 }
@@ -583,7 +668,7 @@ async function abrirDDD(){
     const b=e.target.closest('[data-acao="aplicar"]');if(!b)return;
     const ddd=(ov.querySelector("#cel-ddd")||{}).value||"";
     ocupado(b,"Completando…");
-    try{const j=await api("ddd","POST",{ddd,confirmar:true});fechar();toast("📞 "+j.alterados+" número(s) com DDD");recarregar();}
+    try{const j=await api("ddd","POST",{ddd,confirmar:true});fecharSe(ov);toast("📞 "+j.alterados+" número(s) com DDD");recarregar();}
     catch(err){ocupado(b,"");msg(ov,err.message,true);}
   });
 }

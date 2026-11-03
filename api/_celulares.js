@@ -138,12 +138,15 @@ async function apagar({ req, res, db, ator }) {
 }
 
 // A importação só acrescenta: aparelho que já está no painel (digitado igual) é ignorado.
-// Corrigir um aparelho é na tela, não reimportando a planilha.
+// Corrigir um aparelho é na tela, não reimportando a planilha. Cada aparelho importado guarda a
+// impressão da linha da planilha de onde veio (coluna origem): depois do DDD completado ou de uma
+// correção na tela, reimportar a mesma planilha continua reconhecendo a linha e não duplica.
 async function importar({ res, db, ator, body }) {
   const lida = R.lerPlanilha(body.linhas);
   if (lida.erro) return erro(res, 400, lida.erro, "PLANILHA");
-  const atuais = await db.listar(`${TABELA}?select=${IDENTIDADE}&order=id.asc`);
-  const vistos = new Set(atuais.map(R.impressao));
+  const atuais = await db.listar(`${TABELA}?select=${IDENTIDADE},origem&order=id.asc`);
+  const vistos = new Set();
+  atuais.forEach(a => { vistos.add(R.impressao(a)); if (a.origem) vistos.add(a.origem); });
   const novos = [];
   let iguais = 0;
   for (const a of lida.aparelhos) {
@@ -159,7 +162,7 @@ async function importar({ res, db, ator, body }) {
   };
   if (!body.confirmar || !novos.length) return res.status(200).json({ ok: true, previa, inseridos: 0 });
   const agora = new Date().toISOString();
-  await db.inserir(TABELA, novos.map(a => Object.assign({}, a, { criado_por: ator, atualizado_por: ator, atualizado_em: agora })));
+  await db.inserir(TABELA, novos.map(a => Object.assign({}, a, { origem: R.impressao(a), criado_por: ator, atualizado_por: ator, atualizado_em: agora })));
   await registrarDepois(db, ator, "CEL_IMPORTADO", "planilha", null, { inseridos: novos.length, iguais });
   return res.status(200).json({ ok: true, previa, inseridos: novos.length });
 }

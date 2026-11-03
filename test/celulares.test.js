@@ -351,6 +351,25 @@ test("importar: a prévia não grava; confirmar grava; importar de novo não dup
   assert.equal(ruim.statusCode, 400);
 });
 
+test("reimportar depois do DDD completado e de uma correção na tela não duplica (revisão)", async () => {
+  const tabelas = { app_users: usuarios(), cel_aparelhos: [], fm_auditoria: [] };
+  supabaseFalso(tabelas);
+  const linhas = [CAB,
+    ["MOTOE7", "POSTO A - PORTARIA", IMEI_A, IMEI_B, "91234-6713", "a@exemplo.com", "s1", "loginA", "z1", "1"],
+    ["MOTO G30", "POSTO B", IMEI_C, IMEI_D, "(19) 91111-2073", "b@exemplo.com", "s2", "loginB", "z2", "2"]];
+  await pedir({ method: "POST", query: { t: "importar" }, usuario: "joaoygor", body: { linhas, confirmar: true } });
+  await pedir({ method: "POST", query: { t: "ddd" }, usuario: "joaoygor", body: { ddd: "19", confirmar: true } });
+  await pedir({ method: "PATCH", query: { id: "2" }, usuario: "joaoygor", body: { email: "corrigido@exemplo.com", cliente: "POSTO B - RONDA" } });
+  assert.equal(tabelas.cel_aparelhos[0].numero, "(19) 91234-6713");
+  const r = await pedir({ method: "POST", query: { t: "importar" }, usuario: "joaoygor", body: { linhas, confirmar: true } });
+  assert.equal(r.body.inseridos, 0);
+  assert.equal(r.body.previa.iguais, 2);
+  assert.equal(tabelas.cel_aparelhos.length, 2);
+  assert.ok(tabelas.cel_aparelhos.every(a => a.origem), "a impressão da linha original fica guardada");
+  const lista = await pedir({ query: {}, usuario: "joaoygor" });
+  assert.ok(lista.body.aparelhos.every(a => !("origem" in a)), "a lista não leva a coluna interna");
+});
+
 test("DDD: prévia conta, confirmar completa só quem está sem (e não mexe no baixado)", async () => {
   const tabelas = base();
   tabelas.cel_aparelhos.push(aparelho(5, { numero: "91234 6417" }), aparelho(6, { numero: "933330224", situacao: "BAIXADO" }), aparelho(7, { numero: "944443981", situacao: "RESERVA" }));

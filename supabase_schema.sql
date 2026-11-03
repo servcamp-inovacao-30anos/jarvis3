@@ -395,6 +395,7 @@ create table if not exists public.cel_aparelhos (
   senha_zello       text,
   applock           text,
   obs               text,
+  origem            text,      -- impressão da linha da planilha importada (reimportar não duplica)
   criado_em         timestamptz not null default now(),
   criado_por        text,
   atualizado_em     timestamptz not null default now(),
@@ -405,3 +406,5 @@ create table if not exists public.cel_aparelhos (
 alter table public.cel_aparelhos enable row level security;
 revoke all on public.cel_aparelhos from anon, authenticated;
 grant select, insert, update, delete on public.cel_aparelhos to service_role;
+-- (para quem criou a tabela antes desta coluna existir)
+alter table public.cel_aparelhos add column if not exists origem text;

@@ -40,6 +40,9 @@ html[data-theme="dark"] .cel-tel{color:#8cc6ff}
 .cel-vin{color:#067647}
 .cel-lk{display:block;margin-top:3px;border:none;background:none;padding:0;color:#6d28d9;font-size:.62rem;font-weight:800;cursor:pointer}
 .cel-lk:hover{text-decoration:underline}
+.cel-vin-q{color:#a16207}
+.cel-acoes{display:flex;gap:10px}
+.cel-acoes .cel-lk{display:inline}
 .cel-nw{white-space:nowrap}
 .cel-imei{font-family:ui-monospace,Consolas,monospace;font-size:.64rem;white-space:nowrap}
 .cel-ver{border:1px solid var(--g200);background:var(--g50);color:var(--g700);border-radius:7px;padding:3px 8px;font-size:.64rem;font-weight:800;cursor:pointer;white-space:nowrap}
@@ -102,6 +105,7 @@ html[data-theme="dark"] .cel-sit-ativo{background:rgba(7,148,85,.15)}
 html[data-theme="dark"] .cel-sit-reserva{background:rgba(46,143,239,.16);color:#93c5fd}
 html[data-theme="dark"] .cel-sit-baixado{background:rgba(152,162,179,.12);color:#cfd4dc}
 html[data-theme="dark"] .cel-tag{color:#c2ccdb}
+html[data-theme="dark"] .cel-vin-q{color:#fec84b}
 html[data-theme="dark"] .cel-chip.on{background:#2e8fef;border-color:#2e8fef}
 html[data-theme="dark"] .cel-limpar,html[data-theme="dark"] .cel-link{color:#8cc6ff}
 
