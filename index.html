@@ -798,6 +798,7 @@ aside.sb#sidebar.sb-mini #navRoot .ni{margin:2px 8px;padding:9px 0;}
       <label class="login-manter"><input type="checkbox" id="loginManter"> Manter conectado neste aparelho</label>
       <button type="submit" class="login-btn">Entrar</button>
       <div class="login-error" id="loginError"></div>
+      <a href="#" class="login-esqueci" onclick="recAbrir();return false">Esqueci minha senha</a>
     </form>
     <div class="login-footer">
       <span>Desenvolvido por <b>Convert Vision</b> — Automação Inteligente</span>
@@ -824,6 +825,7 @@ aside.sb#sidebar.sb-mini #navRoot .ni{margin:2px 8px;padding:9px 0;}
       <div class="sb-perfil-on">Sistema Online</div>
       <div id="sbOfensiva" class="sb-of" hidden></div>
       <a class="sb-perfil-senha" href="#" onclick="showForcePasswordChange(sessionStorage.getItem('userKey'),'voluntaria');return false">🔑 Trocar senha</a>
+      <a class="sb-perfil-senha" href="#" onclick="recContato(sessionStorage.getItem('userKey'));return false">📱 E-mail e celular para recuperar a senha</a>
       <a class="sb-perfil-senha" id="sbFeEmail" href="#" style="display:none" onclick="feAbrir();return false">✉️ Aviso semanal por e-mail</a>
       <a class="sb-perfil-senha" href="#" onclick="sessaoSair();return false">🚪 Sair</a>
       <a class="sb-perfil-senha" href="#" onclick="sessaoSairDeTodos();return false">📵 Sair de todos os aparelhos</a>
@@ -3927,6 +3929,12 @@ async function doLogin(e){
   }catch(err){}
   if(btn){btn.disabled=false;btn.textContent="Entrar";}
   if(!ar||!ar.ok){errEl.textContent=(ar&&ar.error)||"Não foi possível entrar agora. Tente novamente.";return false;}
+  if(ar.must_change)_pwLogin=p;
+  return _entrarCom(u,ar);
+}
+// Depois que o servidor aceitou (login ou "Esqueci minha senha"): perfil, token e abre a sessão.
+function _entrarCom(u,ar){
+  const errEl=document.getElementById("loginError");
   // criado pela tela de Configurações: o perfil (nome, cargo, permissões) vem do servidor
   if(ar.perfil){USERS[u]=Object.assign({nome:ar.perfil.nome,cargo:ar.perfil.cargo||"",admin:false},ar.perfil.perms||{});try{sessionStorage.setItem("userPerfil",JSON.stringify(USERS[u]));}catch(e){}}
   if(!USERS[u]){errEl.textContent="Usuário ou senha incorretos";return false;}
@@ -3935,7 +3943,7 @@ async function doLogin(e){
   // sem token = troca pendente (o token sai na troca) ou AUTH_SECRET ausente (modo graça)
   if(ar.token)sessionStorage.setItem("authToken",ar.token);else sessionStorage.removeItem("authToken");
   // troca pendente: a sessão só abre depois da senha nova — recarregar a página não pula a troca
-  if(ar.must_change){_pwLogin=p;showForcePasswordChange(u,ar.has_custom?"obrigatoria":"primeiro");return false;}
+  if(ar.must_change){showForcePasswordChange(u,ar.has_custom?"obrigatoria":"primeiro");return false;}
   _abrirSessao(u);
   showWelcome();
   return false;
@@ -11003,7 +11011,7 @@ function cfgRender(){
       ${CFG_PANEIS.map(p=>`<td style="padding:8px 8px;text-align:center;font-size:.9rem">${p.has(u)?'<span style="color:#16a34a;font-weight:900">✓</span>':'<span style="color:#e2e8f0">·</span>'}</td>`).join("")}
       <td style="padding:8px 10px"><div style="color:${ac.cor};font-weight:${ac.peso};font-size:.7rem">${ac.desde||""}</div><div style="font-size:.6rem;color:#94a3b8">${ac.desde?ac.txt:""}</div></td>
       <td style="padding:8px 10px;text-align:center">${a.has_custom?'<span title="Senha própria" style="color:#16a34a">🔒</span>':'<span title="Ainda na senha padrão" style="color:#f97316">🔓</span>'}</td>
-      <td style="padding:8px 10px;text-align:center;white-space:nowrap"><button type="button" class="rh-btn" style="padding:5px 10px;font-size:.64rem;white-space:nowrap" onclick="cfgRedefinirSenha('${k}')">🔑 Redefinir senha</button><button type="button" class="rh-btn" style="padding:5px 10px;font-size:.64rem;white-space:nowrap;margin-left:6px" onclick="cfgGuias('${k}')">👁️ Guias</button>${cfgBotaoAcesso(k,bloq)}</td>
+      <td style="padding:8px 10px;text-align:center;white-space:nowrap"><button type="button" class="rh-btn" style="padding:5px 10px;font-size:.64rem;white-space:nowrap" onclick="cfgRedefinirSenha('${k}')">🔑 Redefinir senha</button><button type="button" class="rh-btn" style="padding:5px 10px;font-size:.64rem;white-space:nowrap;margin-left:6px" onclick="recContato('${k}')" title="${a.rec_email||a.rec_celular?_esc([a.rec_email,a.rec_celular].filter(Boolean).join(" · ")):"Sem e-mail nem celular para recuperar a senha"}">${a.rec_email||a.rec_celular?"📱 Recuperação ✓":"📱 Recuperação"}</button><button type="button" class="rh-btn" style="padding:5px 10px;font-size:.64rem;white-space:nowrap;margin-left:6px" onclick="cfgGuias('${k}')">👁️ Guias</button>${cfgBotaoAcesso(k,bloq)}</td>
     </tr>`;
   });
   h+=`</tbody></table></div>`;
@@ -19376,6 +19384,7 @@ document.addEventListener("DOMContentLoaded",init);
 <script src="/assets/faltas-email/faltas-email.js"></script>
 <link rel="stylesheet" href="/assets/medida/medida.css"><script src="/assets/medida/medida.js"></script>
 <link rel="stylesheet" href="/assets/comunicado/comunicado.css"><script src="/assets/comunicado/comunicado.js"></script>
+<link rel="stylesheet" href="/assets/recupera/recupera.css"><script src="/assets/recupera/recupera.js"></script>
 <link rel="stylesheet" href="/assets/celulares/celulares.css"><script src="/assets/celulares/celulares.js"></script>
 <link rel="stylesheet" href="/assets/ofensiva/ofensiva.css"><script src="/assets/ofensiva/ofensiva.js"></script>
 <link rel="stylesheet" href="/assets/medida/assinatura.css"><script src="/assets/vendor/qrcode-generator.js"></script><script src="/assets/medida/assinatura.js"></script>

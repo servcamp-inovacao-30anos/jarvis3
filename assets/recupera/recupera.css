@@ -1,0 +1,29 @@
+/* "Esqueci minha senha" e contato de recuperação (assets/recupera/recupera.js). */
+.login-esqueci{display:block;margin-top:12px;font-size:.78rem;font-weight:700;color:#9cc7f7;text-decoration:none;text-align:center;min-height:32px;line-height:32px}
+.login-esqueci:hover,.login-esqueci:focus-visible{color:#fff;text-decoration:underline}
+
+.rc-fundo{position:fixed;inset:0;background:rgba(13,31,53,.92);z-index:100000;display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto}
+.rc-caixa{background:linear-gradient(135deg,#0d1f35,#1e4d8c);border-radius:18px;padding:30px 30px 24px;box-shadow:0 20px 60px rgba(0,0,0,.4);max-width:420px;width:100%;color:#fff;text-align:left}
+.rc-ic{font-size:2rem;text-align:center;margin-bottom:6px}
+.rc-t{font-size:1.12rem;font-weight:900;text-align:center;margin-bottom:6px}
+.rc-s{color:#b9cce8;font-size:.82rem;line-height:1.5;text-align:center;margin-bottom:18px}
+.rc-s b{color:#fff;white-space:nowrap}
+.rc-l{display:block;font-size:.7rem;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:#9cc7f7;margin:0 0 5px}
+.rc-i{width:100%;padding:12px 14px;border-radius:9px;border:none;margin-bottom:12px;font-size:.9rem;box-sizing:border-box;color:#0d1f35;background:#fff}
+.rc-i.rc-cod{font-size:1.5rem;font-weight:900;letter-spacing:.5em;text-align:center;padding:10px}
+.rc-b{width:100%;padding:12px;border-radius:9px;border:none;background:linear-gradient(135deg,#2e8fef,#1e4d8c);color:#fff;font-weight:800;font-size:.88rem;cursor:pointer;min-height:44px}
+.rc-b:disabled{opacity:.6;cursor:default}
+.rc-b2{width:100%;padding:10px;margin-top:8px;border-radius:9px;border:1px solid rgba(255,255,255,.25);background:none;color:#b9cce8;font-weight:700;font-size:.82rem;cursor:pointer;min-height:42px}
+.rc-b2:disabled{opacity:.5;cursor:default}
+.rc-op{display:flex;align-items:center;gap:12px;width:100%;padding:13px 14px;margin-bottom:10px;border-radius:11px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.07);color:#fff;cursor:pointer;text-align:left;font:inherit;min-height:56px}
+.rc-op:hover,.rc-op:focus-visible{background:rgba(255,255,255,.14);border-color:#9cc7f7}
+.rc-op .rc-op-ic{font-size:1.35rem;flex:none}
+.rc-op b{display:block;font-size:.88rem}
+.rc-op span{display:block;font-size:.78rem;color:#b9cce8;margin-top:2px}
+.rc-err{color:#fca5a5;font-size:.76rem;margin:2px 0 10px;min-height:16px;font-weight:600}
+.rc-ok{color:#86efac}
+.rc-aviso{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:12px 14px;font-size:.8rem;line-height:1.5;color:#dbe7f7;margin-bottom:12px}
+.rc-links{display:flex;justify-content:space-between;gap:10px;margin-top:10px}
+.rc-links button{background:none;border:none;color:#9cc7f7;font-weight:700;font-size:.78rem;cursor:pointer;padding:8px 0;min-height:36px}
+.rc-links button:disabled{color:#64748b;cursor:default}
+@media (max-width:420px){.rc-caixa{padding:24px 18px 18px}}

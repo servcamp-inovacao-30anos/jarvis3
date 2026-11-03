@@ -433,3 +433,16 @@ alter table public.ofensiva_visitas enable row level security;
 alter table public.ofensiva_dias enable row level security;
 revoke all on public.ofensiva_visitas, public.ofensiva_dias from anon, authenticated;
 grant select, insert, update, delete on public.ofensiva_visitas, public.ofensiva_dias to service_role;
+
+-- ============================================================================
+-- "Esqueci minha senha" (api/users.js + api/_recupera.js). Contato de recuperação
+-- cadastrado antes (pela pessoa, com a senha atual, ou pelo administrador) e o
+-- código em andamento: só o HMAC, nunca o código. Só acrescenta; pode rodar de novo.
+-- ============================================================================
+alter table public.app_users
+  add column if not exists rec_email text,
+  add column if not exists rec_celular text,
+  add column if not exists rec_codigo text,
+  add column if not exists rec_expira timestamptz,
+  add column if not exists rec_tentativas integer not null default 0,
+  add column if not exists rec_envios jsonb;

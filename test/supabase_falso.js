@@ -60,7 +60,11 @@ class SupabaseFalso {
       return resposta(201, null);
     }
     if (metodo === "PATCH") {
-      for (const l of this.linhas.values()) if (casa(l)) Object.assign(l, corpo);
+      const mudadas = [];
+      for (const l of this.linhas.values()) if (casa(l)) { Object.assign(l, corpo); mudadas.push({ ...l }); }
+      // Prefer: return=representation → devolve as linhas alteradas, como o PostgREST
+      const prefer = String(new Headers(opt.headers || {}).get("Prefer") || "");
+      if (prefer.indexOf("return=representation") >= 0) return resposta(200, mudadas);
       return resposta(204, null);
     }
     return resposta(405, { message: "método não suportado no Supabase falso" });
