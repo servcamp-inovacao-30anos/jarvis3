@@ -224,6 +224,70 @@ raiz.celContatosTexto=function(nome){
   return{numeros:l.map(c=>formatarNumero(c.numero)+" "+String(c.numero||"").replace(/\D/g,"")).join(" / "),zellos:l.map(c=>c.login).join(" / ")};
 };
 const semDado='<span class="cel-sem">—</span>';
+
+/* ── guia Clientes: endereço do posto, com Waze e Google Maps ───────────── */
+// Os endereços já estão no mapa dos clientes (/api/hq?mapa=1, um por cliente). Busca uma vez por
+// pessoa logada; falhou: a coluna fica com "—" e o resto da guia segue normal.
+raiz.celEnderecosCarregar=function(){
+  const dono=uk();
+  if(CEL.end&&CEL.endDono===dono)return;
+  if(CEL.pedindoEnd)return;
+  CEL.pedindoEnd=true;
+  fetch("/api/hq?mapa=1").then(r=>r.ok?r.json():Promise.reject(new Error("Falha ("+r.status+")"))).then(j=>{
+    if(dono!==uk())return;
+    const m=new Map();
+    (j&&j.pinos||[]).forEach(p=>{if(p&&p.cliente&&p.logradouro!==undefined)m.set(chave(p.cliente),p);});
+    CEL.end=m;CEL.endDono=dono;
+    if(typeof ST!=="undefined"&&ST.pg==="clientes"&&typeof rTbl==="function")rTbl("clientes");
+  }).catch(e=>{console.warn("celulares: endereços",e&&e.message);}).then(()=>{CEL.pedindoEnd=false;});
+};
+const endDe=nome=>(CEL.end&&CEL.endDono===uk()&&CEL.end.get(chave(nome)))||null;
+const tc=s=>String(s==null?"":s).trim();
+function enderecoTexto(p){
+  const rua=[tc(p.logradouro),tc(p.numero)].filter(Boolean).join(", ");
+  const resto=[tc(p.bairro),tc(p.cidade)].filter(Boolean).join(" - ");
+  return{rua,resto,tudo:[rua,resto].filter(Boolean).join(" - ")};
+}
+// Ponto exato (rua e número): vai pela coordenada. Aproximado (só bairro/cidade/rua): vai pelo
+// texto, para o aplicativo mostrar o que ele achar em vez de um ponto que pode estar longe.
+function linksEndereco(p){
+  const t=enderecoTexto(p).tudo,exato=p.precisao==="rua+numero"&&isFinite(p.lat)&&isFinite(p.lon);
+  const q=exato?p.lat+","+p.lon:encodeURIComponent(t+", Brasil");
+  return{
+    maps:"https://www.google.com/maps/search/?api=1&query="+q,
+    waze:exato?"https://waze.com/ul?ll="+q+"&navigate=yes":"https://waze.com/ul?q="+q+"&navigate=yes",
+    exato
+  };
+}
+raiz.celEnderecoTexto=function(nome){const p=endDe(nome);return p?enderecoTexto(p).tudo:null;};
+raiz.celEnderecoHtml=function(r){
+  const p=endDe(r&&r.NOME);if(!p)return semDado;
+  const e=enderecoTexto(p),k=chave(r.NOME);
+  return'<button type="button" class="cel-end" data-cel-end="'+esc(k)+'" title="Abrir no Waze ou no Google Maps">'+
+    '<span class="cel-end-r">'+esc(e.rua||e.resto)+'</span>'+(e.rua&&e.resto?'<span class="cel-end-b">'+esc(e.resto)+'</span>':'')+
+    (linksEndereco(p).exato?'':'<span class="cel-end-ap">local aproximado</span>')+'</button>';
+};
+function fecharEnd(){const m=document.getElementById("cel-endm");if(m)m.remove();}
+document.addEventListener("click",e=>{
+  const b=e.target.closest&&e.target.closest("[data-cel-end]");
+  if(!b){if(!e.target.closest||!e.target.closest("#cel-endm"))fecharEnd();return;}
+  const abriu=document.getElementById("cel-endm");
+  const mesmo=abriu&&abriu.dataset.k===b.dataset.celEnd;
+  fecharEnd();if(mesmo)return;
+  const p=CEL.end&&CEL.end.get(b.dataset.celEnd);if(!p)return;
+  const l=linksEndereco(p),m=document.createElement("div");
+  m.className="cel-endm";m.id="cel-endm";m.dataset.k=b.dataset.celEnd;
+  m.innerHTML='<div class="cel-endm-t">'+esc(enderecoTexto(p).tudo)+'</div>'+
+    '<a class="cel-endm-a" href="'+esc(l.waze)+'" target="_blank" rel="noopener noreferrer">🚗 Abrir no Waze</a>'+
+    '<a class="cel-endm-a" href="'+esc(l.maps)+'" target="_blank" rel="noopener noreferrer">🗺️ Abrir no Google Maps</a>';
+  document.body.appendChild(m);
+  const r=b.getBoundingClientRect(),w=m.offsetWidth,hh=m.offsetHeight,vw=document.documentElement.clientWidth;
+  const abaixo=r.bottom+hh+8<window.innerHeight||r.top<hh+8;
+  m.style.top=((abaixo?r.bottom+4:r.top-hh-4)+window.scrollY)+"px";
+  m.style.left=(Math.max(8,Math.min(r.left,vw-w-8))+window.scrollX)+"px";
+});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")fecharEnd();});
+document.addEventListener("scroll",fecharEnd,true);
 raiz.celCelularHtml=function(r){
   const l=raiz.celContatosDe(r&&r.NOME);
   if(!l||!l.length)return semDado;
@@ -526,7 +590,7 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape"&&document.getElement
 // fecha a janela aberta (pode ser a das senhas) e esquece a lista e os contatos da pessoa anterior.
 function esquecer(){
   fechar();fecharColf();CEL.col={};
-  CEL.lista=null;CEL.erro=null;CEL.dono=null;CEL.contatos=null;CEL.contatosDono=null;CEL.idx=null;
+  CEL.lista=null;CEL.erro=null;CEL.dono=null;CEL.contatos=null;CEL.contatosDono=null;CEL.idx=null;CEL.end=null;CEL.endDono=null;fecharEnd();
   const el=conteudo();if(el)el.innerHTML="";
 }
 function ligarSessao(){

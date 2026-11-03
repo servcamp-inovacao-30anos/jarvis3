@@ -156,15 +156,22 @@ function navegador(contatos, clientes, opcoes) {
   const store = new Map([["userKey", "carlos"], ["logged", "1"]]);
   const pagina = { innerHTML: "", addEventListener() {}, contains: () => true };
   const janela = { id: "cel-ov", removido: false, remove() { this.removido = true; } };
+  const ouvintes = {};
+  let menu = null;
   const ctx = {
     console, Promise, setTimeout, clearTimeout, Date, JSON, Map, Set, encodeURIComponent,
     sessionStorage: { getItem: k => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, String(v)), clear: () => store.clear() },
     document: {
-      addEventListener() {}, querySelector: () => null, body: { contains: () => false },
-      getElementById: id => (id === "cel-content" ? pagina : id === "cel-ov" && !janela.removido ? janela : null)
+      addEventListener(t, f) { (ouvintes[t] = ouvintes[t] || []).push(f); }, querySelector: () => null,
+      body: { contains: () => false, appendChild(m) { menu = m; } },
+      documentElement: { clientWidth: 1000 },
+      createElement: () => ({ style: {}, dataset: {}, offsetWidth: 250, offsetHeight: 100, innerHTML: "", remove() { menu = null; } }),
+      getElementById: id => (id === "cel-content" ? pagina : id === "cel-ov" && !janela.removido ? janela : id === "cel-endm" ? menu : null)
     },
+    scrollY: 0, scrollX: 0, innerHeight: 800,
     fetch: async url => {
       pedidos.push(String(url));
+      if (String(url).startsWith("/api/hq")) return { ok: true, status: 200, json: async () => ({ pinos: o.pinos || [] }) };
       const corpo = String(url).includes("t=contatos") ? { contatos } : (o.lista ? o.lista(store.get("userKey")) : { aparelhos: [] });
       return { ok: corpo.status ? false : true, status: corpo.status || 200, json: async () => corpo };
     },
@@ -173,7 +180,7 @@ function navegador(contatos, clientes, opcoes) {
   };
   ctx.window = ctx;
   ctx.rTbl = () => { ctx.rTblChamado++; };
-  ctx.pagina = pagina; ctx.janela = janela;
+  ctx.pagina = pagina; ctx.janela = janela; ctx.ouvintes = ouvintes; ctx.menu = () => menu;
   vm.createContext(ctx);
   vm.runInContext("var DASHBOARD_DATA=" + JSON.stringify({ clientes }) + ";var CL_EXCL=new Set(['RESERVA TECNICA']);", ctx);
   vm.runInContext(fs.readFileSync(ARQ_JS, "utf8"), ctx, { filename: "celulares.js" });
@@ -268,8 +275,48 @@ test("index.html: guia no menu só para administrador, página, navegação e o 
 });
 
 test("index.html: guia Clientes ganha Celular e Login Zello, com desenho próprio e busca pelo texto", () => {
-  assert.ok(HTML.includes('cols:["NOME","TURNO","AREA","EMPRESA","CELULAR","ZELLO"],hdrs:["Cliente","Turno","Supervisor/Área","Empresa","Celular","Login Zello"]'));
+  assert.ok(HTML.includes('cols:["NOME","TURNO","AREA","EMPRESA","ENDERECO","CELULAR","ZELLO"],hdrs:["Cliente","Turno","Supervisor/Área","Empresa","Endereço","Celular","Login Zello"]'));
+  assert.ok(HTML.includes('ENDERECO:(typeof celEnderecoTexto==="function"&&celEnderecoTexto(c.NOME))||""'));
+  assert.ok(HTML.includes('if(typeof celEnderecosCarregar==="function")celEnderecosCarregar();'));
   assert.ok(HTML.includes(`if(cfg.fmt&&cfg.fmt[c])return '<td>'+cfg.fmt[c](r)+'</td>';`));
   assert.ok(HTML.includes('CELULAR:ct?ct.numeros:"",ZELLO:ct?ct.zellos:""'));
   assert.ok(HTML.includes('if(typeof celContatosCarregar==="function")celContatosCarregar();'));
+});
+
+test("guia Clientes: endereço do mapa vira botão com Waze e Google Maps (ponto exato por coordenada, aproximado pelo texto)", async () => {
+  const pinos = [
+    { cliente: "AGUAS CLARAS", lat: -22.95, lon: -47.11, precisao: "rua+numero", logradouro: "RUA DA CERAMICA", numero: "100", bairro: "JD SAO JOSE", cidade: "CAMPINAS" },
+    { cliente: "POSTO LONGE", lat: -22.9, lon: -47.0, precisao: "cidade", logradouro: "RUA <b>X</b>", numero: "", bairro: "", cidade: "INDAIATUBA" }
+  ];
+  const { ctx, pedidos } = navegador([], [{ NOME: "AGUAS CLARAS" }, { NOME: "POSTO LONGE" }, { NOME: "SEM PINO" }], { pinos });
+  assert.equal(ctx.celEnderecoHtml({ NOME: "AGUAS CLARAS" }), '<span class="cel-sem">—</span>', "antes de carregar: traço");
+  ctx.celEnderecosCarregar(); ctx.celEnderecosCarregar(); await espera();
+  assert.equal(pedidos.filter(p => p.startsWith("/api/hq?mapa=1")).length, 1, "busca uma vez só");
+  assert.equal(ctx.rTblChamado, 1);
+  const h = ctx.celEnderecoHtml({ NOME: "AGUAS CLARAS" });
+  assert.ok(h.includes("RUA DA CERAMICA, 100") && h.includes("JD SAO JOSE - CAMPINAS"));
+  assert.ok(!h.includes("aproximado"));
+  const ap = ctx.celEnderecoHtml({ NOME: "POSTO LONGE" });
+  assert.ok(ap.includes("local aproximado"));
+  assert.ok(!/<b>/.test(ap), "nada do banco vira HTML");
+  assert.equal(ctx.celEnderecoHtml({ NOME: "SEM PINO" }), '<span class="cel-sem">—</span>');
+  assert.ok(ctx.celEnderecoTexto("AGUAS CLARAS").includes("CAMPINAS"), "a busca acha pelo endereço");
+  const clique = (chave) => ctx.ouvintes.click.forEach(f => f({ target: { closest: s => (s === "[data-cel-end]" ? { dataset: { celEnd: chave }, getBoundingClientRect: () => ({ left: 10, top: 50, bottom: 70 }) } : null) } }));
+  clique("AGUAS CLARAS");
+  const m = ctx.menu();
+  assert.ok(m, "o clique abre o menu");
+  assert.ok(m.innerHTML.includes('href="https://waze.com/ul?ll=-22.95,-47.11&amp;navigate=yes"'));
+  assert.ok(m.innerHTML.includes('href="https://www.google.com/maps/search/?api=1&amp;query=-22.95,-47.11"'));
+  clique("AGUAS CLARAS");
+  assert.equal(ctx.menu(), null, "clicar de novo fecha");
+  clique("POSTO LONGE");
+  assert.ok(ctx.menu().innerHTML.includes("https://waze.com/ul?q=RUA%20%3Cb%3EX%3C%2Fb%3E%20-%20INDAIATUBA%2C%20Brasil&amp;navigate=yes"), "aproximado: vai pelo texto");
+});
+
+test("guia Clientes: outra pessoa na mesma aba não usa os endereços da anterior", async () => {
+  const { ctx } = navegador([], [{ NOME: "A" }], { pinos: [{ cliente: "A", lat: 1, lon: 2, precisao: "rua+numero", logradouro: "RUA", numero: "1", bairro: "", cidade: "X" }] });
+  ctx.celEnderecosCarregar(); await espera();
+  assert.ok(ctx.celEnderecoTexto("A"));
+  ctx.sessionStorage.setItem("userKey", "outra");
+  assert.equal(ctx.celEnderecoTexto("A"), null);
 });

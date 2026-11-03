@@ -7332,8 +7332,8 @@ const TCFG={
   hrextra:{d:()=>F.hrextra,s:"s-hrextra",cols:["DATA","NOME","TIPO","CLIENTE","AREA","TURNO","MINUTOS"],hdrs:["Data","Funcionário","Tipo","Cliente","Supervisor","Turno","Minutos"],b:["TIPO","TURNO"]},
   checklist:{d:()=>F.checklist,s:"s-checklist",cols:["DATA","CLIENTE","MODELO","FUNCIONARIO","TURNO"],hdrs:["Data","Cliente","Modelo","Funcionário","Turno"],b:["MODELO","TURNO"]},
   ativos:{d:()=>DASHBOARD_DATA.ativos||[],s:"s-ativos",cols:["NOME","RE","CARGO","AREA","LOCAL","ESCALA","TURNO","TIPO"],hdrs:["Nome","RE","Cargo","Área","Local","Escala","Turno","Tipo"],b:["TURNO","TIPO"]},
-  clientes:{d:()=>aggClientesList(),s:"s-clientes",cols:["NOME","TURNO","AREA","EMPRESA","CELULAR","ZELLO"],hdrs:["Cliente","Turno","Supervisor/Área","Empresa","Celular","Login Zello"],b:["TURNO"],
-    fmt:{CELULAR:r=>typeof celCelularHtml==="function"?celCelularHtml(r):"—",ZELLO:r=>typeof celZelloHtml==="function"?celZelloHtml(r):"—"}}
+  clientes:{d:()=>aggClientesList(),s:"s-clientes",cols:["NOME","TURNO","AREA","EMPRESA","ENDERECO","CELULAR","ZELLO"],hdrs:["Cliente","Turno","Supervisor/Área","Empresa","Endereço","Celular","Login Zello"],b:["TURNO"],
+    fmt:{ENDERECO:r=>typeof celEnderecoHtml==="function"?celEnderecoHtml(r):"—",CELULAR:r=>typeof celCelularHtml==="function"?celCelularHtml(r):"—",ZELLO:r=>typeof celZelloHtml==="function"?celZelloHtml(r):"—"}}
 };
 
 function rTbl(key){
@@ -7582,7 +7582,7 @@ function aggClientesList(){
   return Object.values(m).map(c=>{
     // celular e login Zello do posto (assets/celulares): aqui só o texto, para a busca achar
     const ct=typeof celContatosTexto==="function"?celContatosTexto(c.NOME):null;
-    return{NOME:c.NOME,AREA:c.AREA,TURNO:[...c.TURNOS].join(" / ")||"—",EMPRESA:[...c.EMPRESAS].join(" / ")||"—",CELULAR:ct?ct.numeros:"",ZELLO:ct?ct.zellos:""};
+    return{NOME:c.NOME,AREA:c.AREA,TURNO:[...c.TURNOS].join(" / ")||"—",EMPRESA:[...c.EMPRESAS].join(" / ")||"—",ENDERECO:(typeof celEnderecoTexto==="function"&&celEnderecoTexto(c.NOME))||"",CELULAR:ct?ct.numeros:"",ZELLO:ct?ct.zellos:""};
   }).sort((a,b)=>a.NOME.localeCompare(b.NOME));
 }
 
@@ -7614,6 +7614,7 @@ function renderClientes(){
   document.getElementById("cl-facs").innerHTML=totalReal?("<b>"+(fac/totalReal*100).toFixed(0)+"%</b> dos clientes"):"—";
 
   if(typeof celContatosCarregar==="function")celContatosCarregar(); // número e login Zello de cada posto
+  if(typeof celEnderecosCarregar==="function")celEnderecosCarregar(); // endereço (Waze / Maps)
   rTbl("clientes");
 }
 
