@@ -144,7 +144,9 @@ function dobrar(eventos, medidas, hoje, anexos) {
   const assinado = new Map();
   [...(anexos || [])].sort((a, b) => Number(a.id) - Number(b.id)).forEach(a => {
     const removido = a.removido === true || a.removido === "true";
-    assinado.set(a.chave, removido ? null : { em: a.criado_em, por: a.ator, tipo: a.tipo || "", bytes: Number(a.bytes) || 0, nome: a.nome || "" });
+    assinado.set(a.chave, removido ? null : { em: a.criado_em, por: a.ator, tipo: a.tipo || "", bytes: Number(a.bytes) || 0, nome: a.nome || "",
+      // assinado no celular (api/_assinatura.js): resultado "ASSINADA" ou "RECUSADA" e o hash do PDF
+      digital: a.digital === true || a.digital === "true", resultado: a.resultado || null, sha256: a.sha256 || null });
   });
   const por = new Map();
   [...(eventos || [])].sort((a, b) => Number(a.id) - Number(b.id)).forEach(e => {

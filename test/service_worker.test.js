@@ -19,5 +19,5 @@ test("service worker: só ícones e manifesto vêm do cache; scripts, estilos, f
   }
   assert.equal(respondeu("/", "navigate"), true, "a página continua rede primeiro, com o cache só de reserva");
   assert.match(codigo, /const VERSAO = "jarvis-v\d+";/, "o cache tem versão: trocar o nome apaga o antigo");
-  assert.ok(!ouvintes.push && !ouvintes.notificationclick, "sem push desde 23/10/2026");
+  assert.ok(ouvintes.push && ouvintes.notificationclick, "o comunicado semanal volta por notificação");
 });

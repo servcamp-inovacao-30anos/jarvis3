@@ -49,6 +49,9 @@ module.exports = async function handler(req, res) {
   // CRON_SECRET (quando existe) e só age na segunda a partir das 14h (api/_faltas_email.js).
   if (_q.modulo === "faltasemail" && _q.t === "cron") return require("./_faltas_email").cron(req, res);
   // O do Relatório de Coberturas (modulo=bdv) usa o escopo "xlb": a chave de um não abre o outro.
+  // Via do documento da medida (QR, SMS, e-mail): o colaborador não tem login. O código do link e o RE com os 4 últimos
+  // dígitos do celular são a prova (api/_via.js).
+  if (_q.modulo === "via") return require("./_via")(req, res);
   const _planilha = (_q.modulo === "faltas" || _q.modulo === "bdv") && _q.t === "planilha";
   const _ga = _planilha ? _auth.requireAuth(req, _q.modulo === "bdv" ? "xlb" : "xl", true) : _auth.requireAuth(req);
   if (!_ga.ok) return res.status(401).json({ error: "Não autenticado." });

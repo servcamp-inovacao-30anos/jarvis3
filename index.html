@@ -19416,10 +19416,11 @@ document.addEventListener("DOMContentLoaded",init);
 <link rel="stylesheet" href="/assets/tv/modo-tv.css">
 <!-- Service worker: deixa instalar o sistema no celular e abre sem sinal (sw.js). Os avisos no celular (push)
      saíram em 23/10/2026; quem tinha ativado perde a inscrição aqui, e o servidor não manda mais nada. -->
-<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("/sw.js").catch(function(){});navigator.serviceWorker.ready.then(function(r){return r.pushManager&&r.pushManager.getSubscription();}).then(function(s){if(s)s.unsubscribe();}).catch(function(){});}</script>
+<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("/sw.js").catch(function(){});}</script>
 <!-- Aviso semanal de faltas por e-mail: fora do index.html, que está no limite de tamanho -->
 <script src="/assets/faltas-email/faltas-email.js"></script>
 <link rel="stylesheet" href="/assets/medida/medida.css"><script src="/assets/medida/medida.js"></script>
 <link rel="stylesheet" href="/assets/comunicado/comunicado.css"><script src="/assets/comunicado/comunicado.js"></script>
+<link rel="stylesheet" href="/assets/medida/assinatura.css"><script src="/assets/vendor/qrcode-generator.js"></script><script src="/assets/medida/assinatura.js"></script>
 </body>
 </html>

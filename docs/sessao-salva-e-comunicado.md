@@ -36,10 +36,37 @@ O plano completo está em `plano-medida-disciplinar-assinatura-digital.md`; aqui
   de agora (em aberto, medida já aplicada, medidas já geradas).
 - No celular a janela da medida mostra o documento em texto, numa coluna de 16 px; "Ver como fica impresso" volta à folha A4.
 
-## O que ainda não está feito
+## Notificação no celular (`api/_push.js`, `sw.js`)
 
-- **Notificação no celular** e o **lembrete no dia seguinte** para quem não abriu: dependem de reativar o código de
-  push removido em 23/10 (`bc46269`, `712b9ed`, dependência `web-push`) e de testar em aparelhos reais.
-- **Fases 2 a 5** (assinatura no celular, PDF selado, via por QR e SMS, recusa): só depois da validação do jurídico
-  (fase 0). Aqui entram o número MD reservado na assinatura (hoje `numerar()` calcula, não grava) e o `pdf-lib`.
-- `launch_handler` no manifesto é um extra: o Android e o Gmail decidem onde o link abre. Conferir no piloto.
+- O comunicado sai também por notificação, para os aparelhos do supervisor da área, sem nome de colaborador:
+  "Comunicado semanal de faltas injustificadas · Semana de dd/mm a dd/mm. Toque para abrir." O toque abre a aba do comunicado.
+- Canal independente do e-mail (registro `FALTAS_PUSH` por semana e área): falhar não segura o e-mail, e não se repete.
+- **Lembrete**: no dia seguinte ao envio, a partir das 9h, uma vez, para quem não abriu o comunicado no painel (o cron das horas).
+- Usa os mesmos eventos do módulo antigo (`AVISO_APARELHO`, `AVISO_VAPID`): as chaves de envio são as mesmas. Como o painel
+  cancelava a inscrição ao abrir desde 23/10, cada supervisor precisa tocar uma vez em **Permitir**, na aba do comunicado.
+
+## Assinatura no celular, PDF selado e via (`api/_assinatura.js`, `api/_via.js`, `assets/medida/assinatura.js`, `via.html`)
+
+- Em "Medidas geradas" (e logo depois de gerar) há **Assinar no celular**: o supervisor assina (a assinatura do perfil, com um
+  toque, ou desenhando), entrega o celular, o colaborador lê o documento inteiro, marca "Li e estou ciente" e assina com o dedo.
+- O colaborador assina **escrevendo o próprio nome com o dedo** no campo da tela.
+- Ou **recusa**: testemunhas são opcionais (até duas; quem for informada precisa ter o nome, o documento é opcional) e
+  observação opcional.
+- O servidor monta o PDF (`pdf-lib`) com a página de evidências (hora do servidor, login de quem coletou, IP, aparelho, hash
+  do texto lido), calcula o SHA-256 do arquivo final e grava tudo na `fm_auditoria` (`MEDIDA_COLETA` e `MEDIDA_ASSINADA`
+  com `digital:true`). O texto do PDF é o mesmo do documento da tela: `test/assinatura.test.js` confere trecho por trecho.
+- O número MD é o de hoje: sai ao gerar a medida (a assinatura vem depois, sobre uma medida já numerada).
+- Sinal fraco: a coleta fica guardada no aparelho e é reenviada sozinha; a chave única (`idem`) impede segunda assinatura.
+- PDF digital não é trocado nem removido por anexo em papel; medida com papel anexado não recebe assinatura digital.
+- **Via**: QR na tela (15 minutos, sem senha), SMS para o celular cadastrado e marcado como enviável em `pt_contatos`
+  (30 dias, pede o RE e os 4 últimos dígitos do celular, trava depois de 5 erros em 24 h) ou e-mail digitado na hora
+  (30 dias, mesma confirmação). O código vai depois do `#` do endereço e só o hash dele é guardado. Cada abertura fica registrada.
+- Sem `SMS_PROVIDER` o SMS avisa que está desligado e o QR continua funcionando.
+
+## O que não é código
+
+- A **validação do jurídico** (fase 0 do plano): assinatura simples com essa trilha, testemunhas no digital, termo de aceite,
+  guarda e LGPD. O papel continua funcionando em paralelo até o piloto terminar.
+- O **piloto** em celulares reais dos supervisores (Android) e o teste da página da via num iPhone.
+- O **código de 6 dígitos por SMS** para o colaborador confirmar a assinatura, que o plano deixa para "se o jurídico pedir".
+- `launch_handler` no manifesto é um extra: o Android e o Gmail decidem onde o link abre.

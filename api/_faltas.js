@@ -22,6 +22,8 @@ const _auth = require("./_auth");
 const XL = require("./_faltas_excel");
 const MD = require("./_medida_regras");
 const COM = require("./_comunicado");
+const ASS = require("./_assinatura");
+const PUSH = require("./_push");
 
 const ACAO_ABONO_TARDIO = "FALTA_ABONADA_DEPOIS";
 const ACAO_VIROU_I = "FALTA_VIROU_INJUSTIFICADA"; // tinha outro código e passou a "I" (veja anotarViradasInjustificada)
@@ -833,7 +835,7 @@ async function lerGeradas(db) {
     db.listar(`fm_auditoria?select=id,ator,acao,chave,depois,criado_em&entidade=eq.${MD.ENTIDADE}&acao=in.(${MD.ACOES.join(",")})&order=id.asc`),
     db.listar(`fm_medidas?select=re,data,tipo,grau,dias,fase,nome&data=gte.${R.somaDias(hoje, -400)}&order=re.asc,data.asc`),
     // do documento assinado, só os dados: o arquivo é pesado e só desce quando alguém abre
-    db.listar(`fm_auditoria?select=id,ator,chave,criado_em,tipo:depois->>tipo,bytes:depois->>bytes,nome:depois->>nome,removido:depois->>removido&acao=eq.${MD.ACAO_ASSINADA}&order=id.asc`)
+    db.listar(`fm_auditoria?select=id,ator,chave,criado_em,tipo:depois->>tipo,bytes:depois->>bytes,nome:depois->>nome,removido:depois->>removido,digital:depois->>digital,resultado:depois->>resultado,sha256:depois->>sha256&acao=eq.${MD.ACAO_ASSINADA}&order=id.asc`)
   ]);
   return MD.dobrar(eventos, medidas, hoje, anexos);
 }
@@ -903,6 +905,8 @@ async function anexarAssinado({ res, db, ator, body }) {
   if (!g) return erro(res, 404, "Medida não encontrada.", "NAO_ENCONTRADA");
   if (!visivelPara(ator, g)) return erro(res, 403, "Esta medida é de outra área.", "NAO_AUTORIZADO");
   if (g.status === "CANCELADA") return erro(res, 409, "Esta medida foi cancelada.", "CANCELADA");
+  // o PDF assinado no celular não é trocado nem tirado por um anexo: o hash e a trilha deixariam de valer
+  if (g.assinado && g.assinado.digital) return erro(res, 409, "Esta medida foi assinada no celular: o documento não pode ser trocado nem removido.", "ASSINADA_NO_CELULAR");
   let depois;
   if (body.remover === true) {
     if (!g.assinado) return res.status(200).json({ ok: true, alterado: false, medida: g });
@@ -953,6 +957,15 @@ const ROTAS = {
   // medida disciplinar: Raphael, Jussilene, João e os supervisores (pedido do Raphael, 26/10/2026)
   "GET medidas_geradas": { gerador: true, fn: verGeradas },
   "GET comunicados": { gerador: true, fn: verComunicados },
+  "GET push_chave": { gerador: true, fn: PUSH.verChave },
+  "POST push_inscrever": { gerador: true, fn: PUSH.inscrever },
+  "POST push_remover": { gerador: true, fn: PUSH.remover },
+  // assinatura no celular, via do documento (api/_assinatura.js)
+  "GET assinatura_perfil": { gerador: true, fn: ASS.verPerfil },
+  "POST assinatura_perfil": { gerador: true, fn: ASS.salvarPerfil },
+  "POST medida_coletar": { gerador: true, fn: ctx => ASS.coletar({ ...ctx, ler: lerGeradas, visivel: visivelPara }) },
+  "GET medida_contato": { gerador: true, fn: ctx => ASS.verContato({ ...ctx, ler: lerGeradas, visivel: visivelPara }) },
+  "POST medida_via": { gerador: true, fn: ctx => ASS.enviarVia({ ...ctx, ler: lerGeradas, visivel: visivelPara }) },
   "GET comunicado": { gerador: true, fn: verComunicado },
   "POST medida": { gerador: true, fn: gerarMedida },
   "POST medida_lancada": { gerador: true, fn: marcarLancada },

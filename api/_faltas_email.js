@@ -47,6 +47,7 @@ const HTML = require("./_faltas_email_html");
 const LOGO = require("./_faltas_email_logo");
 const MD = require("./_medida_regras");
 const COM = require("./_comunicado");
+const PUSH = require("./_push");
 
 // Só a conta do Raphael envia à mão, cadastra e-mails e liga o automático (pedido dele).
 // A checagem é AQUI, no servidor: esconder o botão na tela é conveniência, não segurança.
@@ -482,6 +483,9 @@ async function enviarSemana(db, { semana, escolhidas, copias, origem, ator, agor
       try {
         await COM.guardar(db, ator, { semana: semana.inicio, area: a.area, nome: a.nome, inicio: semana.inicio, fim: semana.fim, origem, qtd: m.faltas.length, colaboradores: m.linhas.length, linhas: m.linhas, atualizacoes: m.atualizacoes });
       } catch (e) { console.error("[faltas-email] cópia do comunicado não gravada para a área " + a.area + ": " + (e && e.message ? e.message : e)); }
+      // notificação no celular: canal próprio, com o próprio registro; falhar aqui não desfaz nem atrasa o e-mail
+      try { await PUSH.enviarParaArea(db, { semana: semana.inicio, area: a.area, nome: a.nome, inicio: semana.inicio, fim: semana.fim, tipo: "COMUNICADO", ator }); }
+      catch (e) { console.error("[faltas-email] notificação da área " + a.area + " não saiu: " + (e && e.message ? e.message : e)); }
       tot.enviados++;
       tot.faltas += m.faltas.length;
       if (!m.faltas.length) tot.semFaltas++;
@@ -490,6 +494,24 @@ async function enviarSemana(db, { semana, escolhidas, copias, origem, ator, agor
     correio.fechar();
   }
   return tot;
+}
+
+// E-mail avulso pela conta do aviso (hoje: o link da via do documento da medida, para um e-mail que o supervisor digita).
+// Devolve { ok } ou { ok:false, erro }; nunca lança.
+async function enviarAvulso(db, { para, assunto, html, texto }) {
+  let correio;
+  try {
+    const conta = await lerConta(db);
+    if (!pronta(conta)) return { ok: false, erro: SEM_CONTA };
+    correio = abrirCorreio(conta);
+    const r = await correio.enviar({ para: [para], cc: [], responderPara: [conta.user], assinatura: null, assunto, html, texto });
+    if (r && r.ok && r.aceitos && !r.aceitos.includes(String(para).toLowerCase())) return { ok: false, erro: "o servidor de e-mail recusou o endereço" };
+    return { ok: !!(r && r.ok), erro: r && !r.ok ? (r.erro || "não confirmado") : null };
+  } catch (e) {
+    return { ok: false, erro: String((e && e.message) || e).slice(0, 200) };
+  } finally {
+    if (correio) correio.fechar();
+  }
 }
 
 // ── resumo semanal das medidas para a coordenação ───────────────────────────
@@ -548,6 +570,26 @@ async function enviarResumo(db, { semana, origem, ator, agora }) {
   return { situacao: "ENVIADO", pendentes: m.pendentes };
 }
 
+// Quem recebeu o comunicado ontem (ou antes, nesta semana) e ainda não abriu no painel recebe um lembrete, uma vez.
+// A coordenação não entra: só conta quem é supervisor da área (api/_push.js).
+async function lembrarNaoAbertos(db, agora) {
+  if (horaSP(agora) < 9) return 0;
+  const semana = semanaAnterior(agora), hoje = diaSP(agora);
+  const [rows, abertos] = await Promise.all([
+    db.listar(`fm_auditoria?select=id,chave,criado_em,nome:depois->>nome,area:depois->>area&acao=eq.${COM.ACAO_COMUNICADO}&criado_em=gte.${semana.inicio}T00:00:00Z&order=id.asc`),
+    COM.aberturas(db, semana.inicio)
+  ]);
+  const ultimas = new Map();
+  rows.forEach(r => { if (String(r.chave).startsWith(semana.inicio + "|")) ultimas.set(r.chave, r); });
+  let n = 0;
+  for (const [chave, r] of ultimas) {
+    if (abertos.has(chave) || diaSP(new Date(r.criado_em)) >= hoje) continue; // abriu, ou o comunicado saiu hoje
+    const t = await PUSH.enviarParaArea(db, { semana: semana.inicio, area: r.area, nome: r.nome, inicio: semana.inicio, fim: semana.fim, tipo: "LEMBRETE", ator: "sistema" });
+    n += t.enviados;
+  }
+  return n;
+}
+
 // ── agendamento (vercel.json → /api/rh?modulo=faltasemail&t=cron) ───────────
 async function cron(req, res) {
   const segredo = process.env.CRON_SECRET;
@@ -563,6 +605,10 @@ async function cron(req, res) {
   try {
     // dia e hora escolhidos no painel; a Vercel chama a cada hora e daqui em diante, no mesmo dia, cada chamada
     // só envia o que ficou para trás (área já enviada não sai de novo)
+    // lembrete do comunicado: no dia seguinte ao envio, a partir das 9h, só para quem ainda não abriu (não depende do dia do envio)
+    let lembretes = 0;
+    try { lembretes = await lembrarNaoAbertos(db, agora); }
+    catch (e) { console.error("[faltas-email] lembrete do comunicado: " + (e && e.message ? e.message : e)); }
     const agenda = await lerAgenda(db);
     if (diaDaSemana(diaSP(agora)) !== agenda.dia) return res.status(200).json({ ok: true, ignorado: "NAO_E_O_DIA" });
     if (minutoDoDia(agora) < agenda.hora * 60 + agenda.minuto) return res.status(200).json({ ok: true, ignorado: "ANTES_DO_HORARIO" });
@@ -973,6 +1019,8 @@ module.exports = async function faltasEmail(req, res) {
 };
 
 module.exports.cron = cron;
+module.exports.lerLink = lerLink;
+module.exports.enviarAvulso = enviarAvulso;
 module.exports.enviarSemana = enviarSemana;
 module.exports.faltasDoPeriodo = faltasDoPeriodo;
 module.exports.agrupar = agrupar;
