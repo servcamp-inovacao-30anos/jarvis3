@@ -3,7 +3,7 @@
    O servidor é o api/_ofensiva.js (/api/rh?modulo=ofensiva); as regras estão em api/_ofensiva_regras.js:
    • só dias úteis (seg a sex); o dia vale com 3 guias diferentes abertas por CLIQUE da pessoa;
    • 2 congelamentos por mês: um dia útil perdido gasta 1 e a sequência continua;
-   • o contador aparece no cartão do usuário (menu) e o ranking só na primeira tela (Visão Geral).
+   • o contador aparece no cartão do usuário (menu) e na tela de boas-vindas, e o ranking só na Base Virtual.
    Quem deixa a TV aberta, ou o Modo TV trocando de tela sozinho, não pontua: a tela só avisa o servidor
    quando a troca de guia veio de um evento de verdade (isTrusted), nunca de temporizador. */
 (function(raiz){
@@ -74,7 +74,7 @@ function renderBoasVindas(){
 }
 raiz.ofBoasVindas=renderBoasVindas;
 
-/* ── ranking, só na primeira tela ──────────────────────────────────────── */
+/* ── ranking, só na Base Virtual ──────────────────────────────────────── */
 const MEDALHA=["🥇","🥈","🥉"];
 function renderRanking(){
   const el=document.getElementById("of-ranking");if(!el)return;
@@ -107,12 +107,11 @@ raiz.ofRankingCarregar=function(forcar){
   api("ranking").then(j=>{if(dono===uk()){OF.rank=j&&j.ranking?j:null;OF.rankEm=Date.now();renderRanking();}})
     .catch(e=>console.warn("ofensiva ranking:",e&&e.message)).then(()=>{OF.pedindo=false;});
 };
-// Chamado quando o cartão do usuário é desenhado (logo depois do login): busca o contador e o ranking.
+// Chamado quando o cartão do usuário é desenhado (logo depois do login): busca o contador (o ranking só é buscado na Base Virtual).
 raiz.ofIniciar=function(){
   if(!logado()){esquecer();return;}
   checarDono();
   if(!OF.est)carregarEstado();else renderContador();
-  raiz.ofRankingCarregar();
 };
 
 /* ── registrar a guia aberta ───────────────────────────────────────────── */

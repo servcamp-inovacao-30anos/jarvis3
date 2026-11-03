@@ -970,7 +970,6 @@ aside.sb#sidebar.sb-mini #navRoot .ni{margin:2px 8px;padding:9px 0;}
   <div class="page active" id="pg-visao">
     <div id="vg-contrato" hidden></div>
     <div id="vg-guias-alerta" hidden></div>
-    <div id="of-ranking" hidden></div>
     <div class="vg-kpis" style="grid-template-columns:repeat(4,1fr)">
       <div class="sk sk-bl clickable" onclick="skDet('vg','clientes',this)"><div class="sk-top"><span class="sk-ic">🏢</span><span class="sk-tag t-bl">Fixo</span></div><div class="sk-lbl">Clientes Ativos</div><div class="sk-v" id="vg-cl">—</div><div class="sk-sub" id="vg-cls">—</div></div>
       <div class="sk clickable" onclick="_showNovosClientes()" style="background:linear-gradient(135deg,#fff7e6,#ffedcc);border:2px solid #f5a623;box-shadow:0 4px 18px rgba(245,166,35,.25);position:relative;overflow:hidden">
@@ -1886,6 +1885,7 @@ aside.sb#sidebar.sb-mini #navRoot .ni{margin:2px 8px;padding:9px 0;}
   </div>
   <div class="page" id="pg-sede">
     <div class="sec-hdr"><span class="sec-hdr-ic">🏢</span><div><div class="sec-hdr-t">Base Virtual — Grupo ServCamp</div><div class="sec-hdr-sub">Cada sala é um módulo do Painel ServCamp: seu personagem anda até onde você está trabalhando</div></div></div>
+    <div id="of-ranking" hidden></div>
     <div id="hq-content"><div style="padding:40px;text-align:center;color:#94a3b8;font-size:.85rem">Abrindo a base…</div></div>
     <style>
     #chk-panel{position:fixed;top:60px;right:0;bottom:0;width:340px;max-width:88vw;background:#fff;border-left:1px solid #e5e9f0;box-shadow:-10px 0 30px rgba(13,31,53,.12);z-index:60;transform:translateX(102%);transition:transform .25s ease;overflow-y:auto;padding:14px 16px 30px}
@@ -4843,7 +4843,7 @@ function navTo(p,btn){
   else if(p==="bdvrel"){brLoad();}
   else if(p==="fmrel"){frLoad();}
   else{updVGCharts();}
-  if(p==="visao"&&typeof ofRankingCarregar==="function")ofRankingCarregar(); // ranking da ofensiva só aparece na primeira tela
+  if(p==="sede"&&typeof ofRankingCarregar==="function")ofRankingCarregar(); // ranking da ofensiva só aparece na Base Virtual
   if(p!=="sede"&&typeof HQ_TIMER!=="undefined"&&HQ_TIMER){clearInterval(HQ_TIMER);HQ_TIMER=null;}
   if(typeof hqBeat==="function")hqBeat(); // presença: avisa em qual sala estou
 }

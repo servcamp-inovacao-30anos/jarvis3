@@ -264,6 +264,8 @@ test("tela: troca de guia por temporizador (Modo TV) não avisa o servidor; cliq
 test("tela: contador no cartão e ranking com o nome escapado; outra pessoa na aba não vê o da anterior", async () => {
   const { ctx, els } = navegador({ isTrusted: true });
   ctx.ofIniciar(); await espera();
+  assert.equal(els["of-ranking"].hidden, true, "o ranking não é buscado fora da Base Virtual");
+  ctx.ofRankingCarregar(); await espera(); // o navTo('sede') chama isto
   assert.equal(els.sbOfensiva.hidden, false);
   assert.ok(els.sbOfensiva.innerHTML.includes("<b>4</b> dias seguidos"));
   assert.ok(els.sbOfensiva.innerHTML.includes("hoje feito"));
@@ -283,8 +285,8 @@ test("index.html: ganchos da ofensiva (clique de verdade, cartão do usuário e 
   assert.ok(HTML.includes('id="sbOfensiva"'));
   assert.ok(HTML.includes('if(typeof ofIniciar==="function")ofIniciar();'));
   assert.equal((HTML.match(/id="of-ranking"/g) || []).length, 1, "o ranking existe em um lugar só");
-  assert.ok(HTML.indexOf('id="of-ranking"') > HTML.indexOf('id="pg-visao"') && HTML.indexOf('id="of-ranking"') < HTML.indexOf('id="pg-ativos"'), "dentro da Visão Geral");
-  assert.ok(HTML.includes('if(p==="visao"&&typeof ofRankingCarregar==="function")ofRankingCarregar();'));
+  assert.ok(HTML.indexOf('id="of-ranking"') > HTML.indexOf('id="pg-sede"') && HTML.indexOf('id="of-ranking"') < HTML.indexOf('id="hq-content"'), "dentro da Base Virtual");
+  assert.ok(HTML.includes('if(p==="sede"&&typeof ofRankingCarregar==="function")ofRankingCarregar();'));
   assert.ok(HTML.includes('/assets/ofensiva/ofensiva.js'));
 });
 
