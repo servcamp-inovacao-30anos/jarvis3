@@ -222,7 +222,7 @@ async function montarPdf(o) {
   linha("Coletado por", `${o.supervisor.nome} (login ${o.supervisor.login})`);
   linha("Assinatura do supervisor", o.evid.perfil ? "Imagem guardada no perfil do supervisor, aplicada com um toque" : "Desenhada na hora, na tela do celular");
   if (o.resultado !== "RECUSADA") linha("Assinatura do colaborador", "Nome escrito pelo colaborador com o dedo, na tela, depois de ler o documento inteiro");
-  else linha("Testemunhas", (o.recusa && o.recusa.testemunhas && o.recusa.testemunhas.length) ? o.recusa.testemunhas.map(t => t.nome + (t.doc ? " (doc. " + t.doc + ")" : "")).join("; ") : "Nenhuma informada");
+  else linha("Testemunhas", (o.recusa && o.recusa.testemunhas && o.recusa.testemunhas.length) ? o.recusa.testemunhas.map(t => t.nome + (t.doc ? " (doc. " + t.doc + ")" : "")).join("; ") : "");
   linha("Endereço de rede (IP)", o.evid.ip || "não informado");
   linha("Aparelho e navegador", o.evid.aparelho || "não informado");
   linha("Texto lido e aceito", `SHA-256 do texto do documento: ${o.evid.textoSha}`);

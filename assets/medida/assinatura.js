@@ -177,7 +177,7 @@ function pintaLer(){
   cab("Leia o documento",`${g.numero} · ${titulo(g.nome)}`);
   corpo(`<div class="as-doc md-leitura"><div class="md-papel">${html}</div></div>`+
     `<section class="as-assina"><label class="as-chk grande"><input type="checkbox" id="as-ciente" ${AS.aceite?"checked":""}><span><b>Li e estou ciente</b> do documento acima.</span></label>`+
-    `<div id="as-wrap" class="as-wrap${AS.aceite?"":" off"}">${campoPad("as-pad-col","Escreva aqui o seu nome com o dedo")}<p class="as-peq" ${AS.aceite?"hidden":""} id="as-bloq">Marque “Li e estou ciente” para escrever o seu nome.</p></div>${aviso()}`+
+    `<div id="as-wrap" class="as-wrap${AS.aceite?"":" off"}">${campoPad("as-pad-col","Assine")}<p class="as-peq" ${AS.aceite?"hidden":""} id="as-bloq">Marque “Li e estou ciente” para assinar.</p></div>${aviso()}`+
     `<p class="as-peq"><button type="button" class="as-lnk er" data-as="recusar">O colaborador recusou-se a assinar</button></p></section>`);
   rod(`<button type="button" class="as-b" data-as="limpar" data-p="as-pad-col">Limpar</button><button type="button" class="as-b pri" data-as="col-ok" id="as-ok" disabled>Confirmar assinatura</button>`);
   ligaPad("as-pad-col",atualizaOk);
