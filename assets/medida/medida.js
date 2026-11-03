@@ -44,6 +44,8 @@ const IC={
   ADVERTENCIA_ESCRITA:svg('<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="m9 16 1.5-3.5L16 7l2 2-5.5 5.5z"/>'),
   SUSPENSAO:svg('<rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4M10 14v4M14 14v4"/>'),
   seta:svg('<path d="m9 6 6 6-6 6"/>'),menos:svg('<path d="M5 12h14"/>'),mais:svg('<path d="M12 5v14M5 12h14"/>'),
+  ass:svg('<path d="m3 17 3.5-1L17 5.5a2.1 2.1 0 0 0-3-3L3.5 13z"/><path d="M13 21h8"/>'),
+  qr:svg('<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v3M14 20h3M20 20h1"/>'),
   ajustar:svg('<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>'),
   info:svg('<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>')
 };
@@ -129,11 +131,11 @@ function docHtml(d){
   <div class="mv">${motivo?esc(motivo):vz("O motivo escrito ao lado aparece aqui.")}</div>
   <p>${FECHO}</p>
   <div class="lc"><span>Campinas, ${esc(extenso(d.docData||hojeSP()))}</span><span>atenciosamente</span></div>
-  <div class="ass">
+  ${d.digital?"":`  <div class="ass">
     <div><div class="ci">CIENTE: ____/____/______</div><div style="height:46px"></div><div class="ln">Assinatura do Colaborador</div></div>
     <div><div style="height:30px"></div><div class="ln">ASSINATURA DO EMPREGADOR</div>
       <div class="tes">TESTEMUNHA:<br>Nome: ______________________________<br>Doc.: _______________________________<br>TESTEMUNHA:<br>Nome: ______________________________<br>Doc.: _______________________________</div></div>
-  </div>
+  </div>`}
   ${rod}
 </div>`;
 }
@@ -149,6 +151,11 @@ function imprimir(d){
   setTimeout(()=>{try{f.contentWindow.focus();f.contentWindow.print();}catch(e){alert("Não foi possível abrir a impressão: "+e.message);}setTimeout(()=>f.remove(),60000);},250);
 }
 const docDaGerada=g=>({empresa:g.empresa,re:g.re,nome:g.nome,tipoId:g.tipoId,dias:g.dias,inicio:g.inicio,motivo:g.motivo,docData:iso(new Date(Date.parse(g.geradaEm)-3*3600000).toISOString()),numero:g.numero,geradoPor:g.geradaPor,geradoEm:new Date(Date.parse(g.geradaEm)-3*3600000).toISOString()});
+
+// a tela de assinatura (assets/medida/assinatura.js) e o teste do PDF (test/assinatura.test.js) usam o mesmo documento
+window.mdDocHtml=docHtml;window.mdDocDaGerada=docDaGerada;window.mdInjetaCss=()=>injetaCss();
+window.mdApi=(t,metodo,corpo)=>api(t,metodo,corpo);window.mdRecarregar=()=>carregar(true);
+window.mdGerada=k=>(MDS.lista||[]).find(g=>g.chave===k)||null;
 
 /* ═════════ editor ═════════ */
 function casoDe(k){const d=FM.dados;return d&&d.casos.find(c=>c.re+"|"+c.primeiraFalta===k)||null;}
@@ -318,7 +325,7 @@ function pintaRod(){
     return;
   }
   if(E.gerada){
-    el.innerHTML=`<div class="md-rod-txt ok"><span class="md-selo">${IC.ok}</span><div><b>Medida ${esc(E.gerada.numero)} gerada.</b><span>Agora: 1) imprima e colha as assinaturas; 2) lance no SAR2G. Até a planilha trazer a medida, ela fica no seu perfil como pendente. Depois, anexe a foto do documento assinado em "Medidas geradas".</span></div></div><button type="button" class="md-b" data-md="fechar">Fechar</button><button type="button" class="md-b pri" data-md="imprimir">${IC.imp}Imprimir ou salvar PDF</button>`;
+    el.innerHTML=`<div class="md-rod-txt ok"><span class="md-selo">${IC.ok}</span><div><b>Medida ${esc(E.gerada.numero)} gerada.</b><span>Agora: 1) colete a assinatura no celular (ou imprima e colha no papel); 2) lance no SAR2G. Até a planilha trazer a medida, ela fica no seu perfil como pendente. No papel, anexe depois a foto do documento assinado em "Medidas geradas".</span></div></div><button type="button" class="md-b" data-md="fechar">Fechar</button><button type="button" class="md-b" data-md="imprimir">${IC.imp}Imprimir ou salvar PDF</button><button type="button" class="md-b pri" data-md="assinar">${IC.ass}Assinar no celular</button>`;
     return;
   }
   const f=faltando(E),t=TIPOS[E.tipo];
@@ -353,6 +360,7 @@ function cliqueEd(e){
     escala();return;
   }
   if(a==="imprimir"){imprimir(docDoEd(E));return;}
+  if(a==="assinar"){const g=E.gerada;fecharEd(true);if(g&&typeof window.mdAssinar==="function")window.mdAssinar(g);return;}
   if(a==="tipo"){E.tipo=v;E.erro=null;}
   else if(a==="dias"){E.dias=Math.min(30,Math.max(1,(Number(E.dias)||1)+Number(v)));}
   else if(a==="falta"){E.faltas.has(v)?E.faltas.delete(v):E.faltas.add(v);atualizaMotivo();}
@@ -450,7 +458,7 @@ function tela(){
   const k=(id,cls,rot,val,sub)=>`<button type="button" class="md-kpi ${cls}${MDS.filtro===id?" on":""}" onclick="mdFiltro('${id}')"><small>${rot}</small><b>${val}</b><span>${sub}</span></button>`;
   let h=`<div class="md-tela"><div class="md-kpis k5">`+
     k("PENDENTE","am","Falta lançar no SAR2G",n("PENDENTE"),atras?`${atras} há 3 dias ou mais`:"geradas no painel")+
-    k("SEMASS",nSem?"am":"","Sem documento assinado",nSem,"falta anexar a foto ou o PDF")+
+    k("SEMASS",nSem?"am":"","Sem documento assinado",nSem,"falta assinar no celular ou anexar a foto")+
     k("LANCADA","ok","Lançadas no SAR2G",n("LANCADA"),"pela planilha ou marcadas")+
     k("CANCELADA","","Canceladas",n("CANCELADA"),"geradas por engano")+
     k("TODAS","","Todas",L.length,MDS.coord?"de todas as áreas":"da sua área")+`</div>`;
@@ -470,8 +478,12 @@ function item(g){
   const sub=g.status==="PENDENTE"?(g.diasPendente?`há ${g.diasPendente} ${g.diasPendente===1?"dia":"dias"}`:"gerada hoje"):g.status==="LANCADA"?(g.lancadaPor==="planilha"?`na planilha em ${esc(dm(g.lancadaEm))}`:`marcada por ${esc(nomeDe(g.lancadaPor))}`):`por ${esc(nomeDe(g.canceladaPor))}: ${esc(g.motivoCancelamento)}`;
   const ac=[`<button type="button" class="md-b sm" data-c="${g.chave}" onclick="mdReimprimir(this.dataset.c)" title="Imprimir de novo">${IC.imp}Imprimir</button>`];
   // documento assinado: ver quem tem; anexar (ou trocar) quem pode mexer na medida
-  if(g.assinado)ac.push(`<button type="button" class="md-b sm ok" data-c="${g.chave}" onclick="mdVerAssinado(this.dataset.c)" title="Anexado por ${esc(nomeDe(g.assinado.por))} em ${esc(quando(g.assinado.em))}">${IC.olho}Assinado</button>`);
-  if(g.status!=="CANCELADA")ac.push(`<label class="md-b sm${g.assinado?"":" pri"}" title="${g.assinado?"Trocar o arquivo":"Foto ou PDF do documento assinado pelo colaborador"}">${IC.clip}${g.assinado?"Trocar":"Anexar assinado"}<input type="file" accept="image/*,application/pdf" data-c="${g.chave}" onchange="mdAnexar(this)" hidden></label>`);
+  const dig=g.assinado&&g.assinado.digital,recusou=dig&&g.assinado.resultado==="RECUSADA";
+  // assinatura no celular (assets/medida/assinatura.js): sem papel, sem impressora
+  if(g.status!=="CANCELADA"&&!g.assinado)ac.push(`<button type="button" class="md-b sm pri" data-c="${g.chave}" onclick="mdAssinar(this.dataset.c)" title="O supervisor e o colaborador assinam na tela do celular">${IC.ass}Assinar no celular</button>`);
+  if(dig&&g.status!=="CANCELADA")ac.push(`<button type="button" class="md-b sm" data-c="${g.chave}" onclick="mdVia(this.dataset.c)" title="QR code, SMS ou e-mail para o colaborador baixar o documento">${IC.qr}Via do documento</button>`);
+  if(g.assinado)ac.push(`<button type="button" class="md-b sm ${recusou?"er":"ok"}" data-c="${g.chave}" onclick="mdVerAssinado(this.dataset.c)" title="${dig?(recusou?"Recusa registrada":"Assinado no celular")+" por "+esc(nomeDe(g.assinado.por))+" em "+esc(quando(g.assinado.em))+(g.assinado.sha256?" · SHA-256 "+esc(g.assinado.sha256.slice(0,12))+"…":""):"Anexado por "+esc(nomeDe(g.assinado.por))+" em "+esc(quando(g.assinado.em))}">${IC.olho}${recusou?"Recusou":dig?"Assinado no celular":"Assinado"}</button>`);
+  if(g.status!=="CANCELADA"&&!dig)ac.push(`<label class="md-b sm${g.assinado?"":" pri"}" title="${g.assinado?"Trocar o arquivo":"Foto ou PDF do documento assinado pelo colaborador"}">${IC.clip}${g.assinado?"Trocar":"Anexar assinado"}<input type="file" accept="image/*,application/pdf" data-c="${g.chave}" onchange="mdAnexar(this)" hidden></label>`);
   if(pode&&g.status==="PENDENTE")ac.push(`<button type="button" class="md-b sm ok" data-c="${g.chave}" onclick="mdLancada(this.dataset.c,true)">${IC.ok}Já lancei no SAR2G</button>`);
   if(pode&&g.status==="LANCADA"&&g.manual)ac.push(`<button type="button" class="md-b sm" data-c="${g.chave}" onclick="mdLancada(this.dataset.c,false)">Desfazer</button>`);
   if(pode&&g.status!=="CANCELADA")ac.push(`<button type="button" class="md-b sm er" data-c="${g.chave}" onclick="mdCancelar(this.dataset.c)" title="Cancelar (gerada por engano)">${IC.x}</button>`);

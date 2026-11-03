@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#0d1f35">
+<title>Seu documento | Grupo ServCamp</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="stylesheet" href="/assets/via/via.css">
+</head>
+<body>
+<main class="via" id="via">
+  <img class="via-logo" src="/logo-servcamp.png" alt="Grupo ServCamp" height="54">
+  <h1 id="viaTit">Seu documento</h1>
+  <p id="viaTxt" class="via-txt">Abrindo…</p>
+  <form id="viaForm" class="via-form" hidden autocomplete="off">
+    <label>Seu RE<input id="viaRe" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="12" required></label>
+    <label>Os 4 últimos dígitos do seu celular<input id="viaUlt4" inputmode="numeric" pattern="[0-9]{4}" autocomplete="off" maxlength="4" required></label>
+  </form>
+  <button type="button" id="viaBt" class="via-bt" hidden>Baixar meu documento</button>
+  <p id="viaIos" class="via-ios" hidden>No iPhone o documento abre na tela: toque em <b>compartilhar</b> e depois em <b>Salvar em Arquivos</b>.</p>
+  <a id="viaAbrir" class="via-link" hidden target="_blank" rel="noopener">Abrir o documento</a>
+  <p id="viaHash" class="via-hash" hidden></p>
+  <p class="via-rod">Este endereço é só seu e tem prazo de validade. Não compartilhe.</p>
+</main>
+<script src="/assets/via/via.js"></script>
+</body>
+</html>

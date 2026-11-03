@@ -20,8 +20,8 @@ const logado=()=>sessionStorage.getItem("logged")==="1";
 const titulo=s=>typeof fmNomeCard==="function"?fmNomeCard(s):String(s||"");
 const podeGerar=()=>{const d=typeof FM!=="undefined"&&FM.dados;return !!(d&&d.medida&&d.medida.pode_gerar);};
 
-async function api(t,extra){
-  const r=await fetch("/api/rh?modulo=faltas&t="+t+(extra||""));
+async function api(t,extra,corpo){
+  const r=await fetch("/api/rh?modulo=faltas&t="+t+(extra||""),corpo?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(corpo)}:{});
   const j=await r.json().catch(()=>({}));
   if(!r.ok){const e=new Error(j.error||("Falha ("+r.status+")"));e.status=r.status;e.codigo=j.codigo;throw e;}
   return j;
@@ -33,7 +33,7 @@ function carregarLista(forcar){
   if(!logado()||CO.carregando||(CO.lista&&!forcar))return;
   CO.carregando=true;
   api("comunicados").then(j=>{
-    CO.lista=j.comunicados||[];CO.erro=null;
+    CO.lista=j.comunicados||[];CO.erro=null;CO.coord=!!j.coordenacao;pushVerifica();
     if(!CO.sel||!CO.lista.some(c=>c.semana===CO.sel.semana&&c.area===CO.sel.area)){
       const c0=CO.lista[0];CO.sel=c0?{semana:c0.semana,area:c0.area}:null;CO.dados=null;
     }
@@ -95,6 +95,34 @@ function seletores(){
   const ar=areas.length>1?`<label class="co-sel"><span>Área</span><select aria-label="Área do comunicado" onchange="coEscolhe('${esc(s.semana)}',this.value)">${areas.map(c=>`<option value="${esc(c.area)}"${c.area===s.area?" selected":""}>${esc(titulo(c.nome))}</option>`).join("")}</select></label>`:"";
   return `<div class="co-sels">${sem}${ar}</div>`;
 }
+/* ── notificação no celular (api/_push.js): um único "Permitir", pedido aqui, dentro do app ──
+   O navegador só deixa pedir a permissão num toque da pessoa. Quem já autorizou não vê o convite. */
+const pushOk=()=>"serviceWorker" in navigator&&"PushManager" in window&&"Notification" in window;
+function b64(s){const p="=".repeat((4-s.length%4)%4),b=(s+p).replace(/-/g,"+").replace(/_/g,"/"),r=atob(b),a=new Uint8Array(r.length);for(let i=0;i<r.length;i++)a[i]=r.charCodeAt(i);return a;}
+function pushVerifica(){
+  if(!pushOk()||CO.coord||CO.push)return;
+  CO.push=Notification.permission==="denied"?"negado":"...";
+  if(CO.push==="negado")return;
+  navigator.serviceWorker.ready.then(r=>r.pushManager.getSubscription()).then(s=>{CO.push=s?"on":"off";if(s)api("push_inscrever","",Object.assign(s.toJSON(),{agente:navigator.userAgent})).catch(()=>{});redesenhar();}).catch(()=>{CO.push="off";});
+}
+function pushCaixa(){
+  if(!pushOk()||CO.coord||!CO.push||CO.push==="..."||CO.push==="on")return"";
+  if(CO.push==="negado")return `<div class="co-push neg"><b>Notificações bloqueadas neste aparelho</b><span>Para receber o comunicado por notificação, libere as notificações do Painel ServCamp nas configurações do navegador.</span></div>`;
+  return `<div class="co-push"><div><b>Receber o comunicado por notificação</b><span>O aviso chega no celular quando o comunicado sai, sem nome de ninguém na tela de bloqueio. Toque uma vez em Permitir.</span></div><button type="button" class="md-b pri" onclick="coPush()">Permitir</button></div>`;
+}
+window.coPush=async function(){
+  try{
+    const perm=await Notification.requestPermission();
+    if(perm!=="granted"){CO.push=perm==="denied"?"negado":"off";redesenhar();return;}
+    const reg=await navigator.serviceWorker.ready;
+    const k=await api("push_chave");
+    const s=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64(k.chave)});
+    await api("push_inscrever","",Object.assign(s.toJSON(),{agente:navigator.userAgent}));
+    CO.push="on";if(typeof hqToast==="function")hqToast("🔔 Notificação do comunicado ligada");
+  }catch(e){CO.push="off";if(typeof hqToast==="function")hqToast("⚠️ Não consegui ligar a notificação: "+e.message);}
+  redesenhar();
+};
+
 function tela(){
   if(CO.erro&&!CO.lista)return `<div class="co"><div class="md-alerta er">${esc(CO.erro)}</div></div>`;
   if(!CO.lista){carregarLista();return `<div class="co"><div class="co-vz"><b>Carregando o comunicado…</b></div></div>`;}
@@ -110,7 +138,7 @@ function tela(){
       `<p class="co-nota">É o mesmo comunicado do e-mail, como foi enviado. A situação de cada colaborador abaixo é a de agora.</p>`+
       (L.length?L.map(cartao).join(""):`<div class="co-vz"><b>Nenhuma falta injustificada na sua área nesta semana</b>O e-mail desta semana informou isso.</div>`)+atualizacoes(d.atualizacoes);
   }
-  return `<div class="co">${seletores()}${corpo}</div>`;
+  return `<div class="co">${pushCaixa()}${seletores()}${corpo}</div>`;
 }
 
 window.coEscolhe=function(semana,area){

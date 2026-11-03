@@ -419,7 +419,7 @@ test("importação anota a falta que virou injustificada depois (corte de doming
   assert.equal(t.fm_auditoria.length, n, "continuou injustificada: nada a anotar");
 });
 
-test("tela: script compila, mesma conta do servidor, ligado no index.html, e os avisos no celular saíram", () => {
+test("tela: script compila, mesma conta do servidor, ligado no index.html, e a notificação do comunicado está ligada", () => {
   const raiz = path.join(__dirname, "..");
   const js = fs.readFileSync(path.join(raiz, "assets", "faltas-email", "faltas-email.js"), "utf8");
   assert.doesNotThrow(() => new Function(js), "faltas-email.js com erro de sintaxe");
@@ -431,11 +431,13 @@ test("tela: script compila, mesma conta do servidor, ligado no index.html, e os 
   assert.ok(html.includes('id="fm-bt-email"') && html.includes('id="sbFeEmail"'));
   assert.ok(/navigator\.serviceWorker\.register\("\/sw\.js"\)/.test(html), "o sistema continua instalável no celular");
   assert.ok(!html.includes("/assets/avisos/") && !html.includes("avAposLogin") && !html.includes("sbAvPainel"), "nada dos avisos no celular");
-  assert.ok(!fs.existsSync(path.join(raiz, "api", "_avisos.js")));
+  assert.ok(!fs.existsSync(path.join(raiz, "api", "_avisos.js")), "o módulo antigo de avisos (por planilha importada) não volta");
+  // o comunicado semanal volta por notificação, bem menor (api/_push.js)
   const sw = fs.readFileSync(path.join(raiz, "sw.js"), "utf8");
-  assert.ok(!sw.includes('addEventListener("push"'), "o service worker não trata mais push");
+  assert.ok(sw.includes('addEventListener("push"') && sw.includes('addEventListener("notificationclick"'));
+  assert.ok(!html.includes("getSubscription"), "o painel não cancela mais a inscrição de notificação ao abrir");
   const pkg = JSON.parse(fs.readFileSync(path.join(raiz, "package.json"), "utf8"));
-  assert.ok(!pkg.dependencies["web-push"]);
+  assert.ok(pkg.dependencies["web-push"]);
 });
 
 test("vercel.json: um agendamento por hora, das 6h às 20h de Brasília (9h a 23h UTC), uma vez por dia cada, pela rota do cron", () => {
@@ -765,4 +767,84 @@ test("o botão do e-mail abre o comunicado da semana, com um link só e sem nada
   assert.ok(links.length >= 1);
   [...new Set(links.map(l => l.replace(/&amp;/g, "&")))].forEach(l => assert.equal(l, "https://painel.exemplo.com.br/?pg=faltassup&aba=COMUNICADO", "um único endereço, sem RE, nome ou data"));
   assert.ok(!/ANA PAULA|\b101\b/.test(links.join(" ")));
+});
+
+// ── notificação no celular ──────────────────────────────────────────────────
+const PUSH = require("../api/_push");
+const aparelho = (user, n) => ({ id: 900 + n, ator: user, acao: "AVISO_APARELHO", entidade: "fs_avisos", chave: "ap|" + user + n, antes: null, depois: { user_key: user, endpoint: "https://fcm.googleapis.com/fcm/send/" + user + n, p256dh: "p", auth: "a" }, criado_em: "2026-10-01T00:00:00Z" });
+let pushes = [], pushStatus = () => ({ ok: true });
+PUSH.definirEnviador(async (ap, corpo) => { pushes.push({ user: ap.user_key, corpo }); return pushStatus(ap); });
+const comPush = () => { pushes = []; pushStatus = () => ({ ok: true }); return base({ extras: [aparelho("jeankleber", 1), aparelho("frankpimentel", 1), aparelho("raphaelvictor", 1), aparelho("sandraalves", 1)] }); };
+
+test("notificação: o comunicado sai para os aparelhos do supervisor da área, sem nome de ninguém, e fica registrado", async () => {
+  const t = comPush();
+  const r = await oficial();
+  assert.equal(r.body.enviados, 2, JSON.stringify(r.body));
+  assert.deepEqual(pushes.map(p => p.user).sort(), ["frankpimentel", "jeankleber"], "coordenação e quem não é supervisor não recebem a de cada área");
+  const p = pushes.find(x => x.user === "jeankleber").corpo;
+  assert.equal(p.titulo, "Comunicado semanal de faltas injustificadas");
+  assert.equal(p.corpo, "Semana de 19/10 a 25/10. Toque para abrir.");
+  assert.equal(p.url, "/?pg=faltassup&aba=COMUNICADO");
+  assert.ok(!/ANA|PAULA|BRUNO|\b101\b/.test(JSON.stringify(p)), "nada de colaborador na tela de bloqueio");
+  assert.equal(t.fm_auditoria.filter(e => e.acao === "FALTAS_PUSH").length, 2);
+});
+
+test("notificação: canal independente do e-mail; falhar não derruba o envio, e aparelho que o serviço diz que sumiu sai da lista", async () => {
+  const t = comPush();
+  pushStatus = () => ({ ok: false, status: 410 });
+  const r = await oficial();
+  assert.equal(r.body.enviados, 2, "o e-mail saiu do mesmo jeito");
+  assert.equal(envios(t).length, 2);
+  assert.equal(t.fm_auditoria.filter(e => e.acao === "AVISO_APARELHO_REMOVIDO").length, 2, "410 = aparelho que não existe mais");
+  const aps = await PUSH.lerAparelhos(require("../api/_ponto").conectar());
+  assert.ok(!aps.some(a => a.user_key === "jeankleber"));
+});
+
+test("notificação: nenhum aparelho cadastrado não grava registro, para o próximo envio valer assim que alguém autorizar", async () => {
+  const t = base();
+  pushes = [];
+  await oficial();
+  assert.equal(pushes.length, 0);
+  assert.equal(t.fm_auditoria.filter(e => e.acao === "FALTAS_PUSH").length, 0);
+});
+
+test("lembrete: no dia seguinte, a partir das 9h, só para quem não abriu o comunicado, uma vez", async () => {
+  const t = comPush();
+  await oficial();
+  t.fm_auditoria.filter(e => e.acao === "FALTAS_EMAIL_COMUNICADO").forEach(e => { e.criado_em = "2026-10-26T17:10:00Z"; });
+  pushes = [];
+  await faltasApi("comunicado", { usuario: "jeankleber", query: { semana: "2026-10-19", area: "JEAN KLEBER" } }); // o Jean abriu
+  agora = new Date("2026-10-26T20:00:00Z"); // mesma segunda: ainda não é o dia seguinte
+  await cron();
+  assert.equal(pushes.length, 0);
+  agora = new Date("2026-10-27T11:30:00Z"); // terça 8h30: cedo demais
+  await cron();
+  assert.equal(pushes.length, 0);
+  agora = new Date("2026-10-27T13:00:00Z"); // terça 10h
+  const c = await cron();
+  assert.equal(c.statusCode, 200, JSON.stringify(c.body));
+  assert.deepEqual(pushes.map(p => p.user), ["frankpimentel"], "o Jean já abriu; o Frank não");
+  assert.equal(pushes[0].corpo.titulo, "Comunicado semanal ainda não aberto");
+  await cron();
+  await cron();
+  assert.equal(pushes.length, 1, "o lembrete sai uma vez só");
+  assert.equal(t.fm_auditoria.filter(e => e.acao === "FALTAS_PUSH" && e.depois.tipo === "LEMBRETE").length, 1);
+});
+
+test("notificação: inscrever aparelho só aceita endereço de serviço de push conhecido e chaves; remover tira só os meus", async () => {
+  const t = base();
+  const ins = (usuario, body) => faltasApi("push_inscrever", { method: "POST", usuario, body });
+  assert.equal((await ins("jeankleber", { endpoint: "https://evil.exemplo.com/x", keys: { p256dh: "p", auth: "a" } })).body.codigo, "ENDPOINT_INVALIDO");
+  assert.equal((await ins("jeankleber", { endpoint: "http://fcm.googleapis.com/x", keys: { p256dh: "p", auth: "a" } })).body.codigo, "ENDPOINT_INVALIDO");
+  assert.equal((await ins("jeankleber", { endpoint: "https://fcm.googleapis.com/fcm/send/abc", keys: {} })).body.codigo, "CHAVES_INVALIDAS");
+  assert.equal((await ins("sandraalves", { endpoint: "https://fcm.googleapis.com/fcm/send/abc", keys: { p256dh: "p", auth: "a" } })).statusCode, 403, "quem não gera medida não se inscreve");
+  assert.equal((await ins("jeankleber", { endpoint: "https://fcm.googleapis.com/fcm/send/abc", keys: { p256dh: "p", auth: "a" } })).statusCode, 200);
+  assert.equal((await ins("frankpimentel", { endpoint: "https://fcm.googleapis.com/fcm/send/xyz", keys: { p256dh: "p", auth: "a" } })).statusCode, 200);
+  const k = await faltasApi("push_chave", { usuario: "jeankleber" });
+  assert.match(k.body.chave, /^[A-Za-z0-9_-]{80,}$/);
+  assert.equal((await faltasApi("push_chave", { usuario: "jeankleber" })).body.chave, k.body.chave, "a chave é sempre a mesma");
+  const rem = await faltasApi("push_remover", { method: "POST", usuario: "jeankleber", body: {} });
+  assert.equal(rem.body.removidos, 1);
+  assert.equal((await PUSH.lerAparelhos(require("../api/_ponto").conectar())).length, 1, "o do Frank continua");
+  void t;
 });

@@ -88,3 +88,37 @@ self.addEventListener("fetch", e => {
     }
   })());
 });
+
+// ── Comunicado semanal por notificação (api/_push.js) ─────────────────────────
+// O servidor manda { titulo, corpo, tipo, url, tag }. Nada de nome de colaborador na tela de bloqueio.
+// O som é o do celular (nenhum navegador deixa a página escolher o toque de uma notificação push); a vibração é própria.
+// A notificação fica na tela até ser tocada, e o toque abre o app instalado no comunicado.
+const VIBRA = [220, 90, 220, 90, 220, 160, 650];
+
+self.addEventListener("push", e => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (err) { d = { corpo: e.data ? e.data.text() : "" }; }
+  e.waitUntil(self.registration.showNotification(d.titulo || "ServCamp · comunicado semanal", {
+    body: d.corpo || "",
+    icon: "/icon-192.png",
+    badge: "/favicon-32.png",
+    tag: d.tag || "comunicado",
+    renotify: true,
+    requireInteraction: true,
+    vibrate: VIBRA,
+    timestamp: Date.now(),
+    data: { url: d.url || "/?pg=faltassup&aba=COMUNICADO" }
+  }));
+});
+
+self.addEventListener("notificationclick", e => {
+  e.notification.close();
+  const url = new URL((e.notification.data && e.notification.data.url) || "/?pg=faltassup&aba=COMUNICADO", self.location.origin);
+  if (url.origin !== self.location.origin) return; // só abre o próprio painel
+  e.waitUntil((async () => {
+    const abas = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    const aba = abas.find(c => new URL(c.url).origin === self.location.origin);
+    if (aba && aba.navigate) { try { await aba.focus(); await aba.navigate(url.href); return; } catch (err) { /* abre uma nova */ } }
+    await self.clients.openWindow(url.href);
+  })());
+});
