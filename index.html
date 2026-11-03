@@ -1282,10 +1282,6 @@ aside.sb#sidebar.sb-mini #navRoot .ni{margin:2px 8px;padding:9px 0;}
       <div class="sk sk-re clickable" onclick="skDet('restec','indisp',this)"><div class="sk-top"><span class="sk-ic">🚫</span><span class="sk-tag t-re">Indisponível</span></div><div class="sk-lbl">Indisponíveis</div><div class="sk-v" id="rt-indisp">—</div><div class="sk-sub" id="rt-indisps">—</div></div>
     </div>
     <div class="det-panel" id="det-restec"><div class="det-hdr" id="det-restec-hdr"><span class="det-title" id="det-restec-title"></span><button class="det-close" onclick="closeDet('restec')">✕</button></div><div class="det-body"><div class="det-grid-wrap" id="det-restec-body"></div><div class="det-sub" id="det-restec-sub"></div></div></div>
-    <div class="grid-2">
-      <div class="cc"><div class="ch"><div class="chb"></div><span class="ct">Reservas por Cargo</span></div><div class="cw" style="height:280px"><canvas id="cRT1"></canvas></div></div>
-      <div class="cc"><div class="ch"><div class="chb"></div><span class="ct">Cargo por Turno</span></div><div class="cw" style="height:280px"><canvas id="cRT2"></canvas></div></div>
-    </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-top:11px">
       <div class="cc"><div class="ch"><div class="chb" style="background:#dc2626"></div><span class="ct">🚫 Indisponíveis — Não Contabilizar</span></div><div id="rt-mot-indisp" style="padding:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;"></div></div>
       <div class="cc"><div class="ch"><div class="chb" style="background:#16a34a"></div><span class="ct">✅ Trabalho — Contabilizar</span></div><div id="rt-mot-disp" style="padding:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;"></div></div>
@@ -6008,18 +6004,6 @@ function updRestecC(){
   document.getElementById("rt-disps").innerHTML=d.length?`<b>${(disp.length/d.length*100).toFixed(0)}%</b> do total`:"—";
   document.getElementById("rt-indisp").textContent=indisp.length;
   document.getElementById("rt-indisps").innerHTML=indisp.length?topN(indisp,"CARGO",3).map(([k,v])=>k+": "+v).join(" · "):"—";
-  mkBar("cRT1",cargos.map(([k])=>k.length>18?k.substring(0,18)+"…":k),cargos.map(([,v])=>v),blues.slice(0,cargos.length),true);
-  const cargosDi=topN(d.filter(r=>r.TURNO==="DIURNO"),"CARGO",10);
-  const cargosNo=topN(d.filter(r=>r.TURNO==="NOTURNO"),"CARGO",10);
-  const allCargos=[...new Set([...cargosDi.map(([k])=>k),...cargosNo.map(([k])=>k)])];
-  const diMap=Object.fromEntries(cargosDi),noMap=Object.fromEntries(cargosNo);
-  const c2=document.getElementById("cRT2");if(c2){
-    if(c2._chart)c2._chart.destroy();
-    c2._chart=new Chart(c2,{type:"bar",data:{labels:allCargos.map(k=>k.length>14?k.substring(0,14)+"…":k),datasets:[
-      {label:"Diurno",data:allCargos.map(k=>diMap[k]||0),backgroundColor:"#1e4d8c"},
-      {label:"Noturno",data:allCargos.map(k=>noMap[k]||0),backgroundColor:"#0d1f35"}
-    ]},options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"top",labels:{font:{size:10}}}},scales:{x:{grid:{display:false}},y:{grid:{display:false},ticks:{font:{size:10}}}}}});
-  }
   const dispCargos=topN(disp,"CARGO",10);
   mkBar("cRT3",dispCargos.map(([k])=>k.length>18?k.substring(0,18)+"…":k),dispCargos.map(([,v])=>v),"#16a34a",true);
   const indispCargos=topN(indisp,"CARGO",8);
