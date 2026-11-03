@@ -132,6 +132,8 @@ function ligarSessao(){
   }
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",ligarSessao);else ligarSessao();
+// Recarregar a página já logado: o cartão do usuário é desenhado antes deste arquivo carregar, então ele mesmo começa.
+setTimeout(()=>{if(logado())raiz.ofIniciar();},0);
 
 if(typeof module==="object"&&module.exports)module.exports={nomeDe};
 })(typeof window!=="undefined"?window:globalThis);

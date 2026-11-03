@@ -251,10 +251,10 @@ const espera = () => new Promise(r => setTimeout(r, 15));
 test("tela: troca de guia por temporizador (Modo TV) não avisa o servidor; clique de verdade avisa uma vez por guia", async () => {
   const tv = navegador(undefined);
   tv.ctx.ofRegistrar("clientes"); await espera();
-  assert.equal(tv.pedidos.length, 0, "sem evento do usuário = nada");
+  assert.equal(tv.pedidos.filter(p => p.metodo === "POST").length, 0, "sem evento do usuário = nada");
   const sintetico = navegador({ isTrusted: false });
   sintetico.ctx.ofRegistrar("clientes"); await espera();
-  assert.equal(sintetico.pedidos.length, 0, "evento criado por script também não vale");
+  assert.equal(sintetico.pedidos.filter(p => p.metodo === "POST").length, 0, "evento criado por script também não vale");
   const real = navegador({ isTrusted: true });
   real.ctx.ofRegistrar("clientes"); real.ctx.ofRegistrar("clientes"); real.ctx.ofRegistrar("visao"); await espera();
   const posts = real.pedidos.filter(p => p.metodo === "POST");
