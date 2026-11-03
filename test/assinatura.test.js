@@ -244,18 +244,32 @@ test("coletar: desenhar e marcar 'guardar' grava no perfil para as próximas med
   assert.equal((await api("assinatura_perfil", { usuario: "frankpimentel" })).body.tem, true);
 });
 
-test("recusa: exige nome e documento das duas testemunhas; registra o fato e entrega a via do mesmo jeito", async () => {
+test("recusa: testemunhas não são obrigatórias; sem nenhuma, registra o fato e entrega a via do mesmo jeito", async () => {
   const t = base();
   const g = await gerar();
-  const sem = { recusa: { testemunhas: [{ nome: "Fulano", doc: "123" }] }, colaborador: undefined };
-  assert.equal((await coletar(g, sem)).body.codigo, "SEM_TESTEMUNHAS");
-  assert.equal((await coletar(g, { recusa: { testemunhas: [{ nome: "Fulano", doc: "123" }, { nome: "Sicrano", doc: "" }] }, colaborador: undefined })).body.codigo, "SEM_TESTEMUNHAS");
-  const r = await coletar(g, { recusa: { testemunhas: [{ nome: "Fulano de Tal", doc: "111" }, { nome: "Sicrana de Tal", doc: "222" }], observacao: "Disse que não concorda." }, colaborador: undefined });
+  const r = await coletar(g, { recusa: { testemunhas: [], observacao: "Disse que não concorda." }, colaborador: undefined });
+  assert.equal(r.statusCode, 200, JSON.stringify(r.body));
+  assert.equal(r.body.resultado, "RECUSADA");
+  assert.ok(r.body.via, "a via sai do mesmo jeito");
+  assert.deepEqual(t.fm_auditoria.find(e => e.acao === "MEDIDA_COLETA").depois.testemunhas, []);
+  const pdf = await PDFDocument.load(Buffer.from(t.fm_auditoria.find(e => e.acao === MD.ACAO_ASSINADA).depois.base64, "base64"));
+  assert.equal(pdf.getPageCount(), 2);
+});
+
+test("recusa: testemunha informada precisa ter o nome (o documento é opcional); no máximo duas", async () => {
+  const t = base();
+  const g = await gerar();
+  assert.equal((await coletar(g, { recusa: { testemunhas: [{ nome: "", doc: "123" }] }, colaborador: undefined })).body.codigo, "TESTEMUNHA_SEM_NOME");
+  assert.equal((await coletar(g, { recusa: { testemunhas: [{ nome: "A" }, { nome: "B" }, { nome: "C" }] }, colaborador: undefined })).body.codigo, "TESTEMUNHAS_DEMAIS");
+  const um = await coletar(g, { recusa: { testemunhas: [{ nome: "Fulano de Tal", doc: "" }] }, colaborador: undefined });
+  assert.equal(um.statusCode, 200, "uma testemunha só, sem documento, vale");
+  const g2 = await gerar("frankpimentel", { repetir: true });
+  const r = await coletar(g2, { recusa: { testemunhas: [{ nome: "Fulano de Tal", doc: "111" }, { nome: "Sicrana de Tal", doc: "222" }], observacao: "Disse que não concorda." }, colaborador: undefined });
   assert.equal(r.statusCode, 200, JSON.stringify(r.body));
   assert.equal(r.body.resultado, "RECUSADA");
   assert.equal(r.body.medida.assinado.resultado, "RECUSADA");
   assert.ok(r.body.via, "a via sai do mesmo jeito");
-  const c = t.fm_auditoria.find(e => e.acao === "MEDIDA_COLETA");
+  const c = t.fm_auditoria.filter(e => e.acao === "MEDIDA_COLETA" && e.chave === g2.chave)[0];
   assert.equal(c.depois.resultado, "RECUSADA");
   assert.deepEqual(c.depois.testemunhas.map(x => x.nome), ["Fulano de Tal", "Sicrana de Tal"]);
 });

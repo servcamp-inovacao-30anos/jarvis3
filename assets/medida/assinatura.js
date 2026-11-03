@@ -3,8 +3,8 @@
 
    Tela cheia, feita primeiro para o celular Android do supervisor, na rua:
      1) o supervisor assina (a assinatura do perfil, com um toque, ou desenhando);
-     2) entrega o celular; o colaborador lê o documento inteiro, marca "Li e estou ciente" e assina com o dedo
-        (ou o supervisor registra a recusa, com duas testemunhas);
+     2) entrega o celular; o colaborador lê o documento inteiro, marca "Li e estou ciente" e escreve o próprio nome com o dedo
+        (ou o supervisor registra a recusa; testemunhas são opcionais);
      3) o servidor sela o PDF e a tela mostra o QR da via: o colaborador aponta a câmera do próprio celular e baixa o documento.
 
    Sinal fraco: a coleta fica guardada no aparelho e é reenviada sozinha até o servidor confirmar; "Assinado" só aparece depois
@@ -167,7 +167,7 @@ function pintaSup(){
 function pintaEntrega(){
   const g=AS.g;
   cab("Entregue o celular",`${g.numero}`);
-  corpo(`<div class="as-passa"><div class="as-passa-ic">${IC.ok}</div><h3>Sua assinatura foi registrada na tela.</h3><p class="as-txt">Agora passe o celular para <b>${esc(primeiro(g))}</b>. Ele vai ler o documento inteiro e assinar com o dedo.</p></div>`);
+  corpo(`<div class="as-passa"><div class="as-passa-ic">${IC.ok}</div><h3>Sua assinatura foi registrada na tela.</h3><p class="as-txt">Agora passe o celular para <b>${esc(primeiro(g))}</b>. Ele vai ler o documento inteiro e escrever o próprio nome com o dedo, como assinatura.</p></div>`);
   rod(`<button type="button" class="as-b" data-as="voltar-sup">Voltar</button><button type="button" class="as-b pri" data-as="ler">O colaborador está com o celular</button>`);
 }
 
@@ -177,7 +177,7 @@ function pintaLer(){
   cab("Leia o documento",`${g.numero} · ${titulo(g.nome)}`);
   corpo(`<div class="as-doc md-leitura"><div class="md-papel">${html}</div></div>`+
     `<section class="as-assina"><label class="as-chk grande"><input type="checkbox" id="as-ciente" ${AS.aceite?"checked":""}><span><b>Li e estou ciente</b> do documento acima.</span></label>`+
-    `<div id="as-wrap" class="as-wrap${AS.aceite?"":" off"}">${campoPad("as-pad-col","Assine aqui com o dedo")}<p class="as-peq" ${AS.aceite?"hidden":""} id="as-bloq">Marque “Li e estou ciente” para assinar.</p></div>${aviso()}`+
+    `<div id="as-wrap" class="as-wrap${AS.aceite?"":" off"}">${campoPad("as-pad-col","Escreva aqui o seu nome com o dedo")}<p class="as-peq" ${AS.aceite?"hidden":""} id="as-bloq">Marque “Li e estou ciente” para escrever o seu nome.</p></div>${aviso()}`+
     `<p class="as-peq"><button type="button" class="as-lnk er" data-as="recusar">O colaborador recusou-se a assinar</button></p></section>`);
   rod(`<button type="button" class="as-b" data-as="limpar" data-p="as-pad-col">Limpar</button><button type="button" class="as-b pri" data-as="col-ok" id="as-ok" disabled>Confirmar assinatura</button>`);
   ligaPad("as-pad-col",atualizaOk);
@@ -190,13 +190,13 @@ function pintaLer(){
 function pintaRecusa(){
   const g=AS.g;
   cab("Recusa de assinatura",`${g.numero} · ${titulo(g.nome)}`);
-  const t=AS.recusa.t.map((x,i)=>`<fieldset class="as-fs"><legend>Testemunha ${i+1}</legend><label>Nome completo<input class="as-in" data-as="tnome" data-i="${i}" value="${esc(x.nome)}" maxlength="80" autocomplete="off"></label><label>Documento (RG ou CPF)<input class="as-in" data-as="tdoc" data-i="${i}" value="${esc(x.doc)}" maxlength="40" autocomplete="off" inputmode="numeric"></label></fieldset>`).join("");
-  corpo(`<p class="as-txt">Registra que <b>${esc(primeiro(g))}</b> recusou-se a assinar, com data e hora do servidor, e entrega a via do mesmo jeito. Informe as duas testemunhas.</p>${t}`+
+  const t=AS.recusa.t.map((x,i)=>`<fieldset class="as-fs"><legend>Testemunha ${i+1} (opcional)</legend><label>Nome completo<input class="as-in" data-as="tnome" data-i="${i}" value="${esc(x.nome)}" maxlength="80" autocomplete="off"></label><label>Documento (RG ou CPF, opcional)<input class="as-in" data-as="tdoc" data-i="${i}" value="${esc(x.doc)}" maxlength="40" autocomplete="off" inputmode="numeric"></label></fieldset>`).join("");
+  corpo(`<p class="as-txt">Registra que <b>${esc(primeiro(g))}</b> recusou-se a assinar, com data e hora do servidor, e entrega a via do mesmo jeito. Se houver testemunhas, informe o nome delas.</p>${t}`+
     `<label class="as-campo">Observação (opcional)<textarea class="as-in" data-as="obs" maxlength="300" rows="3">${esc(AS.recusa.obs)}</textarea></label>${aviso()}`);
   rod(`<button type="button" class="as-b" data-as="voltar-ler">Voltar</button><button type="button" class="as-b pri er" data-as="recusa-ok" id="as-ok">Registrar a recusa</button>`);
   atualizaRecusa();
 }
-function recusaCompleta(){return AS.recusa.t.every(x=>x.nome.trim().length>=3&&x.doc.trim().length>=3);}
+function recusaCompleta(){return AS.recusa.t.every(x=>!x.doc.trim()||x.nome.trim().length>=3)&&AS.recusa.t.every(x=>!x.nome.trim()||x.nome.trim().length>=3);}
 function atualizaRecusa(){const b=document.getElementById("as-ok");if(b&&AS.etapa==="recusa")b.disabled=!recusaCompleta();}
 
 /* 4 · envio ao servidor */
@@ -319,7 +319,7 @@ function clique(ev){
   }
   if(a==="recusa-ok"){
     if(!recusaCompleta())return;
-    enviar({chave:AS.g.chave,idem:AS.idem,supervisor:AS.sup,recusa:{testemunhas:AS.recusa.t.map(x=>({nome:x.nome.trim(),doc:x.doc.trim()})),observacao:AS.recusa.obs.trim()}});return;
+    enviar({chave:AS.g.chave,idem:AS.idem,supervisor:AS.sup,recusa:{testemunhas:AS.recusa.t.map(x=>({nome:x.nome.trim(),doc:x.doc.trim()})).filter(x=>x.nome||x.doc),observacao:AS.recusa.obs.trim()}});return;
   }
   if(a==="tentar"){if(AS.espera)AS.espera();return;}
   if(a==="via-qr"){viaCanal("qr",null,b);return;}

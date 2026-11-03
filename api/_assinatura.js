@@ -196,9 +196,10 @@ async function montarPdf(o) {
   texto(`${o.supervisor.nome} · ${fmtSP(o.em)}`.slice(0, 60), meio, y, F, 8.5, CINZA);
   y -= 22;
   if (o.recusa) {
-    texto("O colaborador recusou-se a assinar. Testemunhas:", M, y, B, 10);
+    const ts = o.recusa.testemunhas || [];
+    texto(ts.length ? "O colaborador recusou-se a assinar. Testemunhas:" : "O colaborador recusou-se a assinar.", M, y, B, 10);
     y -= 16;
-    for (const t of o.recusa.testemunhas) { garante(30); texto(`Nome: ${t.nome}    Doc.: ${t.doc}`, M, y, F, 10); y -= 15; }
+    for (const t of ts) { garante(30); texto(`Nome: ${t.nome}${t.doc ? "    Doc.: " + t.doc : ""}`, M, y, F, 10); y -= 15; }
     if (o.recusa.observacao) { y -= 4; paragrafo("Observação: " + o.recusa.observacao, I, 9.5, { depois: 4 }); }
   }
 
@@ -220,7 +221,8 @@ async function montarPdf(o) {
   linha("Data e hora (servidor)", `${fmtSP(o.em)} (horário de Brasília) · ${new Date(o.em).toISOString()} (UTC)`);
   linha("Coletado por", `${o.supervisor.nome} (login ${o.supervisor.login})`);
   linha("Assinatura do supervisor", o.evid.perfil ? "Imagem guardada no perfil do supervisor, aplicada com um toque" : "Desenhada na hora, na tela do celular");
-  if (o.resultado !== "RECUSADA") linha("Assinatura do colaborador", "Desenhada com o dedo, na tela, depois de ler o documento inteiro");
+  if (o.resultado !== "RECUSADA") linha("Assinatura do colaborador", "Nome escrito pelo colaborador com o dedo, na tela, depois de ler o documento inteiro");
+  else linha("Testemunhas", (o.recusa && o.recusa.testemunhas && o.recusa.testemunhas.length) ? o.recusa.testemunhas.map(t => t.nome + (t.doc ? " (doc. " + t.doc + ")" : "")).join("; ") : "Nenhuma informada");
   linha("Endereço de rede (IP)", o.evid.ip || "não informado");
   linha("Aparelho e navegador", o.evid.aparelho || "não informado");
   linha("Texto lido e aceito", `SHA-256 do texto do documento: ${o.evid.textoSha}`);
@@ -264,10 +266,11 @@ async function coletar(ctx) {
   if (recusou === !!body.colaborador) return erro(res, 400, "Informe a assinatura do colaborador ou a recusa.", "DADOS_INVALIDOS");
   let col = null, recusa = null;
   if (recusou) {
+    // testemunhas não são obrigatórias (pedido do Raphael, 03/11/2026): até duas; quem for informada precisa ter o nome
     const t = limparTestemunhas(body.recusa.testemunhas);
-    // o modelo em papel traz duas linhas de testemunha: a recusa registra as duas, com nome e documento
-    if (t.length < 2 || t.some(x => !x.nome || !x.doc)) return erro(res, 400, "Na recusa, informe nome e documento das duas testemunhas.", "SEM_TESTEMUNHAS");
-    recusa = { testemunhas: t.slice(0, 2), observacao: String(body.recusa.observacao || "").trim().slice(0, 300) };
+    if (t.length > 2) return erro(res, 400, "Informe no máximo duas testemunhas.", "TESTEMUNHAS_DEMAIS");
+    if (t.some(x => !x.nome)) return erro(res, 400, "Informe o nome da testemunha (o documento é opcional).", "TESTEMUNHA_SEM_NOME");
+    recusa = { testemunhas: t, observacao: String(body.recusa.observacao || "").trim().slice(0, 300) };
   } else {
     if (body.colaborador.aceite !== true) return erro(res, 400, "O colaborador precisa marcar que leu o documento.", "SEM_ACEITE");
     col = assinaturaDe(body.colaborador);

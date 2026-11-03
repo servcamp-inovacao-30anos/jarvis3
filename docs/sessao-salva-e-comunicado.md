@@ -49,7 +49,9 @@ O plano completo está em `plano-medida-disciplinar-assinatura-digital.md`; aqui
 
 - Em "Medidas geradas" (e logo depois de gerar) há **Assinar no celular**: o supervisor assina (a assinatura do perfil, com um
   toque, ou desenhando), entrega o celular, o colaborador lê o documento inteiro, marca "Li e estou ciente" e assina com o dedo.
-- Ou **recusa**: nome e documento das duas testemunhas (as duas linhas do modelo em papel) e observação opcional.
+- O colaborador assina **escrevendo o próprio nome com o dedo** no campo da tela.
+- Ou **recusa**: testemunhas são opcionais (até duas; quem for informada precisa ter o nome, o documento é opcional) e
+  observação opcional.
 - O servidor monta o PDF (`pdf-lib`) com a página de evidências (hora do servidor, login de quem coletou, IP, aparelho, hash
   do texto lido), calcula o SHA-256 do arquivo final e grava tudo na `fm_auditoria` (`MEDIDA_COLETA` e `MEDIDA_ASSINADA`
   com `digital:true`). O texto do PDF é o mesmo do documento da tela: `test/assinatura.test.js` confere trecho por trecho.
