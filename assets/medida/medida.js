@@ -157,6 +157,34 @@ window.mdDocHtml=docHtml;window.mdDocDaGerada=docDaGerada;window.mdInjetaCss=()=
 window.mdApi=(t,metodo,corpo)=>api(t,metodo,corpo);window.mdRecarregar=()=>carregar(true);
 window.mdGerada=k=>(MDS.lista||[]).find(g=>g.chave===k)||null;
 
+/* A tela de assinatura vem em arquivos à parte (index.html). Com sinal fraco, um deles pode não chegar: sem o .js
+   o botão não fazia nada; sem o .css a janela era criada sem estilo, no fim da página, e não aparecia. Antes de abrir,
+   confere os três e busca de novo o que faltar; se ainda assim não vier, avisa em vez de ficar calado. */
+const AS_ARQ={css:"/assets/medida/assinatura.css",qr:"/assets/vendor/qrcode-generator.js",js:"/assets/medida/assinatura.js"};
+const cssOk=()=>[...document.querySelectorAll('link[rel="stylesheet"]')].some(l=>{if((l.getAttribute("href")||"").split("?")[0]!==AS_ARQ.css)return false;try{return!!(l.sheet&&l.sheet.cssRules.length);}catch(e){return false;}});
+function buscaArq(tipo,url){
+  return new Promise(ok=>{
+    const el=document.createElement(tipo==="css"?"link":"script"),fim=v=>{clearTimeout(t);ok(v);},t=setTimeout(()=>fim(false),20000);
+    if(tipo==="css"){el.rel="stylesheet";el.href=url+"?r="+Date.now();}else el.src=url+"?r="+Date.now();
+    el.onload=()=>fim(true);el.onerror=()=>{el.remove();fim(false);};
+    document.head.appendChild(el);
+  });
+}
+let asCarregando=null;
+function garanteAssinatura(){
+  if(asCarregando)return asCarregando;
+  asCarregando=(async()=>{
+    if(!cssOk())await buscaArq("css",AS_ARQ.css);
+    if(typeof window.qrcode!=="function")await buscaArq("js",AS_ARQ.qr);
+    if(typeof window.mdAssinar!=="function")await buscaArq("js",AS_ARQ.js);
+    return cssOk()&&typeof window.mdAssinar==="function";
+  })().finally(()=>{asCarregando=null;});
+  return asCarregando;
+}
+const SEM_TELA="Não consegui abrir a tela de assinatura: a internet do celular falhou ao carregar. Confira o sinal e toque de novo.";
+window.mdAssinarSeguro=async x=>{if(await garanteAssinatura())window.mdAssinar(x);else alert(SEM_TELA);};
+window.mdViaSegura=async x=>{if(await garanteAssinatura())window.mdVia(x);else alert(SEM_TELA);};
+
 /* ═════════ editor ═════════ */
 function casoDe(k){const d=FM.dados;return d&&d.casos.find(c=>c.re+"|"+c.primeiraFalta===k)||null;}
 function histDe(c){
@@ -360,7 +388,7 @@ function cliqueEd(e){
     escala();return;
   }
   if(a==="imprimir"){imprimir(docDoEd(E));return;}
-  if(a==="assinar"){const g=E.gerada;fecharEd(true);if(g&&typeof window.mdAssinar==="function")window.mdAssinar(g);return;}
+  if(a==="assinar"){const g=E.gerada;fecharEd(true);if(g)window.mdAssinarSeguro(g);return;}
   if(a==="tipo"){E.tipo=v;E.erro=null;}
   else if(a==="dias"){E.dias=Math.min(30,Math.max(1,(Number(E.dias)||1)+Number(v)));}
   else if(a==="falta"){E.faltas.has(v)?E.faltas.delete(v):E.faltas.add(v);atualizaMotivo();}
@@ -480,8 +508,8 @@ function item(g){
   // documento assinado: ver quem tem; anexar (ou trocar) quem pode mexer na medida
   const dig=g.assinado&&g.assinado.digital,recusou=dig&&g.assinado.resultado==="RECUSADA";
   // assinatura no celular (assets/medida/assinatura.js): sem papel, sem impressora
-  if(g.status!=="CANCELADA"&&!g.assinado)ac.push(`<button type="button" class="md-b sm pri" data-c="${g.chave}" onclick="mdAssinar(this.dataset.c)" title="O supervisor e o colaborador assinam na tela do celular">${IC.ass}Assinar no celular</button>`);
-  if(dig&&g.status!=="CANCELADA")ac.push(`<button type="button" class="md-b sm" data-c="${g.chave}" onclick="mdVia(this.dataset.c)" title="QR code, SMS ou e-mail para o colaborador baixar o documento">${IC.qr}Via do documento</button>`);
+  if(g.status!=="CANCELADA"&&!g.assinado)ac.push(`<button type="button" class="md-b sm pri" data-c="${g.chave}" onclick="mdAssinarSeguro(this.dataset.c)" title="O supervisor e o colaborador assinam na tela do celular">${IC.ass}Assinar no celular</button>`);
+  if(dig&&g.status!=="CANCELADA")ac.push(`<button type="button" class="md-b sm" data-c="${g.chave}" onclick="mdViaSegura(this.dataset.c)" title="QR code, SMS ou e-mail para o colaborador baixar o documento">${IC.qr}Via do documento</button>`);
   if(g.assinado)ac.push(`<button type="button" class="md-b sm ${recusou?"er":"ok"}" data-c="${g.chave}" onclick="mdVerAssinado(this.dataset.c)" title="${dig?(recusou?"Recusa registrada":"Assinado no celular")+" por "+esc(nomeDe(g.assinado.por))+" em "+esc(quando(g.assinado.em))+(g.assinado.sha256?" · SHA-256 "+esc(g.assinado.sha256.slice(0,12))+"…":""):"Anexado por "+esc(nomeDe(g.assinado.por))+" em "+esc(quando(g.assinado.em))}">${IC.olho}${recusou?"Recusou":dig?"Assinado no celular":"Assinado"}</button>`);
   if(g.status!=="CANCELADA"&&!dig)ac.push(`<label class="md-b sm${g.assinado?"":" pri"}" title="${g.assinado?"Trocar o arquivo":"Foto ou PDF do documento assinado pelo colaborador"}">${IC.clip}${g.assinado?"Trocar":"Anexar assinado"}<input type="file" accept="image/*,application/pdf" data-c="${g.chave}" onchange="mdAnexar(this)" hidden></label>`);
   if(pode&&g.status==="PENDENTE")ac.push(`<button type="button" class="md-b sm ok" data-c="${g.chave}" onclick="mdLancada(this.dataset.c,true)">${IC.ok}Já lancei no SAR2G</button>`);
