@@ -865,8 +865,6 @@ aside.sb#sidebar.sb-mini #navRoot .ni{margin:2px 8px;padding:9px 0;}
   <div class="nav-cat" data-cat="gestao">
     <div class="nav-cat-h" onclick="navCatToggle('gestao')"><span class="nav-cat-t">📊 Gestão</span><span class="nav-cat-ar">▾</span></div>
     <div class="nav-cat-b">
-      <div class="ni" data-pg="supdesemp" data-perm="admin" onclick="navTo('supdesemp',this)"><span class="ni-ic">🧭</span><span>Desempenho do Supervisor</span><span class="nib nib-novo">NOVO</span></div>
-      <div class="ni" data-pg="saude" data-perm="admin" onclick="navTo('saude',this)"><span class="ni-ic">🩺</span><span>Sa&uacute;de do Cliente</span><span class="nib nib-novo">NOVO</span></div>
       <div class="ni" data-pg="celulares" data-perm="admin" onclick="navTo('celulares',this)"><span class="ni-ic">📱</span><span>Celulares</span><span class="nib nib-novo">NOVO</span></div>
       <!-- DESATIVADA 17/08 a pedido do Joao: nao ha responsavel definido pela auditoria.
            A pagina e o codigo continuam existindo; para religar, descomente esta linha.
@@ -1941,14 +1939,6 @@ aside.sb#sidebar.sb-mini #navRoot .ni{margin:2px 8px;padding:9px 0;}
   <div class="page" id="pg-audqual">
     <div class="sec-hdr"><span class="sec-hdr-ic">✅</span><div><div class="sec-hdr-t">Auditoria de Qualidade</div><div class="sec-hdr-sub">Vistorias de postos: checklist tri-pilar, cobertura e conformidade</div></div></div>
     <div id="aud-content"><div style="padding:40px;text-align:center;color:#94a3b8;font-size:.85rem">Carregando auditorias…</div></div>
-  </div>
-  <div class="page" id="pg-supdesemp">
-    <div class="sec-hd"><div class="sec-ic">🧭</div><div><div class="sec-t">Desempenho do Supervisor</div><div class="sec-s">Cada supervisor comparado com o próprio período anterior — nunca com os colegas.</div></div></div>
-    <div id="sup-content"><div style="padding:40px;text-align:center;color:#94a3b8;font-size:.85rem">Carregando…</div></div>
-  </div>
-  <div class="page" id="pg-saude">
-    <div class="sec-hd"><div class="sec-ic">🩺</div><div><div class="sec-t">Saúde do Cliente</div><div class="sec-s">Quem está em risco — e por quê. Faltas de contrato, postos descobertos e visita do supervisor nos últimos 30 dias.</div></div></div>
-    <div id="sau-content"><div style="padding:40px;text-align:center;color:#94a3b8;font-size:.85rem">Carregando…</div></div>
   </div>
   <div class="page" id="pg-celulares">
     <div class="sec-hd"><div class="sec-ic">📱</div><div><div class="sec-t">Celulares</div><div class="sec-s">Os aparelhos dos postos: o que está faltando, o que conferir, e o número e o login Zello de cada um.</div></div></div>
@@ -4865,7 +4855,6 @@ function refresh(){
   updVG();updOC();
   // guias de banco (RH, Comercial, painéis e módulos novos) reagem ao filtro
   const _rer={
-    saude:()=>sauRender(), supdesemp:()=>supLoad(),
     audqual:()=>audRender(), ligacoes:()=>ligRender(),
     rhvagas:()=>{rhRender();rhRenderTbl();},
     rhentrev:()=>{rhEntRender();rhEntRenderTbl();},
@@ -19347,7 +19336,6 @@ function rtPing(){
         const _mudou=(_novo!==SAU_ASSINATURA);
         SAU_ASSINATURA=_novo;
         VG.saudeClientes=j.saudeClientes;
-        if(ST.pg==="saude"&&_mudou)sauRender();
       }
       if(ST.pg==="visao"&&typeof updOC==="function"){try{updOC();}catch(e){}}
     }
