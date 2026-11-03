@@ -151,7 +151,8 @@ window.coGerar=function(k){if(typeof window.mdAbrir==="function")window.mdAbrir(
 
 /* ── encaixe na tela dos supervisores (mesmo padrão da aba "Medidas geradas") ── */
 function encaixar(){
-  if(typeof window.fsRender!=="function"||window.fsRender.__co)return;
+  if(typeof window.fsRender!=="function"||window.__coEncaixado)return;
+  window.__coEncaixado=true;
   const r0=window.fsRender;
   window.fsRender=function(){
     r0.apply(this,arguments);
@@ -161,7 +162,6 @@ function encaixar(){
     tabs.insertAdjacentHTML("afterbegin",`<button type="button" role="tab" aria-selected="${on}" class="fm-tab${on?" on":""}" onclick="FS.aba='COMUNICADO';fsRender()">Comunicado da semana</button>`);
     if(on){let x=tabs.nextSibling;while(x){const y=x.nextSibling;x.remove();x=y;}tabs.insertAdjacentHTML("afterend",tela());}
   };
-  window.fsRender.__co=true;
   if(typeof window._abrirSessao==="function"){const a0=window._abrirSessao;window._abrirSessao=function(){const r=a0.apply(this,arguments);CO.lista=null;CO.dados=null;CO.sel=null;return r;};}
 }
 encaixar();

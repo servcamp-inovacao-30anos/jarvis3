@@ -571,7 +571,8 @@ window.mdVerAssinado=async function(ch){
 /* ── encaixe na tela dos supervisores (sem mexer no index.html, que está no limite) ── */
 function redesenhar(){if(typeof fsRender==="function")fsRender();}
 function encaixar(){
-  if(typeof window.fsRender!=="function"||window.fsRender.__md)return;
+  if(typeof window.fsRender!=="function"||window.__mdEncaixado)return;
+  window.__mdEncaixado=true;
   const r0=window.fsRender,d0=window.fsDetalhe,l0=window.fsLoad;
   window.fsRender=function(){
     r0.apply(this,arguments);
@@ -583,7 +584,6 @@ function encaixar(){
     if(on){let x=tabs.nextSibling;while(x){const y=x.nextSibling;x.remove();x=y;}tabs.insertAdjacentHTML("afterend",tela());}
     else selosNasLinhas();
   };
-  window.fsRender.__md=true;
   if(typeof d0==="function")window.fsDetalhe=function(c){return d0.apply(this,arguments)+acaoCaso(c);};
   if(typeof l0==="function")window.fsLoad=function(){const r=l0.apply(this,arguments);carregar();return r;};
   if(typeof window.sbPerfilRender==="function"){const s0=window.sbPerfilRender;window.sbPerfilRender=function(){s0.apply(this,arguments);lembrete();};}
