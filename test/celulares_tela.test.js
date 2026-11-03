@@ -320,3 +320,52 @@ test("guia Clientes: outra pessoa na mesma aba não usa os endereços da anterio
   ctx.sessionStorage.setItem("userKey", "outra");
   assert.equal(ctx.celEnderecoTexto("A"), null);
 });
+
+// ── rota: ordem pela menor distância e links do Maps ──────────────────────
+const pt = (nome, lat, lon) => ({ nome, lat, lon, precisao: "rua+numero" });
+test("rota: com partida fixa, visita pelo caminho mais curto (e não pela ordem em que foram marcados)", () => {
+  // pontos numa linha para leste: a ordem certa é crescente, sem pular
+  const ps = [pt("D", -22.9, -47.0), pt("B", -22.9, -47.08), pt("C", -22.9, -47.04), pt("A", -22.9, -47.1)];
+  const r = T.ordenarRota(ps, { lat: -22.9, lon: -47.12 }, false);
+  assert.deepEqual(r.ordem.map(p => p.nome), ["A", "B", "C", "D"]);
+  assert.equal(r.pernas.length, 4);
+  assert.ok(Math.abs(r.total - r.pernas.reduce((a, b) => a + b, 0)) < 1e-9);
+});
+test("rota: sem partida escolhe o melhor começo (uma ponta da linha), e voltar soma a perna de volta", () => {
+  const ps = [pt("C", -22.9, -47.04), pt("A", -22.9, -47.1), pt("B", -22.9, -47.07)];
+  const aberta = T.ordenarRota(ps, null, false);
+  const nomes = aberta.ordem.map(p => p.nome).join("");
+  assert.ok(nomes === "ABC" || nomes === "CBA", nomes);
+  assert.equal(aberta.pernas.length, 2);
+  const volta = T.ordenarRota(ps, { lat: -22.9, lon: -47.12 }, true);
+  assert.equal(volta.pernas.length, 4, "3 idas + a volta");
+  assert.ok(volta.total > T.ordenarRota(ps, { lat: -22.9, lon: -47.12 }, false).total);
+});
+test("rota: nunca é pior que a ordem marcada e lida com 1 parada e com nenhuma", () => {
+  const ps = []; for (let i = 0; i < 25; i++) ps.push(pt("P" + i, -22.8 - ((i * 37) % 11) / 50, -47.2 + ((i * 53) % 13) / 50));
+  const ini = { lat: -22.9, lon: -47.1 };
+  const custoMarcado = ps.reduce((t, p, i) => t + T.distKm(i ? ps[i - 1] : ini, p), 0);
+  const r = T.ordenarRota(ps, ini, false);
+  assert.equal(r.ordem.length, 25);
+  assert.equal(new Set(r.ordem.map(p => p.nome)).size, 25, "todas as paradas, sem repetir");
+  assert.ok(r.total <= custoMarcado + 1e-9);
+  assert.deepEqual(T.ordenarRota([], ini, true), { ordem: [], pernas: [], total: 0 });
+  assert.equal(T.ordenarRota([pt("U", -22.9, -47.0)], null, false).ordem.length, 1);
+});
+test("rota: link do Maps usa coordenada no ponto exato e o texto no aproximado, e divide em trechos de 10", () => {
+  assert.equal(T.refPino({ lat: -22.95, lon: -47.11, precisao: "rua+numero" }), "-22.95,-47.11");
+  assert.equal(T.refPino({ lat: 1, lon: 2, precisao: "cidade", logradouro: "RUA A", numero: "5", bairro: "", cidade: "INDAIATUBA" }), "RUA%20A%2C%205%2C%20INDAIATUBA%2C%20Brasil");
+  const refs = Array.from({ length: 23 }, (_, i) => i + ",0");
+  const t = T.trechosMaps("9,9", refs);
+  assert.equal(t.length, 3);
+  assert.deepEqual(t.map(x => [x.de, x.ate]), [[1, 10], [11, 20], [21, 23]]);
+  assert.ok(t[0].url.includes("&origin=9,9&destination=9,0&waypoints=0,0%7C1,0%7C"));
+  assert.equal((t[0].url.match(/%7C/g) || []).length, 8, "9 paradas no meio = 8 separadores");
+  assert.ok(t[1].url.includes("&origin=9,0&"), "o destino de um trecho é a origem do próximo");
+  const sem = T.trechosMaps(null, ["1,1", "2,2"]);
+  assert.ok(!sem[0].url.includes("origin="), "sem partida o Maps sai da localização atual");
+  assert.ok(sem[0].url.includes("destination=2,2&waypoints=1,1"));
+});
+test("index.html: botão Montar rota na guia Clientes", () => {
+  assert.ok(HTML.includes("celRotas()"));
+});

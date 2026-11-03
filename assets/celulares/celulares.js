@@ -166,8 +166,72 @@ function sugestoes(aparelho,nomes,quantos){
   }).filter(x=>x.nota>0).sort((a,b)=>b.nota-a.nota||a.n.localeCompare(b.n)).slice(0,quantos||6).map(x=>x.n);
 }
 
+/* ── rota: ordem pela menor distância e links do Google Maps ─────────────── */
+// Distância em linha reta × 1,3 (a rua costuma ser mais longa que a reta). É estimativa para ORDENAR
+// os postos e dar uma ideia de quilometragem; o Maps/Waze recalcula pelas ruas de verdade.
+const FATOR_RUA=1.3;
+function distKm(a,b){
+  const r=x=>x*Math.PI/180,dl=r(b.lat-a.lat),dn=r(b.lon-a.lon);
+  const h=Math.sin(dl/2)**2+Math.cos(r(a.lat))*Math.cos(r(b.lat))*Math.sin(dn/2)**2;
+  return 2*6371*Math.asin(Math.min(1,Math.sqrt(h)))*FATOR_RUA;
+}
+// paradas: [{lat,lon,...}]; partida: {lat,lon} ou null (sem partida: escolhe o melhor ponto inicial);
+// voltar: fecha o circuito de volta à partida (ou ao primeiro posto, se não houver partida).
+// Devolve {ordem, pernas, total}: pernas[i] = km até ordem[i] (a última perna, se voltar, é a da volta).
+function ordenarRota(paradas,partida,voltar){
+  const n=paradas.length;
+  if(!n)return{ordem:[],pernas:[],total:0};
+  const P=partida?[partida].concat(paradas):paradas.slice();
+  const D=P.map(a=>P.map(b=>distKm(a,b)));
+  const fixo=partida?1:0; // índice de onde a ordem pode mexer
+  const custo=o=>{let t=0;for(let i=1;i<o.length;i++)t+=D[o[i-1]][o[i]];if(voltar&&o.length>1)t+=D[o[o.length-1]][o[0]];return t;};
+  const vizinho=ini=>{ // vizinho mais próximo a partir de ini
+    const o=[ini],resto=new Set(P.map((_,i)=>i).filter(i=>i!==ini&&!(partida&&i===0)));
+    while(resto.size){let m=-1,md=Infinity;for(const j of resto)if(D[o[o.length-1]][j]<md){md=D[o[o.length-1]][j];m=j;}o.push(m);resto.delete(m);}
+    return o;
+  };
+  let melhor;
+  if(partida)melhor=vizinho(0);
+  else{let mc=Infinity;for(let i=0;i<n;i++){const o=vizinho(i),c=custo(o);if(c<mc){mc=c;melhor=o;}}}
+  // 2-opt: inverte trechos enquanto isso encurtar o caminho
+  let c0=custo(melhor);
+  for(let volta=0;volta<60;volta++){
+    let melhorou=false;
+    for(let i=fixo;i<melhor.length-1;i++)for(let j=i+1;j<melhor.length;j++){
+      const t=melhor.slice(0,i).concat(melhor.slice(i,j+1).reverse(),melhor.slice(j+1)),c=custo(t);
+      if(c<c0-1e-9){melhor=t;c0=c;melhorou=true;}
+    }
+    if(!melhorou)break;
+  }
+  const pernas=[];
+  for(let i=1;i<melhor.length;i++)pernas.push(D[melhor[i-1]][melhor[i]]);
+  if(voltar&&melhor.length>1)pernas.push(D[melhor[melhor.length-1]][melhor[0]]);
+  const ordem=melhor.filter(i=>!(partida&&i===0)).map(i=>P[i]);
+  return{ordem,pernas,total:pernas.reduce((a,b)=>a+b,0)};
+}
+// Ponto exato (rua e número) vai por coordenada; aproximado vai pelo texto do endereço.
+function refPino(p){
+  const exato=p.precisao==="rua+numero"&&isFinite(p.lat)&&isFinite(p.lon);
+  if(exato)return p.lat+","+p.lon;
+  const t=[p.logradouro,p.numero,p.bairro,p.cidade].map(x=>String(x==null?"":x).trim()).filter(Boolean).join(", ");
+  return encodeURIComponent(t+", Brasil");
+}
+// O link do Maps aceita 1 origem + até 9 paradas no meio + 1 destino: rotas maiores viram trechos
+// em sequência (o destino de um é a origem do próximo). Sem partida, o 1º trecho sai da localização atual.
+function trechosMaps(partidaRef,refs){
+  const T=10,out=[];
+  let origem=partidaRef||null;
+  for(let i=0;i<refs.length;i+=T){
+    const g=refs.slice(i,i+T),dest=g[g.length-1],meio=g.slice(0,-1);
+    out.push({de:i+1,ate:i+g.length,
+      url:"https://www.google.com/maps/dir/?api=1&travelmode=driving"+(origem?"&origin="+origem:"")+"&destination="+dest+(meio.length?"&waypoints="+meio.join("%7C"):"")});
+    origem=dest;
+  }
+  return out;
+}
+
 if(typeof module==="object"&&module.exports){
-  module.exports={chave,nucleo,vincular,rotuloPosto,analisarNumero,formatarNumero,telHref,contatosPorCliente,sugestoes};
+  module.exports={chave,nucleo,vincular,rotuloPosto,analisarNumero,formatarNumero,telHref,contatosPorCliente,sugestoes,distKm,ordenarRota,refPino,trechosMaps};
   return;
 }
 
@@ -230,10 +294,10 @@ const semDado='<span class="cel-sem">—</span>';
 // pessoa logada; falhou: a coluna fica com "—" e o resto da guia segue normal.
 raiz.celEnderecosCarregar=function(){
   const dono=uk();
-  if(CEL.end&&CEL.endDono===dono)return;
-  if(CEL.pedindoEnd)return;
+  if(CEL.end&&CEL.endDono===dono)return Promise.resolve();
+  if(CEL.pedindoEnd)return CEL.pEnd||Promise.resolve();
   CEL.pedindoEnd=true;
-  fetch("/api/hq?mapa=1").then(r=>r.ok?r.json():Promise.reject(new Error("Falha ("+r.status+")"))).then(j=>{
+  CEL.pEnd=fetch("/api/hq?mapa=1").then(r=>r.ok?r.json():Promise.reject(new Error("Falha ("+r.status+")"))).then(j=>{
     if(dono!==uk())return;
     const m=new Map();
     (j&&j.pinos||[]).forEach(p=>{if(p&&p.cliente&&p.logradouro!==undefined)m.set(chave(p.cliente),p);});
@@ -301,6 +365,111 @@ raiz.celZelloHtml=function(r){
   const l=raiz.celContatosDe(r&&r.NOME);
   if(!l||!l.length)return semDado;
   return l.map(c=>'<div class="cel-ct">'+(c.login?'<span class="cel-z">'+esc(c.login)+'</span>':'<span class="cel-sem">sem login</span>')+(c.posto?'<span class="cel-pt">'+esc(c.posto)+'</span>':'')+'</div>').join("");
+};
+
+/* ── guia Clientes: montar rota ─────────────────────────────────────────── */
+const kmTxt=k=>(k<10?k.toFixed(1):Math.round(k))+" km";
+function pegarPosicao(){
+  return new Promise((ok,no)=>{
+    if(typeof navigator==="undefined"||!navigator.geolocation)return no(new Error("sem localização"));
+    navigator.geolocation.getCurrentPosition(p=>ok({lat:p.coords.latitude,lon:p.coords.longitude}),no,{enableHighAccuracy:true,timeout:12000,maximumAge:60000});
+  });
+}
+raiz.celRotas=async function(){
+  const ov=janela("🧭 Montar rota","<div class='cel-vazio'>Carregando os endereços…</div>",true);
+  await raiz.celEnderecosCarregar();
+  if(!document.body.contains(ov))return;
+  const pinos=CEL.end?[...CEL.end.values()].filter(p=>isFinite(p.lat)&&isFinite(p.lon)).sort((a,b)=>String(a.cliente).localeCompare(String(b.cliente),"pt-BR")):[];
+  if(!pinos.length){ov.querySelector(".cel-c").innerHTML="<div class='cel-vazio'>Não consegui carregar os endereços. Feche e tente de novo.</div>";return;}
+  const R={sel:new Set(),tipo:"aqui",base:"",voltar:false,q:"",cid:"",sup:"",pos:null};
+  const unicos=k=>[...new Set(pinos.map(p=>String(p[k]||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"pt-BR"));
+  const opt=(v,t,s)=>'<option value="'+esc(v)+'"'+(s===v?" selected":"")+'>'+esc(t)+'</option>';
+  const tela=ov.querySelector(".cel-c");
+  function passo1(){
+    tela.innerHTML=
+      '<div class="cel-r-linha"><label class="cel-r-l">Sair de</label><select class="cel-sel" id="r-tipo">'+opt("aqui","📍 Onde estou agora",R.tipo)+opt("base","🏢 De um posto (base)",R.tipo)+opt("livre","Sem ponto fixo (o sistema escolhe o melhor começo)",R.tipo)+'</select>'+
+      '<select class="cel-sel" id="r-base"'+(R.tipo==="base"?"":" hidden")+'><option value="">Escolha o posto…</option>'+pinos.map(p=>opt(chave(p.cliente),p.cliente,R.base)).join("")+'</select>'+
+      '<label class="cel-r-ck"><input type="checkbox" id="r-voltar"'+(R.voltar?" checked":"")+'> voltar ao ponto de partida</label></div>'+
+      '<div class="cel-r-linha"><input class="sb2" type="search" id="r-q" placeholder="Buscar posto, rua, bairro…" value="'+esc(R.q)+'">'+
+      '<select class="cel-sel" id="r-cid"><option value="">Todas as cidades</option>'+unicos("cidade").map(c=>opt(c,c,R.cid)).join("")+'</select>'+
+      '<select class="cel-sel" id="r-sup"><option value="">Todos os supervisores</option>'+unicos("supervisor").map(c=>opt(c,c,R.sup)).join("")+'</select></div>'+
+      '<div class="cel-r-linha"><button type="button" class="cel-lk" data-r="todos">marcar os que aparecem</button><button type="button" class="cel-lk" data-r="nenhum">limpar marcados</button><span class="cel-r-n" id="r-n"></span></div>'+
+      '<div class="cel-r-lista" id="r-lista"></div><div class="cel-msg"></div>'+
+      '<div class="cel-f"><button type="button" class="rh-btn" data-r="calc">Calcular a melhor ordem</button></div>';
+    lista();
+  }
+  const visiveis=()=>{
+    const q=chave(R.q);
+    return pinos.filter(p=>(!R.cid||p.cidade===R.cid)&&(!R.sup||p.supervisor===R.sup)&&(!q||chave([p.cliente,p.logradouro,p.bairro,p.cidade].join(" ")).indexOf(q)>=0));
+  };
+  function contar(){const n=document.getElementById("r-n");if(n)n.textContent=R.sel.size+" marcado"+(R.sel.size===1?"":"s");}
+  function lista(){
+    const v=visiveis(),el=document.getElementById("r-lista");if(!el)return;
+    el.innerHTML=v.length?v.map(p=>{const k=chave(p.cliente);return'<label class="cel-r-it"><input type="checkbox" data-k="'+esc(k)+'"'+(R.sel.has(k)?" checked":"")+'> <span class="cel-r-nm">'+esc(p.cliente)+'</span><span class="cel-r-ed">'+esc([p.logradouro&&(p.logradouro+(p.numero?", "+p.numero:"")),p.bairro,p.cidade].filter(Boolean).join(" - "))+(p.precisao==="rua+numero"?"":" · aprox.")+'</span></label>';}).join(""):'<div class="cel-vazio">Nenhum posto com esse filtro.</div>';
+    contar();
+  }
+  async function calcular(){
+    const pts=[...R.sel].map(k=>CEL.end.get(k)).filter(Boolean);
+    if(!pts.length)return msg(ov,"Marque pelo menos um posto.",true);
+    let partida=null,partidaRef=null,partidaNome="";
+    if(R.tipo==="aqui"){
+      msg(ov,"Pegando a sua localização…");
+      try{R.pos=R.pos||await pegarPosicao();}catch(e){return msg(ov,"Não consegui a sua localização (o navegador precisa deixar). Escolha a saída \"De um posto\".",true);}
+      partida={lat:R.pos.lat,lon:R.pos.lon};partidaNome="Sua localização";
+      partidaRef=R.pos.lat+","+R.pos.lon;
+    }else if(R.tipo==="base"){
+      const b=CEL.end.get(R.base);if(!b)return msg(ov,"Escolha o posto de onde você vai sair.",true);
+      partida={lat:b.lat,lon:b.lon};partidaNome=b.cliente;partidaRef=refPino(b);
+    }
+    const paradas=pts.filter(p=>!(R.tipo==="base"&&chave(p.cliente)===R.base));
+    if(!paradas.length)return msg(ov,"Só há o posto de saída marcado: marque também onde você vai.",true);
+    const r=ordenarRota(paradas,partida,R.voltar&&!!(partida||paradas.length>1));
+    passo2(r,partida,partidaRef,partidaNome);
+  }
+  function passo2(r,partida,partidaRef,partidaNome){
+    const refs=r.ordem.map(refPino);
+    if(R.voltar&&partidaRef)refs.push(partidaRef);
+    else if(R.voltar&&!partida)refs.push(refs[0]);
+    const tr=trechosMaps(partidaRef,refs);
+    const itens=r.ordem.map((p,i)=>{
+      const pk=partida?r.pernas[i]:(i>0?r.pernas[i-1]:null),km=pk!=null?kmTxt(pk):"";
+      const l=linksEndereco(p);
+      return'<li><b>'+esc(p.cliente)+'</b><span class="cel-r-km">'+(km?"+"+esc(km):"")+'</span><span class="cel-r-ed">'+esc(enderecoTexto(p).tudo)+(l.exato?"":" · local aproximado")+'</span>'+
+        '<a class="cel-lk" href="'+esc(l.waze)+'" target="_blank" rel="noopener noreferrer">Waze</a></li>';
+    }).join("");
+    const volta=R.voltar&&r.pernas.length>r.ordem.length-(partida?0:1)?'<li class="cel-r-volta">Volta '+(partida?"a "+esc(partidaNome):"ao primeiro posto")+'<span class="cel-r-km">+'+esc(kmTxt(r.pernas[r.pernas.length-1]))+'</span></li>':"";
+    tela.innerHTML=
+      '<div class="cel-r-res"><b>'+r.ordem.length+' parada'+(r.ordem.length===1?"":"s")+' · cerca de '+esc(kmTxt(r.total))+'</b><span>estimativa em linha reta; o Maps e o Waze calculam pelas ruas</span></div>'+
+      (partida?'<div class="cel-r-sai">Saída: '+esc(partidaNome)+'</div>':"")+
+      '<ol class="cel-r-ol">'+itens+volta+'</ol>'+
+      '<div class="cel-r-tr">'+tr.map((t,i)=>'<a class="rh-btn" href="'+esc(t.url)+'" target="_blank" rel="noopener noreferrer">🗺️ Abrir no Google Maps'+(tr.length>1?" — trecho "+(i+1)+" ("+t.de+" a "+t.ate+")":"")+'</a>').join("")+'</div>'+
+      (tr.length>1?'<div class="cel-nota">O Maps aceita 10 paradas por vez, então a rota foi dividida em trechos: ao terminar um, abra o próximo.</div>':"")+
+      '<div class="cel-f"><button type="button" class="rh-btn rh-btn-sec" data-r="voltar">← Mudar os postos</button><button type="button" class="rh-btn rh-btn-sec" data-r="copiar">📋 Copiar a lista</button></div>';
+    tela._txt=(partida?"Saída: "+partidaNome+"\n":"")+r.ordem.map((p,i)=>(i+1)+". "+p.cliente+" — "+enderecoTexto(p).tudo).join("\n");
+  }
+  ov.addEventListener("click",e=>{
+    const b=e.target.closest("[data-r]");if(!b)return;
+    const a=b.dataset.r;
+    if(a==="todos"){visiveis().forEach(p=>R.sel.add(chave(p.cliente)));lista();}
+    else if(a==="nenhum"){R.sel.clear();lista();}
+    else if(a==="calc")calcular();
+    else if(a==="voltar")passo1();
+    else if(a==="copiar"){
+      const t=tela._txt||"";
+      (navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast("📋 Lista copiada")).catch(()=>toast("Não consegui copiar"));
+    }
+  });
+  ov.addEventListener("change",e=>{
+    const t=e.target;
+    if(t.dataset&&t.dataset.k){t.checked?R.sel.add(t.dataset.k):R.sel.delete(t.dataset.k);contar();}
+    else if(t.id==="r-tipo"){R.tipo=t.value;const bs=document.getElementById("r-base");if(bs)bs.hidden=R.tipo!=="base";}
+    else if(t.id==="r-base")R.base=t.value;
+    else if(t.id==="r-voltar")R.voltar=t.checked;
+    else if(t.id==="r-cid"){R.cid=t.value;lista();}
+    else if(t.id==="r-sup"){R.sup=t.value;lista();}
+  });
+  ov.addEventListener("input",e=>{if(e.target.id==="r-q"){R.q=e.target.value;lista();}});
+  passo1();
 };
 
 /* ── guia Celulares ─────────────────────────────────────────────────────── */
