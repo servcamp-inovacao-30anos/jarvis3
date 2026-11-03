@@ -970,7 +970,7 @@ aside.sb#sidebar.sb-mini #navRoot .ni{margin:2px 8px;padding:9px 0;}
   <div class="page active" id="pg-visao">
     <div id="vg-contrato" hidden></div>
     <div id="vg-guias-alerta" hidden></div>
-    <div class="vg-kpis" style="grid-template-columns:repeat(3,1fr)">
+    <div class="vg-kpis" style="grid-template-columns:repeat(4,1fr)">
       <div class="sk sk-bl clickable" onclick="skDet('vg','clientes',this)"><div class="sk-top"><span class="sk-ic">🏢</span><span class="sk-tag t-bl">Fixo</span></div><div class="sk-lbl">Clientes Ativos</div><div class="sk-v" id="vg-cl">—</div><div class="sk-sub" id="vg-cls">—</div></div>
       <div class="sk clickable" onclick="_showNovosClientes()" style="background:linear-gradient(135deg,#fff7e6,#ffedcc);border:2px solid #f5a623;box-shadow:0 4px 18px rgba(245,166,35,.25);position:relative;overflow:hidden">
         <div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;border-radius:50%;background:rgba(245,166,35,.15)"></div>
@@ -979,6 +979,7 @@ aside.sb#sidebar.sb-mini #navRoot .ni{margin:2px 8px;padding:9px 0;}
         <div class="sk-v" id="vg-novoscli" style="color:#d97706">—</div>
         <div class="sk-sub" id="vg-novosclis" style="color:#b5790f">—</div>
       </div>
+      <div class="sk sk-te clickable" id="vg-extras-ag" onclick="vgExtrasAgDet()"><div class="sk-top"><span class="sk-ic">🧾</span><span class="sk-tag t-te">Agendados</span></div><div class="sk-lbl">Serviços Extras Agendados</div><div class="sk-v" id="vg-extras-agv">—</div><div class="sk-sub" id="vg-extras-ags">—</div></div>
       <div class="sk sk-gr clickable" onclick="skDet('vg','funcs',this)"><div class="sk-top"><span class="sk-ic">👥</span><span class="sk-tag t-gr">Fixo</span></div><div class="sk-lbl">Funcionários Ativos</div><div class="sk-v" id="vg-fn">—</div><div class="sk-sub" id="vg-fns">—</div><div id="vg-efet-trend"></div></div>
     </div>
     <div class="det-panel" id="det-vg"><div class="det-hdr" id="det-vg-hdr"><span class="det-title" id="det-vg-title"></span><button class="det-close" onclick="closeDet('vg')">✕</button></div><div class="det-body"><div class="det-grid-wrap" id="det-vg-body"></div><div class="det-sub" id="det-vg-sub"></div></div></div>
@@ -4925,6 +4926,7 @@ function updOC(){
   vgCardHoraExtra();
   vgFaltasTendencia();
   vgCardTempoResposta();
+  vgCardExtrasAgendados();
   vgCardJustificativa();
   vgCardAcompanhamento();
   vgCardDisciplina();
@@ -5547,6 +5549,36 @@ function vgCardTempoConversa(){
    Reaproveita bdvRespostas(), que já trata o posto com mais de um turno e
    descarta chegada anterior à abertura. Duplicar a conta aqui abriria espaço
    para os dois números divergirem. */
+/* Serviços extras já agendados (início depois de hoje), vindos do cadastro do Comercial.
+   Busca própria porque COM_EXTRAS só é carregado ao abrir a guia Propostas e Serviços
+   Extras. Guarda a lista por 60 s para o card não bater na API a cada refresh. */
+let _vgExtrasAg={em:0,lista:null};
+function vgExtrasAgLista(){
+  if(_vgExtrasAg.lista&&Date.now()-_vgExtrasAg.em<60000)return Promise.resolve(_vgExtrasAg.lista);
+  return fetch("/api/comercial?t=extras").then(r=>{if(!r.ok)throw new Error("HTTP "+r.status);return r.json();}).then(j=>{
+    const hj=new Date(Date.now()-3*3600000).toISOString().slice(0,10);
+    const l=((j&&j.rows)||[]).filter(e=>String(e.data_inicio||"").slice(0,10)>hj)
+      .sort((a,b)=>String(a.data_inicio).localeCompare(String(b.data_inicio)));
+    _vgExtrasAg={em:Date.now(),lista:l};return l;
+  });
+}
+function vgCardExtrasAgendados(){
+  const v=document.getElementById("vg-extras-agv");if(!v)return;
+  const sub=document.getElementById("vg-extras-ags");
+  vgExtrasAgLista().then(l=>{
+    v.textContent=l.length;
+    if(!l.length){sub.textContent="nenhum agendado";return;}
+    const p=l[0],cols=l.reduce((t,e)=>t+(Number(e.qtd_colaboradores)||0),0);
+    sub.innerHTML="próximo: <b>"+_esc(p.cliente)+"</b> em "+rhFmt(p.data_inicio)+"<br>"+cols+" colaborador"+(cols===1?"":"es")+" no total";
+  }).catch(()=>{v.textContent="—";sub.textContent="não foi possível carregar";});
+}
+function vgExtrasAgDet(){
+  vgExtrasAgLista().then(l=>{
+    _rdModal("🧾 Serviços Extras Agendados — "+l.length,
+      ["Cliente","Serviço","Início","Encerramento","Colab.","Observação","Responsável"],
+      l.map(e=>[_esc(e.cliente),_esc(e.tipo_servico),rhFmt(e.data_inicio),e.data_fim?rhFmt(e.data_fim):"—",Number(e.qtd_colaboradores)||0,_esc(e.observacao||"—"),_esc((e.responsavel||"—").split(" ")[0])]));
+  }).catch(()=>{alert("Não foi possível carregar os serviços extras agendados.");});
+}
 function vgCardTempoResposta(){
   const el=document.getElementById("ocTMRV");if(!el)return;
   if(typeof bdvRespostas!=="function"){el.textContent="—";return;}
