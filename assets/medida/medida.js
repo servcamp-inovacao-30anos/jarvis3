@@ -256,6 +256,28 @@ function pintaPassos(){
   el.innerHTML=`<div class="md-passos-l">${p.map((x,i)=>`<button type="button" class="md-passo${x.ok||E.gerada?" ok":""}" data-md="ir" data-v="${x.k}"><span class="n">${x.ok||E.gerada?IC.ok:i+1}</span><span class="r"><b>${x.rot}</b></span></button>`).join("")}</div>`+
     `<div class="md-passos-b" aria-hidden="true"><i></i></div><span class="md-passos-c">${E.gerada?"Documento gerado":feitos===p.length?"Tudo pronto para gerar":feitos+" de "+p.length+" passos prontos"}</span>`;
 }
+const ORDEM_P=["tipo","datas","ocor","motivo"];
+// O que falta em cada passo, dito com todas as letras (aparece ao lado do "Continuar" desabilitado)
+function faltaDoPasso(E,k){
+  if(k==="tipo")return!E.tipo?"Escolha o tipo da medida.":(E.tipo==="SUSPENSAO"&&!(E.dias>=1&&E.dias<=30)?"Informe de 1 a 30 dias de suspensão.":"");
+  if(k==="datas")return!E.inicio?"Preencha a data da medida.":(!String(E.empresa).trim()?"Preencha a empresa.":"");
+  if(k==="motivo")return String(E.motivo).trim().length<5?"Escreva o motivo (pelo menos 5 letras).":"";
+  return"";
+}
+const contDoPasso=(E,k)=>{
+  const prox=ORDEM_P[ORDEM_P.indexOf(k)+1];if(!prox)return"";
+  const f=faltaDoPasso(E,k);
+  return `<button type="button" class="md-b pri" data-md="prox" data-v="${prox}"${f?" disabled":""}>Continuar ${IC.seta}</button>${f?`<span class="md-falta">${f}</span>`:""}`;
+};
+// Digitar a empresa (ou os dias) não redesenha o formulário, para o teclado não fechar: então o "Continuar" e o
+// número do passo são atualizados aqui. Antes disso o botão ficava desabilitado mesmo com tudo preenchido.
+function sincronizaPasso(){
+  const E=MDS.ed;if(!E||E.gerada)return;
+  const k=E.foco||"tipo",sec=document.getElementById("md-p-"+k);if(!sec||!sec.classList.contains("foco"))return;
+  const ok=passos(E)[ORDEM_P.indexOf(k)].ok,cont=sec.querySelector(".md-cont"),n=sec.querySelector(".md-sec-h .md-n");
+  if(cont)cont.innerHTML=contDoPasso(E,k);
+  if(n){n.classList.toggle("ok",ok);n.innerHTML=ok?IC.ok:String(ORDEM_P.indexOf(k)+1);}
+}
 const cabPasso=(k,n,tit,sub,ok)=>`<div class="md-sec-h" title="${esc(sub)}"><span class="md-n${ok?" ok":""}">${ok?IC.ok:n}</span><h5>${tit}</h5></div>`;
 function pintaForm(){
   const E=MDS.ed,el=document.getElementById("md-form");if(!E||!el)return;
@@ -293,7 +315,7 @@ function pintaForm(){
   const passo=(k,corpo)=>{
     const i=ORDEM.indexOf(k),ok=P[i].ok;
     if(foco!==k)return `<button type="button" class="md-res${ok?" ok":" pend"}" id="md-p-${k}" data-md="foco" data-v="${k}"${trava?" disabled":""}><span class="md-n${ok?" ok":""}">${ok?IC.ok:i+1}</span><span class="t"><b>${TIT[k]}</b><small>${esc(resumo[k]())}</small></span><em>${trava?"":ok?"Editar":"Preencher"}</em></button>`;
-    const prox=ORDEM[i+1],cont=prox?`<div class="md-cont"><button type="button" class="md-b pri" data-md="prox" data-v="${prox}"${ok?"":" disabled"} title="${ok?"":"Falta preencher este passo"}">Continuar ${IC.seta}</button>${ok?"":`<span class="md-falta">Falta preencher este passo</span>`}</div>`:"";
+    const prox=ORDEM[i+1],cont=prox?`<div class="md-cont">${contDoPasso(E,k)}</div>`:"";
     return `<section class="md-sec foco" id="md-p-${k}">${cabPasso(k,i+1,TIT[k],SUB[k],ok)}<p class="md-sub">${SUB[k]}</p>${corpo}${cont}</section>`;
   };
   const corpoTipo=`<div class="md-tipos" role="group" aria-label="Tipo da medida">${tipos}</div>${dias}${prov}`;
@@ -362,13 +384,14 @@ function pintaRod(){
     return;
   }
   if(E.confirma){
-    el.innerHTML=`<div class="md-rod-txt"><b>Gerar ${esc(t.rot.toLowerCase())}${E.tipo==="SUSPENSAO"?" de "+E.dias+(E.dias===1?" dia":" dias"):""} para ${esc(titulo(E.c.nome))}?</b><span>O documento recebe um número e fica registrado em seu nome, pendente de lançar no SAR2G.</span></div><button type="button" class="md-b" data-md="voltar"${E.enviando?" disabled":""}>Voltar e revisar</button><button type="button" class="md-b pri" data-md="gerar"${E.enviando?" disabled":""}>${E.enviando?'<span class="md-gira"></span>Gerando…':IC.ok+"Confirmar e gerar"}</button>`;
+    const dataDif=E.docData&&E.docData!==hojeSP()?` Na assinatura digital a data impressa é a de hoje (${esc(dma(hojeSP()))}).`:"";
+    el.innerHTML=`<div class="md-rod-txt"><b>Assinar e gerar ${esc(t.rot.toLowerCase())}${E.tipo==="SUSPENSAO"?" de "+E.dias+(E.dias===1?" dia":" dias"):""} para ${esc(titulo(E.c.nome))}?</b><span>Você assina, o colaborador lê e assina na tela. Só então a medida recebe o número e sai o QR da via.${dataDif} <button type="button" class="md-lnk" data-md="gerar"${E.enviando?" disabled":""}>${E.enviando?"Gerando…":"Prefiro gerar para imprimir, no papel"}</button></span></div><button type="button" class="md-b" data-md="voltar"${E.enviando?" disabled":""}>Voltar e revisar</button><button type="button" class="md-b pri" data-md="assinar-gerar"${E.enviando?" disabled":""}>${IC.ass}Começar a assinatura</button>`;
     return;
   }
   const resumo=t?`${t.rot}${E.tipo==="SUSPENSAO"?" · "+E.dias+(E.dias===1?" dia":" dias"):""}${E.inicio?" · "+dma(E.inicio):""}`:"Nenhum tipo escolhido";
   el.innerHTML=(E.erro?`<div class="md-rod-txt er"><b>Não deu para gerar</b><span>${esc(E.erro)}</span></div>`:
-    `<div class="md-rod-txt"><b>${esc(resumo)}</b><span>${f.length?"Falta preencher "+lista(f)+".":"Tudo pronto. Confira o documento ao lado: o SAR2G continua sendo o sistema oficial, depois de gerar lance a medida lá."}</span></div>`)+
-    `<button type="button" class="md-b" data-md="fechar">Cancelar</button><button type="button" class="md-b pri" data-md="confirmar"${f.length?" disabled":""} title="${f.length?"Falta preencher "+esc(lista(f)):"Gerar o documento"}">${IC.doc}Gerar documento</button>`;
+    `<div class="md-rod-txt"><b>${esc(resumo)}</b><span>${f.length?"Falta preencher "+lista(f)+".":"Tudo pronto. Confira o documento e siga para a assinatura. O SAR2G continua sendo o sistema oficial: depois de gerar, lance a medida lá."}</span></div>`)+
+    `<button type="button" class="md-b" data-md="fechar">Cancelar</button><button type="button" class="md-b pri" data-md="confirmar"${f.length?" disabled":""} title="${f.length?"Falta preencher "+esc(lista(f)):"Assinar e gerar o documento"}">${IC.ass}Assinar e gerar</button>`;
 }
 function atualizaMotivo(){const E=MDS.ed;if(E&&!E.manual)E.motivo=motivoAuto(E);}
 function cliqueEd(e){
@@ -380,7 +403,11 @@ function cliqueEd(e){
   if(a==="ficar"){E.sair=false;pintaRod();return;}
   if(a==="ver"){E.ver=E.ver===v?null:v;const fm=document.getElementById("md-form"),y=fm?fm.scrollTop:0;pintaForm();if(fm)fm.scrollTop=y;return;}
   if(a==="descartar"){fecharEd(true);return;}
-  if(a==="ir"||a==="foco"||a==="prox"){if(E.gerada)return;E.foco=v;const fm=document.getElementById("md-form");pintaForm();const s=document.getElementById("md-p-"+v);if(s){s.classList.add("abre");if(fm)fm.scrollTo({top:Math.max(0,s.offsetTop-12),behavior:"smooth"});}return;}
+  if(a==="ir"||a==="foco"||a==="prox"){if(E.gerada)return;E.foco=v;const fm=document.getElementById("md-form");pintaForm();const s=document.getElementById("md-p-"+v);if(s){s.classList.add("abre");if(fm)fm.scrollTo({top:Math.max(0,s.offsetTop-12),behavior:"smooth"});}
+    // "Preencher" leva direto ao campo que falta (empresa vazia, motivo em branco), com o teclado já aberto
+    const vazio=v==="datas"&&!String(E.empresa).trim()?s&&s.querySelector('[data-md="empresa"]'):v==="motivo"&&String(E.motivo).trim().length<5?s&&s.querySelector('[data-md="motivo"]'):null;
+    if(vazio&&a!=="ir")setTimeout(()=>{try{vazio.focus({preventScroll:true});}catch(x){}},120);
+    return;}
   if(a==="a4"){MDS.a4=!MDS.a4;pintaPrev();return;}
   if(a==="zoom"){
     const ajuste=ajusteDe();
@@ -397,6 +424,7 @@ function cliqueEd(e){
   else if(a==="confirmar"){E.confirma=true;E.erro=null;pintaRod();const g=document.querySelector('#md-rod [data-md="gerar"]');if(g)g.focus();return;}
   else if(a==="voltar"){E.confirma=false;E.repetida=null;pintaRod();return;}
   else if(a==="gerar"){gerar(false);return;}
+  else if(a==="assinar-gerar"){assinarEGerar();return;}
   else if(a==="repetir"){gerar(true);return;}
   else return;
   // redesenhar o formulário não pode jogar a rolagem para o topo
@@ -419,7 +447,7 @@ function digitouEd(e){
   else if(a==="empresa")E.empresa=e.target.value;
   else if(a==="diasIn")E.dias=Math.min(30,Math.max(1,parseInt(e.target.value,10)||1));
   else return;
-  pintaPrev();pintaRod();
+  sincronizaPasso();pintaPrev();pintaRod();
 }
 function mudouEd(e){
   const E=MDS.ed,a=e.target.dataset&&e.target.dataset.md;if(!E||!a)return;
@@ -430,13 +458,31 @@ function mudouEd(e){
   const fm=document.getElementById("md-form"),y=fm?fm.scrollTop:0;
   pintaForm();if(fm)fm.scrollTop=y;pintaPrev(true);pintaRod();
 }
+const corpoGerar=(E,repetir)=>({tipo:E.tipo,dias:E.tipo==="SUSPENSAO"?E.dias:0,inicio:E.inicio,motivo:E.motivo,situacoes:[...E.sits],faltas:[...E.faltas],caso:E.k,
+  re:E.c.re,nome:E.c.nome,empresa:E.empresa,cargo:E.c.cargo,posto:E.c.posto,supervisor:E.c.supervisor,repetir:!!repetir});
+// Assinar ANTES de gerar: a tela de assinatura abre por cima do editor (que fica como está, para voltar se desistir);
+// a medida só é gerada depois que o supervisor e o colaborador assinaram, e a coleta segue na mesma hora.
+async function assinarEGerar(){
+  const E=MDS.ed;if(!E||E.enviando||E.gerada)return;
+  if(!(await garanteAssinatura())){E.erro=SEM_TELA;E.confirma=false;pintaRod();return;}
+  const dados=Object.assign({},docDoEd(E),{docData:hojeSP(),numero:null,geradoPor:null,geradoEm:null});
+  window.mdAssinarNovo({
+    nome:E.c.nome,dados,
+    gerar:async repetir=>{
+      const j=await api("medida","POST",corpoGerar(E,repetir));
+      carregar(true);
+      if(typeof hqToast==="function")hqToast("📄 Medida "+(j.medida&&j.medida.numero||"")+" gerada · lance no SAR2G");
+      if(MDS.ed===E){fecharEd(true);document.body.style.overflow="hidden";} // o editor já cumpriu o papel; a tela de assinatura segue
+      return j.medida;
+    },
+    aoSair:()=>{if(MDS.ed===E){E.confirma=false;pintaRod();document.body.style.overflow="hidden";}}
+  });
+}
 async function gerar(repetir){
   const E=MDS.ed;if(!E||E.enviando)return;
   E.enviando=true;E.erro=null;pintaRod();
-  const c=E.c;
   try{
-    const j=await api("medida","POST",{tipo:E.tipo,dias:E.tipo==="SUSPENSAO"?E.dias:0,inicio:E.inicio,motivo:E.motivo,situacoes:[...E.sits],faltas:[...E.faltas],caso:E.k,
-      re:c.re,nome:c.nome,empresa:E.empresa,cargo:c.cargo,posto:c.posto,supervisor:c.supervisor,repetir:!!repetir});
+    const j=await api("medida","POST",corpoGerar(E,repetir));
     E.gerada=j.medida;E.confirma=false;E.repetida=null;
     carregar(true);
     if(typeof hqToast==="function")hqToast("📄 Medida "+(j.medida&&j.medida.numero||"")+" gerada · lance no SAR2G");

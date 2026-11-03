@@ -414,3 +414,20 @@ test("tela: os botões não dependem de a assinatura já ter carregado (sinal fr
     assert.ok(fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8").includes(arq), "o mesmo arquivo que o index.html carrega: " + arq);
   }
 });
+
+test("tela: assina antes de gerar e o Continuar acompanha o que se digita", () => {
+  const md = fs.readFileSync(path.join(__dirname, "..", "assets", "medida", "medida.js"), "utf8");
+  const as = fs.readFileSync(path.join(__dirname, "..", "assets", "medida", "assinatura.js"), "utf8");
+  // o botão principal do editor leva à assinatura; o papel continua como opção pequena
+  assert.match(md, /data-md="confirmar"[^`]*>\$\{IC\.ass\}Assinar e gerar/);
+  assert.match(md, /data-md="assinar-gerar"/);
+  assert.match(md, /data-md="gerar"[^>]*>[^<]*Prefiro gerar para imprimir, no papel/);
+  assert.match(md, /window\.mdAssinarNovo\(/);
+  // a medida só é gerada dentro da tela de assinatura, depois das duas assinaturas
+  assert.match(as, /window\.mdAssinarNovo=async function\(pre\)/);
+  assert.match(as, /function seguir\(parcial\)\{\s*if\(AS\.pre\)/);
+  assert.ok(!/AS\.pre\.gerar\(/.test(as.replace(/async function gerarESeguir[\s\S]*?\n}\n/, "")), "gerar só é chamado por gerarESeguir");
+  // digitar a empresa/dias atualiza o Continuar (antes ele ficava desabilitado mesmo com tudo preenchido)
+  assert.match(md, /sincronizaPasso\(\);pintaPrev\(\);pintaRod\(\);/);
+  assert.match(md, /Preencha a empresa\./);
+});
