@@ -1231,3 +1231,30 @@ test("agendar.html: pergunta se a reunião é online ou presencial", () => {
   const PUB = fs.readFileSync(path.join(__dirname, "..", "agendar.html"), "utf8");
   assert.ok(PUB.includes("Como prefere a reunião?") && PUB.includes('data-m="online"') && PUB.includes('data-m="presencial"'));
 });
+
+test("bloqueio parcial: a Comercial diz como o cliente marca no resto do dia; bloqueio do dia inteiro não mexe no jeito", async () => {
+  await comRelogio(AGORA, async () => {
+    const { tabelas, slug60 } = await preparar();
+    const SEX = "2026-11-13";
+    // sexta: reunião gerencial das 14h às 16h, e o resto do dia só online
+    const b = await adm("bloqueio", { method: "POST", body: { dia: SEX, ateDia: SEX, de: "14:00", ate: "16:00", motivo: "Reunião gerencial", modalidade: "online" } });
+    assert.equal(b.statusCode, 200, JSON.stringify(b.body));
+    assert.equal(b.body.modalidade, "online");
+    assert.equal(tabelas.ag_config[0].modalidade_dias[SEX], "online");
+    const h = await pub("horarios", { query: { s: slug60 } });
+    assert.equal(h.body.modalidades[SEX], "online");
+    assert.ok(h.body.dias[SEX].includes("13:00") && !h.body.dias[SEX].includes("14:00") && !h.body.dias[SEX].includes("15:30") && h.body.dias[SEX].includes("16:00"), "14h–16h bloqueado; reunião de 1h cabe às 13h e volta às 16h");
+    assert.equal((await pub("agendar", { method: "POST", headers: HOST, body: Object.assign({ s: slug60, dia: SEX, hora: "09:00", modalidade: "presencial" }, pessoa(1)) })).statusCode, 409, "presencial na sexta: recusado");
+    // modalidade inválida
+    assert.equal((await adm("bloqueio", { method: "POST", body: { dia: SEX, de: "10:00", ate: "11:00", modalidade: "remoto" } })).statusCode, 400);
+    // dia inteiro: a modalidade é ignorada
+    const QUA = "2026-11-11";
+    assert.equal((await adm("bloqueio", { method: "POST", body: { dia: QUA, ateDia: QUA, modalidade: "presencial" } })).statusCode, 200);
+    assert.equal(tabelas.ag_config[0].modalidade_dias[QUA], undefined);
+  });
+});
+
+test("tela: bloqueio parcial pergunta online ou presencial para o resto do dia", () => {
+  const JS = fs.readFileSync(path.join(__dirname, "..", "assets", "agenda", "agenda.js"), "utf8");
+  assert.ok(JS.includes("No resto do dia, o cliente pode marcar") && JS.includes('modalidade:inteiro?null:q("#agb-mod").value'));
+});

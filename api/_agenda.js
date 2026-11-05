@@ -540,9 +540,19 @@ async function criarBloqueio({ res, db, ator, body }) {
   const fim = ate ? R.paraUtc(ateDia, ate) : R.paraUtc(R.somaDias(ateDia, 1), "00:00");
   if (fim <= inicio) return erro(res, 400, "O fim do bloqueio precisa ser depois do início.", "INVALIDO");
   const motivo = String(body.motivo || "").replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 120) || null;
+  // Bloqueio parcial (só parte do dia): a Comercial diz como o cliente pode marcar no resto do dia (online, presencial ou os dois).
+  const parcial = !!(de || ate);
+  let modalidade = null;
+  if (parcial && body.modalidade != null && body.modalidade !== "") {
+    modalidade = String(body.modalidade);
+    if (!R.MOD_DIA.includes(modalidade)) return erro(res, 400, "Escolha online, presencial ou os dois.", "INVALIDO");
+  }
+  const dias = [];
+  for (let d = dia; d <= ateDia && dias.length < 31; d = R.somaDias(d, 1)) dias.push(d);
   await db.inserir("ag_bloqueios", [{ inicio: iso(inicio), fim: iso(fim), motivo, criado_por: ator }]);
   registrar(db, ator, "AGENDA_BLOQUEIO", dia, { inicio: iso(inicio), fim: iso(fim), motivo });
-  return res.status(200).json({ ok: true });
+  if (modalidade) await aplicarModalidade(db, ator, dias, modalidade);
+  return res.status(200).json({ ok: true, modalidade: modalidade });
 }
 async function tirarBloqueio({ req, res, db, ator }) {
   const id = idDe(req);
@@ -660,16 +670,20 @@ async function podeVerNumeros(db, ator) {
   return !!(u && u.ativo !== false && u.perms && u.perms.comDash === true);
 }
 
+// Define (ou tira, com modalidade null) o jeito de um ou mais dias. O que já passou sai da lista.
+async function aplicarModalidade(db, ator, listaDias, modalidade) {
+  const c = await lerConfig(db), ontem = R.somaDias(R.hojeBR(Date.now()), -1);
+  const dias = {};
+  for (const [d, m] of Object.entries(c.modalidade_dias || {})) if (d >= ontem && R.MOD_DIA.includes(m)) dias[d] = m;
+  for (const d of listaDias) { if (modalidade) dias[d] = modalidade; else delete dias[d]; }
+  await db.atualizar("ag_config?id=eq.1", { modalidade_dias: dias, atualizado_em: iso(Date.now()), atualizado_por: ator });
+  registrar(db, ator, "AGENDA_MODALIDADE_DIA", listaDias[0], { dias: listaDias.length, modalidade: modalidade || "padrão" });
+  return dias;
+}
 async function salvarModalidadeDia({ res, db, ator, body }) {
   const v = R.validarModalidadeDia(body);
   if (v.erro) return erro(res, 400, v.erro, "INVALIDO");
-  const c = await lerConfig(db), ontem = R.somaDias(R.hojeBR(Date.now()), -1);
-  const dias = {};
-  for (const [d, m] of Object.entries(c.modalidade_dias || {})) if (d >= ontem && R.MOD_DIA.includes(m)) dias[d] = m; // o que passou sai
-  if (v.modalidade) dias[v.dia] = v.modalidade; else delete dias[v.dia];
-  await db.atualizar("ag_config?id=eq.1", { modalidade_dias: dias, atualizado_em: iso(Date.now()), atualizado_por: ator });
-  registrar(db, ator, "AGENDA_MODALIDADE_DIA", v.dia, { modalidade: v.modalidade || "padrão" });
-  return res.status(200).json({ ok: true, modalidade_dias: dias });
+  return res.status(200).json({ ok: true, modalidade_dias: await aplicarModalidade(db, ator, [v.dia], v.modalidade) });
 }
 
 async function trocarIcs({ res, db, ator }) {

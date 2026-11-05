@@ -387,15 +387,19 @@ function abrirBloqueio(){
     '<p class="agd-dica">O horário bloqueado some do link. Reuniões já marcadas nele continuam: remarque ou cancele se precisar.</p>'+
     '<div class="agd-2">'+campo("De",'<input type="date" id="agb-dia" min="'+hojeBR()+'" value="'+hojeBR()+'">')+campo("Até",'<input type="date" id="agb-ate" min="'+hojeBR()+'" value="'+hojeBR()+'">')+'</div>'+
     '<label class="agd-ck"><input type="checkbox" id="agb-inteiro" checked> Dia(s) inteiro(s)</label>'+
-    '<div class="agd-2" id="agb-horas" hidden>'+campo("Das",'<input type="time" id="agb-de" step="300" value="12:00">')+campo("Até as",'<input type="time" id="agb-ateh" step="300" value="14:00">')+'</div>'+
+    '<div id="agb-horas" hidden><div class="agd-2">'+campo("Das",'<input type="time" id="agb-de" step="300" value="12:00">')+campo("Até as",'<input type="time" id="agb-ateh" step="300" value="14:00">')+'</div>'+
+      campo("No resto do dia, o cliente pode marcar",'<select id="agb-mod"><option value="ambos">Online e presencial</option><option value="online">Só online</option><option value="presencial">Só presencial</option></select>')+
+      '<p class="agd-dica" id="agb-mod-d">Só vale para os horários que continuam livres neste dia.</p></div>'+
     campo("Motivo <small>(opcional, só você vê)</small>",'<input id="agb-motivo" maxlength="120" placeholder="Ex.: férias, feriado, visita">')+
     '<div class="agd-acoes"><button type="button" class="rh-btn rh-btn-sec" data-fechar="1">Voltar</button><button type="button" class="rh-btn" id="agb-ok">Bloquear</button></div>');
   const q=s=>ov.querySelector(s);
-  q("#agb-dia").addEventListener("change",()=>{if(q("#agb-ate").value<q("#agb-dia").value)q("#agb-ate").value=q("#agb-dia").value;});
+  const modAtual=()=>{q("#agb-mod").value=modDia(q("#agb-dia").value);};
+  modAtual();
+  q("#agb-dia").addEventListener("change",()=>{if(q("#agb-ate").value<q("#agb-dia").value)q("#agb-ate").value=q("#agb-dia").value;modAtual();});
   q("#agb-inteiro").addEventListener("change",()=>{q("#agb-horas").hidden=q("#agb-inteiro").checked;});
   q("#agb-ok").addEventListener("click",e=>{
     const inteiro=q("#agb-inteiro").checked;
-    enviar(ov,e.currentTarget,()=>api("bloqueio","POST",{dia:q("#agb-dia").value,ateDia:q("#agb-ate").value,de:inteiro?null:q("#agb-de").value,ate:inteiro?null:q("#agb-ateh").value,motivo:q("#agb-motivo").value}),"Horário bloqueado");
+    enviar(ov,e.currentTarget,()=>api("bloqueio","POST",{dia:q("#agb-dia").value,ateDia:q("#agb-ate").value,de:inteiro?null:q("#agb-de").value,ate:inteiro?null:q("#agb-ateh").value,modalidade:inteiro?null:q("#agb-mod").value,motivo:q("#agb-motivo").value}),inteiro?"Horário bloqueado":"Horário bloqueado e jeito do dia definido");
   });
 }
 function abrirConfig(){
