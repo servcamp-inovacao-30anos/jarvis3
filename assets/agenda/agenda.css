@@ -83,7 +83,7 @@ html[data-theme="dark"] .agd-msg.erro{color:#fda29b}
 .agc-nav{width:30px;height:30px;border-radius:8px;border:1px solid var(--g200);background:var(--wh);color:var(--g700);font-size:1.1rem;line-height:1;cursor:pointer}
 .agc-hoje{height:30px;padding:0 12px;border-radius:8px;border:1px solid var(--g200);background:var(--wh);color:var(--g700);font-size:.72rem;font-weight:800;cursor:pointer}
 .agc-nav:hover,.agc-hoje:hover{background:var(--g50)}
-.agc-tit{font-size:.95rem;color:var(--g800);text-transform:capitalize;flex:1;min-width:160px}
+.agc-tit{font-size:.95rem;color:var(--g800);flex:1;min-width:160px}
 .agc-seg{display:inline-flex;background:var(--g100);border-radius:9px;padding:3px;gap:2px}
 .agc-seg button{border:none;background:none;padding:5px 12px;border-radius:7px;font-size:.72rem;font-weight:800;color:var(--g500);cursor:pointer}
 .agc-seg button.on{background:var(--wh);color:var(--g800);box-shadow:0 1px 3px rgba(13,31,53,.15)}

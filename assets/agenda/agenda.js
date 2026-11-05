@@ -124,7 +124,7 @@ function calendario(ativas){
   if(!AG.ref)AG.ref=hojeBR();
   const v=AG.vista,ref=AG.ref;
   let titulo;
-  if(v==="mes"){const x=new Date(ref+"T12:00:00Z");titulo=MESL[x.getUTCMonth()]+" de "+x.getUTCFullYear();}
+  if(v==="mes"){const x=new Date(ref+"T12:00:00Z");titulo=MESL[x.getUTCMonth()].charAt(0).toUpperCase()+MESL[x.getUTCMonth()].slice(1)+" de "+x.getUTCFullYear();}
   else if(v==="semana"){
     const s=segDe(ref),f=somaDias(s,6),a=new Date(s+"T12:00:00Z"),b=new Date(f+"T12:00:00Z");
     titulo=a.getUTCMonth()===b.getUTCMonth()?a.getUTCDate()+" a "+b.getUTCDate()+" de "+MESL[b.getUTCMonth()]:a.getUTCDate()+" de "+MES[a.getUTCMonth()]+" a "+b.getUTCDate()+" de "+MES[b.getUTCMonth()];
