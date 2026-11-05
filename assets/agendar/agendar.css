@@ -91,6 +91,9 @@ body{margin:0;background:var(--fd);font-family:system-ui,-apple-system,"Segoe UI
 .ag-pe b{color:var(--az)}
 .ag-pe span{flex-basis:100%;text-align:center}
 
+/* celular: nas etapas, só o nome da etapa atual */
+@media (max-width:520px){.ag-steps li:not(.on) span{display:none}.ag-steps li:not(.on){flex:0 1 auto}.ag-steps li.on{flex:1 0 auto}}
+
 /* computador: duas colunas */
 @media (min-width:860px){
   .ag-hero{padding-bottom:84px}
