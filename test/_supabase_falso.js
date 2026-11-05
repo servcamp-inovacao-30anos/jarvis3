@@ -115,7 +115,7 @@ function supabaseFalso(tabelas, opcoes) {
           continue;
         }
         const nova = JSON.parse(JSON.stringify(l));
-        if (COM_ID.has(caminho) && nova.id == null) nova.id = t.reduce((m, x) => Math.max(m, Number(x.id) || 0), 0) + 1;
+        if ((COM_ID.has(caminho) || caminho.startsWith("ag_")) && nova.id == null) nova.id = t.reduce((m, x) => Math.max(m, Number(x.id) || 0), 0) + 1;
         if (caminho === "fm_auditoria" && !nova.criado_em) nova.criado_em = new Date(Date.now() + t.length).toISOString();
         if (caminho === "dashboard_snapshots" && !nova.created_at) nova.created_at = new Date(Date.now() + t.length).toISOString();
         t.push(nova);

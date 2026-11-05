@@ -1,0 +1,37 @@
+/* Página pública de agendamento (agendar.html). Pensada primeiro para o celular. */
+:root{--az:#0d1f35;--az2:#1e4d8c;--cz:#64748b;--bd:#e2e8f0;--fd:#f4f7fb;--lj:#ea580c}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fd);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--az);-webkit-text-size-adjust:100%}
+.ag{max-width:560px;margin:0 auto;padding:22px 16px 40px}
+.ag-logo{display:block;margin:0 auto 14px}
+.ag-topo{background:#fff;border:1px solid var(--bd);border-radius:16px;padding:16px 18px;margin-bottom:14px;border-top:5px solid var(--cor,var(--az2))}
+.ag-topo h1{margin:0 0 6px;font-size:1.3rem}
+.ag-info{margin:0;color:var(--cz);font-size:.92rem;line-height:1.5}
+.ag-passo{background:#fff;border:1px solid var(--bd);border-radius:16px;padding:16px 18px;margin-bottom:14px}
+.ag-passo[hidden]{display:none}
+.ag-passo h2{font-size:1rem;margin:0 0 10px}
+.ag-passo h2 small{font-weight:500;color:var(--cz);font-size:.78rem}
+.ag-dias{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:14px;scroll-snap-type:x mandatory}
+.ag-dia{flex:0 0 auto;scroll-snap-align:start;min-width:72px;border:1.5px solid var(--bd);background:#fff;border-radius:12px;padding:8px 6px;text-align:center;cursor:pointer;font:inherit;color:var(--az)}
+.ag-dia b{display:block;font-size:1.25rem;line-height:1.1}
+.ag-dia span{display:block;font-size:.72rem;color:var(--cz);text-transform:capitalize}
+.ag-dia.on{background:var(--az2);border-color:var(--az2);color:#fff}
+.ag-dia.on span{color:#dbeafe}
+.ag-horas{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px}
+.ag-hora{border:1.5px solid var(--az2);background:#fff;color:var(--az2);border-radius:10px;padding:10px 4px;font:inherit;font-weight:700;cursor:pointer}
+.ag-hora:hover,.ag-hora:focus-visible{background:var(--az2);color:#fff}
+.ag-form label{display:block;font-size:.85rem;font-weight:600;margin-bottom:12px}
+.ag-form label small{font-weight:400;color:var(--cz)}
+.ag-form input,.ag-form textarea{display:block;width:100%;margin-top:5px;padding:11px 12px;border:1.5px solid var(--bd);border-radius:10px;font:inherit;font-size:16px;background:#fff;color:var(--az)}
+.ag-form input:focus,.ag-form textarea:focus{outline:none;border-color:var(--az2)}
+.ag-hp{position:absolute!important;left:-9999px!important;width:1px;height:1px;overflow:hidden}
+.ag-escolha{background:#eff6ff;border-radius:10px;padding:10px 12px;font-weight:700;margin:0 0 14px}
+.ag-bt{display:block;width:100%;text-align:center;border:none;background:var(--lj);color:#fff;font:inherit;font-weight:800;font-size:1rem;padding:14px;border-radius:12px;cursor:pointer;text-decoration:none}
+.ag-bt:disabled{opacity:.6;cursor:wait}
+.ag-link{display:block;width:100%;margin-top:10px;border:none;background:none;color:var(--az2);font:inherit;font-size:.9rem;cursor:pointer;text-align:center;text-decoration:underline}
+.ag-erro{color:#b91c1c;font-weight:700;font-size:.88rem;min-height:1em;margin:0 0 10px}
+.ag-ok{text-align:center}
+.ag-ok-ic{font-size:2.6rem}
+.ag-okTxt{font-size:1rem;line-height:1.6;margin:6px 0 16px}
+.ag-rod{text-align:center;color:var(--cz);font-size:.75rem;margin-top:14px}
+.ag-vazio{color:var(--cz);font-size:.92rem}

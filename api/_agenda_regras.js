@@ -1,0 +1,168 @@
+// api/_agenda_regras.js — regras da Agenda Comercial (sem banco, só contas e validação).
+//
+// • Tudo no horário de Brasília (UTC-3, sem horário de verão desde 2019). No banco fica em UTC.
+// • Horário livre: dentro do horário de atendimento do dia da semana, depois da antecedência mínima, até a
+//   janela de dias, fora dos bloqueios e sem encostar em outra reunião. Cada reunião "ocupa" do início até
+//   o fim + o intervalo; duas reuniões nunca podem ter essas faixas se cruzando (o banco garante isso com
+//   uma restrição de exclusão — estas contas só mostram o que está livre).
+// • O convite do iPhone (assinatura) é um calendário .ics simples, só de leitura.
+
+"use strict";
+
+const OFFSET = "-03:00";
+const MIN = 60000;
+const DIAS_SEMANA = ["0", "1", "2", "3", "4", "5", "6"]; // 0 = domingo
+
+const CONFIG_PADRAO = {
+  semana: { "1": [["09:00", "17:00"]], "2": [["09:00", "17:00"]], "3": [["09:00", "17:00"]], "4": [["09:00", "17:00"]], "5": [["09:00", "17:00"]] },
+  intervalo_min: 15, antecedencia_h: 4, janela_dias: 30, passo_min: 30
+};
+const TIPOS_PADRAO = [
+  { nome: "Reunião com cliente", duracao_min: 60, cor: "#1e4d8c", ordem: 1 },
+  { nome: "Captação", duracao_min: 30, cor: "#ea580c", ordem: 2 }
+];
+
+const HORA = /^([01]\d|2[0-3]):[0-5]\d$/;
+const DIA = /^\d{4}-\d{2}-\d{2}$/;
+const minutos = h => Number(h.slice(0, 2)) * 60 + Number(h.slice(3, 5));
+const hhmm = m => String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
+
+// "2026-11-06" + "14:30" (Brasília) → milissegundos UTC
+function paraUtc(dia, hora) { return Date.parse(dia + "T" + hora + ":00" + OFFSET); }
+// milissegundos UTC → { dia, hora } em Brasília
+function deUtc(ms) {
+  const d = new Date(ms - 3 * 3600000).toISOString();
+  return { dia: d.slice(0, 10), hora: d.slice(11, 16) };
+}
+function somaDias(dia, n) { const d = new Date(dia + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+const diaSemana = dia => String(new Date(dia + "T12:00:00Z").getUTCDay());
+const hojeBR = agora => deUtc(agora == null ? Date.now() : agora).dia;
+const intN = (v, min, max) => { const n = Number(v); return Number.isInteger(n) && n >= min && n <= max ? n : null; };
+const txt = (v, max) => String(v == null ? "" : v).replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, max);
+const cruza = (a0, a1, b0, b1) => a0 < b1 && b0 < a1;
+
+// ── validação ──────────────────────────────────────────────────────────────
+
+function validarConfig(b) {
+  if (!b || typeof b !== "object") return { erro: "Configuração inválida." };
+  const semana = {};
+  const s = b.semana && typeof b.semana === "object" ? b.semana : {};
+  for (const d of DIAS_SEMANA) {
+    const faixas = Array.isArray(s[d]) ? s[d] : [];
+    if (faixas.length > 4) return { erro: "No máximo 4 faixas de horário por dia." };
+    const limpas = [];
+    for (const f of faixas) {
+      if (!Array.isArray(f) || !HORA.test(f[0]) || !HORA.test(f[1])) return { erro: "Horário inválido: use HH:MM." };
+      if (minutos(f[0]) >= minutos(f[1])) return { erro: "O fim do horário precisa ser depois do início (" + f[0] + "–" + f[1] + ")." };
+      limpas.push([f[0], f[1]]);
+    }
+    limpas.sort((x, y) => minutos(x[0]) - minutos(y[0]));
+    for (let i = 1; i < limpas.length; i++) if (minutos(limpas[i][0]) < minutos(limpas[i - 1][1])) return { erro: "Faixas de horário do mesmo dia não podem se cruzar." };
+    if (limpas.length) semana[d] = limpas;
+  }
+  const intervalo_min = intN(b.intervalo_min, 0, 120), antecedencia_h = intN(b.antecedencia_h, 0, 168);
+  const janela_dias = intN(b.janela_dias, 1, 120), passo_min = intN(b.passo_min, 5, 240);
+  if (intervalo_min == null) return { erro: "Intervalo entre reuniões: de 0 a 120 minutos." };
+  if (antecedencia_h == null) return { erro: "Antecedência mínima: de 0 a 168 horas." };
+  if (janela_dias == null) return { erro: "Agenda aberta: de 1 a 120 dias." };
+  if (passo_min == null) return { erro: "Horários a cada: de 5 a 240 minutos." };
+  return { config: { semana, intervalo_min, antecedencia_h, janela_dias, passo_min } };
+}
+
+function validarTipo(b) {
+  const nome = txt(b && b.nome, 60);
+  if (nome.length < 2) return { erro: "Dê um nome ao tipo de reunião." };
+  const duracao_min = intN(b.duracao_min, 10, 480);
+  if (duracao_min == null) return { erro: "Duração: de 10 a 480 minutos." };
+  const cor = /^#[0-9a-f]{6}$/i.test(String(b.cor || "")) ? b.cor : "#1e4d8c";
+  return { tipo: { nome, duracao_min, local: txt(b.local, 300) || null, cor, ativo: b.ativo !== false } };
+}
+
+// Dados de quem marca. Pelo link o telefone é obrigatório (é como a Comercial confirma); e-mail opcional.
+// Na reunião que a Comercial cadastra à mão o telefone pode ficar em branco (telefoneOpcional).
+function validarPessoa(b, opcoes) {
+  const nome = txt(b && b.nome, 80);
+  if (nome.length < 2) return { erro: "Informe o nome." };
+  const tel = String((b && b.telefone) || "").replace(/\D/g, "");
+  const semTel = !tel && opcoes && opcoes.telefoneOpcional;
+  if (!semTel && (tel.length < 10 || tel.length > 13)) return { erro: "Informe um telefone com DDD." };
+  const email = txt(b && b.email, 120).toLowerCase();
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return { erro: "E-mail inválido." };
+  return { pessoa: { nome, telefone: tel || null, email: email || null, obs: txt(b && b.obs, 500) || null } };
+}
+
+// Faixa que a reunião ocupa (com o intervalo depois dela).
+function faixa(dia, hora, duracao_min, intervalo_min) {
+  const inicio = paraUtc(dia, hora), fim = inicio + duracao_min * MIN;
+  return { inicio, fim, ocupa_ate: fim + intervalo_min * MIN };
+}
+
+// ── horários livres ────────────────────────────────────────────────────────
+
+// ocupados: [{inicio, ocupa_ate}] (reuniões ativas) · bloqueios: [{inicio, fim}] (ISO ou ms)
+function horariosDoDia(cfg, tipo, dia, ocupados, bloqueios, agora) {
+  const faixas = (cfg.semana || {})[diaSemana(dia)] || [];
+  if (!faixas.length) return [];
+  const hoje = hojeBR(agora), ate = somaDias(hoje, cfg.janela_dias);
+  if (dia < hoje || dia > ate) return [];
+  const minInicio = (agora == null ? Date.now() : agora) + cfg.antecedencia_h * 3600000;
+  const oc = (ocupados || []).map(o => [+new Date(o.inicio), +new Date(o.ocupa_ate)]);
+  const bl = (bloqueios || []).map(o => [+new Date(o.inicio), +new Date(o.fim)]);
+  const out = [];
+  for (const [ini, fimF] of faixas) {
+    for (let m = minutos(ini); m + tipo.duracao_min <= minutos(fimF); m += cfg.passo_min) {
+      const f = faixa(dia, hhmm(m), tipo.duracao_min, cfg.intervalo_min);
+      if (f.inicio < minInicio) continue;
+      if (oc.some(([a, b]) => cruza(f.inicio, f.ocupa_ate, a, b))) continue;
+      if (bl.some(([a, b]) => cruza(f.inicio, f.fim, a, b))) continue;
+      out.push(hhmm(m));
+    }
+  }
+  return out;
+}
+
+// { "2026-11-06": ["09:00", ...], ... } só com os dias que têm algum horário
+function horariosLivres(cfg, tipo, ocupados, bloqueios, agora) {
+  const hoje = hojeBR(agora), dias = {};
+  for (let i = 0; i <= cfg.janela_dias; i++) {
+    const d = somaDias(hoje, i), h = horariosDoDia(cfg, tipo, d, ocupados, bloqueios, agora);
+    if (h.length) dias[d] = h;
+  }
+  return dias;
+}
+
+// ── convite / assinatura (.ics) ────────────────────────────────────────────
+
+const icsTxt = s => String(s == null ? "" : s).replace(/\\/g, "\\\\").replace(/\r?\n/g, "\\n").replace(/([,;])/g, "\\$1");
+const icsData = ms => new Date(ms).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+// linhas de no máximo 75 caracteres, continuação começando com espaço (RFC 5545)
+function dobrar(linha) {
+  const out = [];
+  let s = linha;
+  while (s.length > 74) { out.push(s.slice(0, 74)); s = " " + s.slice(74); }
+  out.push(s);
+  return out.join("\r\n");
+}
+// eventos: [{ id, inicio, fim, titulo, descricao, local }]
+function ics(eventos, opcoes) {
+  const o = opcoes || {}, agora = icsData(o.agora == null ? Date.now() : o.agora);
+  const l = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Grupo ServCamp//Agenda Comercial//PT-BR", "CALSCALE:GREGORIAN", "METHOD:PUBLISH"];
+  if (o.nome) l.push("X-WR-CALNAME:" + icsTxt(o.nome));
+  l.push("X-WR-TIMEZONE:America/Sao_Paulo", "REFRESH-INTERVAL;VALUE=DURATION:PT15M", "X-PUBLISHED-TTL:PT15M");
+  for (const e of eventos || []) {
+    l.push("BEGIN:VEVENT", "UID:" + icsTxt(e.id) + "@agenda.servcamp", "DTSTAMP:" + agora,
+      "DTSTART:" + icsData(+new Date(e.inicio)), "DTEND:" + icsData(+new Date(e.fim)), "SUMMARY:" + icsTxt(e.titulo));
+    if (e.descricao) l.push("DESCRIPTION:" + icsTxt(e.descricao));
+    if (e.local) l.push("LOCATION:" + icsTxt(e.local));
+    if (e.cancelada) l.push("STATUS:CANCELLED");
+    l.push("END:VEVENT");
+  }
+  l.push("END:VCALENDAR");
+  return l.map(dobrar).join("\r\n") + "\r\n";
+}
+
+module.exports = {
+  OFFSET, CONFIG_PADRAO, TIPOS_PADRAO, HORA, DIA,
+  paraUtc, deUtc, somaDias, diaSemana, hojeBR, faixa,
+  validarConfig, validarTipo, validarPessoa, horariosDoDia, horariosLivres, ics, icsTxt
+};

@@ -52,6 +52,8 @@ module.exports = async function handler(req, res) {
   // Via do documento da medida (QR, SMS, e-mail): o colaborador não tem login. O código do link e o RE com os 4 últimos
   // dígitos do celular são a prova (api/_via.js).
   if (_q.modulo === "via") return require("./_via")(req, res);
+  // Link público da Agenda Comercial: quem marca a reunião não tem conta no painel (api/_agenda.js).
+  if (_q.modulo === "agendapub") return require("./_agenda").publico(req, res);
   const _planilha = (_q.modulo === "faltas" || _q.modulo === "bdv") && _q.t === "planilha";
   const _ga = _planilha ? _auth.requireAuth(req, _q.modulo === "bdv" ? "xlb" : "xl", true) : _auth.requireAuth(req);
   if (!_ga.ok) return res.status(401).json({ error: "Não autenticado." });
@@ -69,6 +71,8 @@ module.exports = async function handler(req, res) {
   if (req.query && req.query.modulo === "celulares") return require("./_celulares")(req, res);
   // Ofensiva (dias seguidos de uso): mesmo motivo (api/_ofensiva.js).
   if (req.query && req.query.modulo === "ofensiva") return require("./_ofensiva")(req, res);
+  // Agenda Comercial (administração): mesmo motivo (api/_agenda.js).
+  if (req.query && req.query.modulo === "agenda") return require("./_agenda")(req, res);
   const SUPABASE_URL = process.env.SUPABASE_URL;
   const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 

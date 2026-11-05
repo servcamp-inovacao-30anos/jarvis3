@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#0d1f35">
+<title>Agendar reunião | Grupo ServCamp</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="stylesheet" href="/assets/agendar/agendar.css">
+</head>
+<body>
+<main class="ag" id="ag">
+  <img class="ag-logo" src="/logo-servcamp.png" alt="Grupo ServCamp" height="54">
+  <section id="agTopo" class="ag-topo">
+    <h1 id="agTit">Agendar reunião</h1>
+    <p id="agInfo" class="ag-info">Carregando os horários…</p>
+  </section>
+
+  <section id="agPasso1" class="ag-passo" hidden>
+    <h2>1. Escolha o dia</h2>
+    <div id="agDias" class="ag-dias" role="listbox" aria-label="Dias disponíveis"></div>
+    <h2 id="agTitHoras" hidden>2. Escolha o horário <small>(horário de Brasília)</small></h2>
+    <div id="agHoras" class="ag-horas" role="listbox" aria-label="Horários disponíveis"></div>
+  </section>
+
+  <form id="agForm" class="ag-passo ag-form" hidden autocomplete="on" novalidate>
+    <h2>3. Seus dados</h2>
+    <p id="agEscolha" class="ag-escolha"></p>
+    <label>Nome<input id="agNome" name="name" autocomplete="name" maxlength="80" required></label>
+    <label>Telefone com DDD<input id="agTel" name="tel" type="tel" inputmode="tel" autocomplete="tel" maxlength="20" required placeholder="(19) 99999-9999"></label>
+    <label>E-mail <small>(opcional)</small><input id="agEmail" name="email" type="email" autocomplete="email" maxlength="120"></label>
+    <label>Assunto ou observação <small>(opcional)</small><textarea id="agObs" maxlength="500" rows="3"></textarea></label>
+    <label class="ag-hp" aria-hidden="true">Site<input id="agSite" tabindex="-1" autocomplete="off"></label>
+    <p id="agErro" class="ag-erro" role="alert"></p>
+    <button type="submit" id="agBt" class="ag-bt">Confirmar agendamento</button>
+    <button type="button" id="agTrocar" class="ag-link">← trocar o horário</button>
+  </form>
+
+  <section id="agOk" class="ag-passo ag-ok" hidden>
+    <div class="ag-ok-ic">✅</div>
+    <h2>Reunião marcada!</h2>
+    <p id="agOkTxt" class="ag-okTxt"></p>
+    <a id="agIcs" class="ag-bt" href="#" download="reuniao-servcamp.ics">📅 Adicionar à minha agenda</a>
+    <a id="agGoogle" class="ag-link" href="#" target="_blank" rel="noopener noreferrer">Adicionar no Google Agenda</a>
+    <p class="ag-rod">Se precisar mudar ou cancelar, fale com o nosso Comercial.</p>
+  </section>
+  <p class="ag-rod">Grupo ServCamp · seus dados são usados só para esta reunião.</p>
+</main>
+<script src="/assets/agendar/agendar.js"></script>
+</body>
+</html>

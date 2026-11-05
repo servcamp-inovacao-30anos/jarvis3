@@ -895,6 +895,7 @@ aside.sb#sidebar.sb-mini #navRoot .ni{margin:2px 8px;padding:9px 0;}
     <div class="nav-cat-h" onclick="navCatToggle('com')"><span class="nav-cat-t">💼 Comercial</span><span class="nav-cat-ar">▾</span></div>
     <div class="nav-cat-b">
       <div class="ni" data-pg="compro" data-perm="com" onclick="navTo('compro',this)"><span class="ni-ic">💼</span><span>Propostas e Serviços Extras</span><span hidden>cadência cadencia reforço</span><span class="nib nib-novo">NOVO</span></div>
+      <div class="ni" data-pg="agenda" data-perm="agenda" onclick="navTo('agenda',this)"><span class="ni-ic">📅</span><span>Agenda Comercial</span><span hidden>reunião reuniao agendar agendamento link cliente captação</span><span class="nib nib-novo">NOVO</span></div>
     </div>
   </div>
   <div class="nav-cat" data-cat="dir">
@@ -1933,6 +1934,10 @@ aside.sb#sidebar.sb-mini #navRoot .ni{margin:2px 8px;padding:9px 0;}
   <div class="page" id="pg-audqual">
     <div class="sec-hdr"><span class="sec-hdr-ic">✅</span><div><div class="sec-hdr-t">Auditoria de Qualidade</div><div class="sec-hdr-sub">Vistorias de postos: checklist tri-pilar, cobertura e conformidade</div></div></div>
     <div id="aud-content"><div style="padding:40px;text-align:center;color:#94a3b8;font-size:.85rem">Carregando auditorias…</div></div>
+  </div>
+  <div class="page" id="pg-agenda">
+    <div class="sec-hd"><div class="sec-ic">📅</div><div><div class="sec-t">Agenda Comercial</div><div class="sec-s">Reuniões com clientes e captação: mande o link, o cliente escolhe um horário livre e nada fica em cima de nada.</div></div></div>
+    <div id="ag-content"><div style="padding:40px;text-align:center;color:#94a3b8;font-size:.85rem">Carregando…</div></div>
   </div>
   <div class="page" id="pg-celulares">
     <div class="sec-hd"><div class="sec-ic">📱</div><div><div class="sec-t">Celulares</div><div class="sec-s">Os aparelhos dos postos: o que está faltando, o que conferir, e o número e o login Zello de cada um.</div></div></div>
@@ -4039,6 +4044,7 @@ function applyUserUI(){
     const isFm=sessionStorage.getItem("userFm")==="1";
     const isBdv=sessionStorage.getItem("userBdv")==="1";
     const navOk={rh:isAdmin||isRh,rhdash:isAdmin||isRh||isRhDash,com:isAdmin||isCom,comdash:isAdmin||isComDash,prj:isAdmin||isPrj,admin:isAdmin,qual:isAdmin||isQual,lig:isAdmin||isLig,metas:isAdmin||isMetas,fm:isAdmin||isFm,sup:isAdmin||isSup||isLig};
+    navOk.agenda=isAdmin||sessionStorage.getItem("userKey")==="gabrielaalvarenga"; // a mesma lista do api/_agenda.js (GESTORES): quem barra é o servidor
     navOk.bdv=isAdmin||isFm||isBdv;navOk.apres=sessionStorage.getItem("userKey")==="joaoygor"; // fora do literal: test/faltas_supervisao lê só ele
   // guias ligadas/desligadas para a pessoa na Configuração valem por cima da regra do perfil
   const _g=_guiasDoUsuario();
@@ -4681,7 +4687,7 @@ function setTurno(t,btn){document.querySelectorAll("#trnoPg .pi").forEach(b=>b.c
 function setArea(){ST.area=document.getElementById("areaS").value;rpg();refresh();}
 function rpg(){Object.keys(ST.tpg).forEach(k=>ST.tpg[k]=1);}
 
-const PTITLES={fmrel:"Relatório de Faltas x Medidas",metas:"Metas da Diretoria",visao:"Visão Geral",ativos:"Funcionários Ativos",clientes:"Clientes",celulares:"Celulares — Controle dos Aparelhos",faltas:"Faltas & Top 10",coberturas:"Coberturas",postos:"Justificativa de Postos Descobertos",os:"OS Avulsos",fts:"FTS",dispo:"Sem Alocação",restec:"Reservas Técnicas",hrextra:"Horas Extras",checklist:"Check List",rhvagas:"RH — Controle de Vagas",rhentrev:"RH — Entrevistas & Funil",rhdesl:"RH — Desligamentos",rhres:"RH — Reservas → Efetivação",rhtrein:"RH — Treinamentos",rhdash:"Painel RH — Diretoria",compro:"Comercial — Propostas e Serviços Extras",comdash:"Painel Comercial",config:"Configurações — Acessos & Usuários",sede:"Base Virtual — Equipe",prj:"Projetos — Evolução & Inovação",audqual:"Auditoria de Qualidade",ligacoes:"Feedback de Faltas",faltasmed:"Faltas x Medidas",bdvrel:"Relatório de Coberturas do Supervisor",faltassup:"Acompanhamento de Medidas (Supervisão)",apres:"Apresentação"};
+const PTITLES={fmrel:"Relatório de Faltas x Medidas",metas:"Metas da Diretoria",visao:"Visão Geral",ativos:"Funcionários Ativos",clientes:"Clientes",celulares:"Celulares — Controle dos Aparelhos",agenda:"Agenda Comercial",faltas:"Faltas & Top 10",coberturas:"Coberturas",postos:"Justificativa de Postos Descobertos",os:"OS Avulsos",fts:"FTS",dispo:"Sem Alocação",restec:"Reservas Técnicas",hrextra:"Horas Extras",checklist:"Check List",rhvagas:"RH — Controle de Vagas",rhentrev:"RH — Entrevistas & Funil",rhdesl:"RH — Desligamentos",rhres:"RH — Reservas → Efetivação",rhtrein:"RH — Treinamentos",rhdash:"Painel RH — Diretoria",compro:"Comercial — Propostas e Serviços Extras",comdash:"Painel Comercial",config:"Configurações — Acessos & Usuários",sede:"Base Virtual — Equipe",prj:"Projetos — Evolução & Inovação",audqual:"Auditoria de Qualidade",ligacoes:"Feedback de Faltas",faltasmed:"Faltas x Medidas",bdvrel:"Relatório de Coberturas do Supervisor",faltassup:"Acompanhamento de Medidas (Supervisão)",apres:"Apresentação"};
 
 /* ── Sidebar 2.0: accordion com estado salvo + busca de módulos ── */
 function navCatToggle(k){
@@ -4823,6 +4829,7 @@ function navTo(p,btn){
   else if(p==="ativos"){renderAtivos();}
   else if(p==="clientes"){renderClientes();}
   else if(p==="celulares"){if(typeof celLoad==="function")celLoad();}
+  else if(p==="agenda"){if(typeof agLoad==="function")agLoad();}
   else if(p==="rhvagas"){rhLoad();}
   else if(p==="rhentrev"){rhEntLoad();}
   else if(p==="rhdesl"){rhDesLoad();}
@@ -19378,6 +19385,7 @@ document.addEventListener("DOMContentLoaded",init);
 <link rel="stylesheet" href="/assets/comunicado/comunicado.css"><script src="/assets/comunicado/comunicado.js"></script>
 <link rel="stylesheet" href="/assets/celulares/celulares.css"><script src="/assets/celulares/celulares.js"></script>
 <link rel="stylesheet" href="/assets/ofensiva/ofensiva.css"><script src="/assets/ofensiva/ofensiva.js"></script>
+<link rel="stylesheet" href="/assets/agenda/agenda.css"><script src="/assets/agenda/agenda.js"></script>
 <link rel="stylesheet" href="/assets/medida/assinatura.css"><script src="/assets/vendor/qrcode-generator.js"></script><script src="/assets/medida/assinatura.js"></script>
 </body>
 </html>
