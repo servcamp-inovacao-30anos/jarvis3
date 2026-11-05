@@ -100,7 +100,7 @@ function comRelogio(ms, fn) {
   return Promise.resolve().then(fn).finally(() => { Date.now = real; });
 }
 const pub = (t, opts) => chamar(rh, Object.assign({}, opts, { query: Object.assign({ modulo: "agendapub", t }, (opts && opts.query) || {}) }));
-const adm = (t, opts) => chamar(rh, Object.assign({ usuario: "gabrielaalvarenga" }, opts, { query: Object.assign({ modulo: "agenda" }, t ? { t } : {}, (opts && opts.query) || {}) }));
+const adm = (t, opts) => chamar(rh, Object.assign({ usuario: "joaoygor" }, opts, { query: Object.assign({ modulo: "agenda" }, t ? { t } : {}, (opts && opts.query) || {}) }));
 const pessoa = (n, extra) => Object.assign({ nome: "Pessoa " + n, telefone: "1999999" + String(1000 + n).slice(-4), email: "p" + n + "@exemplo.com" }, extra || {});
 async function preparar() {
   const tabelas = { app_users: [{ user_key: "carlos", ativo: true, perms: {} }, { user_key: "liberada", nome: "Liberada", ativo: true, perms: { guias: { agenda: true } } }] };
@@ -110,10 +110,11 @@ async function preparar() {
   return { tabelas, slug60: tabelas.ag_tipos.find(t => t.duracao_min === 60).slug, slug30: tabelas.ag_tipos.find(t => t.duracao_min === 30).slug };
 }
 
-test("API: só a administradora (e admin, e quem recebeu a guia) mexe na agenda", async () => {
+test("API: só o admin (e quem recebeu a guia) mexe na agenda; por enquanto a Gabriela ainda não", async () => {
   await comRelogio(AGORA, async () => {
     await preparar();
     assert.equal((await adm("", { usuario: "carlos" })).statusCode, 403);
+    assert.equal((await adm("", { usuario: "gabrielaalvarenga" })).statusCode, 403, "liberada só quando a agenda estiver completa");
     assert.equal((await adm("", { usuario: "joaoygor" })).statusCode, 200);
     assert.equal((await adm("", { usuario: "liberada" })).statusCode, 200);
     assert.equal((await chamar(rh, { query: { modulo: "agenda" } })).statusCode, 401, "sem login nem chega");
@@ -245,11 +246,11 @@ test("API: assinatura do iPhone só com a chave; convite de quem marcou só com 
   });
 });
 
-test("index.html: guia Agenda só para a administradora e o admin, com a página e o módulo", () => {
+test("index.html: guia Agenda só para o admin por enquanto, com a página e o módulo", () => {
   const HTML = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
   assert.ok(HTML.includes('data-pg="agenda" data-perm="agenda"'));
-  assert.ok(HTML.includes('navOk.agenda=isAdmin||sessionStorage.getItem("userKey")==="gabrielaalvarenga";'));
-  assert.deepEqual(require("../api/_agenda").GESTORES, ["gabrielaalvarenga"], "a mesma lista do servidor");
+  assert.ok(HTML.includes("navOk.agenda=isAdmin;"));
+  assert.deepEqual(require("../api/_agenda").GESTORES, [], "a Gabriela ainda não: o menu e o servidor dizem o mesmo");
   assert.ok(HTML.includes('id="ag-content"'));
   assert.ok(HTML.includes('else if(p==="agenda"){if(typeof agLoad==="function")agLoad();}'));
   assert.ok(HTML.includes("/assets/agenda/agenda.js"));

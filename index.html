@@ -4044,7 +4044,7 @@ function applyUserUI(){
     const isFm=sessionStorage.getItem("userFm")==="1";
     const isBdv=sessionStorage.getItem("userBdv")==="1";
     const navOk={rh:isAdmin||isRh,rhdash:isAdmin||isRh||isRhDash,com:isAdmin||isCom,comdash:isAdmin||isComDash,prj:isAdmin||isPrj,admin:isAdmin,qual:isAdmin||isQual,lig:isAdmin||isLig,metas:isAdmin||isMetas,fm:isAdmin||isFm,sup:isAdmin||isSup||isLig};
-    navOk.agenda=isAdmin||sessionStorage.getItem("userKey")==="gabrielaalvarenga"; // a mesma lista do api/_agenda.js (GESTORES): quem barra é o servidor
+    navOk.agenda=isAdmin; // por enquanto só o admin; a Gabriela entra quando a agenda estiver completa (a mesma lista do api/_agenda.js, GESTORES: quem barra é o servidor)
     navOk.bdv=isAdmin||isFm||isBdv;navOk.apres=sessionStorage.getItem("userKey")==="joaoygor"; // fora do literal: test/faltas_supervisao lê só ele
   // guias ligadas/desligadas para a pessoa na Configuração valem por cima da regra do perfil
   const _g=_guiasDoUsuario();

@@ -29,8 +29,10 @@ const ponto = require("./_ponto");
 const R = require("./_agenda_regras");
 const ADMINS = require("./users").ADMINS;
 
-// Administradora da agenda (pedido do João em 05/11/2026: a Gabriela, do Comercial).
-const GESTORES = ["gabrielaalvarenga"];
+// Administradora da agenda: vai ser a Gabriela, do Comercial. Por enquanto (pedido do João em 05/11/2026)
+// fica só com os administradores do painel até a agenda estar completa; para liberar, pôr "gabrielaalvarenga"
+// aqui e no navOk.agenda do index.html.
+const GESTORES = [];
 const ENTIDADE = "agenda";
 const MAX_ATIVAS_POR_CONTATO = 2;   // pelo link, o mesmo telefone/e-mail não segura mais que isso no futuro
 const MAX_POR_IP_HORA = 5;          // e o mesmo endereço de internet não marca mais que isso por hora
