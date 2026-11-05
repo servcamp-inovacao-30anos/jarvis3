@@ -88,7 +88,19 @@ function aviso(m) {
 // ── envio ───────────────────────────────────────────────────────────────────
 let correioDeTeste = null;
 function definirCorreio(fn) { const antes = correioDeTeste; correioDeTeste = fn; return antes; }
-const TEMPO_MAX_MS = 9000;
+const TEMPO_MAX_MS = 14000;
+
+// Erro 4xx do servidor de e-mail ("tente de novo": fila cheia, limite momentâneo) costuma passar sozinho:
+// uma segunda tentativa logo depois resolve. Erro 5xx (endereço inexistente, recusado) não é repetido.
+const passageiro = e => { const c = Number(e && e.responseCode); return (c >= 400 && c < 500) || /\b4\d\d\b/.test(String((e && e.message) || "")) && !/\b5\d\d\b/.test(String((e && e.message) || "")); };
+async function comNovaTentativa(fn, esperaMs) {
+  try { return await fn(); }
+  catch (e) {
+    if (!passageiro(e)) throw e;
+    await new Promise(r => setTimeout(r, esperaMs == null ? 1500 : esperaMs));
+    return fn();
+  }
+}
 
 // msg: { para, assunto, html, texto, convite? (texto .ics) }. Nunca lança: devolve { ok, motivo }.
 async function enviar(msg) {
@@ -104,11 +116,11 @@ async function enviar(msg) {
     });
     try {
       const info = await Promise.race([
-        tx.sendMail({
+        comNovaTentativa(() => tx.sendMail({
           from: process.env.MAIL_FROM || `"Grupo ServCamp" <${process.env.MAIL_USER}>`, to: msg.para,
           subject: msg.assunto, html: msg.html, text: msg.texto,
           attachments: msg.convite ? [{ filename: "reuniao-servcamp.ics", content: msg.convite, contentType: "text/calendar; charset=utf-8; method=PUBLISH" }] : []
-        }),
+        })),
         new Promise((_, no) => setTimeout(() => no(new Error("demorou demais")), TEMPO_MAX_MS))
       ]);
       return { ok: !!(info && info.accepted && info.accepted.length), motivo: info && info.accepted && info.accepted.length ? null : "o servidor de e-mail recusou o endereço" };
@@ -123,4 +135,4 @@ function convite(m) {
   return R.ics([{ id: "convite-" + m.id, inicio: m.inicio, fim: m.fim, local: m.local, titulo: m.tipo + " — Grupo ServCamp", descricao: "Reunião com o Comercial do Grupo ServCamp." }]);
 }
 
-module.exports = { confirmacao, lembrete, remarcada, cancelada, aviso, enviar, convite, definirCorreio, quando };
+module.exports = { confirmacao, lembrete, remarcada, cancelada, aviso, enviar, convite, definirCorreio, quando, comNovaTentativa, passageiro };

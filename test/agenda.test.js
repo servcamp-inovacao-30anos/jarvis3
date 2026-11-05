@@ -779,3 +779,36 @@ test("vercel.json agenda o lembrete diário às 17h de Brasília (20h UTC) e o r
   assert.ok(v.crons.some(c => c.path === "/api/rh?modulo=agenda&t=cron" && c.schedule === "0 20 * * *"));
   assert.equal(typeof agendaMod.cron, "function");
 });
+
+test("e-mail: erro passageiro do servidor (4xx) tenta de novo uma vez; erro definitivo (5xx) não repete", async () => {
+  let n = 0;
+  const fila = new Error("Message failed: 451 4.3.0 Error: queue file write error"); fila.responseCode = 451;
+  assert.equal(await EMAILM.comNovaTentativa(async () => { n++; if (n === 1) throw fila; return "enviou"; }, 1), "enviou");
+  assert.equal(n, 2, "a segunda tentativa resolveu");
+  n = 0;
+  const recusado = new Error("550 5.1.1 user unknown"); recusado.responseCode = 550;
+  await assert.rejects(EMAILM.comNovaTentativa(async () => { n++; throw recusado; }, 1));
+  assert.equal(n, 1, "endereço recusado não é repetido");
+  n = 0;
+  await assert.rejects(EMAILM.comNovaTentativa(async () => { n++; throw fila; }, 1));
+  assert.equal(n, 2, "só uma repetição");
+  assert.equal(EMAILM.passageiro(new Error("451 4.3.0 fila")), true);
+  assert.equal(EMAILM.passageiro(new Error("connect ETIMEDOUT")), false);
+});
+
+test("e-mail: se o aviso da Comercial falhar, fica registrado na reunião mesmo com a confirmação da pessoa enviada", async () => {
+  process.env.MAIL_USER = "comercial@exemplo.com";
+  const enviados = [];
+  const antes = EMAILM.definirCorreio(async m => (m.para === "comercial@exemplo.com" ? { ok: false, motivo: "caixa cheia" } : (enviados.push(m), { ok: true })));
+  try {
+    await comRelogio(AGORA, async () => {
+      const { tabelas, slug60 } = await preparar();
+      const r = await marcar(slug60, "10:00", pessoa(1, { email: "ana@exemplo.com" }));
+      assert.equal(r.statusCode, 201);
+      assert.equal(r.body.email_cliente, "enviado", "para a pessoa deu certo");
+      assert.match(tabelas.ag_reunioes[0].email_status, /^enviado · aviso à Comercial falhou: caixa cheia$/);
+      const lista = await adm("");
+      assert.match(lista.body.reunioes[0].email_status, /aviso à Comercial falhou/, "a administradora vê");
+    });
+  } finally { EMAILM.definirCorreio(antes); delete process.env.MAIL_USER; }
+});

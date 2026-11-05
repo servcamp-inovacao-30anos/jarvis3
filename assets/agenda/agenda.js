@@ -234,7 +234,7 @@ function abrirReuniao(r){
     '<div class="agc-det" style="border-left-color:'+esc(c)+'"><b>'+esc(r.nome)+'</b><span>'+esc(diaLongo(a.dia))+' · '+a.hora+'–'+b.hora+'</span>'+
       (r.local?'<span>📍 '+esc(r.local)+'</span>':'')+
       '<span>'+(r.origem==="link"?"Marcada pelo link":"Cadastrada aqui")+(r.cancelado_por==="cliente"?" · cancelada pelo cliente":"")+(r.remarcacoes?" · remarcada "+r.remarcacoes+"x pelo cliente":"")+'</span>'+
-      (r.email_status?'<span>✉️ Confirmação: '+(/^enviado/.test(r.email_status)?"enviada":/^falhou/.test(r.email_status)?"não saiu ("+esc(r.email_status.replace(/^falhou:\s*/,""))+")":esc(r.email_status))+'</span>':'')+'</div>'+
+      (r.email_status?'<span>✉️ Confirmação: '+(/^enviado/.test(r.email_status)?"enviada":/^falhou/.test(r.email_status)?"não saiu ("+esc(r.email_status.split(" · ")[0].replace(/^falhou:\s*/,""))+")":esc(r.email_status.split(" · ")[0]))+'</span>'+(/aviso à Comercial falhou/.test(r.email_status)?'<span>⚠️ O aviso para a Comercial não saiu: confira esta reunião na agenda</span>':''):'')+'</div>'+
     (r.telefone?'<div class="agc-det-l">📞 <a href="tel:'+esc(r.telefone)+'">'+esc(telTxt(r.telefone))+'</a> · <a href="'+esc(zap(r.telefone))+'" target="_blank" rel="noopener">WhatsApp</a></div>':'')+
     (r.email?'<div class="agc-det-l">✉️ <a href="mailto:'+esc(r.email)+'">'+esc(r.email)+'</a></div>':'')+
     (r.obs?'<div class="agc-det-o">“'+esc(r.obs)+'”</div>':'')+

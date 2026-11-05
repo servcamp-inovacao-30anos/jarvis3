@@ -181,9 +181,10 @@ async function emailMarcada(db, r, tipo, cfg, base, opcoes) {
       r.email && !(opcoes && opcoes.semAviso) ? EMAIL.enviar(Object.assign({ para: r.email, convite: EMAIL.convite(m) }, EMAIL.confirmacao(m))) : Promise.resolve({ ok: false, motivo: "sem e-mail" }),
       (opcoes && opcoes.semComercial) ? Promise.resolve(null) : EMAIL.enviar(Object.assign({ para: paraAviso(cfg) }, EMAIL.aviso(Object.assign({ acao: "nova" }, m))))
     ]);
-    const status = resumoEnvio(cli, !!r.email);
+    // o aviso da Comercial também fica registrado: se ele falhar, ela precisa saber que não foi avisada
+    const status = resumoEnvio(cli, !!r.email) + (av && !av.ok ? " · aviso à Comercial falhou: " + (av.motivo || "erro") : "");
     await db.atualizar(`ag_reunioes?id=eq.${r.id}`, { email_status: status }).catch(() => {});
-    return { cliente: status, comercial: av ? (av.ok ? "enviado" : "falhou: " + av.motivo) : null };
+    return { cliente: status.split(" · ")[0], comercial: av ? (av.ok ? "enviado" : "falhou: " + av.motivo) : null };
   } catch (e) { console.error("[agenda] e-mail:", e && e.message); return { cliente: "falhou", comercial: null }; }
 }
 
