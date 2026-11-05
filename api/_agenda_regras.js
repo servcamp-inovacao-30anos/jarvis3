@@ -75,7 +75,9 @@ function validarTipo(b) {
   const duracao_min = intN(b.duracao_min, 10, 480);
   if (duracao_min == null) return { erro: "Duração: de 10 a 480 minutos." };
   const cor = /^#[0-9a-f]{6}$/i.test(String(b.cor || "")) ? b.cor : "#1e4d8c";
-  return { tipo: { nome, duracao_min, local: txt(b.local, 300) || null, cor, ativo: b.ativo !== false } };
+  // diretores que precisam estar livres para este tipo de reunião (ids de ag_diretores)
+  const diretores = [...new Set((Array.isArray(b.diretores) ? b.diretores : []).map(Number).filter(n => Number.isInteger(n) && n > 0))].slice(0, 20);
+  return { tipo: { nome, duracao_min, local: txt(b.local, 300) || null, cor, ativo: b.ativo !== false, diretores } };
 }
 
 // Dados de quem marca. Pelo link o telefone é obrigatório (é como a Comercial confirma); e-mail opcional.

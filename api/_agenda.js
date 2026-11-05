@@ -27,6 +27,7 @@ const crypto = require("crypto");
 const _auth = require("./_auth");
 const ponto = require("./_ponto");
 const R = require("./_agenda_regras");
+const ICS = require("./_agenda_ics");
 const ADMINS = require("./users").ADMINS;
 
 // Administradora da agenda: vai ser a Gabriela, do Comercial. Por enquanto (pedido do João em 05/11/2026)
@@ -36,6 +37,9 @@ const GESTORES = [];
 const ENTIDADE = "agenda";
 const MAX_ATIVAS_POR_CONTATO = 2;   // pelo link, o mesmo telefone/e-mail não segura mais que isso no futuro
 const MAX_POR_IP_HORA = 5;          // e o mesmo endereço de internet não marca mais que isso por hora
+const DIR_ATUALIZA_MIN = 5;         // o calendário de cada diretor é relido no máximo a cada 5 minutos
+const DIR_VALIDO_H = 6;             // sem conseguir ler há mais que isso, o tipo de reunião sai do ar (não arrisca marcar em cima do diretor)
+const DIR_DIAS = 130;               // quantos dias à frente se guardam dos compromissos do diretor
 
 const erro = (res, status, mensagem, codigo) => res.status(status).json({ error: mensagem, codigo });
 const enc = encodeURIComponent;
@@ -94,17 +98,70 @@ async function bate(db, f, ignorarId) {
   return ocupados.length > 0;
 }
 
+// ── diretores: calendário público do iCloud ─────────────────────────────────
+
+// Só guarda os horários OCUPADOS (sem título, local ou convidados). O link do calendário é segredo de quem o
+// criou (qualquer um com o link lê os compromissos), então nunca volta inteiro para a tela.
+async function baixarIcs(url) {
+  const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 8000);
+  try {
+    const r = await fetch(url, { signal: ctl.signal, redirect: "follow", headers: { Accept: "text/calendar" } });
+    if (!r.ok) throw new Error("O calendário respondeu " + r.status);
+    if (r.url && !ICS.normalizarUrl(r.url)) throw new Error("O calendário mandou para um endereço não aceito.");
+    const txt = await r.text();
+    if (txt.length > 6 * 1024 * 1024) throw new Error("Calendário grande demais.");
+    if (!/BEGIN:VCALENDAR/i.test(txt)) throw new Error("Esse link não é de um calendário.");
+    return txt;
+  } finally { clearTimeout(t); }
+}
+const velho = (d, agora) => !d.lido_em || agora - +new Date(d.lido_em) > DIR_ATUALIZA_MIN * 60000;
+const valido = (d, agora) => !!d.lido_em && agora - +new Date(d.lido_em) <= DIR_VALIDO_H * 3600000;
+
+// Relê o calendário e guarda. Falhou: guarda o motivo e mantém a última leitura boa.
+async function atualizarDiretor(db, d, agora) {
+  try {
+    const url = ICS.normalizarUrl(d.url);
+    if (!url) throw new Error("Link de calendário inválido.");
+    const ocupado = ICS.ocupados(await baixarIcs(url), agora - 86400000, agora + DIR_DIAS * 86400000);
+    const novo = { ocupado, lido_em: iso(agora), erro: null };
+    await db.atualizar(`ag_diretores?id=eq.${d.id}`, novo);
+    return novo;
+  } catch (e) {
+    const erro = String((e && e.name === "AbortError") ? "O calendário demorou demais para responder." : (e && e.message) || e).slice(0, 200);
+    await db.atualizar(`ag_diretores?id=eq.${d.id}`, { erro }).catch(() => {});
+    return { erro };
+  }
+}
+async function diretoresDoTipo(db, tipo, agora) {
+  const ids = (Array.isArray(tipo.diretores) ? tipo.diretores : []).map(Number).filter(n => Number.isInteger(n) && n > 0);
+  if (!ids.length) return [];
+  const ds = await db.listar(`ag_diretores?select=id,nome,url,ocupado,lido_em,erro&ativo=is.true&id=in.(${ids.join(",")})&order=id.asc`);
+  await Promise.all(ds.filter(d => velho(d, agora)).map(async d => Object.assign(d, await atualizarDiretor(db, d, agora))));
+  return ds;
+}
+// Horários em que algum diretor exigido pelo tipo está ocupado. Sem leitura válida de algum deles: indisponível.
+async function bloqueiosDosDiretores(db, tipo, agora) {
+  const ds = await diretoresDoTipo(db, tipo, agora);
+  if (ds.some(d => !valido(d, agora))) return { indisponivel: true, bloqueios: [] };
+  const bloqueios = [];
+  ds.forEach(d => (d.ocupado || []).forEach(([a, b]) => bloqueios.push({ inicio: iso(a), fim: iso(b) })));
+  return { indisponivel: false, bloqueios };
+}
+const mascarar = u => { try { const x = new URL(ICS.normalizarUrl(u) || u); return x.hostname + "/…" + x.pathname.slice(-6); } catch (e) { return "…"; } };
+
 // ── pública ─────────────────────────────────────────────────────────────────
 
 async function tipoPeloLink(db, s) {
   if (!/^[A-Za-z0-9_-]{4,40}$/.test(String(s || ""))) return null;
-  const [t] = await db.obter(`ag_tipos?select=id,nome,duracao_min,local,cor,slug&slug=eq.${enc(s)}&ativo=is.true&limit=1`);
+  const [t] = await db.obter(`ag_tipos?select=id,nome,duracao_min,local,cor,slug,diretores&slug=eq.${enc(s)}&ativo=is.true&limit=1`);
   return t || null;
 }
 async function livresPara(db, cfg, tipo, agora) {
   const ate = R.paraUtc(R.somaDias(R.hojeBR(agora), cfg.janela_dias + 1), "00:00");
   const { ocupados, bloqueios } = await ocupacao(db, agora, ate);
-  return R.horariosLivres(cfg, tipo, ocupados, bloqueios, agora);
+  const dir = await bloqueiosDosDiretores(db, tipo, agora);
+  if (dir.indisponivel) { const e = new Error("diretor sem leitura válida"); e.indisponivel = true; throw e; }
+  return R.horariosLivres(cfg, tipo, ocupados, bloqueios.concat(dir.bloqueios), agora);
 }
 
 async function pubHorarios({ req, res, db }) {
@@ -190,6 +247,7 @@ async function publico(req, res) {
   if (!db) return erro(res, 500, "Agenda indisponível no momento.", "CONFIG_AUSENTE");
   try { return await fn({ req, res, db }); }
   catch (e) {
+    if (e && e.indisponivel) return erro(res, 503, "Os horários estão indisponíveis no momento. Fale com o nosso Comercial para marcar.", "INDISPONIVEL");
     console.error("[agenda pública] " + String((e && e.message) || e));
     return erro(res, 500, "Não foi possível agora. Tente de novo em instantes.", "ERRO");
   }
@@ -199,12 +257,17 @@ async function publico(req, res) {
 
 async function tudo({ res, db }) {
   const c = await lerConfig(db), agora = Date.now();
-  const [tipos, bloqueios, reunioes] = await Promise.all([
-    db.listar("ag_tipos?select=id,nome,duracao_min,local,cor,slug,ativo,ordem&order=ordem.asc,id.asc"),
+  const [tipos, bloqueios, reunioes, dirs] = await Promise.all([
+    db.listar("ag_tipos?select=id,nome,duracao_min,local,cor,slug,ativo,ordem,diretores&order=ordem.asc,id.asc"),
     db.listar(`ag_bloqueios?select=id,inicio,fim,motivo&fim=gt.${iso(agora - 90 * 86400000)}&order=inicio.asc`),
-    db.listar(`ag_reunioes?select=id,tipo_id,tipo_nome,inicio,fim,nome,telefone,email,obs,local,origem,status,criado_em&inicio=gt.${iso(agora - 90 * 86400000)}&order=inicio.asc`)
+    db.listar(`ag_reunioes?select=id,tipo_id,tipo_nome,inicio,fim,nome,telefone,email,obs,local,origem,status,criado_em&inicio=gt.${iso(agora - 90 * 86400000)}&order=inicio.asc`),
+    db.listar("ag_diretores?select=id,nome,url,ativo,ocupado,lido_em,erro&order=id.asc")
   ]);
-  return res.status(200).json({ config: cfgDe(c), ics_chave: c.ics_chave, tipos, bloqueios, reunioes });
+  await Promise.all(dirs.filter(d => d.ativo && velho(d, agora)).map(async d => Object.assign(d, await atualizarDiretor(db, d, agora))));
+  const ate = agora + 90 * 86400000, ocupados = [];
+  dirs.filter(d => d.ativo).forEach(d => (d.ocupado || []).forEach(([a, b]) => { if (b > agora - 7 * 86400000 && a < ate) ocupados.push({ dir: d.id, nome: d.nome, inicio: iso(a), fim: iso(b) }); }));
+  const diretores = dirs.map(d => ({ id: d.id, nome: d.nome, ativo: d.ativo, lido_em: d.lido_em, erro: d.erro || null, valido: valido(d, agora), link: mascarar(d.url), compromissos: (d.ocupado || []).filter(([a, b]) => b > agora && a < ate).length }));
+  return res.status(200).json({ config: cfgDe(c), ics_chave: c.ics_chave, tipos, bloqueios, reunioes, diretores, ocupados });
 }
 
 async function salvarConfig({ res, db, ator, body }) {
@@ -225,6 +288,52 @@ async function salvarTipo({ req, res, db, ator, body }) {
   registrar(db, ator, id ? "AGENDA_TIPO_ALTERADO" : "AGENDA_TIPO_CRIADO", id || v.tipo.nome, v.tipo);
   return res.status(200).json({ ok: true });
 }
+// Cadastra (ou altera, com id) um diretor. Link novo: lê na hora para avisar se não funciona.
+async function salvarDiretor({ res, db, ator, body }) {
+  const nome = String(body.nome || "").replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 60);
+  if (nome.length < 2) return erro(res, 400, "Informe o nome do diretor.", "INVALIDO");
+  const id = body.id != null && /^\d{1,12}$/.test(String(body.id)) ? String(body.id) : null;
+  const temUrl = String(body.url || "").trim() !== "";
+  let url = null;
+  if (temUrl || !id) {
+    url = ICS.normalizarUrl(body.url);
+    if (!url) return erro(res, 400, "Esse não parece um link de calendário do iCloud. Copie o link em Calendário › Calendário Público › Compartilhar Link.", "LINK_INVALIDO");
+  }
+  const agora = Date.now();
+  let lido = null;
+  if (url) {
+    try { lido = ICS.ocupados(await baixarIcs(url), agora - 86400000, agora + DIR_DIAS * 86400000); }
+    catch (e) { return erro(res, 400, "Não consegui ler esse calendário (" + String((e && e.message) || e).slice(0, 120) + "). Confira se ele está como Calendário Público e copie o link de novo.", "LINK_ILEGIVEL"); }
+  }
+  if (id) {
+    const patch = { nome, ativo: body.ativo !== false };
+    if (url) Object.assign(patch, { url, ocupado: lido, lido_em: iso(agora), erro: null });
+    await db.atualizar(`ag_diretores?id=eq.${id}`, patch);
+  } else {
+    await db.inserir("ag_diretores", [{ nome, url, ativo: true, ocupado: lido, lido_em: iso(agora), criado_por: ator }]);
+  }
+  registrar(db, ator, id ? "AGENDA_DIRETOR_ALTERADO" : "AGENDA_DIRETOR_CRIADO", id || nome, { nome }); // o link não vai para o registro
+  return res.status(200).json({ ok: true, compromissos: lido ? lido.length : null });
+}
+async function atualizarDiretores({ req, res, db }) {
+  const id = idDe(req), agora = Date.now();
+  const ds = await db.listar(`ag_diretores?select=id,nome,url&ativo=is.true${id ? "&id=eq." + id : ""}&order=id.asc`);
+  const r = await Promise.all(ds.map(d => atualizarDiretor(db, d, agora)));
+  return res.status(200).json({ ok: true, lidos: r.filter(x => !x.erro).length, falhas: r.filter(x => x.erro).map((x, i) => ({ nome: ds[i].nome, erro: x.erro })) });
+}
+async function tirarDiretor({ req, res, db, ator }) {
+  const id = idDe(req);
+  if (!id) return erro(res, 400, "Informe o diretor.", "SEM_ID");
+  const tipos = await db.listar("ag_tipos?select=id,diretores&order=id.asc");
+  for (const t of tipos) {
+    const ids = (Array.isArray(t.diretores) ? t.diretores : []).map(Number);
+    if (ids.includes(Number(id))) await db.atualizar(`ag_tipos?id=eq.${t.id}`, { diretores: ids.filter(n => n !== Number(id)) });
+  }
+  await db.remover(`ag_diretores?id=eq.${id}`);
+  registrar(db, ator, "AGENDA_DIRETOR_TIRADO", id, null);
+  return res.status(200).json({ ok: true });
+}
+
 async function desativarTipo({ req, res, db, ator }) {
   const id = idDe(req);
   if (!id) return erro(res, 400, "Informe o tipo.", "SEM_ID");
@@ -308,6 +417,7 @@ async function trocarIcs({ res, db, ator }) {
 const ROTAS = {
   "GET ": tudo, "POST config": salvarConfig, "POST tipo": salvarTipo, "DELETE tipo": desativarTipo,
   "POST bloqueio": criarBloqueio, "DELETE bloqueio": tirarBloqueio,
+  "POST diretor": salvarDiretor, "POST atualizar": atualizarDiretores, "DELETE diretor": tirarDiretor,
   "POST reuniao": criarReuniao, "PATCH reuniao": remarcar, "POST cancelar": cancelar, "POST ics": trocarIcs
 };
 

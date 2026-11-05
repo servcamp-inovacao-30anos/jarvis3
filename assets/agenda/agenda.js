@@ -5,6 +5,8 @@
    • Calendário como o do iPhone: Semana (padrão), Dia, Mês e Lista. Tocar num horário vazio marca uma
      reunião ali; tocar numa reunião abre os detalhes (remarcar, cancelar, ligar, WhatsApp).
    • Bloqueios, horário de atendimento, tipos e a assinatura do iPhone (.ics).
+   • Diretores: o calendário público do iCloud de cada diretor (iPhone) é lido pelo servidor; os horários em que
+     ele está ocupado saem do link dos tipos de reunião que exigem esse diretor, e aparecem em cinza no calendário.
    Reunião em cima de reunião nunca: o banco recusa, e a tela mostra a mensagem do servidor. */
 (function(raiz){
 "use strict";
@@ -65,6 +67,7 @@ function render(){
     '<button type="button" class="rh-btn" data-ag="marcar">➕ Marcar reunião</button>'+
     '<button type="button" class="rh-btn rh-btn-sec" data-ag="bloquear">⛔ Bloquear horário</button>'+
     '<button type="button" class="rh-btn rh-btn-sec" data-ag="config">⚙️ Horários e tipos</button>'+
+    '<button type="button" class="rh-btn rh-btn-sec" data-ag="diretores">👔 Diretores'+(semLeitura(D)?' ⚠️':'')+'</button>'+
     '<button type="button" class="rh-btn rh-btn-sec" data-ag="iphone">📱 Ver no iPhone</button></div>';
   h+='<div class="agd-kpis"><div><b>'+ativas.filter(r=>br(r.inicio).dia===hoje).length+'</b><span>hoje</span></div><div><b>'+semana+'</b><span>nos próximos 7 dias</span></div><div><b>'+ativas.length+'</b><span>marcadas no total</span></div><div><b>'+ativas.filter(r=>r.origem==="link").length+'</b><span>marcadas pelo link</span></div></div>';
   // links
@@ -173,6 +176,11 @@ function vistaGrade(dias,ativas){
       const ta=Math.max((a-d0)/60000,ini),tz=Math.min((z-d0)/60000,fim);if(tz<=ta)return;
       h+='<div class="agc-bl" style="top:'+y(ta)+'px;height:'+((tz-ta)/60*H)+'px"><span>⛔ '+esc(b.motivo||"Bloqueado")+'</span></div>';
     });
+    (D.ocupados||[]).forEach(o=>{
+      const a=Math.max(+new Date(o.inicio),d0),z=Math.min(+new Date(o.fim),d1);if(z<=a)return;
+      const ta=Math.max((a-d0)/60000,ini),tz=Math.min((z-d0)/60000,fim);if(tz<=ta)return;
+      h+='<div class="agc-dir" style="top:'+y(ta)+'px;height:'+((tz-ta)/60*H)+'px" title="'+esc(o.nome)+' ocupado"><span>👔 '+esc(o.nome)+'</span></div>';
+    });
     doDia(d).forEach(r=>{
       const a=minDe(br(r.inicio).hora),dd=dur(r),c=corTipo(r);
       h+='<button type="button" class="agc-ev'+(dd<=30?" curto":"")+'" data-ag="ver" data-id="'+r.id+'" style="top:'+y(a)+'px;height:'+Math.max(18,dd/60*H-2)+'px;background:'+rgba(c,.16)+';border-left-color:'+esc(c)+'" title="'+esc(br(r.inicio).hora+"–"+br(r.fim).hora+" · "+r.nome+" · "+(r.tipo_nome||""))+'">'+
@@ -253,6 +261,7 @@ function ligar(el){
     else if(a==="marcar")abrirMarcar();
     else if(a==="bloquear")abrirBloqueio();
     else if(a==="config")abrirConfig();
+    else if(a==="diretores")abrirDiretores();
     else if(a==="iphone")abrirIphone();
     else if(a==="passadas"){AG.verPassadas=!AG.verPassadas;render();}
     else if(a==="vista"){AG.vista=b.dataset.v;guardarVista(AG.vista);render();}
@@ -351,7 +360,8 @@ function abrirConfig(){
     '<input class="t-nome" maxlength="60" placeholder="Nome (ex.: Captação)" value="'+esc(t?t.nome:"")+'">'+
     '<select class="t-dur">'+[15,20,30,40,45,60,75,90,120].map(m=>'<option value="'+m+'"'+((t?t.duracao_min:30)===m?" selected":"")+'>'+durTxt(m)+'</option>').join("")+'</select>'+
     '<input class="t-local" maxlength="300" placeholder="Local ou link da videochamada" value="'+esc((t&&t.local)||"")+'">'+
-    '<label class="agd-ck"><input type="checkbox" class="t-ativo"'+(!t||t.ativo?" checked":"")+'> ativo</label></div>';
+    '<label class="agd-ck"><input type="checkbox" class="t-ativo"'+(!t||t.ativo?" checked":"")+'> ativo</label>'+
+    ((D.diretores||[]).filter(x=>x.ativo).length?'<div class="t-dir"><span>Exige livre:</span>'+(D.diretores||[]).filter(x=>x.ativo).map(x=>'<label class="agd-ck"><input type="checkbox" class="t-d" value="'+x.id+'"'+((t&&(t.diretores||[]).map(Number).includes(Number(x.id)))?" checked":"")+'> '+esc(x.nome)+'</label>').join("")+'</div>':'')+'</div>';
   const ov=janela("⚙️ Horários e tipos de reunião",
     '<div class="agd-sub">Horário de atendimento <small>(o que aparece no link)</small></div>'+[1,2,3,4,5,6,0].map(linhaDia).join("")+
     '<div class="agd-3">'+
@@ -375,18 +385,53 @@ function abrirConfig(){
       semana[l.dataset.d]=f;
     });
     const cfg={semana,intervalo_min:+q("#agc-int").value,antecedencia_h:+q("#agc-ant").value,janela_dias:+q("#agc-jan").value,passo_min:+q("#agc-passo").value};
-    const tipos=[...ov.querySelectorAll(".agd-tipo")].map(l=>({id:l.dataset.id||null,nome:l.querySelector(".t-nome").value,duracao_min:+l.querySelector(".t-dur").value,local:l.querySelector(".t-local").value,cor:l.querySelector(".t-cor").value,ativo:l.querySelector(".t-ativo").checked}))
+    const tipos=[...ov.querySelectorAll(".agd-tipo")].map(l=>({id:l.dataset.id||null,nome:l.querySelector(".t-nome").value,duracao_min:+l.querySelector(".t-dur").value,local:l.querySelector(".t-local").value,cor:l.querySelector(".t-cor").value,ativo:l.querySelector(".t-ativo").checked,diretores:[...l.querySelectorAll(".t-d:checked")].map(i=>Number(i.value))}))
       .filter(t=>t.id||t.nome.trim()); // linha nova em branco é ignorada
     enviar(ov,e.currentTarget,async()=>{
       await api("config","POST",cfg);
       for(const t of tipos){
         const antes=t.id&&D.tipos.find(x=>String(x.id)===String(t.id));
-        if(antes&&antes.nome===t.nome&&antes.duracao_min===t.duracao_min&&(antes.local||"")===t.local&&antes.cor===t.cor&&antes.ativo===t.ativo)continue;
+        if(antes&&antes.nome===t.nome&&antes.duracao_min===t.duracao_min&&(antes.local||"")===t.local&&antes.cor===t.cor&&antes.ativo===t.ativo&&((l=>l.length===t.diretores.length&&l.every((x,i)=>x===t.diretores[i]))((antes.diretores||[]).map(Number).sort((a,b)=>a-b))))continue;
         await api("tipo","POST",t);
       }
     },"Configuração salva");
   });
 }
+/* ── diretores (calendário público do iCloud) ──────────────────────────── */
+function semLeitura(D){return(D.diretores||[]).some(d=>d.ativo&&!d.valido);}
+const haTexto=iso=>{if(!iso)return"nunca";const m=Math.round((Date.now()-+new Date(iso))/60000);return m<1?"agora há pouco":m<60?"há "+m+" min":m<1440?"há "+Math.round(m/60)+" h":"há "+Math.round(m/1440)+" dias";};
+function abrirDiretores(){
+  const D=AG.dados,ds=D.diretores||[];
+  const linha=d=>'<div class="agdi" data-id="'+d.id+'"><div class="agdi-n"><b>'+esc(d.nome)+'</b>'+(d.ativo?'':' <span class="agd-tag">pausado</span>')+
+    '<span class="agdi-s '+(d.ativo&&!d.valido?'ruim':'ok')+'">'+(d.ativo?(d.valido?'✅ lido '+esc(haTexto(d.lido_em))+' · '+d.compromissos+' compromisso'+(d.compromissos===1?'':'s')+' nos próximos 90 dias':'⚠️ sem leitura válida: os tipos que exigem '+esc(d.nome)+' estão fora do ar'):'pausado: não bloqueia nada')+'</span>'+
+    (d.erro?'<span class="agdi-e">Último erro: '+esc(d.erro)+'</span>':'')+'<span class="agdi-l">'+esc(d.link)+'</span></div>'+
+    '<div class="agdi-a"><button type="button" class="agd-lk" data-d="atualizar">atualizar</button><button type="button" class="agd-lk" data-d="trocar">trocar link</button><button type="button" class="agd-lk" data-d="pausar">'+(d.ativo?'pausar':'reativar')+'</button><button type="button" class="agd-lk agd-lk-v" data-d="tirar">remover</button></div></div>';
+  const ov=janela("👔 Diretores — agenda do iPhone",
+    '<p class="agd-dica">Os horários em que o diretor está ocupado somem do link dos tipos de reunião que <b>exigem</b> ele (marque em ⚙️ Horários e tipos). O painel guarda só <b>quando</b> o diretor está ocupado: não guarda o título, o local nem os convidados. A agenda é relida a cada 5 minutos.</p>'+
+    '<div id="agdi-lista">'+(ds.length?ds.map(linha).join(""):'<div class="agd-vazio">Nenhum diretor cadastrado.</div>')+'</div>'+
+    '<div class="agd-sub" id="agdi-tit">Cadastrar diretor</div>'+
+    campo("Nome",'<input id="agdi-nome" maxlength="60" placeholder="Ex.: Paulo">')+
+    campo("Link do calendário público",'<input id="agdi-url" placeholder="webcal://p12-caldav.icloud.com/published/…">')+
+    '<input type="hidden" id="agdi-id">'+
+    '<div class="agd-acoes"><button type="button" class="rh-btn rh-btn-sec" data-fechar="1">Fechar</button><button type="button" class="rh-btn" id="agdi-ok">Cadastrar</button></div>'+
+    '<details class="agdi-como"><summary>Como o diretor pega esse link no iPhone</summary><ol class="agd-passos"><li>Abrir o app <b>Calendário</b> › tocar em <b>Calendários</b> (embaixo)</li><li>Tocar no <b>ⓘ</b> ao lado do calendário que ele usa para os compromissos</li><li>Ativar <b>Calendário Público</b></li><li>Tocar em <b>Compartilhar Link</b> › <b>Copiar</b> e mandar o link para você</li></ol>'+
+    '<p class="agd-dica">⚠️ Quem tiver esse link consegue ler os compromissos, com os títulos. Mande só para quem precisa. Se o diretor preferir, ele pode criar um calendário só de “Disponibilidade”, pôr nele os horários em que não pode, e publicar só esse. Para parar de compartilhar, é só desligar o Calendário Público no iPhone.</p></details>',true);
+  const q=s=>ov.querySelector(s),aj=ds.reduce((m,d)=>(m[d.id]=d,m),{});
+  const acaoD=(fn,ok,b)=>{b.disabled=true;fn().then(()=>{toast("✅ "+ok);return api("");}).then(j=>{AG.dados=j;fechar();render();abrirDiretores();}).catch(e=>{b.disabled=false;msg(ov,e.message,true);});};
+  ov.addEventListener("click",e=>{
+    const b=e.target.closest("[data-d]");if(!b)return;
+    const row=b.closest(".agdi"),id=row.dataset.id,d=aj[id];
+    if(b.dataset.d==="atualizar")acaoD(()=>api("atualizar","POST",{},"&id="+id),"Calendário relido",b);
+    else if(b.dataset.d==="pausar")acaoD(()=>api("diretor","POST",{id,nome:d.nome,ativo:!d.ativo}),d.ativo?"Diretor pausado":"Diretor reativado",b);
+    else if(b.dataset.d==="tirar"){if(confirm("Remover "+d.nome+"? Os tipos de reunião deixam de exigir ele e o link volta a mostrar os horários dele."))acaoD(()=>api("diretor","DELETE",null,"&id="+id),"Diretor removido",b);}
+    else if(b.dataset.d==="trocar"){q("#agdi-id").value=id;q("#agdi-nome").value=d.nome;q("#agdi-url").value="";q("#agdi-tit").textContent="Trocar o link de "+d.nome;q("#agdi-ok").textContent="Salvar";q("#agdi-url").focus();}
+  });
+  q("#agdi-ok").addEventListener("click",e=>{
+    const id=q("#agdi-id").value;
+    acaoD(()=>api("diretor","POST",{id:id||null,nome:q("#agdi-nome").value,url:q("#agdi-url").value}),id?"Link trocado":"Diretor cadastrado",e.currentTarget);
+  });
+}
+
 function abrirIphone(){
   const k=AG.dados.ics_chave;
   const https=location.origin+"/api/rh?modulo=agendapub&t=ics&k="+encodeURIComponent(k);

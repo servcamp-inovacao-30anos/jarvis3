@@ -321,3 +321,175 @@ test("tela: semana como o iPhone (seg a sex), reunião no horário e na altura d
     assert.ok(h.includes('data-ag="vista" data-v="mes"'));
   } finally { Date.now = real; }
 });
+
+// ── diretores: calendário público do iCloud ─────────────────────────────────
+const ICS_DIR = (inicio, fim, titulo) => ["BEGIN:VCALENDAR", "VERSION:2.0", "BEGIN:VEVENT", "UID:x1", "SUMMARY:" + (titulo || "Segredo do diretor"),
+  "DTSTART;TZID=America/Sao_Paulo:" + inicio, "DTEND;TZID=America/Sao_Paulo:" + fim, "END:VEVENT", "END:VCALENDAR", ""].join("\r\n");
+const LINK_DIR = "webcal://p12-caldav.icloud.com/published/2/AAAAsegredoDoLink123456";
+const auditoriaTemLink = tabelas => JSON.stringify(tabelas.fm_auditoria || []).includes("AAAAsegredoDoLink123456");
+// põe o iCloud de mentira na frente do Supabase falso; "estado" controla o que ele responde e conta as leituras
+function icloudFalso(estado) {
+  const antes = global.fetch;
+  global.fetch = async (url, init) => {
+    if (String(url).includes("icloud.com")) {
+      estado.leituras = (estado.leituras || 0) + 1;
+      if (estado.falha) throw new Error("rede caiu");
+      return { ok: true, status: 200, url: String(url), text: async () => estado.ics };
+    }
+    return antes(url, init);
+  };
+  return () => { global.fetch = antes; };
+}
+async function comDiretor(est) {
+  const base = await preparar();
+  const solta = icloudFalso(est);
+  const r = await adm("diretor", { method: "POST", body: { nome: "Paulo", url: LINK_DIR } });
+  assert.equal(r.statusCode, 200, JSON.stringify(r.body));
+  const dir = base.tabelas.ag_diretores[0];
+  const tipo = base.tabelas.ag_tipos.find(t => t.slug === base.slug60);
+  tipo.diretores = [dir.id]; // "Reunião com cliente" exige o Paulo; Captação não
+  return Object.assign(base, { dir, tipo, solta });
+}
+
+test("diretor: cadastrar lê o calendário, guarda só os horários ocupados e nunca devolve o link inteiro", async () => {
+  await comRelogio(AGORA, async () => {
+    const base = await preparar();
+    const solta = icloudFalso({ ics: ICS_DIR("20261112T100000", "20261112T113000") });
+    try {
+      const r = await adm("diretor", { method: "POST", body: { nome: "Paulo", url: LINK_DIR } });
+      assert.equal(r.statusCode, 200);
+      assert.equal(r.body.compromissos, 1);
+      const d = base.tabelas.ag_diretores[0];
+      assert.deepEqual(d.ocupado, [[R.paraUtc("2026-11-12", "10:00"), R.paraUtc("2026-11-12", "11:30")]]);
+      assert.ok(!JSON.stringify(d.ocupado).includes("Segredo"), "título do compromisso não é guardado");
+      assert.ok(d.url.startsWith("https://p12-caldav.icloud.com/"), "webcal vira https");
+      const t = await adm("");
+      const txt = JSON.stringify(t.body);
+      assert.ok(!txt.includes("AAAAsegredoDoLink123456"), "o link inteiro nunca volta para a tela");
+      assert.ok(!txt.includes("Segredo do diretor"));
+      assert.equal(t.body.diretores[0].compromissos, 1);
+      assert.equal(t.body.ocupados[0].nome, "Paulo");
+      assert.equal(auditoriaTemLink(base.tabelas), false, "o link não vai para o registro de auditoria");
+    } finally { solta(); }
+  });
+});
+
+test("diretor: link que não é de calendário, endereço estranho e calendário ilegível são recusados", async () => {
+  await comRelogio(AGORA, async () => {
+    const { tabelas } = await preparar();
+    const solta = icloudFalso({ ics: "isto não é um calendário" });
+    try {
+      for (const url of ["https://exemplo.com/cal.ics", "http://p12-caldav.icloud.com/x", "file:///etc/passwd", "", "https://169.254.169.254/latest"]) {
+        const r = await adm("diretor", { method: "POST", body: { nome: "Paulo", url } });
+        assert.equal(r.statusCode, 400, url);
+        assert.equal(r.body.codigo, "LINK_INVALIDO");
+      }
+      const ilegivel = await adm("diretor", { method: "POST", body: { nome: "Paulo", url: LINK_DIR } });
+      assert.equal(ilegivel.statusCode, 400);
+      assert.equal(ilegivel.body.codigo, "LINK_ILEGIVEL");
+      assert.equal((await adm("diretor", { method: "POST", body: { nome: "P", url: LINK_DIR } })).statusCode, 400, "nome curto");
+      assert.equal((tabelas.ag_diretores || []).length, 0);
+    } finally { solta(); }
+  });
+});
+
+test("diretor: o tipo que exige o diretor some nos horários dele; o que não exige continua; e não dá para marcar nele", async () => {
+  await comRelogio(AGORA, async () => {
+    const { slug60, slug30, solta } = await comDiretor({ ics: ICS_DIR("20261112T100000", "20261112T113000") });
+    try {
+      const cliente = await pub("horarios", { query: { s: slug60 } });
+      assert.equal(cliente.statusCode, 200);
+      const h = cliente.body.dias[QUI];
+      assert.ok(!h.includes("10:00") && !h.includes("10:30") && !h.includes("11:00"), "o diretor está ocupado das 10h às 11h30");
+      assert.ok(!h.includes("09:30"), "uma reunião de 1h às 9h30 invadiria as 10h");
+      assert.ok(h.includes("09:00") && h.includes("11:30"), "9h–10h e 11h30 encaixam");
+      const captacao = await pub("horarios", { query: { s: slug30 } });
+      assert.ok(captacao.body.dias[QUI].includes("10:00"), "Captação não exige o Paulo");
+      const marca = await pub("agendar", { method: "POST", body: Object.assign({ s: slug60, dia: QUI, hora: "10:30" }, pessoa(1)) });
+      assert.equal(marca.statusCode, 409, "não marca em cima do diretor");
+      const ok = await pub("agendar", { method: "POST", body: Object.assign({ s: slug60, dia: QUI, hora: "11:30" }, pessoa(2)) });
+      assert.equal(ok.statusCode, 201);
+    } finally { solta(); }
+  });
+});
+
+test("diretor: o calendário é relido no máximo a cada 5 minutos, e a mudança do diretor entra depois disso", async () => {
+  const est = { ics: ICS_DIR("20261112T100000", "20261112T113000") };
+  let slug60, solta;
+  await comRelogio(AGORA, async () => { ({ slug60, solta } = await comDiretor(est)); });
+  try {
+    const leituras0 = est.leituras;
+    await comRelogio(AGORA + 2 * 60000, async () => {
+      await pub("horarios", { query: { s: slug60 } });
+      await pub("horarios", { query: { s: slug60 } });
+    });
+    assert.equal(est.leituras, leituras0, "dentro de 5 minutos usa o que já leu");
+    est.ics = ICS_DIR("20261112T140000", "20261112T150000"); // o diretor mudou a agenda
+    await comRelogio(AGORA + 6 * 60000, async () => {
+      const r = await pub("horarios", { query: { s: slug60 } });
+      assert.equal(est.leituras, leituras0 + 1, "passou de 5 minutos: relê uma vez");
+      assert.ok(r.body.dias[QUI].includes("10:00") && !r.body.dias[QUI].includes("14:00"), "10h liberou e 14h ocupou");
+    });
+  } finally { solta(); }
+});
+
+test("diretor: se o iCloud cair, usa a última leitura por até 6 horas; depois o tipo sai do ar em vez de arriscar", async () => {
+  const est = { ics: ICS_DIR("20261112T100000", "20261112T113000") };
+  let slug60, slug30, solta;
+  await comRelogio(AGORA, async () => { ({ slug60, slug30, solta } = await comDiretor(est)); });
+  try {
+    est.falha = true;
+    await comRelogio(AGORA + 3 * 3600000, async () => {
+      const r = await pub("horarios", { query: { s: slug60 } });
+      assert.equal(r.statusCode, 200, "3h depois ainda vale a última leitura");
+      assert.ok(!r.body.dias[QUI].includes("10:00"));
+    });
+    await comRelogio(AGORA + 7 * 3600000, async () => {
+      const r = await pub("horarios", { query: { s: slug60 } });
+      assert.equal(r.statusCode, 503);
+      assert.equal(r.body.codigo, "INDISPONIVEL");
+      const m = await pub("agendar", { method: "POST", body: Object.assign({ s: slug60, dia: R.somaDias(R.hojeBR(AGORA + 7 * 3600000), 8), hora: "09:00" }, pessoa(1)) });
+      assert.equal(m.statusCode, 503, "também não marca");
+      assert.equal((await pub("horarios", { query: { s: slug30 } })).statusCode, 200, "o tipo sem diretor segue funcionando");
+      const t = await adm("");
+      assert.equal(t.body.diretores[0].valido, false);
+      assert.ok(t.body.diretores[0].erro, "a administradora vê o motivo");
+    });
+  } finally { solta(); }
+});
+
+test("diretor: tirar o diretor tira a exigência dos tipos; o tipo guarda quais diretores exige; só o admin cadastra", async () => {
+  await comRelogio(AGORA, async () => {
+    const { tabelas, dir, tipo, solta } = await comDiretor({ ics: ICS_DIR("20261112T100000", "20261112T113000") });
+    try {
+      
+      const salvo = await adm("tipo", { method: "POST", body: { id: tipo.id, nome: tipo.nome, duracao_min: 60, diretores: [dir.id, dir.id, "x", -3] } });
+      assert.equal(salvo.statusCode, 200);
+      assert.deepEqual(tabelas.ag_tipos.find(t => t.id === tipo.id).diretores, [dir.id], "só ids válidos e sem repetir");
+      assert.equal((await adm("diretor", { method: "DELETE", query: { id: String(dir.id) } })).statusCode, 200);
+      assert.equal(tabelas.ag_diretores.length, 0);
+      assert.deepEqual(tabelas.ag_tipos.find(t => t.id === tipo.id).diretores, []);
+      assert.equal((await adm("diretor", { method: "POST", body: { nome: "Paulo", url: LINK_DIR }, usuario: "carlos" })).statusCode, 403);
+    } finally { solta(); }
+  });
+});
+
+test("tela: horários do diretor aparecem em cinza no calendário e o botão avisa quando algum diretor está sem leitura", async () => {
+  const real = Date.now;
+  Date.now = () => AGORA;
+  try {
+    const dados = {
+      config: R.CONFIG_PADRAO, ics_chave: "k", bloqueios: [], reunioes: [],
+      tipos: [{ id: 1, nome: "Reunião com cliente", duracao_min: 60, cor: "#1e4d8c", slug: "abc", ativo: true, diretores: [7] }],
+      diretores: [{ id: 7, nome: "Paulo <b>", ativo: true, valido: false, erro: "rede caiu", link: "icloud.com/…23456", compromissos: 0, lido_em: null }],
+      ocupados: [{ dir: 7, nome: "Paulo <b>", inicio: new Date(R.paraUtc("2026-11-06", "10:00")).toISOString(), fim: new Date(R.paraUtc("2026-11-06", "11:30")).toISOString() }]
+    };
+    const { ctx, pagina } = telaAgenda(dados);
+    ctx.agLoad();
+    await new Promise(r => setTimeout(r, 15));
+    const h = pagina.innerHTML;
+    assert.ok(/class="agc-dir" style="top:112px;height:84px/.test(h), "bloco cinza das 10h às 11h30 (1,5h = 84px)");
+    assert.ok(h.includes("👔 Paulo &lt;b&gt;") && !h.includes("Paulo <b>"), "nome do diretor escapado");
+    assert.ok(/data-ag="diretores">👔 Diretores ⚠️/.test(h), "o botão avisa que há diretor sem leitura");
+  } finally { Date.now = real; }
+});

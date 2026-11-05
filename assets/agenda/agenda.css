@@ -136,3 +136,23 @@ html[data-theme="dark"] .agc-seg button.on{background:var(--g200)}
 html[data-theme="dark"] .agc-atend{background:rgba(46,143,239,.08)}
 html[data-theme="dark"] .agc-ev{color:var(--g800)}
 html[data-theme="dark"] .agc-det-l a{color:#8cc6ff}
+
+/* ── diretores ── */
+.agc-dir{position:absolute;left:0;right:0;background:repeating-linear-gradient(135deg,rgba(100,116,139,.22),rgba(100,116,139,.22) 5px,rgba(100,116,139,.12) 5px,rgba(100,116,139,.12) 10px);border-left:3px solid #64748b;pointer-events:none;overflow:hidden}
+.agc-dir span{display:block;padding:2px 5px;font-size:.58rem;font-weight:800;color:var(--g600,#475569)}
+.agdi{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 12px;padding:10px 0;border-top:1px solid var(--g100)}
+.agdi:first-child{border-top:none}
+.agdi-n{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 260px}
+.agdi-n b{font-size:.84rem;color:var(--g800)}
+.agdi-s{font-size:.68rem;font-weight:700}
+.agdi-s.ok{color:#16a34a}
+.agdi-s.ruim{color:#b91c1c}
+.agdi-e{font-size:.64rem;color:#b91c1c}
+.agdi-l{font-size:.62rem;color:var(--g500);font-family:ui-monospace,monospace;overflow:hidden;text-overflow:ellipsis}
+.agdi-a{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:flex-start}
+.agdi-como{margin-top:14px;font-size:.76rem;color:var(--g700)}
+.agdi-como summary{cursor:pointer;font-weight:800}
+.t-dir{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center;font-size:.72rem;color:var(--g500);padding:0 0 6px 44px}
+.t-dir .agd-ck{margin:0}
+html[data-theme="dark"] .agdi-s.ok{color:#75e0a7}
+html[data-theme="dark"] .agdi-s.ruim,html[data-theme="dark"] .agdi-e{color:#fda29b}
