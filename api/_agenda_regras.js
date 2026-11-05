@@ -66,11 +66,38 @@ function validarConfig(b) {
   if (antecedencia_h == null) return { erro: "Antecedência mínima: de 0 a 168 horas." };
   if (janela_dias == null) return { erro: "Agenda aberta: de 1 a 120 dias." };
   if (passo_min == null) return { erro: "Horários a cada: de 5 a 240 minutos." };
+  // online/presencial de cada dia da semana (padrão; um dia específico pode mudar em modalidade_dias)
+  const ms = b.modalidade_semana && typeof b.modalidade_semana === "object" ? b.modalidade_semana : {};
+  const modalidade_semana = {};
+  for (const d of DIAS_SEMANA) if (MOD_DIA.includes(ms[d]) && ms[d] !== "ambos") modalidade_semana[d] = ms[d];
   // e-mail que recebe o aviso de reunião nova, remarcada ou cancelada (vazio = a caixa do Comercial, MAIL_USER)
   const aviso = txt(b.email_aviso, 120).toLowerCase();
   if (aviso && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(aviso)) return { erro: "E-mail dos avisos inválido." };
-  return { config: { semana, intervalo_min, antecedencia_h, janela_dias, passo_min, email_aviso: aviso || null } };
+  return { config: { semana, intervalo_min, antecedencia_h, janela_dias, passo_min, email_aviso: aviso || null, modalidade_semana } };
 }
+
+// ── online ou presencial ───────────────────────────────────────────────────
+// Cada dia atende "ambos", só "online" ou só "presencial". Vale o que a Comercial marcou para aquele dia
+// (modalidade_dias), senão o padrão do dia da semana (modalidade_semana), senão os dois.
+const MODALIDADES = { online: "Online", presencial: "Presencial" };
+const MOD_DIA = ["ambos", "online", "presencial"];
+function modalidadeDoDia(cfg, dia) {
+  const d = ((cfg && cfg.modalidade_dias) || {})[dia];
+  if (MOD_DIA.includes(d)) return d;
+  const s = ((cfg && cfg.modalidade_semana) || {})[diaSemana(dia)];
+  return MOD_DIA.includes(s) ? s : "ambos";
+}
+const aceita = (doDia, m) => doDia === "ambos" ? !!MODALIDADES[m] : m === doDia;
+// { dia, modalidade } — modalidade null/"" = volta ao padrão da semana
+function validarModalidadeDia(b) {
+  const dia = String((b && b.dia) || "");
+  if (!DIA.test(dia)) return { erro: "Dia inválido." };
+  const m = b.modalidade == null || b.modalidade === "" || b.modalidade === "padrao" ? null : String(b.modalidade);
+  if (m && !MOD_DIA.includes(m)) return { erro: "Escolha online, presencial ou os dois." };
+  return { dia, modalidade: m };
+}
+// Onde fica a reunião: online usa o link/instruções do tipo; presencial, o endereço.
+const localDe = (tipo, m) => m === "online" ? ((tipo && tipo.local_online) || null) : ((tipo && tipo.local) || null);
 
 function validarTipo(b) {
   const nome = txt(b && b.nome, 60);
@@ -80,7 +107,7 @@ function validarTipo(b) {
   const cor = /^#[0-9a-f]{6}$/i.test(String(b.cor || "")) ? b.cor : "#1e4d8c";
   // diretores que precisam estar livres para este tipo de reunião (ids de ag_diretores)
   const diretores = [...new Set((Array.isArray(b.diretores) ? b.diretores : []).map(Number).filter(n => Number.isInteger(n) && n > 0))].slice(0, 20);
-  return { tipo: { nome, duracao_min, local: txt(b.local, 300) || null, cor, ativo: b.ativo !== false, diretores } };
+  return { tipo: { nome, duracao_min, local: txt(b.local, 300) || null, local_online: txt(b.local_online, 300) || null, cor, ativo: b.ativo !== false, diretores } };
 }
 
 // Dados de quem marca. Pelo link o telefone é obrigatório (é como a Comercial confirma); e-mail opcional.
@@ -150,7 +177,8 @@ function numeros(rs, mes, agora) {
   const contar = (arr, fn) => { const m = {}; arr.forEach(r => { const k = fn(r); m[k] = (m[k] || 0) + 1; }); return m; };
   const doMes = lista.filter(r => mesDe(r.inicio) === mes && r.status === "ativa");
   const porTipo = Object.entries(contar(doMes, r => r.tipo_nome || "Reunião")).sort((a, b) => b[1] - a[1]);
-  const porResultado = Object.entries(contar(doMes.filter(r => r.resultado === "realizada"), r => PROXIMOS[r.proximo_passo] || "Sem próximo passo")).sort((a, b) => b[1] - a[1]);
+  const porModalidade = Object.entries(contar(doMes.filter(r => MODALIDADES[r.modalidade]), r => MODALIDADES[r.modalidade])).sort((a, b) => b[1] - a[1]);
+  const porResultado =Object.entries(contar(doMes.filter(r => r.resultado === "realizada"), r => PROXIMOS[r.proximo_passo] || "Sem próximo passo")).sort((a, b) => b[1] - a[1]);
   // procura: tudo o que foi marcado (inclusive o que depois foi cancelado) nos últimos 6 meses até o mês escolhido
   const seis = new Set([0, 1, 2, 3, 4, 5].map(i => mesAntes(mes, i)));
   const procura = lista.filter(r => seis.has(mesDe(r.inicio)));
@@ -159,7 +187,7 @@ function numeros(rs, mes, agora) {
   const dias = contar(procura, r => SEMANA[new Date(deUtc(+new Date(r.inicio)).dia + "T12:00:00Z").getUTCDay()]);
   return {
     mes, atual, anterior,
-    por_tipo: porTipo, proximos_passos: porResultado,
+    por_tipo: porTipo, por_modalidade: porModalidade, proximos_passos: porResultado,
     por_hora: Object.entries(horas).sort((a, b) => a[0] < b[0] ? -1 : 1),
     por_dia: SEMANA.filter(d => dias[d]).map(d => [d, dias[d]]),
     serie: [5, 4, 3, 2, 1, 0].map(i => { const m = mesAntes(mes, i), n = numerosDoMes(lista, m, agora); return { mes: m, marcadas: n.marcadas, realizadas: n.realizadas, faltas: n.faltas }; })
@@ -240,5 +268,6 @@ module.exports = {
   OFFSET, CONFIG_PADRAO, TIPOS_PADRAO, HORA, DIA,
   paraUtc, deUtc, somaDias, diaSemana, hojeBR, faixa,
   validarConfig, validarTipo, validarPessoa, horariosDoDia, horariosLivres, ics, icsTxt,
-  validarMarca, validarResultado, numeros, mesAntes, RESULTADOS, PROXIMOS, FOTO_MAX
+  validarMarca, validarResultado, numeros, mesAntes, RESULTADOS, PROXIMOS, FOTO_MAX,
+  MODALIDADES, MOD_DIA, modalidadeDoDia, aceita, validarModalidadeDia, localDe
 };

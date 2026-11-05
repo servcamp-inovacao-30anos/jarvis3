@@ -18,6 +18,12 @@ function quando(inicioMs) {
   return { dia, hora, extenso: SEMANA[d.getUTCDay()] + ", " + d.getUTCDate() + " de " + MESES[d.getUTCMonth()], curto: String(d.getUTCDate()).padStart(2, "0") + "/" + String(d.getUTCMonth() + 1).padStart(2, "0") };
 }
 const durTxt = m => m < 60 ? m + " minutos" : (m % 60 ? Math.floor(m / 60) + "h" + String(m % 60).padStart(2, "0") : m / 60 + (m === 60 ? " hora" : " horas"));
+// Onde: "💻 Online: link" ou "📍 Presencial — endereço" (reunião antiga, sem modalidade: só o local)
+function onde(m) {
+  if (m.modalidade === "online") return "💻 Online" + (m.local ? ": " + m.local : " (o link de acesso será enviado pelo nosso Comercial)");
+  if (m.modalidade === "presencial") return "📍 Presencial" + (m.local ? " — " + m.local : "");
+  return m.local ? "📍 " + m.local : "";
+}
 const primeiroNome = n => String(n || "").trim().split(/\s+/)[0] || "";
 
 // Moldura com a marca: logo do Grupo ServCamp no topo (precisa do endereço do painel, m.base), a faixa colorida
@@ -51,31 +57,31 @@ const botao = (url, txt, cor) => `<a href="${esc(url)}" style="display:inline-bl
 function confirmacao(m) {
   const q = quando(m.inicio);
   const assunto = `Reunião confirmada — ${m.tipo} · ${q.curto} às ${q.hora}`;
-  const detalhes = [`<b>${esc(m.tipo)}</b>`, `📅 ${esc(q.extenso)}, às <b>${esc(q.hora)}</b> (horário de Brasília)`, `⏱ ${esc(durTxt(m.duracao_min))}`, m.local ? `📍 ${esc(m.local)}` : ""];
+  const detalhes = [`<b>${esc(m.tipo)}</b>`, `📅 ${esc(q.extenso)}, às <b>${esc(q.hora)}</b> (horário de Brasília)`, `⏱ ${esc(durTxt(m.duracao_min))}`, esc(onde(m))];
   const corpo = `<p style="margin:0 0 6px">Olá, ${esc(primeiroNome(m.nome))}!</p><p style="margin:0">Sua reunião com o Grupo ServCamp está <b>confirmada</b>:</p>${quadro(detalhes)}` +
     `<p style="margin:0 0 14px">O convite vai anexo: abra para colocar na sua agenda.</p>` +
     (m.gerenciar ? `<p style="margin:0 0 14px">Precisa mudar? Você pode remarcar ou cancelar até 2 horas antes:</p><p style="margin:0">${botao(m.gerenciar, "Remarcar ou cancelar")}</p>` : "");
-  const texto = `Olá, ${primeiroNome(m.nome)}!\n\nSua reunião com o Grupo ServCamp está confirmada:\n\n${m.tipo}\n${q.extenso}, às ${q.hora} (horário de Brasília)\nDuração: ${durTxt(m.duracao_min)}\n${m.local ? "Local: " + m.local + "\n" : ""}\n${m.gerenciar ? "Para remarcar ou cancelar (até 2 horas antes): " + m.gerenciar + "\n" : ""}\n${assinaTxt(m)}`;
+  const texto = `Olá, ${primeiroNome(m.nome)}!\n\nSua reunião com o Grupo ServCamp está confirmada:\n\n${m.tipo}\n${q.extenso}, às ${q.hora} (horário de Brasília)\nDuração: ${durTxt(m.duracao_min)}\n${onde(m) ? onde(m) + "\n" : ""}\n${m.gerenciar ? "Para remarcar ou cancelar (até 2 horas antes): " + m.gerenciar + "\n" : ""}\n${assinaTxt(m)}`;
   return { assunto, html: moldura(m, m.cor || "#1e4d8c", "Reunião confirmada ✅", corpo), texto };
 }
 
 function lembrete(m) {
   const q = quando(m.inicio);
   const assunto = `Lembrete: sua reunião é amanhã às ${q.hora} — ${m.tipo}`;
-  const detalhes = [`<b>${esc(m.tipo)}</b>`, `📅 ${esc(q.extenso)}, às <b>${esc(q.hora)}</b> (horário de Brasília)`, m.local ? `📍 ${esc(m.local)}` : ""];
+  const detalhes = [`<b>${esc(m.tipo)}</b>`, `📅 ${esc(q.extenso)}, às <b>${esc(q.hora)}</b> (horário de Brasília)`, esc(onde(m))];
   const corpo = `<p style="margin:0 0 6px">Olá, ${esc(primeiroNome(m.nome))}!</p><p style="margin:0">Passando para lembrar da nossa reunião:</p>${quadro(detalhes)}` +
     (m.gerenciar ? `<p style="margin:0 0 14px">Se não conseguir comparecer, avise remarcando ou cancelando (até 2 horas antes):</p><p style="margin:0">${botao(m.gerenciar, "Remarcar ou cancelar")}</p>` : "");
-  const texto = `Olá, ${primeiroNome(m.nome)}!\n\nLembrete da nossa reunião:\n\n${m.tipo}\n${q.extenso}, às ${q.hora} (horário de Brasília)\n${m.local ? "Local: " + m.local + "\n" : ""}\n${m.gerenciar ? "Remarcar ou cancelar (até 2 horas antes): " + m.gerenciar + "\n" : ""}\n${assinaTxt(m)}`;
+  const texto = `Olá, ${primeiroNome(m.nome)}!\n\nLembrete da nossa reunião:\n\n${m.tipo}\n${q.extenso}, às ${q.hora} (horário de Brasília)\n${onde(m) ? onde(m) + "\n" : ""}\n${m.gerenciar ? "Remarcar ou cancelar (até 2 horas antes): " + m.gerenciar + "\n" : ""}\n${assinaTxt(m)}`;
   return { assunto, html: moldura(m, m.cor || "#1e4d8c", "Lembrete de reunião ⏰", corpo), texto };
 }
 
 function remarcada(m) {
   const q = quando(m.inicio);
   const assunto = `Reunião remarcada — ${m.tipo} · ${q.curto} às ${q.hora}`;
-  const detalhes = [`<b>${esc(m.tipo)}</b>`, `📅 ${esc(q.extenso)}, às <b>${esc(q.hora)}</b> (horário de Brasília)`, `⏱ ${esc(durTxt(m.duracao_min))}`, m.local ? `📍 ${esc(m.local)}` : ""];
+  const detalhes = [`<b>${esc(m.tipo)}</b>`, `📅 ${esc(q.extenso)}, às <b>${esc(q.hora)}</b> (horário de Brasília)`, `⏱ ${esc(durTxt(m.duracao_min))}`, esc(onde(m))];
   const corpo = `<p style="margin:0 0 6px">Olá, ${esc(primeiroNome(m.nome))}!</p><p style="margin:0">Sua reunião foi <b>remarcada</b> para:</p>${quadro(detalhes)}<p style="margin:0 0 14px">O convite novo vai anexo.</p>` +
     (m.gerenciar ? `<p style="margin:0">${botao(m.gerenciar, "Remarcar ou cancelar")}</p>` : "");
-  const texto = `Olá, ${primeiroNome(m.nome)}!\n\nSua reunião foi remarcada para:\n\n${m.tipo}\n${q.extenso}, às ${q.hora} (horário de Brasília)\n${m.local ? "Local: " + m.local + "\n" : ""}\n${m.gerenciar ? "Remarcar ou cancelar: " + m.gerenciar + "\n" : ""}\n${assinaTxt(m)}`;
+  const texto = `Olá, ${primeiroNome(m.nome)}!\n\nSua reunião foi remarcada para:\n\n${m.tipo}\n${q.extenso}, às ${q.hora} (horário de Brasília)\n${onde(m) ? onde(m) + "\n" : ""}\n${m.gerenciar ? "Remarcar ou cancelar: " + m.gerenciar + "\n" : ""}\n${assinaTxt(m)}`;
   return { assunto, html: moldura(m, m.cor || "#1e4d8c", "Reunião remarcada 🔁", corpo), texto };
 }
 
@@ -95,10 +101,10 @@ function aviso(m) {
   const rot = { nova: "Reunião nova", remarcada: "Reunião remarcada pelo cliente", cancelada: "Reunião cancelada pelo cliente" }[m.acao] || "Agenda";
   const assunto = `${rot} — ${m.tipo} · ${q.curto} às ${q.hora} · ${m.nome}`;
   const antes = m.de ? quando(m.de) : null;
-  const linhas = [`<b>${esc(m.tipo)}</b>`, `📅 ${esc(q.extenso)}, às <b>${esc(q.hora)}</b>${m.duracao_min ? " (" + esc(durTxt(m.duracao_min)) + ")" : ""}`, antes ? `↩ Era ${esc(antes.extenso)}, às ${esc(antes.hora)}` : "",
+  const linhas = [`<b>${esc(m.tipo)}</b>`, `📅 ${esc(q.extenso)}, às <b>${esc(q.hora)}</b>${m.duracao_min ? " (" + esc(durTxt(m.duracao_min)) + ")" : ""}`, antes ? `↩ Era ${esc(antes.extenso)}, às ${esc(antes.hora)}` : "", onde(m) ? esc(onde(m)) : "",
     `👤 ${esc(m.nome)}`, m.telefone ? `📞 ${esc(m.telefone)}` : "", m.email ? `✉️ ${esc(m.email)}` : "", m.obs ? `💬 “${esc(m.obs)}”` : "", m.origem === "link" ? "Marcada pelo link" : ""];
   const corpo = `<p style="margin:0">${esc(rot)}:</p>${quadro(linhas)}<p style="margin:0;color:#64748b;font-size:13px">Veja e administre em Painel › Agenda Comercial.</p>`;
-  const texto = `${rot}:\n\n${m.tipo}\n${q.extenso}, às ${q.hora}\n${antes ? "Era " + antes.extenso + ", às " + antes.hora + "\n" : ""}${m.nome}\n${m.telefone ? "Telefone: " + m.telefone + "\n" : ""}${m.email ? "E-mail: " + m.email + "\n" : ""}${m.obs ? "Observação: " + m.obs + "\n" : ""}`;
+  const texto = `${rot}:\n\n${m.tipo}\n${q.extenso}, às ${q.hora}\n${antes ? "Era " + antes.extenso + ", às " + antes.hora + "\n" : ""}${onde(m) ? onde(m) + "\n" : ""}${m.nome}\n${m.telefone ? "Telefone: " + m.telefone + "\n" : ""}${m.email ? "E-mail: " + m.email + "\n" : ""}${m.obs ? "Observação: " + m.obs + "\n" : ""}`;
   return { assunto, html: moldura(null, m.acao === "cancelada" ? "#b91c1c" : "#1e4d8c", rot, corpo, "Aviso automático da Agenda Comercial"), texto };
 }
 
@@ -152,4 +158,4 @@ function convite(m) {
   return R.ics([{ id: "convite-" + m.id, inicio: m.inicio, fim: m.fim, local: m.local, titulo: m.tipo + " — Grupo ServCamp", descricao: "Reunião com o Comercial do Grupo ServCamp." }]);
 }
 
-module.exports = { assinatura, assinaTxt, confirmacao, lembrete, remarcada, cancelada, aviso, enviar, convite, definirCorreio, quando, comNovaTentativa, passageiro };
+module.exports = { onde, assinatura, assinaTxt, confirmacao, lembrete, remarcada, cancelada, aviso, enviar, convite, definirCorreio, quando, comNovaTentativa, passageiro };

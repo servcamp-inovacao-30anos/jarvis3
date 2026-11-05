@@ -16,7 +16,15 @@ const diaTxt=d=>{const x=new Date(d+"T12:00:00Z");return SEM[x.getUTCDay()]+", "
 const durTxt=m=>m<60?m+" minutos":(m%60?Math.floor(m/60)+"h"+String(m%60).padStart(2,"0"):m/60+(m===60?" hora":" horas"));
 // "2026-11-06T13:00:00Z" → { dia, hora } em Brasília
 const br=iso=>{const d=new Date(+new Date(iso)-3*3600000).toISOString();return{dia:d.slice(0,10),hora:d.slice(11,16)};};
-const E={tipo:null,dias:{},dia:null,hora:null,remarcando:false,minha:null,marca:null};
+const E={tipo:null,dias:{},mods:{},modalidade:null,dia:null,hora:null,remarcando:false,minha:null,marca:null};
+// online ou presencial: o dia aceita os dois ("ambos") ou um só
+const aceita=(md,m)=>!m||md==="ambos"||!md||md===m;
+// "💻 Online: link" · "📍 Presencial — endereço" · reunião antiga sem modalidade: só o local
+function ondeTxt(m,local){
+  if(m==="online")return"💻 Online"+(local?": "+local:"");
+  if(m==="presencial")return"📍 Presencial"+(local?" — "+local:"");
+  return local?"📍 "+local:"";
+}
 
 async function api(t,metodo,corpo){
   let q="/api/rh?modulo=agendapub&t="+t;
@@ -41,13 +49,19 @@ function cabecalho(t,marca){
   const m=marca||{};
   $("agTit").textContent=t.nome;
   document.querySelector(".ag-topo").style.setProperty("--cor",/^#[0-9a-f]{6}$/i.test(t.cor||"")?t.cor:"#1e4d8c");
-  const chips=["⏱ "+durTxt(t.duracao_min)];
-  if(t.local)chips.push((/^https?:\/\//i.test(t.local)||/meet|teams|zoom|v[íi]deo/i.test(t.local)?"💻 ":"📍 ")+t.local);
-  chips.push("🌎 Horário de Brasília");
-  $("agChips").innerHTML=chips.map(c=>"<li>"+esc(c)+"</li>").join("");$("agChips").hidden=false;
+  E.tipoCab=t;chips();
   if(m.nome){$("agHost").hidden=false;$("agHostNome").textContent=m.nome;$("agHostCargo").textContent=(m.cargo?m.cargo+" · ":"")+"Grupo ServCamp";avatar($("agAvatar"),m);}
   if(m.boas_vindas&&!COD){$("agBoas").hidden=false;$("agBoas").textContent=m.boas_vindas;}
   E.marca=m;
+}
+// duração, online/presencial e fuso
+function chips(){
+  const t=E.tipoCab||{},c=["⏱ "+durTxt(t.duracao_min)];
+  if(E.minha)c.push(ondeTxt(E.minha.modalidade,E.minha.local));
+  else if(E.modalidade)c.push(ondeTxt(E.modalidade,E.modalidade==="online"?t.local_online:t.local));
+  else if(E.opcoes&&E.opcoes.length===2)c.push("💻 Online ou 📍 Presencial");
+  c.push("🌎 Horário de Brasília");
+  $("agChips").innerHTML=c.filter(Boolean).map(x=>"<li>"+esc(x)+"</li>").join("");$("agChips").hidden=false;
 }
 // Etapas: 1 dia e horário · 2 seus dados · 3 confirmado
 function passo(n){
@@ -60,13 +74,28 @@ async function carregar(manterDia){
   if(!S){erroTopo("Link incompleto. Peça o link de agendamento de novo ao nosso Comercial.");return;}
   let j;
   try{j=await api("horarios");}catch(e){erroTopo(e.message);return;}
-  E.tipo=j.tipo;E.dias=j.dias||{};
+  E.tipo=j.tipo;E.dias=j.dias||{};E.mods=j.modalidades||{};
+  // que jeitos existem nos dias livres; remarcando, vale o da reunião (o servidor já filtrou os dias)
+  const tem=m=>Object.keys(E.dias).some(d=>aceita(E.mods[d],m)&&(E.mods[d]==="ambos"||!E.mods[d]||E.mods[d]===m));
+  E.opcoes=["online","presencial"].filter(tem);
+  if(E.remarcando)E.modalidade=j.modalidade||null;
+  else if(E.opcoes.length===1)E.modalidade=E.opcoes[0];
+  else if(E.modalidade&&!E.opcoes.includes(E.modalidade))E.modalidade=null;
   cabecalho(j.tipo,j.marca);
   $("agInfo").textContent="";
-  const dias=Object.keys(E.dias).sort();
   $("agPasso1").hidden=false;passo(1);
-  if(!dias.length){$("agDias").innerHTML='<p class="ag-vazio">Não há horários livres nos próximos dias. Fale com o nosso Comercial.</p>';$("agHoras").innerHTML="";$("agTitHoras").hidden=true;return;}
-  if(!manterDia||!E.dias[E.dia])E.dia=dias[0];
+  const escolher=!E.remarcando&&E.opcoes.length===2;
+  $("agModWrap").hidden=!escolher;
+  $("agModLocal").textContent=j.tipo.local||"no local combinado";
+  document.querySelectorAll(".ag-mod-op").forEach(b=>{const on=b.dataset.m===E.modalidade;b.classList.toggle("on",on);b.setAttribute("aria-checked",on);});
+  $("agDiasWrap").hidden=escolher&&!E.modalidade;
+  desenharDias(manterDia);
+}
+// dias que aceitam o jeito escolhido
+function desenharDias(manterDia){
+  const dias=Object.keys(E.dias).sort().filter(d=>aceita(E.mods[d],E.modalidade));
+  if(!dias.length){$("agDias").innerHTML='<p class="ag-vazio">Não há horários livres'+(E.modalidade&&E.opcoes&&E.opcoes.length===2?' '+(E.modalidade==="online"?"online":"presenciais"):"")+' nos próximos dias. Fale com o nosso Comercial.</p>';$("agHoras").innerHTML="";$("agTitHoras").hidden=true;return;}
+  if(!manterDia||!dias.includes(E.dia))E.dia=dias[0];
   $("agDias").innerHTML=dias.map(d=>{const x=new Date(d+"T12:00:00Z");return'<button type="button" class="ag-dia'+(d===E.dia?" on":"")+'" data-d="'+d+'" role="option" aria-selected="'+(d===E.dia)+'"><span>'+SEM[x.getUTCDay()]+'</span><b>'+x.getUTCDate()+'</b><span>'+MES[x.getUTCMonth()]+'</span><em>'+E.dias[d].length+' horário'+(E.dias[d].length===1?'':'s')+'</em></button>';}).join("");
   horas();
 }
@@ -75,6 +104,14 @@ function horas(){
   $("agTitHoras").hidden=false;
   $("agHoras").innerHTML=h.map(x=>'<button type="button" class="ag-hora" data-h="'+x+'" role="option">'+x+'</button>').join("");
 }
+$("agMod").addEventListener("click",e=>{
+  const b=e.target.closest("[data-m]");if(!b)return;
+  E.modalidade=b.dataset.m;
+  document.querySelectorAll(".ag-mod-op").forEach(x=>{const on=x===b;x.classList.toggle("on",on);x.setAttribute("aria-checked",on);});
+  chips();
+  $("agDiasWrap").hidden=false;
+  desenharDias(true);
+});
 $("agDias").addEventListener("click",e=>{
   const b=e.target.closest("[data-d]");if(!b)return;
   E.dia=b.dataset.d;
@@ -85,7 +122,7 @@ $("agHoras").addEventListener("click",async e=>{
   const b=e.target.closest("[data-h]");if(!b)return;
   E.hora=b.dataset.h;
   if(E.remarcando){await remarcar();return;}
-  $("agEscolha").textContent="📅 "+diaTxt(E.dia)+" às "+E.hora;
+  $("agEscolha").textContent="📅 "+diaTxt(E.dia)+" às "+E.hora+(E.modalidade?" · "+(E.modalidade==="online"?"💻 Online":"📍 Presencial"):"");
   $("agErro").textContent="";
   $("agPasso1").hidden=true;$("agForm").hidden=false;passo(2);
   $("agNome").focus();
@@ -99,7 +136,7 @@ $("agTel").addEventListener("input",e=>{ // (19) 99999-9999 enquanto digita
 $("agForm").addEventListener("submit",async e=>{
   e.preventDefault();
   const bt=$("agBt");$("agErro").textContent="";
-  const corpo={s:S,dia:E.dia,hora:E.hora,nome:$("agNome").value,telefone:$("agTel").value,email:$("agEmail").value,obs:$("agObs").value,site:$("agSite").value};
+  const corpo={s:S,dia:E.dia,hora:E.hora,nome:$("agNome").value,telefone:$("agTel").value,email:$("agEmail").value,obs:$("agObs").value,site:$("agSite").value,modalidade:E.modalidade};
   if(corpo.nome.trim().length<2){$("agErro").textContent="Informe o seu nome.";return;}
   if(corpo.telefone.replace(/\D/g,"").length<10){$("agErro").textContent="Informe o telefone com DDD.";return;}
   bt.disabled=true;bt.textContent="Agendando…";
@@ -107,7 +144,7 @@ $("agForm").addEventListener("submit",async e=>{
     const j=await api("agendar","POST",corpo);
     $("agForm").hidden=true;$("agPasso1").hidden=true;$("agOk").hidden=false;passo(3);
     if(E.marca&&E.marca.nome){const o=$("agOkHost");o.hidden=false;o.innerHTML='<span class="ag-avatar" aria-hidden="true"></span><span>Você vai falar com <b>'+esc(E.marca.nome)+'</b>'+(E.marca.cargo?', '+esc(E.marca.cargo):'')+'.</span>';avatar(o.querySelector(".ag-avatar"),E.marca);}
-    $("agOkTxt").innerHTML="<b>"+esc(j.tipo)+"</b><br>"+esc(diaTxt(j.dia))+" às "+esc(j.hora)+" ("+esc(durTxt(j.duracao_min))+")"+(j.local?"<br>📍 "+esc(j.local):"");
+    $("agOkTxt").innerHTML="<b>"+esc(j.tipo)+"</b><br>"+esc(diaTxt(j.dia))+" às "+esc(j.hora)+" ("+esc(durTxt(j.duracao_min))+")"+(ondeTxt(j.modalidade,j.local)?"<br>"+esc(ondeTxt(j.modalidade,j.local)):"");
     if(j.convite)$("agIcs").href="/api/rh?modulo=agendapub&t=convite&id="+encodeURIComponent(j.convite.id)+"&c="+encodeURIComponent(j.convite.c);
     else $("agIcs").hidden=true;
     const z=iso=>new Date(iso).toISOString().replace(/[-:]/g,"").replace(/\.\d{3}/,"");
@@ -132,7 +169,7 @@ function mostrarMinha(){
   cabecalho(m.tipo,m.marca);
   $("agInfo").innerHTML="Olá, "+esc(m.nome)+"!";
   $("agPasso1").hidden=true;$("agForm").hidden=true;$("agOk").hidden=true;$("agMinha").hidden=false;
-  $("agMinhaTxt").innerHTML="📅 <b>"+esc(diaTxt(i.dia))+" às "+esc(i.hora)+"</b> ("+esc(durTxt(m.tipo.duracao_min))+")"+(m.local?"<br>📍 "+esc(m.local):"")+"<br><small>horário de Brasília</small>";
+  $("agMinhaTxt").innerHTML="📅 <b>"+esc(diaTxt(i.dia))+" às "+esc(i.hora)+"</b> ("+esc(durTxt(m.tipo.duracao_min))+")"+(ondeTxt(m.modalidade,m.local)?"<br>"+esc(ondeTxt(m.modalidade,m.local)):"")+"<br><small>horário de Brasília</small>";
   let aviso="";
   const rem=$("agMinhaRemarcar"),can=$("agMinhaCancelar"),novo=$("agMinhaNovo");
   rem.hidden=can.hidden=novo.hidden=true;
@@ -159,15 +196,16 @@ $("agMinhaCancelar").addEventListener("click",async e=>{
   await carregarMinha();
 });
 $("agMinhaRemarcar").addEventListener("click",async()=>{
-  E.remarcando=true;S=E.minha.tipo.slug||"";
+  E.remarcando=true;S=E.minha.tipo.slug||"";const minha=E.minha;E.minha=null;E.minhaGuardada=minha;
   $("agMinha").hidden=true;
   await carregar(false);
   $("agInfo").insertAdjacentHTML("beforeend",'<br><b>Escolha o novo dia e horário.</b>');
   const v=document.createElement("button");v.type="button";v.className="ag-link";v.textContent="← voltar";
-  v.addEventListener("click",()=>{E.remarcando=false;v.remove();mostrarMinha();});
+  v.addEventListener("click",()=>{E.remarcando=false;E.minha=E.minhaGuardada;v.remove();mostrarMinha();});
   $("agPasso1").appendChild(v);
 });
 async function remarcar(){
+  if(!E.minha)E.minha=E.minhaGuardada;
   if(!confirm("Remarcar para "+diaTxt(E.dia)+" às "+E.hora+"?"))return;
   try{
     await api("remarcar-minha","POST",{r:COD,dia:E.dia,hora:E.hora});

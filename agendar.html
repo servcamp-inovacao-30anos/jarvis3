@@ -36,6 +36,14 @@
     </ol>
 
     <section id="agPasso1" class="ag-passo" hidden>
+      <div id="agModWrap" class="ag-mod-wrap" hidden>
+        <h2>Como prefere a reunião?</h2>
+        <div id="agMod" class="ag-mod" role="radiogroup" aria-label="Online ou presencial">
+          <button type="button" class="ag-mod-op" data-m="online" role="radio" aria-checked="false"><span aria-hidden="true">💻</span><b>Online</b><small>por videochamada</small></button>
+          <button type="button" class="ag-mod-op" data-m="presencial" role="radio" aria-checked="false"><span aria-hidden="true">📍</span><b>Presencial</b><small id="agModLocal">no local combinado</small></button>
+        </div>
+      </div>
+      <div id="agDiasWrap">
       <h2>Escolha o dia</h2>
       <div class="ag-dias-wrap">
         <button type="button" class="ag-rolar" data-r="-1" aria-label="Dias anteriores">‹</button>
@@ -44,6 +52,7 @@
       </div>
       <h2 id="agTitHoras" hidden>Escolha o horário <small>(horário de Brasília)</small></h2>
       <div id="agHoras" class="ag-horas" role="listbox" aria-label="Horários disponíveis"></div>
+      </div>
     </section>
 
     <section id="agMinha" class="ag-passo" hidden>

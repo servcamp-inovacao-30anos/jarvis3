@@ -1135,3 +1135,99 @@ test("agendar.html: marca do Grupo ServCamp, etapas e cartão de quem atende", (
   assert.ok(PUB.includes('src="/logo-servcamp-120.png"') && PUB.includes('id="agHost"') && PUB.includes('id="agSteps"') && PUB.includes('id="agBoas"'));
   assert.ok(fs.existsSync(path.join(__dirname, "..", "logo-servcamp-120.png")));
 });
+
+// ── online ou presencial ──────────────────────────────────────────────────
+test("modalidade: o dia específico vence o padrão da semana; sem nada, os dois", () => {
+  const c = { modalidade_semana: { "4": "online" }, modalidade_dias: { "2026-11-19": "presencial" } };
+  assert.equal(R.modalidadeDoDia(c, QUI), "online", "quinta: padrão da semana");
+  assert.equal(R.modalidadeDoDia(c, "2026-11-19"), "presencial", "quinta 19: o dia específico");
+  assert.equal(R.modalidadeDoDia(c, "2026-11-13"), "ambos");
+  assert.equal(R.modalidadeDoDia({}, QUI), "ambos");
+  assert.ok(R.aceita("ambos", "online") && R.aceita("ambos", "presencial") && !R.aceita("ambos", "x"));
+  assert.ok(R.aceita("online", "online") && !R.aceita("online", "presencial"));
+  const v = R.validarConfig(Object.assign(cfg(), { modalidade_semana: { "1": "online", "2": "ambos", "3": "lixo", "9": "online" } }));
+  assert.deepEqual(v.config.modalidade_semana, { "1": "online" }, "só guarda o que limita, e só dias válidos");
+  assert.ok(R.validarModalidadeDia({ dia: "12/11", modalidade: "online" }).erro);
+  assert.ok(R.validarModalidadeDia({ dia: QUI, modalidade: "remoto" }).erro);
+  assert.deepEqual(R.validarModalidadeDia({ dia: QUI, modalidade: "padrao" }), { dia: QUI, modalidade: null });
+});
+
+test("modalidade: o link mostra o jeito de cada dia, marca com o local certo e recusa o jeito que o dia não atende", async () => {
+  const c = correioFalso(), z = zapFalso();
+  try {
+    await comRelogio(AGORA, async () => {
+      const { tabelas, slug60 } = await preparar();
+      const t = tabelas.ag_tipos.find(x => x.slug === slug60);
+      assert.equal((await adm("tipo", { method: "POST", body: { id: t.id, nome: t.nome, duracao_min: 60, cor: t.cor, local: "Rua das Flores, 100 — Campinas", local_online: "Google Meet: meet.google.com/abc-defg-hij" } })).statusCode, 200);
+      // quinta só online (padrão da semana); sexta 13 só presencial (dia específico)
+      assert.equal((await adm("config", { method: "POST", body: Object.assign(cfg(), { modalidade_semana: { "4": "online" } }) })).statusCode, 200);
+      assert.equal((await adm("modalidade", { method: "POST", usuario: "carlos", body: { dia: "2026-11-13", modalidade: "presencial" } })).statusCode, 403);
+      const md = await adm("modalidade", { method: "POST", body: { dia: "2026-11-13", modalidade: "presencial" } });
+      assert.equal(md.statusCode, 200, JSON.stringify(md.body));
+      const h = await pub("horarios", { query: { s: slug60 } });
+      assert.equal(h.body.modalidades[QUI], "online");
+      assert.equal(h.body.modalidades["2026-11-13"], "presencial");
+      assert.equal(h.body.modalidades["2026-11-10"], "ambos");
+      assert.equal(h.body.tipo.local_online, "Google Meet: meet.google.com/abc-defg-hij");
+      // presencial na quinta (só online): recusado
+      const nao = await marcar(slug60, "10:00", pessoa(1), { modalidade: "presencial" });
+      assert.equal(nao.statusCode, 409); assert.equal(nao.body.codigo, "MODALIDADE");
+      // quinta sem dizer: vira online, com o link
+      const ok = await marcar(slug60, "10:00", pessoa(1));
+      assert.equal(ok.statusCode, 201, JSON.stringify(ok.body));
+      assert.equal(ok.body.modalidade, "online");
+      const r = tabelas.ag_reunioes[0];
+      assert.equal(r.modalidade, "online"); assert.equal(r.local, "Google Meet: meet.google.com/abc-defg-hij");
+      // terça (os dois): presencial, com o endereço
+      const ter = await pub("agendar", { method: "POST", headers: HOST, body: Object.assign({ s: slug60, dia: "2026-11-10", hora: "10:00", modalidade: "presencial" }, pessoa(2)) });
+      assert.equal(ter.statusCode, 201, JSON.stringify(ter.body));
+      assert.equal(tabelas.ag_reunioes[1].local, "Rua das Flores, 100 — Campinas");
+      assert.equal((await pub("agendar", { method: "POST", headers: HOST, body: Object.assign({ s: slug60, dia: "2026-11-10", hora: "14:00", modalidade: "voando" }, pessoa(3)) })).statusCode, 400);
+      // mensagens dizem como é
+      const cli = c.enviados.find(m => m.para === "p1@exemplo.com");
+      assert.ok(cli.html.includes("💻 Online: Google Meet: meet.google.com/abc-defg-hij") && cli.texto.includes("💻 Online: Google Meet"));
+      assert.ok(z.enviados[0].texto.includes("💻 Online: Google Meet"));
+      assert.ok(z.enviados[1].texto.includes("📍 Presencial — Rua das Flores, 100 — Campinas"));
+      assert.ok(aviso(c.enviados).html.includes("💻 Online"), "o aviso da Comercial também diz");
+      // remarcando pelo link: só os dias que aceitam online
+      const h2 = await pub("horarios", { query: { s: slug60, r: ok.body.gerenciar } });
+      assert.equal(h2.body.modalidade, "online");
+      assert.ok(!h2.body.dias["2026-11-13"], "sexta 13 é só presencial: fica fora");
+      assert.ok(h2.body.dias["2026-11-10"]);
+      const rem = await pub("remarcar-minha", { method: "POST", headers: HOST, body: { r: ok.body.gerenciar, dia: "2026-11-13", hora: "10:00" } });
+      assert.equal(rem.statusCode, 409); assert.equal(rem.body.codigo, "MODALIDADE");
+      // voltar ao padrão tira o dia específico; dia que passou some da lista
+      tabelas.ag_config[0].modalidade_dias = Object.assign({}, tabelas.ag_config[0].modalidade_dias, { "2026-10-01": "online" });
+      await adm("modalidade", { method: "POST", body: { dia: "2026-11-13", modalidade: null } });
+      assert.deepEqual(tabelas.ag_config[0].modalidade_dias, {});
+      // a tela da Comercial recebe tudo
+      const tudo = (await adm("")).body;
+      assert.deepEqual(tudo.config.modalidade_semana, { "4": "online" });
+      assert.equal(tudo.reunioes.find(x => x.nome === "Pessoa 1").modalidade, "online");
+      assert.equal(tudo.reunioes.find(x => x.nome === "Pessoa 2").modalidade, "presencial");
+    });
+  } finally { c.solta(); z.solta(); }
+});
+
+test("modalidade: reunião cadastrada à mão escolhe o jeito em qualquer dia; números contam online × presencial", async () => {
+  const c = correioFalso(), z = zapFalso();
+  try {
+    await comRelogio(AGORA, async () => {
+      const { tabelas } = await preparar();
+      const t = tabelas.ag_tipos[0];
+      await adm("tipo", { method: "POST", body: { id: t.id, nome: t.nome, duracao_min: t.duracao_min, cor: t.cor, local: "Sede", local_online: "Teams" } });
+      await adm("config", { method: "POST", body: Object.assign(cfg(), { modalidade_semana: { "4": "online" } }) });
+      const r = await adm("reuniao", { method: "POST", headers: HOST, body: { tipo_id: t.id, dia: QUI, hora: "10:00", nome: "Ana", telefone: "19999998888", modalidade: "presencial", avisar: false } });
+      assert.equal(r.statusCode, 201, JSON.stringify(r.body));
+      assert.equal(tabelas.ag_reunioes[0].modalidade, "presencial", "a Comercial decide, mesmo em dia só online");
+      assert.equal(tabelas.ag_reunioes[0].local, "Sede");
+      const n = await adm("numeros", { query: { mes: "2026-11" } });
+      assert.deepEqual(n.body.por_modalidade, [["Presencial", 1]]);
+    });
+  } finally { c.solta(); z.solta(); }
+});
+
+test("agendar.html: pergunta se a reunião é online ou presencial", () => {
+  const PUB = fs.readFileSync(path.join(__dirname, "..", "agendar.html"), "utf8");
+  assert.ok(PUB.includes("Como prefere a reunião?") && PUB.includes('data-m="online"') && PUB.includes('data-m="presencial"'));
+});

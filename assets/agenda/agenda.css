@@ -61,7 +61,7 @@
 .agd-sem .s-f[hidden]{display:none}
 .agd-sem input[type=time]{width:96px}
 .agd-sem .s-2l{margin:0}
-.agd-tipo{display:grid;grid-template-columns:36px 1.2fr 90px 1.6fr auto;gap:8px;align-items:center;margin-bottom:8px}
+.agd-tipo{display:grid;grid-template-columns:36px 1.1fr 84px 1.3fr 1.3fr auto;gap:8px;align-items:center;margin-bottom:8px}
 .agd-tipo input[type=color]{padding:2px;height:32px}
 .agd-tipo .agd-ck{margin:0}
 .agd-acoes{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
@@ -70,7 +70,7 @@
 .agd-largo{display:block;text-align:center;text-decoration:none;margin-bottom:6px}
 .agd-passos{font-size:.76rem;color:var(--g700);padding-left:18px;margin:0 0 10px;line-height:1.6}
 .agd-copia{display:flex;gap:8px;margin-bottom:10px}
-@media (max-width:640px){.agd-tipo{grid-template-columns:36px 1fr 90px}.agd-tipo .t-local{grid-column:1/-1}.agd-2{grid-template-columns:1fr}.agd-r{flex-wrap:wrap}}
+@media (max-width:640px){.agd-tipo{grid-template-columns:36px 1fr 90px}.agd-tipo .t-local,.agd-tipo .t-online{grid-column:1/-1}.agd-2{grid-template-columns:1fr}.agd-r{flex-wrap:wrap}}
 html[data-theme="dark"] .agd-tag{background:rgba(46,143,239,.18);color:#93c5fd}
 html[data-theme="dark"] .agd-tag-c{background:rgba(217,45,32,.15);color:#fda29b}
 html[data-theme="dark"] .agd-lk,html[data-theme="dark"] .agd-r-x a{color:#8cc6ff}
@@ -220,3 +220,12 @@ html[data-theme="dark"] .agd-res-op.falta input:checked+span{background:rgba(217
 .agp-serie b{font-size:.62rem;color:var(--g800,#0d1f35)}
 @media (max-width:1100px){.agp-ks{grid-template-columns:repeat(3,1fr)}.agp-g{grid-template-columns:1fr 1fr}}
 @media (max-width:640px){.agp-ks{grid-template-columns:1fr 1fr}.agp-g{grid-template-columns:1fr}.agp{padding:14px}}
+
+/* ── online ou presencial ── */
+.agd-sem .s-mod{margin-left:auto;padding:5px 8px;border:1px solid var(--g200);border-radius:7px;font:inherit;font-size:.72rem;background:var(--g50);color:var(--g800)}
+.agc-modbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin:0 0 10px;padding:8px 12px;background:var(--g50);border:1px solid var(--g200);border-radius:10px;font-size:.76rem;color:var(--g700)}
+.agc-modbar label{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-weight:700}
+.agc-modbar select{padding:5px 8px;border:1px solid var(--g200);border-radius:7px;font:inherit;font-size:.76rem;background:var(--wh);color:var(--g800)}
+.agc-modbar small{color:var(--g500)}
+.agc-mod{font-size:.6rem;font-weight:400}
+@media (max-width:640px){.agd-sem .s-mod{margin-left:0}}

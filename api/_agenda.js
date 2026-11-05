@@ -13,6 +13,7 @@
 //   POST t=marca         quem atende (nome, cargo, foto) e a mensagem de boas-vindas da página e dos e-mails
 //   POST t=resultado&id= reunião que já começou: realizada ou não compareceu, próximo passo e anotação
 //   GET  t=numeros&mes=  os números do mês para o Painel Comercial (só contagens, sem dados de ninguém)
+//   POST t=modalidade    { dia, modalidade }: neste dia só online, só presencial, os dois ou volta ao padrão
 //
 // Pública (/api/rh?modulo=agendapub, SEM login — quem marca não tem conta; entra antes da exigência de token):
 //   GET  t=horarios&s=   o tipo de reunião e os horários livres (nada de quem já marcou)
@@ -106,7 +107,8 @@ async function lerConfig(db) {
   }
   return c;
 }
-const cfgDe = c => ({ semana: c.semana || {}, intervalo_min: c.intervalo_min, antecedencia_h: c.antecedencia_h, janela_dias: c.janela_dias, passo_min: c.passo_min, email_aviso: c.email_aviso || null });
+const cfgDe = c => ({ semana: c.semana || {}, intervalo_min: c.intervalo_min, antecedencia_h: c.antecedencia_h, janela_dias: c.janela_dias, passo_min: c.passo_min, email_aviso: c.email_aviso || null,
+  modalidade_semana: c.modalidade_semana || {}, modalidade_dias: c.modalidade_dias || {} });
 
 async function ocupacao(db, de, ate, ignorarId) {
   const [reunioes, bloqueios] = await Promise.all([
@@ -183,7 +185,7 @@ const extraMarca = (c, base) => ({ anfitriao: marcaDe(c, base), base: base || nu
 // Dados de uma reunião para os textos dos e-mails
 const dadosMail = (r, tipo, base, extra) => Object.assign({
   id: r.id, tipo: r.tipo_nome || (tipo && tipo.nome) || "Reunião", nome: r.nome, telefone: r.telefone, email: r.email, obs: r.obs, origem: r.origem,
-  inicio: +new Date(r.inicio), fim: +new Date(r.fim), duracao_min: Math.round((+new Date(r.fim) - +new Date(r.inicio)) / 60000), local: r.local || null,
+  inicio: +new Date(r.inicio), fim: +new Date(r.fim), duracao_min: Math.round((+new Date(r.fim) - +new Date(r.inicio)) / 60000), local: r.local || null, modalidade: r.modalidade || null,
   cor: (tipo && tipo.cor) || null, gerenciar: base ? base + "/agendar.html?r=" + codigoDe(r.id) : null
 }, extra || {});
 const paraAviso = cfg => (cfg && cfg.email_aviso) || process.env.MAIL_USER || null;
@@ -213,7 +215,7 @@ async function emailMarcada(db, r, tipo, cfg, base, opcoes) {
 
 async function tipoPeloLink(db, s) {
   if (!/^[A-Za-z0-9_-]{4,40}$/.test(String(s || ""))) return null;
-  const [t] = await db.obter(`ag_tipos?select=id,nome,duracao_min,local,cor,slug,diretores&slug=eq.${enc(s)}&ativo=is.true&limit=1`);
+  const [t] = await db.obter(`ag_tipos?select=id,nome,duracao_min,local,local_online,cor,slug,diretores&slug=eq.${enc(s)}&ativo=is.true&limit=1`);
   return t || null;
 }
 async function livresPara(db, cfg, tipo, agora, ignorarId) {
@@ -230,12 +232,18 @@ async function pubHorarios({ req, res, db }) {
   const cfgL = await lerConfig(db), cfg = cfgDe(cfgL), agora = Date.now();
   // remarcando pelo link: o horário atual da própria reunião não conta como ocupado
   const rid = req.query.r ? idDoCodigo(req.query.r) : null;
-  let ignorar = null;
-  if (rid) { const [m] = await db.obter(`ag_reunioes?select=id,tipo_id,status&id=eq.${rid}&limit=1`); if (m && m.status === "ativa" && String(m.tipo_id) === String(tipo.id)) ignorar = m.id; }
+  let ignorar = null, sua = null;
+  if (rid) { const [m] = await db.obter(`ag_reunioes?select=id,tipo_id,status,modalidade&id=eq.${rid}&limit=1`); if (m && m.status === "ativa" && String(m.tipo_id) === String(tipo.id)) { ignorar = m.id; sua = m.modalidade || null; } }
+  const dias = await livresPara(db, cfg, tipo, agora, ignorar), modalidades = {};
+  for (const d of Object.keys(dias)) {
+    const md = R.modalidadeDoDia(cfg, d);
+    if (sua && !R.aceita(md, sua)) { delete dias[d]; continue; }
+    modalidades[d] = md;
+  }
   return res.status(200).json({
-    tipo: { nome: tipo.nome, duracao_min: tipo.duracao_min, local: tipo.local || null, cor: tipo.cor },
+    tipo: { nome: tipo.nome, duracao_min: tipo.duracao_min, local: tipo.local || null, local_online: tipo.local_online || null, cor: tipo.cor },
     marca: marcaDe(cfgL, ""),
-    dias: await livresPara(db, cfg, tipo, agora, ignorar)
+    dias, modalidades, modalidade: sua
   });
 }
 
@@ -250,6 +258,12 @@ async function pubAgendar({ req, res, db }) {
   const cfg = cfgDe(await lerConfig(db)), agora = Date.now();
   const livres = await livresPara(db, cfg, tipo, agora);
   if (!(livres[b.dia] || []).includes(b.hora)) return erro(res, 409, "Esse horário não está mais disponível. Escolha outro.", "OCUPADO");
+  // online ou presencial: o dia precisa aceitar o que a pessoa escolheu (dia de um só jeito já decide sozinho)
+  const md = R.modalidadeDoDia(cfg, b.dia);
+  const modalidade = md === "ambos" ? String(b.modalidade || "") : (b.modalidade ? String(b.modalidade) : md);
+  // (página antiga em cache não manda nada: em dia que aceita os dois, fica "não definida")
+  if (modalidade && !R.MODALIDADES[modalidade]) return erro(res, 400, "Escolha se a reunião é online ou presencial.", "INVALIDO");
+  if (modalidade && !R.aceita(md, modalidade)) return erro(res, 409, "Neste dia a reunião é só " + (md === "online" ? "online" : "presencial") + ". Escolha outro dia.", "MODALIDADE");
 
   // limites contra quem tenta lotar a agenda
   const p = v.pessoa, ip = ipDe(req);
@@ -262,14 +276,14 @@ async function pubAgendar({ req, res, db }) {
   if (doIp.length >= MAX_POR_IP_HORA) return erro(res, 429, "Muitos agendamentos seguidos. Tente de novo mais tarde.", "LIMITE");
 
   const f = R.faixa(b.dia, b.hora, tipo.duracao_min, cfg.intervalo_min);
-  const linha = Object.assign({ tipo_id: tipo.id, tipo_nome: tipo.nome, local: tipo.local || null, inicio: iso(f.inicio), fim: iso(f.fim), ocupa_ate: iso(f.ocupa_ate), origem: "link", status: "ativa", ip: ip || null, criado_em: iso(agora) }, p);
+  const linha = Object.assign({ tipo_id: tipo.id, tipo_nome: tipo.nome, local: modalidade ? R.localDe(tipo, modalidade) : (tipo.local || null), modalidade: modalidade || null, inicio: iso(f.inicio), fim: iso(f.fim), ocupa_ate: iso(f.ocupa_ate), origem: "link", status: "ativa", ip: ip || null, criado_em: iso(agora) }, p);
   let nova;
   try { [nova] = await db.upsert("ag_reunioes", [linha], "id", { retornar: true }); }
   catch (e) { if (conflito(e)) return erro(res, 409, "Esse horário acabou de ser ocupado. Escolha outro.", "OCUPADO"); throw e; }
   registrar(db, "link", "AGENDA_MARCADA", nova ? nova.id : "?", { tipo: tipo.nome, inicio: linha.inicio, origem: "link" });
   const id = nova ? nova.id : null;
   const email = nova ? await emailMarcada(db, Object.assign({}, linha, { id }), tipo, await lerConfig(db), baseUrl(req)) : null;
-  return res.status(201).json({ ok: true, tipo: tipo.nome, local: tipo.local || null, dia: b.dia, hora: b.hora, inicio: linha.inicio, fim: linha.fim, duracao_min: tipo.duracao_min,
+  return res.status(201).json({ ok: true, tipo: tipo.nome, local: linha.local, modalidade: linha.modalidade, dia: b.dia, hora: b.hora, inicio: linha.inicio, fim: linha.fim, duracao_min: tipo.duracao_min,
     convite: id != null ? { id, c: assinarConvite(id) } : null, gerenciar: id != null ? codigoDe(id) : null, email_cliente: email ? email.cliente : null, whatsapp_cliente: email ? email.whatsapp : null });
 }
 
@@ -280,7 +294,7 @@ async function reuniaoDoCodigo(db, codigo) {
   if (!id) return {};
   const [r] = await db.obter(`ag_reunioes?select=*&id=eq.${id}&limit=1`);
   if (!r) return {};
-  const [tipo] = r.tipo_id != null ? await db.obter(`ag_tipos?select=id,nome,duracao_min,local,cor,slug,ativo,diretores&id=eq.${r.tipo_id}&limit=1`) : [];
+  const [tipo] = r.tipo_id != null ? await db.obter(`ag_tipos?select=id,nome,duracao_min,local,local_online,cor,slug,ativo,diretores&id=eq.${r.tipo_id}&limit=1`) : [];
   return { r, tipo: tipo || null };
 }
 const podeMexer = (r, agora) => r.status === "ativa" && +new Date(r.inicio) - agora >= CANCELA_ATE_H * 3600000;
@@ -292,7 +306,7 @@ async function pubMinha({ req, res, db }) {
   const cfgL = await lerConfig(db);
   return res.status(200).json({ // nada de telefone, e-mail ou observação
     marca: marcaDe(cfgL, ""),
-    nome: String(r.nome || "").split(/\s+/)[0], status: r.status, inicio: r.inicio, fim: r.fim, local: r.local || null,
+    nome: String(r.nome || "").split(/\s+/)[0], status: r.status, inicio: r.inicio, fim: r.fim, local: r.local || null, modalidade: r.modalidade || null,
     tipo: { nome: r.tipo_nome || (tipo && tipo.nome) || "Reunião", duracao_min: Math.round((+new Date(r.fim) - +new Date(r.inicio)) / 60000), cor: tipo && tipo.cor, slug: tipo && tipo.ativo ? tipo.slug : null },
     pode_cancelar: mexe, pode_remarcar: mexe && !!(tipo && tipo.ativo) && (r.remarcacoes || 0) < MAX_REMARCACOES,
     passou: +new Date(r.fim) < agora, cancela_ate_h: CANCELA_ATE_H
@@ -324,6 +338,7 @@ async function pubRemarcarMinha({ req, res, db }) {
   const cfgL = await lerConfig(db), cfg = cfgDe(cfgL);
   const livres = await livresPara(db, cfg, tipo, agora, r.id);
   if (!(livres[b.dia] || []).includes(b.hora)) return erro(res, 409, "Esse horário não está mais disponível. Escolha outro.", "OCUPADO");
+  if (r.modalidade && !R.aceita(R.modalidadeDoDia(cfg, b.dia), r.modalidade)) return erro(res, 409, "Neste dia não atendemos " + (r.modalidade === "online" ? "online" : "presencialmente") + ". Escolha outro dia.", "MODALIDADE");
   const f = R.faixa(b.dia, b.hora, Math.round((+new Date(r.fim) - +new Date(r.inicio)) / 60000), cfg.intervalo_min);
   try { await db.atualizar(`ag_reunioes?id=eq.${r.id}&status=eq.ativa`, { inicio: iso(f.inicio), fim: iso(f.fim), ocupa_ate: iso(f.ocupa_ate), remarcacoes: (r.remarcacoes || 0) + 1, lembrete_em: null }); }
   catch (e) { if (conflito(e)) return erro(res, 409, "Esse horário acabou de ser ocupado. Escolha outro.", "OCUPADO"); throw e; }
@@ -431,9 +446,9 @@ async function publico(req, res) {
 async function tudo({ res, db }) {
   const c = await lerConfig(db), agora = Date.now();
   const [tipos, bloqueios, reunioes, dirs] = await Promise.all([
-    db.listar("ag_tipos?select=id,nome,duracao_min,local,cor,slug,ativo,ordem,diretores&order=ordem.asc,id.asc"),
+    db.listar("ag_tipos?select=id,nome,duracao_min,local,local_online,cor,slug,ativo,ordem,diretores&order=ordem.asc,id.asc"),
     db.listar(`ag_bloqueios?select=id,inicio,fim,motivo&fim=gt.${iso(agora - 90 * 86400000)}&order=inicio.asc`),
-    db.listar(`ag_reunioes?select=id,tipo_id,tipo_nome,inicio,fim,nome,telefone,email,obs,local,origem,status,criado_em,email_status,whatsapp_status,remarcacoes,cancelado_por,resultado,proximo_passo,resultado_obs,resultado_em,resultado_por&inicio=gt.${iso(agora - 90 * 86400000)}&order=inicio.asc`),
+    db.listar(`ag_reunioes?select=id,tipo_id,tipo_nome,inicio,fim,nome,telefone,email,obs,local,modalidade,origem,status,criado_em,email_status,whatsapp_status,remarcacoes,cancelado_por,resultado,proximo_passo,resultado_obs,resultado_em,resultado_por&inicio=gt.${iso(agora - 90 * 86400000)}&order=inicio.asc`),
     db.listar("ag_diretores?select=id,nome,url,ativo,ocupado,lido_em,erro&order=id.asc")
   ]);
   await Promise.all(dirs.filter(d => d.ativo && velho(d, agora)).map(async d => Object.assign(d, await atualizarDiretor(db, d, agora))));
@@ -540,14 +555,15 @@ async function tirarBloqueio({ req, res, db, ator }) {
 // Reunião cadastrada à mão: qualquer horário (a Comercial decide), mas nunca em cima de outra.
 async function criarReuniao({ req, res, db, ator, body }) {
   if (!R.DIA.test(String(body.dia || "")) || !R.HORA.test(String(body.hora || ""))) return erro(res, 400, "Escolha o dia e o horário.", "INVALIDO");
-  const [tipo] = /^\d{1,12}$/.test(String(body.tipo_id || "")) ? await db.obter(`ag_tipos?select=id,nome,duracao_min,local,cor&id=eq.${body.tipo_id}&limit=1`) : [];
+  const [tipo] = /^\d{1,12}$/.test(String(body.tipo_id || "")) ? await db.obter(`ag_tipos?select=id,nome,duracao_min,local,local_online,cor&id=eq.${body.tipo_id}&limit=1`) : [];
   if (!tipo) return erro(res, 400, "Escolha o tipo de reunião.", "INVALIDO");
   const v = R.validarPessoa(body, { telefoneOpcional: true });
   if (v.erro) return erro(res, 400, v.erro, "INVALIDO");
   const cfg = cfgDe(await lerConfig(db));
   const f = R.faixa(body.dia, body.hora, tipo.duracao_min, cfg.intervalo_min);
   if (await bate(db, f)) return erro(res, 409, "Já existe reunião nesse horário (contando o intervalo entre reuniões).", "OCUPADO");
-  const linha = Object.assign({ tipo_id: tipo.id, tipo_nome: tipo.nome, local: tipo.local || null, inicio: iso(f.inicio), fim: iso(f.fim), ocupa_ate: iso(f.ocupa_ate), origem: "manual", status: "ativa", criado_por: ator, criado_em: iso(Date.now()) }, v.pessoa);
+  const modalidade = R.MODALIDADES[body.modalidade] ? body.modalidade : null;
+  const linha = Object.assign({ tipo_id: tipo.id, tipo_nome: tipo.nome, local: modalidade ? R.localDe(tipo, modalidade) : (tipo.local || null), modalidade, inicio: iso(f.inicio), fim: iso(f.fim), ocupa_ate: iso(f.ocupa_ate), origem: "manual", status: "ativa", criado_por: ator, criado_em: iso(Date.now()) }, v.pessoa);
   let nova;
   try { [nova] = await db.upsert("ag_reunioes", [linha], "id", { retornar: true }); }
   catch (e) { if (conflito(e)) return erro(res, 409, "Já existe reunião nesse horário.", "OCUPADO"); throw e; }
@@ -634,7 +650,7 @@ async function numerosDoPainel({ req, res, db }) {
   const agora = Date.now();
   const mes = /^\d{4}-(0[1-9]|1[0-2])$/.test(String(req.query.mes || "")) ? String(req.query.mes) : R.hojeBR(agora).slice(0, 7);
   const de = R.paraUtc(R.mesAntes(mes, 6) + "-01", "00:00"), ate = R.paraUtc(R.mesAntes(mes, -1) + "-01", "00:00");
-  const rs = await db.listar(`ag_reunioes?select=inicio,tipo_nome,origem,status,cancelado_por,resultado,proximo_passo&inicio=gte.${iso(de)}&inicio=lt.${iso(ate)}&order=inicio.asc`);
+  const rs = await db.listar(`ag_reunioes?select=inicio,tipo_nome,origem,status,cancelado_por,resultado,proximo_passo,modalidade&inicio=gte.${iso(de)}&inicio=lt.${iso(ate)}&order=inicio.asc`);
   return res.status(200).json(Object.assign({ ok: true }, R.numeros(rs, mes, agora)));
 }
 async function podeVerNumeros(db, ator) {
@@ -642,6 +658,18 @@ async function podeVerNumeros(db, ator) {
   if (!NUMEROS_NO_PAINEL || !ator) return false;
   const [u] = await db.obter(`app_users?select=perms,ativo&user_key=eq.${enc(ator)}&limit=1`);
   return !!(u && u.ativo !== false && u.perms && u.perms.comDash === true);
+}
+
+async function salvarModalidadeDia({ res, db, ator, body }) {
+  const v = R.validarModalidadeDia(body);
+  if (v.erro) return erro(res, 400, v.erro, "INVALIDO");
+  const c = await lerConfig(db), ontem = R.somaDias(R.hojeBR(Date.now()), -1);
+  const dias = {};
+  for (const [d, m] of Object.entries(c.modalidade_dias || {})) if (d >= ontem && R.MOD_DIA.includes(m)) dias[d] = m; // o que passou sai
+  if (v.modalidade) dias[v.dia] = v.modalidade; else delete dias[v.dia];
+  await db.atualizar("ag_config?id=eq.1", { modalidade_dias: dias, atualizado_em: iso(Date.now()), atualizado_por: ator });
+  registrar(db, ator, "AGENDA_MODALIDADE_DIA", v.dia, { modalidade: v.modalidade || "padrão" });
+  return res.status(200).json({ ok: true, modalidade_dias: dias });
 }
 
 async function trocarIcs({ res, db, ator }) {
@@ -657,7 +685,7 @@ const ROTAS = {
   "POST bloqueio": criarBloqueio, "DELETE bloqueio": tirarBloqueio,
   "POST diretor": salvarDiretor, "POST atualizar": atualizarDiretores, "DELETE diretor": tirarDiretor,
   "POST reuniao": criarReuniao, "PATCH reuniao": remarcar, "POST cancelar": cancelar, "POST ics": trocarIcs,
-  "POST marca": salvarMarca, "POST resultado": salvarResultado, "GET numeros": numerosDoPainel
+  "POST marca": salvarMarca, "POST resultado": salvarResultado, "GET numeros": numerosDoPainel, "POST modalidade": salvarModalidadeDia
 };
 
 module.exports = async function agenda(req, res) {

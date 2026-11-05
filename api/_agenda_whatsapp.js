@@ -9,7 +9,7 @@
 
 "use strict";
 
-const { quando } = require("./_agenda_email");
+const { quando, onde } = require("./_agenda_email");
 
 const primeiroNome = n => String(n || "").trim().split(/\s+/)[0] || "";
 const durTxt = m => m < 60 ? m + " minutos" : (m % 60 ? Math.floor(m / 60) + "h" + String(m % 60).padStart(2, "0") : m / 60 + (m === 60 ? " hora" : " horas"));
@@ -29,17 +29,17 @@ function celular(tel) {
 function confirmacao(m) {
   const q = quando(m.inicio);
   return `Olá, ${primeiroNome(m.nome)}! ✅\nSua reunião com o *Grupo ServCamp* está *confirmada*:\n\n📌 ${m.tipo}\n📅 ${q.extenso}, às *${q.hora}* (horário de Brasília)\n⏱ ${durTxt(m.duracao_min)}` +
-    (m.local ? `\n📍 ${m.local}` : "") + (m.gerenciar ? `\n\nPara remarcar ou cancelar (até 2 horas antes):\n${m.gerenciar}` : "") + assina(m);
+    (onde(m) ? "\n" + onde(m) : "") + (m.gerenciar ? `\n\nPara remarcar ou cancelar (até 2 horas antes):\n${m.gerenciar}` : "") + assina(m);
 }
 function lembrete(m) {
   const q = quando(m.inicio);
   return `Olá, ${primeiroNome(m.nome)}! ⏰\nLembrete da sua reunião com o *Grupo ServCamp* *amanhã*:\n\n📌 ${m.tipo}\n📅 ${q.extenso}, às *${q.hora}* (horário de Brasília)` +
-    (m.local ? `\n📍 ${m.local}` : "") + (m.gerenciar ? `\n\nSe não conseguir comparecer, remarque ou cancele (até 2 horas antes):\n${m.gerenciar}` : "") + assina(m);
+    (onde(m) ? "\n" + onde(m) : "") + (m.gerenciar ? `\n\nSe não conseguir comparecer, remarque ou cancele (até 2 horas antes):\n${m.gerenciar}` : "") + assina(m);
 }
 function remarcada(m) {
   const q = quando(m.inicio);
   return `Olá, ${primeiroNome(m.nome)}! 🔁\nSua reunião com o *Grupo ServCamp* foi *remarcada* para:\n\n📌 ${m.tipo}\n📅 ${q.extenso}, às *${q.hora}* (horário de Brasília)` +
-    (m.local ? `\n📍 ${m.local}` : "") + (m.gerenciar ? `\n\nPara remarcar ou cancelar:\n${m.gerenciar}` : "") + assina(m);
+    (onde(m) ? "\n" + onde(m) : "") + (m.gerenciar ? `\n\nPara remarcar ou cancelar:\n${m.gerenciar}` : "") + assina(m);
 }
 function cancelada(m) {
   const q = quando(m.inicio);

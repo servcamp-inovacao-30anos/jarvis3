@@ -91,6 +91,19 @@ body{margin:0;background:var(--fd);font-family:system-ui,-apple-system,"Segoe UI
 .ag-pe b{color:var(--az)}
 .ag-pe span{flex-basis:100%;text-align:center}
 
+/* online ou presencial */
+.ag-mod-wrap{margin-bottom:16px}
+.ag-mod-wrap[hidden],#agDiasWrap[hidden]{display:none}
+.ag-mod{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ag-mod-op{display:flex;flex-direction:column;align-items:center;gap:2px;padding:14px 10px;border:2px solid var(--bd);border-radius:14px;background:#fff;color:var(--az);font:inherit;cursor:pointer;text-align:center;transition:border-color .15s,background .15s}
+.ag-mod-op:hover{border-color:var(--vd2)}
+.ag-mod-op span{font-size:1.5rem;line-height:1.2}
+.ag-mod-op b{font-size:.98rem}
+.ag-mod-op small{font-size:.72rem;color:var(--cz);overflow-wrap:anywhere}
+.ag-mod-op.on{border-color:var(--vd);background:#f0fdf4;box-shadow:0 0 0 3px rgba(21,128,61,.12)}
+.ag-mod-op.on b{color:var(--vd)}
+.ag-mod-op:focus-visible{outline:2px solid var(--vd);outline-offset:2px}
+
 /* celular: nas etapas, só o nome da etapa atual */
 @media (max-width:520px){.ag-steps li:not(.on) span{display:none}.ag-steps li:not(.on){flex:0 1 auto}.ag-steps li.on{flex:1 0 auto}}
 
