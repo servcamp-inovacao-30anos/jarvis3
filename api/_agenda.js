@@ -28,6 +28,7 @@ const _auth = require("./_auth");
 const ponto = require("./_ponto");
 const R = require("./_agenda_regras");
 const ICS = require("./_agenda_ics");
+const EMAIL = require("./_agenda_email");
 const ADMINS = require("./users").ADMINS;
 
 // Administradora da agenda: vai ser a Gabriela, do Comercial. Por enquanto (pedido do João em 05/11/2026)
@@ -40,6 +41,8 @@ const MAX_POR_IP_HORA = 5;          // e o mesmo endereço de internet não marc
 const DIR_ATUALIZA_MIN = 5;         // o calendário de cada diretor é relido no máximo a cada 5 minutos
 const DIR_VALIDO_H = 6;             // sem conseguir ler há mais que isso, o tipo de reunião sai do ar (não arrisca marcar em cima do diretor)
 const DIR_DIAS = 130;               // quantos dias à frente se guardam dos compromissos do diretor
+const CANCELA_ATE_H = 2;            // o cliente remarca ou cancela pelo link até 2 horas antes
+const MAX_REMARCACOES = 2;          // e remarca no máximo 2 vezes pelo link (depois, fala com o Comercial)
 
 const erro = (res, status, mensagem, codigo) => res.status(status).json({ error: mensagem, codigo });
 const enc = encodeURIComponent;
@@ -52,6 +55,17 @@ const conflito = e => /\b409\b/.test(String(e && e.message)) && /23P01|ag_reunio
 // assinatura do convite de uma reunião: sem ela, ninguém baixa o convite de reunião alheia trocando o id
 const segredo = () => process.env.AUTH_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const assinarConvite = id => crypto.createHmac("sha256", segredo()).update("agenda-convite:" + id).digest("base64url").slice(0, 32);
+// Código do link "remarcar ou cancelar" de UMA reunião: <id>.<assinatura>. É calculado (HMAC), não guardado:
+// serve para o e-mail de confirmação, o lembrete e a tela de confirmação, e ninguém chega à reunião dos outros.
+const assinarGerenciar = id => crypto.createHmac("sha256", segredo()).update("agenda-gerenciar:" + id).digest("base64url").slice(0, 32);
+const codigoDe = id => id + "." + assinarGerenciar(id);
+const idDoCodigo = c => { const m = String(c || "").match(/^(\d{1,12})\.([A-Za-z0-9_-]{32})$/); return m && segredo() && iguais(m[2], assinarGerenciar(m[1])) ? m[1] : null; };
+// endereço do painel para os links dos e-mails: o que a pessoa usou, senão PAINEL_URL
+function baseUrl(req) {
+  const h = String((req && req.headers && (req.headers["x-forwarded-host"] || req.headers.host)) || "").split(",")[0].trim();
+  if (/^[a-z0-9.-]+(:\d+)?$/i.test(h) && !/^localhost|^127\./.test(h)) return "https://" + h;
+  return String(process.env.PAINEL_URL || "").trim().replace(/\/+$/, "");
+}
 const semTabela = e => /\bag_/.test(String(e && e.message)) && /\b(404|42P01|PGRST205)\b/.test(String(e && e.message));
 
 function quemPede(req) {
@@ -84,7 +98,7 @@ async function lerConfig(db) {
   }
   return c;
 }
-const cfgDe = c => ({ semana: c.semana || {}, intervalo_min: c.intervalo_min, antecedencia_h: c.antecedencia_h, janela_dias: c.janela_dias, passo_min: c.passo_min });
+const cfgDe = c => ({ semana: c.semana || {}, intervalo_min: c.intervalo_min, antecedencia_h: c.antecedencia_h, janela_dias: c.janela_dias, passo_min: c.passo_min, email_aviso: c.email_aviso || null });
 
 async function ocupacao(db, de, ate, ignorarId) {
   const [reunioes, bloqueios] = await Promise.all([
@@ -149,6 +163,30 @@ async function bloqueiosDosDiretores(db, tipo, agora) {
 }
 const mascarar = u => { try { const x = new URL(ICS.normalizarUrl(u) || u); return x.hostname + "/…" + x.pathname.slice(-6); } catch (e) { return "…"; } };
 
+// ── e-mails ────────────────────────────────────────────────────────────────
+
+// Dados de uma reunião para os textos dos e-mails
+const dadosMail = (r, tipo, base, extra) => Object.assign({
+  id: r.id, tipo: r.tipo_nome || (tipo && tipo.nome) || "Reunião", nome: r.nome, telefone: r.telefone, email: r.email, obs: r.obs, origem: r.origem,
+  inicio: +new Date(r.inicio), fim: +new Date(r.fim), duracao_min: Math.round((+new Date(r.fim) - +new Date(r.inicio)) / 60000), local: r.local || null,
+  cor: (tipo && tipo.cor) || null, gerenciar: base ? base + "/agendar.html?r=" + codigoDe(r.id) : null
+}, extra || {});
+const paraAviso = cfg => (cfg && cfg.email_aviso) || process.env.MAIL_USER || null;
+const resumoEnvio = (r, tem) => !tem ? "sem e-mail" : (r.ok ? "enviado" : "falhou: " + (r.motivo || "erro"));
+// Nada aqui lança: o e-mail é um extra, a reunião já está gravada.
+async function emailMarcada(db, r, tipo, cfg, base, opcoes) {
+  try {
+    const m = dadosMail(r, tipo, base);
+    const [cli, av] = await Promise.all([
+      r.email && !(opcoes && opcoes.semAviso) ? EMAIL.enviar(Object.assign({ para: r.email, convite: EMAIL.convite(m) }, EMAIL.confirmacao(m))) : Promise.resolve({ ok: false, motivo: "sem e-mail" }),
+      (opcoes && opcoes.semComercial) ? Promise.resolve(null) : EMAIL.enviar(Object.assign({ para: paraAviso(cfg) }, EMAIL.aviso(Object.assign({ acao: "nova" }, m))))
+    ]);
+    const status = resumoEnvio(cli, !!r.email);
+    await db.atualizar(`ag_reunioes?id=eq.${r.id}`, { email_status: status }).catch(() => {});
+    return { cliente: status, comercial: av ? (av.ok ? "enviado" : "falhou: " + av.motivo) : null };
+  } catch (e) { console.error("[agenda] e-mail:", e && e.message); return { cliente: "falhou", comercial: null }; }
+}
+
 // ── pública ─────────────────────────────────────────────────────────────────
 
 async function tipoPeloLink(db, s) {
@@ -156,9 +194,9 @@ async function tipoPeloLink(db, s) {
   const [t] = await db.obter(`ag_tipos?select=id,nome,duracao_min,local,cor,slug,diretores&slug=eq.${enc(s)}&ativo=is.true&limit=1`);
   return t || null;
 }
-async function livresPara(db, cfg, tipo, agora) {
+async function livresPara(db, cfg, tipo, agora, ignorarId) {
   const ate = R.paraUtc(R.somaDias(R.hojeBR(agora), cfg.janela_dias + 1), "00:00");
-  const { ocupados, bloqueios } = await ocupacao(db, agora, ate);
+  const { ocupados, bloqueios } = await ocupacao(db, agora, ate, ignorarId);
   const dir = await bloqueiosDosDiretores(db, tipo, agora);
   if (dir.indisponivel) { const e = new Error("diretor sem leitura válida"); e.indisponivel = true; throw e; }
   return R.horariosLivres(cfg, tipo, ocupados, bloqueios.concat(dir.bloqueios), agora);
@@ -168,9 +206,13 @@ async function pubHorarios({ req, res, db }) {
   const tipo = await tipoPeloLink(db, req.query.s);
   if (!tipo) return erro(res, 404, "Este link de agendamento não existe ou foi desativado.", "SEM_TIPO");
   const cfg = cfgDe(await lerConfig(db)), agora = Date.now();
+  // remarcando pelo link: o horário atual da própria reunião não conta como ocupado
+  const rid = req.query.r ? idDoCodigo(req.query.r) : null;
+  let ignorar = null;
+  if (rid) { const [m] = await db.obter(`ag_reunioes?select=id,tipo_id,status&id=eq.${rid}&limit=1`); if (m && m.status === "ativa" && String(m.tipo_id) === String(tipo.id)) ignorar = m.id; }
   return res.status(200).json({
     tipo: { nome: tipo.nome, duracao_min: tipo.duracao_min, local: tipo.local || null, cor: tipo.cor },
-    dias: await livresPara(db, cfg, tipo, agora)
+    dias: await livresPara(db, cfg, tipo, agora, ignorar)
   });
 }
 
@@ -203,8 +245,101 @@ async function pubAgendar({ req, res, db }) {
   catch (e) { if (conflito(e)) return erro(res, 409, "Esse horário acabou de ser ocupado. Escolha outro.", "OCUPADO"); throw e; }
   registrar(db, "link", "AGENDA_MARCADA", nova ? nova.id : "?", { tipo: tipo.nome, inicio: linha.inicio, origem: "link" });
   const id = nova ? nova.id : null;
+  const email = nova ? await emailMarcada(db, Object.assign({}, linha, { id }), tipo, await lerConfig(db), baseUrl(req)) : null;
   return res.status(201).json({ ok: true, tipo: tipo.nome, local: tipo.local || null, dia: b.dia, hora: b.hora, inicio: linha.inicio, fim: linha.fim, duracao_min: tipo.duracao_min,
-    convite: id != null ? { id, c: assinarConvite(id) } : null });
+    convite: id != null ? { id, c: assinarConvite(id) } : null, gerenciar: id != null ? codigoDe(id) : null, email_cliente: email ? email.cliente : null });
+}
+
+// ── o cliente mexe na própria reunião (link do e-mail: agendar.html?r=CODIGO) ──
+
+async function reuniaoDoCodigo(db, codigo) {
+  const id = idDoCodigo(codigo);
+  if (!id) return {};
+  const [r] = await db.obter(`ag_reunioes?select=*&id=eq.${id}&limit=1`);
+  if (!r) return {};
+  const [tipo] = r.tipo_id != null ? await db.obter(`ag_tipos?select=id,nome,duracao_min,local,cor,slug,ativo,diretores&id=eq.${r.tipo_id}&limit=1`) : [];
+  return { r, tipo: tipo || null };
+}
+const podeMexer = (r, agora) => r.status === "ativa" && +new Date(r.inicio) - agora >= CANCELA_ATE_H * 3600000;
+
+async function pubMinha({ req, res, db }) {
+  const { r, tipo } = await reuniaoDoCodigo(db, req.query.r);
+  if (!r) return erro(res, 404, "Este link não existe ou não vale mais.", "SEM_REUNIAO");
+  const agora = Date.now(), mexe = podeMexer(r, agora);
+  return res.status(200).json({ // nada de telefone, e-mail ou observação
+    nome: String(r.nome || "").split(/\s+/)[0], status: r.status, inicio: r.inicio, fim: r.fim, local: r.local || null,
+    tipo: { nome: r.tipo_nome || (tipo && tipo.nome) || "Reunião", duracao_min: Math.round((+new Date(r.fim) - +new Date(r.inicio)) / 60000), cor: tipo && tipo.cor, slug: tipo && tipo.ativo ? tipo.slug : null },
+    pode_cancelar: mexe, pode_remarcar: mexe && !!(tipo && tipo.ativo) && (r.remarcacoes || 0) < MAX_REMARCACOES,
+    passou: +new Date(r.fim) < agora, cancela_ate_h: CANCELA_ATE_H
+  });
+}
+
+async function pubCancelarMinha({ req, res, db }) {
+  const { r, tipo } = await reuniaoDoCodigo(db, (req.body || {}).r);
+  if (!r) return erro(res, 404, "Este link não existe ou não vale mais.", "SEM_REUNIAO");
+  const agora = Date.now();
+  if (r.status !== "ativa") return res.status(200).json({ ok: true, ja: true });
+  if (!podeMexer(r, agora)) return erro(res, 409, "Faltam menos de " + CANCELA_ATE_H + " horas para a reunião. Fale com o nosso Comercial para cancelar.", "FORA_DO_PRAZO");
+  await db.atualizar(`ag_reunioes?id=eq.${r.id}&status=eq.ativa`, { status: "cancelada", cancelado_em: iso(agora), cancelado_por: "cliente" });
+  registrar(db, "cliente", "AGENDA_CANCELADA", r.id, { pelo: "link" });
+  const cfg = await lerConfig(db);
+  await EMAIL.enviar(Object.assign({ para: paraAviso(cfg) }, EMAIL.aviso(Object.assign({ acao: "cancelada" }, dadosMail(r, tipo, null))))).catch(() => {});
+  return res.status(200).json({ ok: true });
+}
+
+async function pubRemarcarMinha({ req, res, db }) {
+  const b = req.body || {};
+  const { r, tipo } = await reuniaoDoCodigo(db, b.r);
+  if (!r) return erro(res, 404, "Este link não existe ou não vale mais.", "SEM_REUNIAO");
+  const agora = Date.now();
+  if (!podeMexer(r, agora)) return erro(res, 409, "Faltam menos de " + CANCELA_ATE_H + " horas para a reunião (ou ela já foi cancelada). Fale com o nosso Comercial.", "FORA_DO_PRAZO");
+  if (!tipo || !tipo.ativo) return erro(res, 409, "Este tipo de reunião não está mais disponível. Fale com o nosso Comercial.", "SEM_TIPO");
+  if ((r.remarcacoes || 0) >= MAX_REMARCACOES) return erro(res, 409, "Você já remarcou " + MAX_REMARCACOES + " vezes. Fale com o nosso Comercial.", "LIMITE");
+  if (!R.DIA.test(String(b.dia || "")) || !R.HORA.test(String(b.hora || ""))) return erro(res, 400, "Escolha um dia e um horário.", "INVALIDO");
+  const cfgL = await lerConfig(db), cfg = cfgDe(cfgL);
+  const livres = await livresPara(db, cfg, tipo, agora, r.id);
+  if (!(livres[b.dia] || []).includes(b.hora)) return erro(res, 409, "Esse horário não está mais disponível. Escolha outro.", "OCUPADO");
+  const f = R.faixa(b.dia, b.hora, Math.round((+new Date(r.fim) - +new Date(r.inicio)) / 60000), cfg.intervalo_min);
+  try { await db.atualizar(`ag_reunioes?id=eq.${r.id}&status=eq.ativa`, { inicio: iso(f.inicio), fim: iso(f.fim), ocupa_ate: iso(f.ocupa_ate), remarcacoes: (r.remarcacoes || 0) + 1, lembrete_em: null }); }
+  catch (e) { if (conflito(e)) return erro(res, 409, "Esse horário acabou de ser ocupado. Escolha outro.", "OCUPADO"); throw e; }
+  registrar(db, "cliente", "AGENDA_REMARCADA", r.id, { de: r.inicio, para: iso(f.inicio), pelo: "link" });
+  const novo = Object.assign({}, r, { inicio: iso(f.inicio), fim: iso(f.fim) });
+  const base = baseUrl(req), m = dadosMail(novo, tipo, base);
+  const [cli] = await Promise.all([
+    r.email ? EMAIL.enviar(Object.assign({ para: r.email, convite: EMAIL.convite(m) }, EMAIL.remarcada(m))) : Promise.resolve({ ok: false, motivo: "sem e-mail" }),
+    EMAIL.enviar(Object.assign({ para: paraAviso(cfgL) }, EMAIL.aviso(Object.assign({ acao: "remarcada", de: +new Date(r.inicio) }, m))))
+  ]);
+  await db.atualizar(`ag_reunioes?id=eq.${r.id}`, { email_status: resumoEnvio(cli, !!r.email) }).catch(() => {});
+  return res.status(200).json({ ok: true, dia: b.dia, hora: b.hora, inicio: novo.inicio, fim: novo.fim });
+}
+
+// Lembrete: o cron diário (17h, Brasília) avisa quem tem reunião amanhã e ainda não foi lembrado.
+async function cron(req, res) {
+  const secret = process.env.CRON_SECRET, auth = req.headers && req.headers.authorization;
+  if (secret && auth !== "Bearer " + secret && (req.query || {}).secret !== secret) return erro(res, 401, "Não autorizado.", "NAO_AUTORIZADO");
+  const db = ponto.conectar();
+  if (!db) return erro(res, 500, "Agenda indisponível.", "CONFIG_AUSENTE");
+  res.setHeader("Cache-Control", "no-store");
+  try {
+    const agora = Date.now(), amanha = R.somaDias(R.hojeBR(agora), 1);
+    const de = R.paraUtc(amanha, "00:00"), ate = R.paraUtc(R.somaDias(amanha, 1), "00:00");
+    const rs = await db.listar(`ag_reunioes?select=*&status=eq.ativa&lembrete_em=is.null&inicio=gte.${iso(de)}&inicio=lt.${iso(ate)}&order=inicio.asc`);
+    const tipos = await db.listar("ag_tipos?select=id,nome,cor,slug&order=id.asc");
+    const base = baseUrl(req);
+    let enviados = 0; const falhas = [];
+    for (const r of rs) {
+      if (!r.email) { await db.atualizar(`ag_reunioes?id=eq.${r.id}`, { lembrete_em: iso(agora) }).catch(() => {}); continue; }
+      const t = tipos.find(x => String(x.id) === String(r.tipo_id)) || null;
+      const m = dadosMail(r, t, base);
+      const x = await EMAIL.enviar(Object.assign({ para: r.email, convite: EMAIL.convite(m) }, EMAIL.lembrete(m)));
+      if (x.ok) { enviados++; await db.atualizar(`ag_reunioes?id=eq.${r.id}`, { lembrete_em: iso(agora) }); }
+      else falhas.push({ id: r.id, motivo: x.motivo }); // sem marcar: tenta de novo na próxima rodada
+    }
+    return res.status(200).json({ ok: true, amanha, reunioes: rs.length, enviados, falhas });
+  } catch (e) {
+    console.error("[agenda cron] " + String((e && e.message) || e));
+    return erro(res, 500, "Falha ao enviar os lembretes.", "ERRO");
+  }
 }
 
 // O convite de quem marcou: só a reunião dele, sem nada da agenda da Comercial.
@@ -236,7 +371,8 @@ async function pubIcs({ req, res, db }) {
   return res.status(200).send(corpo);
 }
 
-const ROTAS_PUB = { "GET horarios": pubHorarios, "POST agendar": pubAgendar, "GET ics": pubIcs, "GET convite": pubConvite };
+const ROTAS_PUB = { "GET horarios": pubHorarios, "POST agendar": pubAgendar, "GET ics": pubIcs, "GET convite": pubConvite,
+  "GET minha": pubMinha, "POST cancelar-minha": pubCancelarMinha, "POST remarcar-minha": pubRemarcarMinha };
 
 async function publico(req, res) {
   const t = String((req.query && req.query.t) || "");
@@ -260,7 +396,7 @@ async function tudo({ res, db }) {
   const [tipos, bloqueios, reunioes, dirs] = await Promise.all([
     db.listar("ag_tipos?select=id,nome,duracao_min,local,cor,slug,ativo,ordem,diretores&order=ordem.asc,id.asc"),
     db.listar(`ag_bloqueios?select=id,inicio,fim,motivo&fim=gt.${iso(agora - 90 * 86400000)}&order=inicio.asc`),
-    db.listar(`ag_reunioes?select=id,tipo_id,tipo_nome,inicio,fim,nome,telefone,email,obs,local,origem,status,criado_em&inicio=gt.${iso(agora - 90 * 86400000)}&order=inicio.asc`),
+    db.listar(`ag_reunioes?select=id,tipo_id,tipo_nome,inicio,fim,nome,telefone,email,obs,local,origem,status,criado_em,email_status,remarcacoes,cancelado_por&inicio=gt.${iso(agora - 90 * 86400000)}&order=inicio.asc`),
     db.listar("ag_diretores?select=id,nome,url,ativo,ocupado,lido_em,erro&order=id.asc")
   ]);
   await Promise.all(dirs.filter(d => d.ativo && velho(d, agora)).map(async d => Object.assign(d, await atualizarDiretor(db, d, agora))));
@@ -365,9 +501,9 @@ async function tirarBloqueio({ req, res, db, ator }) {
 }
 
 // Reunião cadastrada à mão: qualquer horário (a Comercial decide), mas nunca em cima de outra.
-async function criarReuniao({ res, db, ator, body }) {
+async function criarReuniao({ req, res, db, ator, body }) {
   if (!R.DIA.test(String(body.dia || "")) || !R.HORA.test(String(body.hora || ""))) return erro(res, 400, "Escolha o dia e o horário.", "INVALIDO");
-  const [tipo] = /^\d{1,12}$/.test(String(body.tipo_id || "")) ? await db.obter(`ag_tipos?select=id,nome,duracao_min,local&id=eq.${body.tipo_id}&limit=1`) : [];
+  const [tipo] = /^\d{1,12}$/.test(String(body.tipo_id || "")) ? await db.obter(`ag_tipos?select=id,nome,duracao_min,local,cor&id=eq.${body.tipo_id}&limit=1`) : [];
   if (!tipo) return erro(res, 400, "Escolha o tipo de reunião.", "INVALIDO");
   const v = R.validarPessoa(body, { telefoneOpcional: true });
   if (v.erro) return erro(res, 400, v.erro, "INVALIDO");
@@ -379,14 +515,16 @@ async function criarReuniao({ res, db, ator, body }) {
   try { [nova] = await db.upsert("ag_reunioes", [linha], "id", { retornar: true }); }
   catch (e) { if (conflito(e)) return erro(res, 409, "Já existe reunião nesse horário.", "OCUPADO"); throw e; }
   registrar(db, ator, "AGENDA_MARCADA", nova ? nova.id : "?", { tipo: tipo.nome, inicio: linha.inicio, origem: "manual" });
-  return res.status(201).json({ ok: true, id: nova ? nova.id : null });
+  // quem cadastrou já sabe: sem aviso para a Comercial; a pessoa recebe a confirmação se tiver e-mail e se a Comercial quiser
+  const email = nova && linha.email && body.avisar !== false ? await emailMarcada(db, Object.assign({}, linha, { id: nova.id }), tipo, await lerConfig(db), baseUrl(req), { semComercial: true }) : null;
+  return res.status(201).json({ ok: true, id: nova ? nova.id : null, email_cliente: email ? email.cliente : null });
 }
 
 async function remarcar({ req, res, db, ator, body }) {
   const id = idDe(req);
   if (!id) return erro(res, 400, "Informe a reunião.", "SEM_ID");
   if (!R.DIA.test(String(body.dia || "")) || !R.HORA.test(String(body.hora || ""))) return erro(res, 400, "Escolha o novo dia e horário.", "INVALIDO");
-  const [r] = await db.obter(`ag_reunioes?select=id,inicio,fim,status&id=eq.${id}&limit=1`);
+  const [r] = await db.obter(`ag_reunioes?select=*&id=eq.${id}&limit=1`);
   if (!r || r.status !== "ativa") return erro(res, 404, "Reunião não encontrada (ou já cancelada).", "NAO_ENCONTRADA");
   const cfg = cfgDe(await lerConfig(db));
   const dur = Math.round((+new Date(r.fim) - +new Date(r.inicio)) / 60000);
@@ -395,15 +533,31 @@ async function remarcar({ req, res, db, ator, body }) {
   try { await db.atualizar(`ag_reunioes?id=eq.${id}&status=eq.ativa`, { inicio: iso(f.inicio), fim: iso(f.fim), ocupa_ate: iso(f.ocupa_ate) }); }
   catch (e) { if (conflito(e)) return erro(res, 409, "Já existe reunião nesse horário.", "OCUPADO"); throw e; }
   registrar(db, ator, "AGENDA_REMARCADA", id, { de: r.inicio, para: iso(f.inicio) });
-  return res.status(200).json({ ok: true });
+  let email = null;
+  if (r.email && body.avisar !== false) {
+    const [tipo] = r.tipo_id != null ? await db.obter(`ag_tipos?select=id,nome,cor&id=eq.${r.tipo_id}&limit=1`) : [];
+    const m = dadosMail(Object.assign({}, r, { inicio: iso(f.inicio), fim: iso(f.fim) }), tipo, baseUrl(req));
+    const x = await EMAIL.enviar(Object.assign({ para: r.email, convite: EMAIL.convite(m) }, EMAIL.remarcada(m)));
+    email = resumoEnvio(x, true);
+    await db.atualizar(`ag_reunioes?id=eq.${id}`, { email_status: email, lembrete_em: null }).catch(() => {});
+  }
+  return res.status(200).json({ ok: true, email_cliente: email });
 }
 
-async function cancelar({ req, res, db, ator }) {
+async function cancelar({ req, res, db, ator, body }) {
   const id = idDe(req);
   if (!id) return erro(res, 400, "Informe a reunião.", "SEM_ID");
+  const [r] = await db.obter(`ag_reunioes?select=*&id=eq.${id}&limit=1`);
   await db.atualizar(`ag_reunioes?id=eq.${id}&status=eq.ativa`, { status: "cancelada", cancelado_em: iso(Date.now()), cancelado_por: ator });
   registrar(db, ator, "AGENDA_CANCELADA", id, null);
-  return res.status(200).json({ ok: true });
+  let email = null;
+  if (r && r.status === "ativa" && r.email && body.avisar !== false) {
+    const [tipo] = r.tipo_id != null ? await db.obter(`ag_tipos?select=id,nome,cor,slug,ativo&id=eq.${r.tipo_id}&limit=1`) : [];
+    const base = baseUrl(req);
+    const m = dadosMail(r, tipo, base, { novo: tipo && tipo.ativo && base ? base + "/agendar.html?s=" + tipo.slug : null });
+    email = resumoEnvio(await EMAIL.enviar(Object.assign({ para: r.email }, EMAIL.cancelada(m))), true);
+  }
+  return res.status(200).json({ ok: true, email_cliente: email });
 }
 
 async function trocarIcs({ res, db, ator }) {
@@ -440,4 +594,5 @@ module.exports = async function agenda(req, res) {
   }
 };
 module.exports.publico = publico;
+module.exports.cron = cron;
 module.exports.GESTORES = GESTORES;

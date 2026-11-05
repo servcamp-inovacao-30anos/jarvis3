@@ -66,7 +66,10 @@ function validarConfig(b) {
   if (antecedencia_h == null) return { erro: "Antecedência mínima: de 0 a 168 horas." };
   if (janela_dias == null) return { erro: "Agenda aberta: de 1 a 120 dias." };
   if (passo_min == null) return { erro: "Horários a cada: de 5 a 240 minutos." };
-  return { config: { semana, intervalo_min, antecedencia_h, janela_dias, passo_min } };
+  // e-mail que recebe o aviso de reunião nova, remarcada ou cancelada (vazio = a caixa do Comercial, MAIL_USER)
+  const aviso = txt(b.email_aviso, 120).toLowerCase();
+  if (aviso && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(aviso)) return { erro: "E-mail dos avisos inválido." };
+  return { config: { semana, intervalo_min, antecedencia_h, janela_dias, passo_min, email_aviso: aviso || null } };
 }
 
 function validarTipo(b) {

@@ -48,6 +48,8 @@ module.exports = async function handler(req, res) {
   // login de usuário, então passa antes da exigência de token. A própria função confere o
   // CRON_SECRET (quando existe) e só age na segunda a partir das 14h (api/_faltas_email.js).
   if (_q.modulo === "faltasemail" && _q.t === "cron") return require("./_faltas_email").cron(req, res);
+  // Lembrete diário da Agenda Comercial (vercel.json): mesmo caso — a Vercel não manda login; a própria função confere o CRON_SECRET.
+  if (_q.modulo === "agenda" && _q.t === "cron") return require("./_agenda").cron(req, res);
   // O do Relatório de Coberturas (modulo=bdv) usa o escopo "xlb": a chave de um não abre o outro.
   // Via do documento da medida (QR, SMS, e-mail): o colaborador não tem login. O código do link e o RE com os 4 últimos
   // dígitos do celular são a prova (api/_via.js).

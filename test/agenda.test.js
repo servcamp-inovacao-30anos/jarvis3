@@ -493,3 +493,289 @@ test("tela: horários do diretor aparecem em cinza no calendário e o botão avi
     assert.ok(/data-ag="diretores">👔 Diretores ⚠️/.test(h), "o botão avisa que há diretor sem leitura");
   } finally { Date.now = real; }
 });
+
+// ── e-mails e o cliente mexendo na própria reunião ──────────────────────────
+const EMAILM = require("../api/_agenda_email");
+const agendaMod = require("../api/_agenda");
+const HOST = { host: "painel.exemplo" };
+function correioFalso(falha) {
+  const enviados = [];
+  const antes = EMAILM.definirCorreio(async m => { if (falha) return { ok: false, motivo: falha }; enviados.push(m); return { ok: true }; });
+  return { enviados, solta: () => EMAILM.definirCorreio(antes) };
+}
+const marcar = (slug, hora, p, extra) => pub("agendar", { method: "POST", headers: HOST, body: Object.assign({ s: slug, dia: QUI, hora }, p || pessoa(1), extra || {}) });
+const aviso = enviados => enviados.find(m => /Reunião nova/.test(m.assunto));
+
+test("e-mail: marcar pelo link manda a confirmação (com convite e link de remarcar) para a pessoa e o aviso para a Comercial", async () => {
+  process.env.MAIL_USER = "comercial@exemplo.com";
+  const c = correioFalso();
+  try {
+    await comRelogio(AGORA, async () => {
+      const { tabelas, slug60 } = await preparar();
+      const r = await marcar(slug60, "10:00", pessoa(1, { email: "ana@exemplo.com", obs: "quero saber de portaria" }));
+      assert.equal(r.statusCode, 201, JSON.stringify(r.body));
+      assert.equal(r.body.email_cliente, "enviado");
+      assert.match(r.body.gerenciar, /^\d+\.[A-Za-z0-9_-]{32}$/);
+      const cli = c.enviados.find(m => m.para === "ana@exemplo.com");
+      assert.ok(cli, "confirmação para a pessoa");
+      assert.match(cli.assunto, /^Reunião confirmada — Reunião com cliente · 12\/11 às 10:00$/);
+      assert.ok(cli.html.includes("https://painel.exemplo/agendar.html?r=" + r.body.gerenciar), "link de remarcar/cancelar");
+      assert.ok(cli.convite.includes("BEGIN:VCALENDAR") && cli.convite.includes("DTSTART:20261112T130000Z"), "convite anexo");
+      assert.ok(!/1999999|portaria/.test(cli.html + cli.texto), "nada de telefone nem observação no e-mail da pessoa");
+      const av = aviso(c.enviados);
+      assert.equal(av.para, "comercial@exemplo.com", "aviso vai para a caixa do Comercial");
+      assert.ok(av.html.includes("quero saber de portaria") && av.html.includes("Pessoa 1"), "o aviso leva os dados de contato");
+      assert.equal(tabelas.ag_reunioes[0].email_status, "enviado");
+    });
+  } finally { c.solta(); delete process.env.MAIL_USER; }
+});
+
+test("e-mail: sem e-mail da pessoa só avisa a Comercial; e se o e-mail falhar, a reunião vale do mesmo jeito", async () => {
+  process.env.MAIL_USER = "comercial@exemplo.com";
+  const ok = correioFalso();
+  try {
+    await comRelogio(AGORA, async () => {
+      const { tabelas, slug60, slug30 } = await preparar();
+      const sem = await marcar(slug60, "09:00", pessoa(1, { email: "" }));
+      assert.equal(sem.statusCode, 201);
+      assert.equal(sem.body.email_cliente, "sem e-mail");
+      assert.equal(ok.enviados.length, 1);
+      assert.equal(ok.enviados[0].para, "comercial@exemplo.com");
+      ok.solta();
+      const quebrado = correioFalso("servidor de e-mail fora do ar");
+      try {
+        const r = await marcar(slug30, "14:00", pessoa(2, { email: "bia@exemplo.com" }));
+        assert.equal(r.statusCode, 201, "a reunião não depende do e-mail");
+        assert.match(r.body.email_cliente, /^falhou: servidor de e-mail fora do ar/);
+        assert.match(tabelas.ag_reunioes.find(x => x.nome === "Pessoa 2").email_status, /^falhou/);
+        const lista = await adm("");
+        assert.match(lista.body.reunioes.find(x => x.nome === "Pessoa 2").email_status, /^falhou/, "a Comercial vê que o e-mail não saiu");
+      } finally { quebrado.solta(); }
+    });
+  } finally { ok.solta(); delete process.env.MAIL_USER; }
+});
+
+test("e-mail: nome e dados de quem marcou entram escapados nos e-mails", async () => {
+  process.env.MAIL_USER = "comercial@exemplo.com";
+  const c = correioFalso();
+  try {
+    await comRelogio(AGORA, async () => {
+      const { slug30 } = await preparar();
+      await marcar(slug30, "14:00", pessoa(1, { nome: "<script>alert(1)</script> Zé", email: "ze@exemplo.com", obs: "<img src=x onerror=alert(1)>" }));
+      for (const m of c.enviados) assert.ok(!/<script>|<img src=x/.test(m.html), m.assunto);
+    });
+  } finally { c.solta(); delete process.env.MAIL_USER; }
+});
+
+test("minha reunião: só abre com o código certo e nunca devolve telefone, e-mail ou observação", async () => {
+  const c = correioFalso();
+  try {
+    await comRelogio(AGORA, async () => {
+      const { slug60 } = await preparar();
+      const r = await marcar(slug60, "10:00", pessoa(1, { email: "ana@exemplo.com", obs: "segredo" }));
+      const cod = r.body.gerenciar;
+      const m = await pub("minha", { query: { r: cod } });
+      assert.equal(m.statusCode, 200);
+      assert.equal(m.body.nome, "Pessoa");
+      assert.equal(m.body.pode_cancelar, true);
+      assert.equal(m.body.pode_remarcar, true);
+      assert.ok(!/1999999|ana@|segredo/.test(JSON.stringify(m.body)));
+      const [id] = cod.split(".");
+      for (const ruim of ["", "x", id + ".", id + ".0000000000000000000000000000000a", String(Number(id) + 1) + "." + cod.split(".")[1], "../" + cod]) {
+        assert.equal((await pub("minha", { query: { r: ruim } })).statusCode, 404, ruim);
+      }
+    });
+  } finally { c.solta(); }
+});
+
+test("minha reunião: cancelar libera o horário e avisa a Comercial; dentro de 2 horas não deixa", async () => {
+  process.env.MAIL_USER = "comercial@exemplo.com";
+  const c = correioFalso();
+  try {
+    let cod, slug60, tabelas;
+    await comRelogio(AGORA, async () => {
+      ({ tabelas, slug60 } = await preparar());
+      cod = (await marcar(slug60, "10:00")).body.gerenciar;
+      c.enviados.length = 0;
+      const r = await pub("cancelar-minha", { method: "POST", headers: HOST, body: { r: cod } });
+      assert.equal(r.statusCode, 200);
+      assert.equal(tabelas.ag_reunioes[0].status, "cancelada");
+      assert.equal(tabelas.ag_reunioes[0].cancelado_por, "cliente");
+      assert.match(c.enviados[0].assunto, /^Reunião cancelada pelo cliente/);
+      assert.equal(c.enviados[0].para, "comercial@exemplo.com");
+      assert.ok((await pub("horarios", { query: { s: slug60 } })).body.dias[QUI].includes("10:00"), "o horário voltou ao link");
+      assert.equal((await pub("cancelar-minha", { method: "POST", body: { r: cod } })).body.ja, true, "cancelar de novo não faz nada");
+      assert.equal((await pub("minha", { query: { r: cod } })).body.pode_cancelar, false);
+    });
+    let outra;
+    await comRelogio(AGORA, async () => { outra = (await marcar(slug60, "13:00", pessoa(2))).body.gerenciar; });
+    await comRelogio(Date.parse("2026-11-12T15:30:00Z"), async () => { // 12:30 de Brasília: falta 30 min para as 13h
+      const r = await pub("cancelar-minha", { method: "POST", body: { r: outra } });
+      assert.equal(r.statusCode, 409);
+      assert.equal(r.body.codigo, "FORA_DO_PRAZO");
+      assert.equal(tabelas.ag_reunioes.find(x => x.nome === "Pessoa 2").status, "ativa");
+      assert.equal((await pub("remarcar-minha", { method: "POST", body: { r: outra, dia: QUI, hora: "16:00" } })).body.codigo, "FORA_DO_PRAZO");
+    });
+  } finally { c.solta(); delete process.env.MAIL_USER; }
+});
+
+test("minha reunião: remarcar muda o horário (o dela próprio conta como livre), recusa horário ocupado e para na 3ª vez", async () => {
+  process.env.MAIL_USER = "comercial@exemplo.com";
+  const c = correioFalso();
+  try {
+    await comRelogio(AGORA, async () => {
+      const { tabelas, slug60 } = await preparar();
+      const eu = await marcar(slug60, "10:00", pessoa(1, { email: "ana@exemplo.com" }));
+      await marcar(slug60, "14:00", pessoa(2));
+      const cod = eu.body.gerenciar;
+      // remarcando, o próprio horário (10:00) e o vizinho (10:30) aparecem livres; o das 14h da outra não
+      const h = (await pub("horarios", { query: { s: slug60, r: cod } })).body.dias[QUI];
+      assert.ok(h.includes("10:00") && h.includes("10:30"), "o horário dela não bloqueia a si mesma");
+      assert.ok(!h.includes("14:00"));
+      const sem = (await pub("horarios", { query: { s: slug60 } })).body.dias[QUI];
+      assert.ok(!sem.includes("10:30"), "sem o código, 10:30 está ocupado pela própria reunião");
+      assert.equal((await pub("remarcar-minha", { method: "POST", body: { r: cod, dia: QUI, hora: "14:00" } })).statusCode, 409, "em cima da outra");
+      c.enviados.length = 0;
+      const r1 = await pub("remarcar-minha", { method: "POST", headers: HOST, body: { r: cod, dia: QUI, hora: "10:30" } });
+      assert.equal(r1.statusCode, 200, JSON.stringify(r1.body));
+      const linha = tabelas.ag_reunioes.find(x => x.nome === "Pessoa 1");
+      assert.equal(linha.inicio, "2026-11-12T13:30:00.000Z");
+      assert.equal(linha.remarcacoes, 1);
+      assert.ok(c.enviados.some(m => m.para === "ana@exemplo.com" && /Reunião remarcada/.test(m.assunto) && m.convite.includes("DTSTART:20261112T133000Z")), "a pessoa recebe o novo convite");
+      assert.ok(c.enviados.some(m => /remarcada pelo cliente/.test(m.assunto)), "a Comercial é avisada");
+      assert.equal((await pub("remarcar-minha", { method: "POST", body: { r: cod, dia: QUI, hora: "11:30" } })).statusCode, 200);
+      const terceira = await pub("remarcar-minha", { method: "POST", body: { r: cod, dia: QUI, hora: "09:00" } });
+      assert.equal(terceira.statusCode, 409);
+      assert.equal(terceira.body.codigo, "LIMITE");
+      assert.equal((await pub("minha", { query: { r: cod } })).body.pode_remarcar, false);
+    });
+  } finally { c.solta(); delete process.env.MAIL_USER; }
+});
+
+test("e-mail pela Comercial: reunião à mão, remarcar e cancelar avisam a pessoa (se tiver e-mail e a Comercial deixar)", async () => {
+  const c = correioFalso();
+  try {
+    await comRelogio(AGORA, async () => {
+      const { tabelas, slug60 } = await preparar();
+      const tipo = tabelas.ag_tipos.find(t => t.slug === slug60);
+      const m = await adm("reuniao", { method: "POST", headers: HOST, body: { tipo_id: tipo.id, dia: QUI, hora: "10:00", nome: "Carla", email: "carla@exemplo.com" } });
+      assert.equal(m.statusCode, 201);
+      assert.equal(m.body.email_cliente, "enviado");
+      assert.equal(c.enviados.length, 1, "à mão não avisa a própria Comercial");
+      assert.equal(c.enviados[0].para, "carla@exemplo.com");
+      const id = String(tabelas.ag_reunioes[0].id);
+      c.enviados.length = 0;
+      assert.equal((await adm("reuniao", { method: "PATCH", headers: HOST, query: { id }, body: { dia: QUI, hora: "15:00" } })).body.email_cliente, "enviado");
+      assert.match(c.enviados[0].assunto, /^Reunião remarcada/);
+      c.enviados.length = 0;
+      const x = await adm("cancelar", { method: "POST", headers: HOST, query: { id }, body: {} });
+      assert.equal(x.body.email_cliente, "enviado");
+      assert.match(c.enviados[0].assunto, /^Reunião cancelada/);
+      assert.ok(c.enviados[0].html.includes("https://painel.exemplo/agendar.html?s=" + slug60), "oferece marcar outro horário");
+      c.enviados.length = 0;
+      const sem = await adm("reuniao", { method: "POST", body: { tipo_id: tipo.id, dia: QUI, hora: "09:00", nome: "Davi", email: "davi@exemplo.com", avisar: false } });
+      assert.equal(sem.body.email_cliente, null);
+      assert.equal(c.enviados.length, 0, "a Comercial pode marcar sem enviar nada");
+    });
+  } finally { c.solta(); }
+});
+
+test("lembrete: o cron diário avisa quem tem reunião amanhã, uma vez só; falha não marca como enviado", async () => {
+  process.env.MAIL_USER = "comercial@exemplo.com";
+  const c = correioFalso();
+  try {
+    let tabelas, slug60;
+    await comRelogio(AGORA, async () => {
+      ({ tabelas, slug60 } = await preparar());
+      await marcar(slug60, "10:00", pessoa(1, { email: "ana@exemplo.com" }));
+      await marcar(slug60, "14:00", pessoa(2, { email: "" }));
+      await marcar(slug60, "15:30", pessoa(3, { email: "caio@exemplo.com" }));
+    });
+    // quarta 11/11, 17h de Brasília: "amanhã" é quinta 12/11
+    const roda = () => comRelogio(Date.parse("2026-11-11T20:00:00Z"), () => chamar(rh, { query: { modulo: "agenda", t: "cron" }, headers: HOST }));
+    c.enviados.length = 0;
+    const r = await roda();
+    assert.equal(r.statusCode, 200, JSON.stringify(r.body));
+    assert.equal(r.body.amanha, QUI);
+    assert.equal(r.body.reunioes, 3);
+    assert.equal(r.body.enviados, 2, "quem não tem e-mail não recebe");
+    assert.deepEqual(c.enviados.map(m => m.para).sort(), ["ana@exemplo.com", "caio@exemplo.com"]);
+    assert.match(c.enviados[0].assunto, /^Lembrete: sua reunião é amanhã às 10:00/);
+    assert.ok(c.enviados[0].html.includes("agendar.html?r="), "o lembrete leva o link de remarcar");
+    assert.ok(tabelas.ag_reunioes.every(x => x.lembrete_em), "todas marcadas (a sem e-mail também, para não repetir)");
+    c.enviados.length = 0;
+    assert.equal((await roda()).body.reunioes, 0, "segunda rodada não repete");
+    assert.equal(c.enviados.length, 0);
+    // remarcada: volta a ser lembrada; e falha de envio não marca
+    tabelas.ag_reunioes[0].lembrete_em = null;
+    c.solta();
+    const quebrado = correioFalso("fora do ar");
+    try {
+      const f = await roda();
+      assert.equal(f.body.enviados, 0);
+      assert.equal(f.body.falhas.length, 1);
+      assert.equal(tabelas.ag_reunioes[0].lembrete_em, null, "tenta de novo na próxima rodada");
+    } finally { quebrado.solta(); }
+  } finally { c.solta(); delete process.env.MAIL_USER; }
+});
+
+test("lembrete: com CRON_SECRET só dispara quem manda a chave; cancelada não é lembrada; reunião de hoje e de depois de amanhã não entram", async () => {
+  process.env.CRON_SECRET = "chave-do-cron";
+  const c = correioFalso();
+  try {
+    let tabelas, slug60;
+    await comRelogio(AGORA, async () => {
+      ({ tabelas, slug60 } = await preparar());
+      const a = await marcar(slug60, "10:00", pessoa(1, { email: "ana@exemplo.com" }));
+      await pub("cancelar-minha", { method: "POST", body: { r: a.body.gerenciar } });
+    });
+    const cron = h => comRelogio(Date.parse("2026-11-11T20:00:00Z"), () => chamar(rh, { query: { modulo: "agenda", t: "cron" }, headers: h }));
+    assert.equal((await cron({})).statusCode, 401);
+    assert.equal((await cron({ authorization: "Bearer errada" })).statusCode, 401);
+    const ok = await cron({ authorization: "Bearer chave-do-cron" });
+    assert.equal(ok.statusCode, 200);
+    assert.equal(ok.body.reunioes, 0, "a cancelada não entra");
+    // hoje (quarta) e depois de amanhã (sexta) não são "amanhã"
+    for (const [dia, hora, n] of [["2026-11-11", "15:00", 1], ["2026-11-13", "10:00", 2]]) {
+      const tipo = tabelas.ag_tipos.find(t => t.slug === slug60);
+      await comRelogio(AGORA, () => adm("reuniao", { method: "POST", body: { tipo_id: tipo.id, dia, hora, nome: "Pessoa " + n, email: "p" + n + "@exemplo.com", avisar: false } }));
+    }
+    assert.equal((await cron({ authorization: "Bearer chave-do-cron" })).body.reunioes, 0);
+  } finally { c.solta(); delete process.env.CRON_SECRET; }
+});
+
+test("e-mail dos avisos: configurável (vazio = caixa do Comercial) e validado", async () => {
+  process.env.MAIL_USER = "comercial@exemplo.com";
+  const c = correioFalso();
+  try {
+    await comRelogio(AGORA, async () => {
+      const { tabelas, slug60 } = await preparar();
+      const cfg = Object.assign({}, R.CONFIG_PADRAO);
+      assert.equal((await adm("config", { method: "POST", body: Object.assign({}, cfg, { email_aviso: "isso não é e-mail" }) })).statusCode, 400);
+      assert.equal((await adm("config", { method: "POST", body: Object.assign({}, cfg, { email_aviso: "Gabriela@Exemplo.com" }) })).statusCode, 200);
+      assert.equal(tabelas.ag_config[0].email_aviso, "gabriela@exemplo.com");
+      assert.equal((await adm("")).body.config.email_aviso, "gabriela@exemplo.com");
+      await marcar(slug60, "10:00", pessoa(1, { email: "" }));
+      assert.equal(aviso(c.enviados).para, "gabriela@exemplo.com");
+    });
+  } finally { c.solta(); delete process.env.MAIL_USER; }
+});
+
+test("e-mail: a conta do Comercial não configurada não derruba nada, e o convite e o texto saem completos", async () => {
+  delete process.env.MAIL_USER; delete process.env.MAIL_PASS;
+  await comRelogio(AGORA, async () => {
+    const { slug60 } = await preparar();
+    const r = await marcar(slug60, "10:00", pessoa(1, { email: "ana@exemplo.com" }));
+    assert.equal(r.statusCode, 201);
+    assert.match(r.body.email_cliente, /^falhou: sem conta de e-mail configurada/);
+  });
+  const m = EMAILM.confirmacao({ id: 1, tipo: "Captação", nome: "Ana Silva", inicio: R.paraUtc(QUI, "10:00"), fim: R.paraUtc(QUI, "10:30"), duracao_min: 30, local: "Rua A, 10", gerenciar: "https://x.com/agendar.html?r=1.abc" });
+  assert.ok(m.texto.includes("quinta-feira, 12 de novembro, às 10:00") && m.texto.includes("Rua A, 10") && m.texto.includes("https://x.com/agendar.html?r=1.abc"));
+  assert.ok(m.html.includes("Olá, Ana!"));
+});
+
+test("vercel.json agenda o lembrete diário às 17h de Brasília (20h UTC) e o rh.js deixa o cron passar sem login", () => {
+  const v = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "vercel.json"), "utf8"));
+  assert.ok(v.crons.some(c => c.path === "/api/rh?modulo=agenda&t=cron" && c.schedule === "0 20 * * *"));
+  assert.equal(typeof agendaMod.cron, "function");
+});

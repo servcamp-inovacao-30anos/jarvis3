@@ -2,6 +2,7 @@
   "crons": [
     { "path": "/api/comercial-cron?respostas=1", "schedule": "0 11 * * *" },
     { "path": "/api/comercial-cron", "schedule": "0 12 * * *" },
+    { "path": "/api/rh?modulo=agenda&t=cron", "schedule": "0 20 * * *" },
     { "path": "/api/rh?modulo=faltasemail&t=cron&h=06", "schedule": "0 9 * * *" },
     { "path": "/api/rh?modulo=faltasemail&t=cron&h=07", "schedule": "0 10 * * *" },
     { "path": "/api/rh?modulo=faltasemail&t=cron&h=08", "schedule": "0 11 * * *" },

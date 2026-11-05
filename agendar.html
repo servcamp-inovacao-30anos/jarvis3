@@ -25,6 +25,15 @@
     <div id="agHoras" class="ag-horas" role="listbox" aria-label="Horários disponíveis"></div>
   </section>
 
+  <section id="agMinha" class="ag-passo" hidden>
+    <h2>Sua reunião</h2>
+    <p id="agMinhaTxt" class="ag-escolha"></p>
+    <p id="agMinhaAviso" class="ag-erro" role="alert"></p>
+    <button type="button" id="agMinhaRemarcar" class="ag-bt" hidden>Remarcar</button>
+    <button type="button" id="agMinhaCancelar" class="ag-link ag-verm" hidden>Cancelar reunião</button>
+    <a id="agMinhaNovo" class="ag-bt" href="#" hidden>Marcar um novo horário</a>
+  </section>
+
   <form id="agForm" class="ag-passo ag-form" hidden autocomplete="on" novalidate>
     <h2>3. Seus dados</h2>
     <p id="agEscolha" class="ag-escolha"></p>
@@ -44,7 +53,9 @@
     <p id="agOkTxt" class="ag-okTxt"></p>
     <a id="agIcs" class="ag-bt" href="#" download="reuniao-servcamp.ics">📅 Adicionar à minha agenda</a>
     <a id="agGoogle" class="ag-link" href="#" target="_blank" rel="noopener noreferrer">Adicionar no Google Agenda</a>
-    <p class="ag-rod">Se precisar mudar ou cancelar, fale com o nosso Comercial.</p>
+    <p id="agEmailOk" class="ag-rod" hidden></p>
+    <a id="agGerenciar" class="ag-link" href="#" hidden>Precisa mudar? Remarcar ou cancelar esta reunião</a>
+    <p class="ag-rod">Você pode remarcar ou cancelar até 2 horas antes. Depois disso, fale com o nosso Comercial.</p>
   </section>
   <p class="ag-rod">Grupo ServCamp · seus dados são usados só para esta reunião.</p>
 </main>

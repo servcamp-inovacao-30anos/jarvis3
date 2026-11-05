@@ -524,3 +524,12 @@ alter table public.ag_tipos add column if not exists diretores jsonb not null de
 alter table public.ag_diretores enable row level security;
 revoke all on public.ag_diretores from anon, authenticated;
 grant select, insert, update, delete on public.ag_diretores to service_role;
+
+-- ============================================================================
+-- AGENDA COMERCIAL — e-mails (confirmação, lembrete e aviso) e remarcar pelo link do cliente.
+-- Só cria; pode rodar de novo.
+-- ============================================================================
+alter table public.ag_reunioes add column if not exists lembrete_em timestamptz;
+alter table public.ag_reunioes add column if not exists remarcacoes int not null default 0;
+alter table public.ag_reunioes add column if not exists email_status text;
+alter table public.ag_config add column if not exists email_aviso text;

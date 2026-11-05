@@ -35,3 +35,6 @@ body{margin:0;background:var(--fd);font-family:system-ui,-apple-system,"Segoe UI
 .ag-okTxt{font-size:1rem;line-height:1.6;margin:6px 0 16px}
 .ag-rod{text-align:center;color:var(--cz);font-size:.75rem;margin-top:14px}
 .ag-vazio{color:var(--cz);font-size:.92rem}
+
+.ag-verm{color:#b91c1c}
+.ag-escolha small{font-weight:500;color:var(--cz)}
