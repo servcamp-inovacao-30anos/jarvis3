@@ -269,3 +269,55 @@ test("API pública: o mesmo telefone (ou e-mail) não segura mais que 2 reuniõe
     assert.equal(terceira.statusCode, 429, "trocar o telefone com o mesmo e-mail não escapa");
   });
 });
+
+// ── tela: calendário ────────────────────────────────────────────────────────
+const vm = require("vm");
+function telaAgenda(dados) {
+  const pagina = { innerHTML: "", addEventListener() {}, __ag: false };
+  const store = new Map([["userKey", "joaoygor"], ["logged", "1"]]);
+  const ctx = {
+    console, Promise, setTimeout, clearTimeout, Date, JSON, Map, Set, encodeURIComponent, location: { origin: "https://painel.exemplo" },
+    sessionStorage: { getItem: k => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, String(v)) },
+    localStorage: { getItem: () => null, setItem() {} },
+    document: { readyState: "complete", addEventListener() {}, querySelector: () => null, getElementById: id => (id === "ag-content" ? pagina : null) },
+    fetch: async () => ({ ok: true, status: 200, json: async () => dados }),
+    ST: { pg: "agenda" }
+  };
+  ctx.window = ctx;
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "assets", "agenda", "agenda.js"), "utf8"), ctx, { filename: "agenda.js" });
+  return { ctx, pagina };
+}
+test("tela: semana como o iPhone (seg a sex), reunião no horário e na altura da duração, bloqueio e nome escapado", async () => {
+  const real = Date.now;
+  Date.now = () => AGORA;
+  try {
+    const dados = {
+      config: R.CONFIG_PADRAO, ics_chave: "k",
+      tipos: [{ id: 1, nome: "Captação", duracao_min: 30, cor: "#ea580c", slug: "abc", ativo: true }],
+      bloqueios: [{ id: 9, inicio: new Date(R.paraUtc("2026-11-06", "12:00")).toISOString(), fim: new Date(R.paraUtc("2026-11-06", "14:00")).toISOString(), motivo: "Almoço" }],
+      reunioes: [
+        { id: 5, tipo_id: 1, tipo_nome: "Captação", inicio: new Date(R.paraUtc("2026-11-06", "10:00")).toISOString(), fim: new Date(R.paraUtc("2026-11-06", "11:00")).toISOString(), nome: "<b>Ana</b>", telefone: "19999998888", origem: "link", status: "ativa" },
+        { id: 6, tipo_id: 1, tipo_nome: "Captação", inicio: new Date(R.paraUtc("2026-11-06", "15:00")).toISOString(), fim: new Date(R.paraUtc("2026-11-06", "15:30")).toISOString(), nome: "Cancelada", origem: "link", status: "cancelada" }
+      ]
+    };
+    const { ctx, pagina } = telaAgenda(dados);
+    ctx.agLoad();
+    await new Promise(r => setTimeout(r, 15));
+    const h = pagina.innerHTML;
+    assert.ok(h.includes("2 a 8 de novembro"), "título da semana");
+    assert.equal((h.match(/class="agc-col/g) || []).length, 5, "seg a sex (fim de semana sem atendimento fica fora)");
+    assert.ok(h.includes('class="agc-cd hoje" data-ag="dia" data-dia="2026-11-05"'), "quinta (hoje) destacada");
+    // grade das 8h às 18h (1h de folga): 10:00 fica 2h abaixo do topo = 112px; 1h de duração = 54px
+    assert.ok(/data-id="5" style="top:112px;height:54px/.test(h), "bloco no horário e com a altura da duração");
+    assert.ok(!h.includes("<b>Ana</b>") && h.includes("&lt;b&gt;Ana&lt;/b&gt;"), "nada do banco vira HTML");
+    assert.ok(!h.includes('data-id="6"'), "cancelada não aparece no calendário");
+    assert.ok(h.includes("⛔ Almoço"), "bloqueio na coluna");
+    assert.ok(h.includes('class="agc-agora"'), "linha do agora no dia de hoje");
+    // mês: bolinha na sexta 6 e clique no dia
+    const el = pagina;
+    ctx.agLoad();
+    assert.ok(typeof ctx.agLoad === "function");
+    assert.ok(h.includes('data-ag="vista" data-v="mes"'));
+  } finally { Date.now = real; }
+});

@@ -2,7 +2,8 @@
    Fica fora do index.html porque ele já está perto do limite de tamanho (test/auth_exigencia).
    O servidor é o api/_agenda.js (/api/rh?modulo=agenda); quem decide quem administra é ele.
    • Links para enviar: um por tipo de reunião (agendar.html?s=…), para copiar ou mandar por WhatsApp.
-   • Reuniões: as próximas por dia, com remarcar e cancelar; e reunião cadastrada à mão.
+   • Calendário como o do iPhone: Semana (padrão), Dia, Mês e Lista. Tocar num horário vazio marca uma
+     reunião ali; tocar numa reunião abre os detalhes (remarcar, cancelar, ligar, WhatsApp).
    • Bloqueios, horário de atendimento, tipos e a assinatura do iPhone (.ics).
    Reunião em cima de reunião nunca: o banco recusa, e a tela mostra a mensagem do servidor. */
 (function(raiz){
@@ -13,7 +14,8 @@ const toast=t=>{if(typeof hqToast==="function")hqToast(t);};
 const SEM=["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
 const SEMC=["dom","seg","ter","qua","qui","sex","sáb"];
 const MES=["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
-const AG={dados:null,erro:null,carregando:false,dono:null,verPassadas:false};
+const AG={dados:null,erro:null,carregando:false,dono:null,verPassadas:false,vista:null,ref:null};
+const MESL=["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
 
 // horário de Brasília (UTC-3) a partir do ISO do banco
 const br=iso=>{const d=new Date(+new Date(iso)-3*3600000).toISOString();return{dia:d.slice(0,10),hora:d.slice(11,16)};};
@@ -72,12 +74,8 @@ function render(){
       '<button type="button" class="rh-btn" data-ag="copiar" data-id="'+t.id+'">Copiar</button>'+
       '<a class="rh-btn rh-btn-sec" href="https://wa.me/?text='+encodeURIComponent("Olá! Escolha o melhor dia e horário para a nossa reunião: "+linkDe(t))+'" target="_blank" rel="noopener">WhatsApp</a>'+
       '<a class="agd-lk" href="'+esc(linkDe(t))+'" target="_blank" rel="noopener">abrir</a></div>').join(""):'<div class="agd-vazio">Nenhum tipo de reunião ativo. Crie um em ⚙️ Horários e tipos.</div>')+'</div>';
-  // próximas
-  const porDia={};ativas.forEach(r=>{const d=br(r.inicio).dia;(porDia[d]=porDia[d]||[]).push(r);});
-  h+='<div class="agd-card"><div class="agd-h">📅 Próximas reuniões</div>';
-  const dias=Object.keys(porDia).sort();
-  h+=dias.length?dias.map(d=>'<div class="agd-dia"><div class="agd-dia-t">'+(d===hoje?"Hoje · ":d===somaDias(hoje,1)?"Amanhã · ":"")+esc(diaLongo(d))+'</div>'+porDia[d].map(linhaReuniao).join("")+'</div>').join(""):'<div class="agd-vazio">Nenhuma reunião marcada. Mande um dos links acima para o cliente escolher o horário.</div>';
-  h+='</div>';
+  // calendário (semana, dia, mês) ou a lista das próximas
+  h+='<div class="agd-card agc">'+calendario(D.reunioes.filter(r=>r.status==="ativa"))+'</div>';
   // bloqueios
   const bls=D.bloqueios.filter(b=>+new Date(b.fim)>=agora);
   h+='<div class="agd-card"><div class="agd-h">⛔ Bloqueios <small>(horários que não aparecem no link)</small></div>'+
@@ -107,10 +105,148 @@ function linhaReuniao(r){
     (canc||passou?'':'<div class="agd-r-a"><button type="button" class="agd-lk" data-ag="remarcar" data-id="'+r.id+'">remarcar</button><button type="button" class="agd-lk agd-lk-v" data-ag="cancelar" data-id="'+r.id+'">cancelar</button></div>')+'</div>';
 }
 
+/* ── calendário ────────────────────────────────────────────────────────── */
+const VISTAS=[["mes","Mês"],["semana","Semana"],["dia","Dia"],["lista","Lista"]];
+const H=56; // altura de 1 hora na grade (px)
+const minDe=h=>Number(h.slice(0,2))*60+Number(h.slice(3,5));
+const hhmm=m=>String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0");
+const dowDe=d=>new Date(d+"T12:00:00Z").getUTCDay();
+const segDe=d=>somaDias(d,-((dowDe(d)+6)%7)); // segunda-feira da semana
+const dur=r=>Math.round((+new Date(r.fim)-+new Date(r.inicio))/60000);
+const temAtend=w=>!!(((AG.dados.config||{}).semana||{})[String(w)]||[]).length;
+const corTipo=r=>{const t=AG.dados.tipos.find(x=>String(x.id)===String(r.tipo_id));return(t&&t.cor)||"#1e4d8c";};
+const rgba=(hex,a)=>{const n=parseInt(String(/^#[0-9a-f]{6}$/i.test(hex)?hex:"#1e4d8c").slice(1),16);return"rgba("+(n>>16&255)+","+(n>>8&255)+","+(n&255)+","+a+")";};
+function lerVista(){try{const v=localStorage.getItem("agd_vista");return VISTAS.some(x=>x[0]===v)?v:"semana";}catch(e){return"semana";}}
+function guardarVista(v){try{localStorage.setItem("agd_vista",v);}catch(e){}}
+
+function calendario(ativas){
+  if(!AG.vista)AG.vista=lerVista();
+  if(!AG.ref)AG.ref=hojeBR();
+  const v=AG.vista,ref=AG.ref;
+  let titulo;
+  if(v==="mes"){const x=new Date(ref+"T12:00:00Z");titulo=MESL[x.getUTCMonth()]+" de "+x.getUTCFullYear();}
+  else if(v==="semana"){
+    const s=segDe(ref),f=somaDias(s,6),a=new Date(s+"T12:00:00Z"),b=new Date(f+"T12:00:00Z");
+    titulo=a.getUTCMonth()===b.getUTCMonth()?a.getUTCDate()+" a "+b.getUTCDate()+" de "+MESL[b.getUTCMonth()]:a.getUTCDate()+" de "+MES[a.getUTCMonth()]+" a "+b.getUTCDate()+" de "+MES[b.getUTCMonth()];
+  }
+  else if(v==="dia")titulo=diaLongo(ref);
+  else titulo="Próximas reuniões";
+  let h='<div class="agc-bar">'+
+    (v!=="lista"?'<div class="agc-navs"><button type="button" class="agc-nav" data-ag="nav" data-d="-1" aria-label="Anterior">‹</button><button type="button" class="agc-nav" data-ag="nav" data-d="1" aria-label="Próximo">›</button><button type="button" class="agc-hoje" data-ag="hoje">Hoje</button></div>':'')+
+    '<b class="agc-tit">'+esc(titulo)+'</b>'+
+    '<div class="agc-seg" role="tablist" aria-label="Visão do calendário">'+VISTAS.map(([k,t])=>'<button type="button" role="tab" aria-selected="'+(k===v)+'"'+(k===v?' class="on"':'')+' data-ag="vista" data-v="'+k+'">'+t+'</button>').join("")+'</div></div>';
+  if(v==="mes")h+=vistaMes(ativas);
+  else if(v==="semana"){
+    const s=segDe(ref);
+    const dias=[0,1,2,3,4,5,6].map(i=>somaDias(s,i)).filter(d=>{const w=dowDe(d);return(w>=1&&w<=5)||temAtend(w)||ativas.some(r=>br(r.inicio).dia===d);});
+    h+=vistaGrade(dias,ativas);
+  }
+  else if(v==="dia")h+=vistaGrade([ref],ativas);
+  else h+=vistaLista(ativas);
+  return h;
+}
+
+// Semana e Dia: colunas com as horas, como o calendário do iPhone. Faixa clara = horário de atendimento;
+// hachurado = bloqueio; bloco colorido = reunião (do tamanho da duração); linha vermelha = agora.
+function vistaGrade(dias,ativas){
+  const D=AG.dados,cfg=D.config||{},hoje=hojeBR();
+  const doDia=d=>ativas.filter(r=>br(r.inicio).dia===d);
+  let ini=24*60,fim=0;
+  dias.forEach(d=>{((cfg.semana||{})[String(dowDe(d))]||[]).forEach(f=>{ini=Math.min(ini,minDe(f[0]));fim=Math.max(fim,minDe(f[1]));});});
+  dias.forEach(d=>doDia(d).forEach(r=>{const a=minDe(br(r.inicio).hora);ini=Math.min(ini,a);fim=Math.max(fim,a+dur(r));}));
+  if(ini>=fim){ini=8*60;fim=18*60;}
+  ini=Math.max(0,Math.floor(ini/60)*60-60);fim=Math.min(24*60,Math.ceil(fim/60)*60+60);
+  const alt=(fim-ini)/60*H,y=m=>(m-ini)/60*H;
+  let h='<div class="agc-rola"><div class="agc-grade" style="--cols:'+dias.length+'"><div class="agc-cab"><div></div>'+dias.map(d=>{
+    const x=new Date(d+"T12:00:00Z");
+    return'<button type="button" class="agc-cd'+(d===hoje?" hoje":"")+'" data-ag="dia" data-dia="'+d+'" title="Ver o dia"><span>'+SEMC[x.getUTCDay()]+'</span><b>'+x.getUTCDate()+'</b></button>';
+  }).join("")+'</div><div class="agc-corpo"><div class="agc-horas" style="height:'+alt+'px">';
+  for(let m=ini+60;m<fim;m+=60)h+='<span style="top:'+y(m)+'px">'+hhmm(m)+'</span>';
+  h+='</div>';
+  dias.forEach(d=>{
+    h+='<div class="agc-col'+(d<hoje?" passado":"")+'" data-dia="'+d+'" data-ini="'+ini+'" style="height:'+alt+'px">';
+    for(let m=ini+60;m<fim;m+=60)h+='<div class="agc-linha" style="top:'+y(m)+'px"></div>';
+    ((cfg.semana||{})[String(dowDe(d))]||[]).forEach(f=>{h+='<div class="agc-atend" style="top:'+y(minDe(f[0]))+'px;height:'+((minDe(f[1])-minDe(f[0]))/60*H)+'px"></div>';});
+    const d0=Date.parse(d+"T00:00:00-03:00"),d1=d0+86400000;
+    D.bloqueios.forEach(b=>{
+      const a=Math.max(+new Date(b.inicio),d0),z=Math.min(+new Date(b.fim),d1);if(z<=a)return;
+      const ta=Math.max((a-d0)/60000,ini),tz=Math.min((z-d0)/60000,fim);if(tz<=ta)return;
+      h+='<div class="agc-bl" style="top:'+y(ta)+'px;height:'+((tz-ta)/60*H)+'px"><span>⛔ '+esc(b.motivo||"Bloqueado")+'</span></div>';
+    });
+    doDia(d).forEach(r=>{
+      const a=minDe(br(r.inicio).hora),dd=dur(r),c=corTipo(r);
+      h+='<button type="button" class="agc-ev'+(dd<=30?" curto":"")+'" data-ag="ver" data-id="'+r.id+'" style="top:'+y(a)+'px;height:'+Math.max(18,dd/60*H-2)+'px;background:'+rgba(c,.16)+';border-left-color:'+esc(c)+'" title="'+esc(br(r.inicio).hora+"–"+br(r.fim).hora+" · "+r.nome+" · "+(r.tipo_nome||""))+'">'+
+        '<b>'+br(r.inicio).hora+' · '+esc(r.nome)+'</b><span>'+esc(r.tipo_nome||"")+'</span></button>';
+    });
+    if(d===hoje){const n=minDe(br(new Date().toISOString()).hora);if(n>=ini&&n<=fim)h+='<div class="agc-agora" style="top:'+y(n)+'px"></div>';}
+    h+='</div>';
+  });
+  h+='</div></div></div><p class="agc-dica">Toque num horário vazio para marcar uma reunião ali · toque numa reunião para ver os detalhes.</p>';
+  return h;
+}
+
+// Mês: a grade do mês com bolinhas na cor do tipo de reunião. Tocar no dia abre o Dia.
+function vistaMes(ativas){
+  const D=AG.dados,ref=AG.ref,hoje=hojeBR(),mes=ref.slice(0,7);
+  const p1=mes+"-01",ini=somaDias(p1,-dowDe(p1)); // começa no domingo, como o iPhone
+  let h='<div class="agc-mes"><div class="agc-mes-cab">'+SEMC.map(s=>'<span>'+s+'</span>').join("")+'</div><div class="agc-mes-g">';
+  for(let i=0;i<42;i++){
+    const d=somaDias(ini,i);
+    if(i===35&&d.slice(0,7)!==mes)break; // 6ª linha só quando o mês precisa
+    const rs=ativas.filter(r=>br(r.inicio).dia===d);
+    const d0=Date.parse(d+"T00:00:00-03:00");
+    const bloq=D.bloqueios.some(b=>+new Date(b.inicio)<=d0&&+new Date(b.fim)>=d0+86400000);
+    h+='<button type="button" class="agc-dm'+(d.slice(0,7)!==mes?" fora":"")+(d===hoje?" hoje":"")+(bloq?" bloq":"")+(!temAtend(dowDe(d))?" fds":"")+'" data-ag="dia" data-dia="'+d+'"><b>'+Number(d.slice(8))+'</b>'+
+      (rs.length?'<span class="agc-pts">'+rs.slice(0,4).map(r=>'<i style="background:'+esc(corTipo(r))+'"></i>').join("")+(rs.length>4?'<em>+'+(rs.length-4)+'</em>':'')+'</span><span class="agc-n">'+rs.length+' reuni'+(rs.length===1?"ão":"ões")+'</span>':(bloq?'<span class="agc-n">bloqueado</span>':''))+'</button>';
+  }
+  h+='</div></div>';
+  return h;
+}
+
+function vistaLista(ativas){
+  const hoje=hojeBR(),agora=Date.now(),porDia={};
+  ativas.filter(r=>+new Date(r.fim)>=agora).forEach(r=>{const d=br(r.inicio).dia;(porDia[d]=porDia[d]||[]).push(r);});
+  const dias=Object.keys(porDia).sort();
+  return dias.length?dias.map(d=>'<div class="agd-dia"><div class="agd-dia-t">'+(d===hoje?"Hoje · ":d===somaDias(hoje,1)?"Amanhã · ":"")+esc(diaLongo(d))+'</div>'+porDia[d].map(linhaReuniao).join("")+'</div>').join(""):
+    '<div class="agd-vazio">Nenhuma reunião marcada. Mande um dos links acima para o cliente escolher o horário.</div>';
+}
+
+function navegar(passo){
+  const v=AG.vista,ref=AG.ref;
+  if(v==="mes"){const x=new Date(ref.slice(0,7)+"-15T12:00:00Z");x.setUTCMonth(x.getUTCMonth()+passo);AG.ref=x.toISOString().slice(0,10);}
+  else AG.ref=somaDias(ref,(v==="semana"?7:1)*passo);
+  render();
+}
+
+// Detalhes de uma reunião (tocar no bloco do calendário)
+function abrirReuniao(r){
+  if(!r)return;
+  const a=br(r.inicio),b=br(r.fim),passou=+new Date(r.fim)<Date.now(),c=corTipo(r);
+  const ov=janela(r.tipo_nome||"Reunião",
+    '<div class="agc-det" style="border-left-color:'+esc(c)+'"><b>'+esc(r.nome)+'</b><span>'+esc(diaLongo(a.dia))+' · '+a.hora+'–'+b.hora+'</span>'+
+      (r.local?'<span>📍 '+esc(r.local)+'</span>':'')+
+      '<span>'+(r.origem==="link"?"Marcada pelo link":"Cadastrada aqui")+'</span></div>'+
+    (r.telefone?'<div class="agc-det-l">📞 <a href="tel:'+esc(r.telefone)+'">'+esc(telTxt(r.telefone))+'</a> · <a href="'+esc(zap(r.telefone))+'" target="_blank" rel="noopener">WhatsApp</a></div>':'')+
+    (r.email?'<div class="agc-det-l">✉️ <a href="mailto:'+esc(r.email)+'">'+esc(r.email)+'</a></div>':'')+
+    (r.obs?'<div class="agc-det-o">“'+esc(r.obs)+'”</div>':'')+
+    '<div class="agd-acoes">'+(passou?'':'<button type="button" class="rh-btn rh-btn-sec agd-lk-v" id="agv-cancelar">Cancelar reunião</button><button type="button" class="rh-btn rh-btn-sec" id="agv-remarcar">Remarcar</button>')+'<button type="button" class="rh-btn" data-fechar="1">Fechar</button></div>');
+  const bc=ov.querySelector("#agv-cancelar"),bm=ov.querySelector("#agv-remarcar");
+  if(bc)bc.addEventListener("click",()=>{fechar();cancelar(r,null);});
+  if(bm)bm.addEventListener("click",()=>abrirRemarcar(r));
+}
+
 /* ── eventos ───────────────────────────────────────────────────────────── */
 function ligar(el){
   if(el.__ag)return;el.__ag=true;
   el.addEventListener("click",e=>{
+    // horário vazio na grade (Semana/Dia): marcar uma reunião ali, no passo de horários da configuração
+    const col=e.target.closest(".agc-col");
+    if(col&&!e.target.closest("[data-ag]")&&el.contains(col)){
+      const passo=(AG.dados&&AG.dados.config&&AG.dados.config.passo_min)||30;
+      const m=Number(col.dataset.ini)+(e.clientY-col.getBoundingClientRect().top)/H*60;
+      abrirMarcar({dia:col.dataset.dia,hora:hhmm(Math.max(0,Math.min(23*60+55,Math.floor(m/passo)*passo)))});
+      return;
+    }
     const b=e.target.closest("[data-ag]");if(!b||!el.contains(b))return;
     const a=b.dataset.ag,id=b.dataset.id;
     if(a==="recarregar")recarregar();
@@ -119,6 +255,11 @@ function ligar(el){
     else if(a==="config")abrirConfig();
     else if(a==="iphone")abrirIphone();
     else if(a==="passadas"){AG.verPassadas=!AG.verPassadas;render();}
+    else if(a==="vista"){AG.vista=b.dataset.v;guardarVista(AG.vista);render();}
+    else if(a==="nav")navegar(Number(b.dataset.d)||0);
+    else if(a==="hoje"){AG.ref=hojeBR();render();}
+    else if(a==="dia"){AG.ref=b.dataset.dia;AG.vista="dia";render();}
+    else if(a==="ver")abrirReuniao(AG.dados.reunioes.find(r=>String(r.id)===id));
     else if(a==="copiar"){const t=AG.dados.tipos.find(x=>String(x.id)===id);if(t)copiar(linkDe(t),"🔗 Link copiado: é só colar para o cliente");}
     else if(a==="remarcar")abrirRemarcar(AG.dados.reunioes.find(r=>String(r.id)===id));
     else if(a==="cancelar")cancelar(AG.dados.reunioes.find(r=>String(r.id)===id),b);
@@ -158,13 +299,13 @@ async function enviar(ov,b,fn,ok){
 }
 const campo=(rot,html)=>'<label class="agd-f"><span>'+rot+'</span>'+html+'</label>';
 
-function abrirMarcar(){
+function abrirMarcar(pre){
   const D=AG.dados,tipos=D.tipos.filter(t=>t.ativo);
   if(!tipos.length){toast("Crie um tipo de reunião primeiro (⚙️ Horários e tipos).");return;}
   const ov=janela("➕ Marcar reunião",
     '<p class="agd-dica">Para reuniões combinadas por telefone ou pessoalmente. Pode ser fora do horário de atendimento, mas nunca em cima de outra reunião.</p>'+
     campo("Tipo",'<select id="agm-tipo">'+tipos.map(t=>'<option value="'+t.id+'">'+esc(t.nome)+' ('+esc(durTxt(t.duracao_min))+')</option>').join("")+'</select>')+
-    '<div class="agd-2">'+campo("Dia",'<input type="date" id="agm-dia" min="'+hojeBR()+'" value="'+hojeBR()+'">')+campo("Horário",'<input type="time" id="agm-hora" step="300" value="09:00">')+'</div>'+
+    '<div class="agd-2">'+campo("Dia",'<input type="date" id="agm-dia" min="'+hojeBR()+'" value="'+esc((pre&&pre.dia)||hojeBR())+'">')+campo("Horário",'<input type="time" id="agm-hora" step="300" value="'+esc((pre&&pre.hora)||"09:00")+'">')+'</div>'+
     campo("Nome",'<input id="agm-nome" maxlength="80">')+
     '<div class="agd-2">'+campo("Telefone <small>(opcional)</small>",'<input id="agm-tel" type="tel" maxlength="20">')+campo("E-mail <small>(opcional)</small>",'<input id="agm-email" type="email" maxlength="120">')+'</div>'+
     campo("Observação <small>(opcional)</small>",'<textarea id="agm-obs" maxlength="500" rows="2"></textarea>')+

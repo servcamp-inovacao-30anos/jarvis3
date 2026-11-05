@@ -201,8 +201,8 @@ async function tudo({ res, db }) {
   const c = await lerConfig(db), agora = Date.now();
   const [tipos, bloqueios, reunioes] = await Promise.all([
     db.listar("ag_tipos?select=id,nome,duracao_min,local,cor,slug,ativo,ordem&order=ordem.asc,id.asc"),
-    db.listar(`ag_bloqueios?select=id,inicio,fim,motivo&fim=gt.${iso(agora - 7 * 86400000)}&order=inicio.asc`),
-    db.listar(`ag_reunioes?select=id,tipo_id,tipo_nome,inicio,fim,nome,telefone,email,obs,local,origem,status,criado_em&inicio=gt.${iso(agora - 30 * 86400000)}&order=inicio.asc`)
+    db.listar(`ag_bloqueios?select=id,inicio,fim,motivo&fim=gt.${iso(agora - 90 * 86400000)}&order=inicio.asc`),
+    db.listar(`ag_reunioes?select=id,tipo_id,tipo_nome,inicio,fim,nome,telefone,email,obs,local,origem,status,criado_em&inicio=gt.${iso(agora - 90 * 86400000)}&order=inicio.asc`)
   ]);
   return res.status(200).json({ config: cfgDe(c), ics_chave: c.ics_chave, tipos, bloqueios, reunioes });
 }
