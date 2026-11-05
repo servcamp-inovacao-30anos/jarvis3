@@ -7,6 +7,9 @@
    • Bloqueios, horário de atendimento, tipos e a assinatura do iPhone (.ics).
    • Diretores: o calendário público do iCloud de cada diretor (iPhone) é lido pelo servidor; os horários em que
      ele está ocupado saem do link dos tipos de reunião que exigem esse diretor, e aparecem em cinza no calendário.
+   • 🎨 Sua página: quem atende (nome, cargo, foto) e a mensagem de boas-vindas, na página do cliente e nos e-mails.
+   • Resultado: depois que a reunião começa, registrar se aconteceu ou se a pessoa não veio e o próximo passo.
+     Isso alimenta os números da agenda no Painel Comercial (agPainelComercial, chamado pelo index.html).
    Reunião em cima de reunião nunca: o banco recusa, e a tela mostra a mensagem do servidor. */
 (function(raiz){
 "use strict";
@@ -27,6 +30,11 @@ const durTxt=m=>m<60?m+" min":(m%60?Math.floor(m/60)+"h"+String(m%60).padStart(2
 const telTxt=t=>{const d=String(t||"").replace(/\D/g,"");return d.length===11?"("+d.slice(0,2)+") "+d.slice(2,7)+"-"+d.slice(7):d.length===10?"("+d.slice(0,2)+") "+d.slice(2,6)+"-"+d.slice(6):d;};
 const zap=t=>{let d=String(t||"").replace(/\D/g,"");if(d.length<=11)d="55"+d;return"https://wa.me/"+d;};
 const linkDe=t=>location.origin+"/agendar.html?s="+encodeURIComponent(t.slug);
+const RESULTADOS={realizada:"Realizada",faltou:"Não compareceu"};
+const PROXIMOS={proposta:"Enviar proposta",visita:"Agendar visita",nova_reuniao:"Nova reunião",fechou:"Fechou negócio",sem_interesse:"Sem interesse",remarcar:"Remarcar",outro:"Outro"};
+const comecou=r=>+new Date(r.inicio)<=Date.now();
+// reuniões que já começaram e ainda não têm resultado (as dos últimos 30 dias)
+const semResultado=D=>D.reunioes.filter(r=>r.status==="ativa"&&!r.resultado&&comecou(r)&&Date.now()-+new Date(r.inicio)<30*86400000).sort((a,b)=>+new Date(b.inicio)-+new Date(a.inicio));
 
 async function api(t,metodo,corpo,qs){
   const r=await fetch("/api/rh?modulo=agenda"+(t?"&t="+t:"")+(qs||""),{method:metodo||"GET",headers:corpo?{"Content-Type":"application/json"}:{},body:corpo?JSON.stringify(corpo):undefined});
@@ -67,9 +75,16 @@ function render(){
     '<button type="button" class="rh-btn" data-ag="marcar">➕ Marcar reunião</button>'+
     '<button type="button" class="rh-btn rh-btn-sec" data-ag="bloquear">⛔ Bloquear horário</button>'+
     '<button type="button" class="rh-btn rh-btn-sec" data-ag="config">⚙️ Horários e tipos</button>'+
+    '<button type="button" class="rh-btn rh-btn-sec" data-ag="marca">🎨 Sua página</button>'+
     '<button type="button" class="rh-btn rh-btn-sec" data-ag="diretores">👔 Diretores'+(semLeitura(D)?' ⚠️':'')+'</button>'+
     '<button type="button" class="rh-btn rh-btn-sec" data-ag="iphone">📱 Ver no iPhone</button></div>';
-  h+='<div class="agd-kpis"><div><b>'+ativas.filter(r=>br(r.inicio).dia===hoje).length+'</b><span>hoje</span></div><div><b>'+semana+'</b><span>nos próximos 7 dias</span></div><div><b>'+ativas.length+'</b><span>marcadas no total</span></div><div><b>'+ativas.filter(r=>r.origem==="link").length+'</b><span>marcadas pelo link</span></div></div>';
+  h+='<div class="agd-kpis"><div><b>'+ativas.filter(r=>br(r.inicio).dia===hoje).length+'</b><span>hoje</span></div><div><b>'+semana+'</b><span>nos próximos 7 dias</span></div><div><b>'+ativas.length+'</b><span>marcadas no total</span></div><div><b>'+ativas.filter(r=>r.origem==="link").length+'</b><span>marcadas pelo link</span></div>'+
+    (()=>{const n=semResultado(D).length;return'<div class="'+(n?"agd-kpi-alerta":"")+'"><b>'+n+'</b><span>aguardando resultado</span></div>';})()+'</div>';
+  // reuniões que já aconteceram e esperam o resultado
+  {const pend=semResultado(D);
+  if(pend.length)h+='<div class="agd-card agd-pend"><div class="agd-h">📝 Como foram estas reuniões? <small>(registre o resultado: ele vai para os números do Painel Comercial)</small></div>'+
+    pend.map(r=>{const a=br(r.inicio);return'<div class="agd-pr"><span class="agd-cor" style="background:'+esc(corTipo(r))+'"></span><div class="agd-pr-n"><b>'+esc(r.nome)+'</b><span>'+esc(r.tipo_nome||"Reunião")+' · '+esc(diaLongo(a.dia))+' às '+a.hora+'</span></div>'+
+      '<button type="button" class="rh-btn agd-ok" data-ag="res" data-r="realizada" data-id="'+r.id+'">✅ Aconteceu</button><button type="button" class="rh-btn rh-btn-sec" data-ag="res" data-r="faltou" data-id="'+r.id+'">🚫 Não veio</button></div>';}).join("")+'</div>';}
   // links
   h+='<div class="agd-card"><div class="agd-h">🔗 Links para enviar ao cliente</div>'+
     (tipos.length?tipos.map(t=>'<div class="agd-link"><span class="agd-cor" style="background:'+esc(t.cor||"#1e4d8c")+'"></span><div class="agd-link-n"><b>'+esc(t.nome)+'</b><span>'+esc(durTxt(t.duracao_min))+(t.local?' · '+esc(t.local):'')+'</span></div>'+
@@ -101,11 +116,17 @@ function linhaReuniao(r){
   return'<div class="agd-r'+(canc?" canc":"")+'" style="border-left-color:'+esc((tipo&&tipo.cor)||"#1e4d8c")+'">'+
     '<div class="agd-r-h"><b>'+a.hora+'–'+b.hora+'</b>'+(passou||canc?'<span class="agd-r-d">'+esc(diaLongo(a.dia))+'</span>':'')+'</div>'+
     '<div class="agd-r-c"><div class="agd-r-t"><b>'+esc(r.nome)+'</b> · '+esc(r.tipo_nome||"Reunião")+
-      (canc?' <span class="agd-tag agd-tag-c">cancelada</span>':'')+(r.origem==="link"?' <span class="agd-tag">pelo link</span>':' <span class="agd-tag agd-tag-m">cadastrada aqui</span>')+'</div>'+
+      (canc?' <span class="agd-tag agd-tag-c">cancelada</span>':'')+(r.origem==="link"?' <span class="agd-tag">pelo link</span>':' <span class="agd-tag agd-tag-m">cadastrada aqui</span>')+tagResultado(r)+'</div>'+
       '<div class="agd-r-x">'+(r.telefone?'<a href="tel:'+esc(r.telefone)+'">'+esc(telTxt(r.telefone))+'</a> · <a href="'+esc(zap(r.telefone))+'" target="_blank" rel="noopener">WhatsApp</a>':'')+
       (r.email?(r.telefone?' · ':'')+'<a href="mailto:'+esc(r.email)+'">'+esc(r.email)+'</a>':'')+'</div>'+
       (r.obs?'<div class="agd-r-o">“'+esc(r.obs)+'”</div>':'')+'</div>'+
+    (!canc&&comecou(r)?'<div class="agd-r-a"><button type="button" class="agd-lk" data-ag="res" data-id="'+r.id+'">'+(r.resultado?"mudar resultado":"registrar resultado")+'</button></div>':'')+
     (canc||passou?'':'<div class="agd-r-a"><button type="button" class="agd-lk" data-ag="remarcar" data-id="'+r.id+'">remarcar</button><button type="button" class="agd-lk agd-lk-v" data-ag="cancelar" data-id="'+r.id+'">cancelar</button></div>')+'</div>';
+}
+
+function tagResultado(r){
+  if(r.status!=="ativa"||!r.resultado)return"";
+  return' <span class="agd-tag '+(r.resultado==="realizada"?"agd-tag-ok":"agd-tag-c")+'">'+(r.resultado==="realizada"?"✅ realizada":"🚫 não compareceu")+'</span>'+(r.proximo_passo?' <span class="agd-tag">→ '+esc(PROXIMOS[r.proximo_passo]||r.proximo_passo)+'</span>':'');
 }
 
 /* ── calendário ────────────────────────────────────────────────────────── */
@@ -183,8 +204,8 @@ function vistaGrade(dias,ativas){
     });
     doDia(d).forEach(r=>{
       const a=minDe(br(r.inicio).hora),dd=dur(r),c=corTipo(r);
-      h+='<button type="button" class="agc-ev'+(dd<=30?" curto":"")+'" data-ag="ver" data-id="'+r.id+'" style="top:'+y(a)+'px;height:'+Math.max(18,dd/60*H-2)+'px;background:'+rgba(c,.16)+';border-left-color:'+esc(c)+'" title="'+esc(br(r.inicio).hora+"–"+br(r.fim).hora+" · "+r.nome+" · "+(r.tipo_nome||""))+'">'+
-        '<b>'+br(r.inicio).hora+' · '+esc(r.nome)+'</b><span>'+esc(r.tipo_nome||"")+'</span></button>';
+      h+='<button type="button" class="agc-ev'+(dd<=30?" curto":"")+(r.resultado==="faltou"?" faltou":r.resultado==="realizada"?" feita":"")+'" data-ag="ver" data-id="'+r.id+'" style="top:'+y(a)+'px;height:'+Math.max(18,dd/60*H-2)+'px;background:'+rgba(c,.16)+';border-left-color:'+esc(c)+'" title="'+esc(br(r.inicio).hora+"–"+br(r.fim).hora+" · "+r.nome+" · "+(r.tipo_nome||""))+'">'+
+        '<b>'+(r.resultado==="realizada"?"✅ ":r.resultado==="faltou"?"🚫 ":"")+br(r.inicio).hora+' · '+esc(r.nome)+'</b><span>'+esc(r.tipo_nome||"")+'</span></button>';
     });
     if(d===hoje){const n=minDe(br(new Date().toISOString()).hora);if(n>=ini&&n<=fim)h+='<div class="agc-agora" style="top:'+y(n)+'px"></div>';}
     h+='</div>';
@@ -235,12 +256,14 @@ function abrirReuniao(r){
       (r.local?'<span>📍 '+esc(r.local)+'</span>':'')+
       '<span>'+(r.origem==="link"?"Marcada pelo link":"Cadastrada aqui")+(r.cancelado_por==="cliente"?" · cancelada pelo cliente":"")+(r.remarcacoes?" · remarcada "+r.remarcacoes+"x pelo cliente":"")+'</span>'+
       (r.email_status?'<span>✉️ Confirmação: '+(/^enviado/.test(r.email_status)?"enviada":/^falhou/.test(r.email_status)?"não saiu ("+esc(r.email_status.split(" · ")[0].replace(/^falhou:\s*/,""))+")":esc(r.email_status.split(" · ")[0]))+'</span>'+(/aviso à Comercial falhou/.test(r.email_status)?'<span>⚠️ O aviso para a Comercial não saiu: confira esta reunião na agenda</span>':''):'')+
+      (r.resultado?'<span>'+(r.resultado==="realizada"?"✅ Realizada":"🚫 Não compareceu")+(r.proximo_passo?" · próximo passo: "+esc(PROXIMOS[r.proximo_passo]||r.proximo_passo):"")+'</span>'+(r.resultado_obs?'<span>📝 '+esc(r.resultado_obs)+'</span>':''):'')+
       (r.whatsapp_status?'<span>💬 WhatsApp: '+(/^enviado/.test(r.whatsapp_status)?"enviado":/^falhou/.test(r.whatsapp_status)?"não saiu ("+esc(r.whatsapp_status.replace(/^falhou:\s*/,""))+")":esc(r.whatsapp_status))+'</span>':'')+'</div>'+
     (r.telefone?'<div class="agc-det-l">📞 <a href="tel:'+esc(r.telefone)+'">'+esc(telTxt(r.telefone))+'</a> · <a href="'+esc(zap(r.telefone))+'" target="_blank" rel="noopener">WhatsApp</a></div>':'')+
     (r.email?'<div class="agc-det-l">✉️ <a href="mailto:'+esc(r.email)+'">'+esc(r.email)+'</a></div>':'')+
     (r.obs?'<div class="agc-det-o">“'+esc(r.obs)+'”</div>':'')+
-    '<div class="agd-acoes">'+(passou?'':'<button type="button" class="rh-btn rh-btn-sec agd-lk-v" id="agv-cancelar">Cancelar reunião</button><button type="button" class="rh-btn rh-btn-sec" id="agv-remarcar">Remarcar</button>')+'<button type="button" class="rh-btn" data-fechar="1">Fechar</button></div>');
-  const bc=ov.querySelector("#agv-cancelar"),bm=ov.querySelector("#agv-remarcar");
+    '<div class="agd-acoes">'+(passou?'':'<button type="button" class="rh-btn rh-btn-sec agd-lk-v" id="agv-cancelar">Cancelar reunião</button><button type="button" class="rh-btn rh-btn-sec" id="agv-remarcar">Remarcar</button>')+(comecou(r)?'<button type="button" class="rh-btn rh-btn-sec" id="agv-res">📝 '+(r.resultado?"Mudar resultado":"Registrar resultado")+'</button>':'')+'<button type="button" class="rh-btn" data-fechar="1">Fechar</button></div>');
+  const bc=ov.querySelector("#agv-cancelar"),bm=ov.querySelector("#agv-remarcar"),br2=ov.querySelector("#agv-res");
+  if(br2)br2.addEventListener("click",()=>abrirResultado(r));
   if(bc)bc.addEventListener("click",()=>{fechar();cancelar(r,null);});
   if(bm)bm.addEventListener("click",()=>abrirRemarcar(r));
 }
@@ -263,6 +286,8 @@ function ligar(el){
     else if(a==="marcar")abrirMarcar();
     else if(a==="bloquear")abrirBloqueio();
     else if(a==="config")abrirConfig();
+    else if(a==="marca")abrirMarca();
+    else if(a==="res")abrirResultado(AG.dados.reunioes.find(r=>String(r.id)===id),b.dataset.r);
     else if(a==="diretores")abrirDiretores();
     else if(a==="iphone")abrirIphone();
     else if(a==="passadas"){AG.verPassadas=!AG.verPassadas;render();}
@@ -401,6 +426,70 @@ function abrirConfig(){
     },"Configuração salva");
   });
 }
+/* ── resultado da reunião ──────────────────────────────────────────────── */
+function abrirResultado(r,pre){
+  if(!r)return;const a=br(r.inicio),sel=pre||r.resultado||"";
+  const ov=janela("📝 Resultado · "+r.nome,
+    '<p class="agd-dica">'+esc(r.tipo_nome||"Reunião")+' de <b>'+esc(diaLongo(a.dia))+' às '+a.hora+'</b>. O resultado entra nos números da agenda no Painel Comercial.</p>'+
+    '<div class="agd-res">'+Object.keys(RESULTADOS).map(k=>'<label class="agd-res-op'+(k==="faltou"?" falta":"")+'"><input type="radio" name="agres" value="'+k+'"'+(sel===k?" checked":"")+'><span>'+(k==="realizada"?"✅ ":"🚫 ")+RESULTADOS[k]+'</span></label>').join("")+'</div>'+
+    campo("Próximo passo",'<select id="agres-prox"><option value="">—</option>'+Object.keys(PROXIMOS).map(k=>'<option value="'+k+'"'+(r.proximo_passo===k?" selected":"")+'>'+PROXIMOS[k]+'</option>').join("")+'</select>')+
+    campo("Anotação <small>(opcional, só a equipe vê)</small>",'<textarea id="agres-obs" maxlength="1000" rows="3" placeholder="O que foi conversado, objeções, combinados…">'+esc(r.resultado_obs||"")+'</textarea>')+
+    '<div class="agd-acoes">'+(r.resultado?'<button type="button" class="rh-btn rh-btn-sec" id="agres-limpar">Desfazer</button>':'')+'<button type="button" class="rh-btn rh-btn-sec" data-fechar="1">Voltar</button><button type="button" class="rh-btn" id="agres-ok">Salvar</button></div>');
+  const q=s=>ov.querySelector(s);
+  // quem não veio: o natural é remarcar
+  ov.addEventListener("change",e=>{if(e.target.name==="agres"&&e.target.value==="faltou"&&!q("#agres-prox").value)q("#agres-prox").value="remarcar";});
+  if(sel==="faltou"&&!r.proximo_passo)q("#agres-prox").value="remarcar";
+  q("#agres-ok").addEventListener("click",e=>{
+    const v=(ov.querySelector('input[name="agres"]:checked')||{}).value;
+    if(!v){msg(ov,"Escolha se a reunião aconteceu ou se a pessoa não veio.",true);return;}
+    enviar(ov,e.currentTarget,()=>api("resultado","POST",{resultado:v,proximo:q("#agres-prox").value||null,anotacao:q("#agres-obs").value},"&id="+r.id),"Resultado registrado");
+  });
+  const lp=q("#agres-limpar");
+  if(lp)lp.addEventListener("click",e=>enviar(ov,e.currentTarget,()=>api("resultado","POST",{resultado:null},"&id="+r.id),"Resultado desfeito"));
+}
+
+/* ── 🎨 sua página (quem atende) ───────────────────────────────────────── */
+// Reduz a foto no próprio navegador: quadrada (corte no centro), 256 px, JPEG. Fica leve no banco e nos e-mails.
+function reduzirFoto(arq){
+  return new Promise((ok,nao)=>{
+    if(!arq||!/^image\//.test(arq.type)){nao(new Error("Escolha uma imagem (JPG ou PNG)."));return;}
+    const url=URL.createObjectURL(arq),img=new Image();
+    img.onload=()=>{
+      const L=256,c=document.createElement("canvas");c.width=c.height=L;
+      const s=Math.min(img.naturalWidth,img.naturalHeight),x=(img.naturalWidth-s)/2,y=(img.naturalHeight-s)/2;
+      const g=c.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,L,L);g.drawImage(img,x,y,s,s,0,0,L,L);
+      URL.revokeObjectURL(url);ok(c.toDataURL("image/jpeg",.86));
+    };
+    img.onerror=()=>{URL.revokeObjectURL(url);nao(new Error("Não consegui abrir essa imagem."));};
+    img.src=url;
+  });
+}
+function abrirMarca(){
+  const D=AG.dados,m=D.marca||{},t=D.tipos.find(x=>x.ativo);
+  let foto; // undefined = mantém · "" = tira · data: = troca
+  const ini=n=>String(n||"").trim().split(/\s+/).filter(Boolean).map(p=>p[0]).slice(0,2).join("").toUpperCase()||"?";
+  const ov=janela("🎨 Sua página de agendamento",
+    '<p class="agd-dica">É o que o cliente vê ao abrir o link, e a assinatura dos e-mails e das mensagens de WhatsApp.</p>'+
+    '<div class="agd-marca"><div class="agd-av" id="agmc-av"></div><div class="agd-marca-f"><label class="rh-btn rh-btn-sec agd-foto-bt">📷 Escolher foto<input type="file" id="agmc-arq" accept="image/*" hidden></label><button type="button" class="agd-lk agd-lk-v" id="agmc-tirar"'+(m.foto_dados?'':' hidden')+'>tirar foto</button><small>Foto de rosto, de preferência com fundo claro.</small></div></div>'+
+    '<div class="agd-2">'+campo("Nome de quem atende",'<input id="agmc-nome" maxlength="60" placeholder="Ex.: Gabriela Alvarenga" value="'+esc(m.nome||"")+'">')+campo("Cargo",'<input id="agmc-cargo" maxlength="60" placeholder="Ex.: Consultora Comercial" value="'+esc(m.cargo||"")+'">')+'</div>'+
+    campo("Mensagem de boas-vindas <small>(opcional, até 300 letras)</small>",'<textarea id="agmc-boas" maxlength="300" rows="3" placeholder="Ex.: Olá! Escolha o melhor horário para conversarmos sobre as soluções de segurança e facilities do Grupo ServCamp.">'+esc(m.boas_vindas||"")+'</textarea>')+
+    (t?'<p class="agd-dica"><a href="'+esc(linkDe(t))+'" target="_blank" rel="noopener">👀 Ver a página como o cliente vê</a> (salve antes)</p>':'')+
+    '<div class="agd-acoes"><button type="button" class="rh-btn rh-btn-sec" data-fechar="1">Voltar</button><button type="button" class="rh-btn" id="agmc-ok">Salvar</button></div>',true);
+  const q=s=>ov.querySelector(s);
+  const pintar=()=>{const av=q("#agmc-av"),src=foto!==undefined?foto:(m.foto_dados||"");
+    if(src){av.style.backgroundImage='url("'+src+'")';av.textContent="";}else{av.style.backgroundImage="";av.textContent=ini(q("#agmc-nome").value);}
+    q("#agmc-tirar").hidden=!src;};
+  pintar();
+  q("#agmc-nome").addEventListener("input",pintar);
+  q("#agmc-arq").addEventListener("change",e=>{const f=e.target.files&&e.target.files[0];if(!f)return;reduzirFoto(f).then(d=>{foto=d;msg(ov,"");pintar();}).catch(err=>msg(ov,err.message,true));});
+  q("#agmc-tirar").addEventListener("click",()=>{foto="";pintar();});
+  q("#agmc-ok").addEventListener("click",e=>{
+    const corpo={nome:q("#agmc-nome").value,cargo:q("#agmc-cargo").value,boas_vindas:q("#agmc-boas").value};
+    if(foto!==undefined)corpo.foto=foto;
+    enviar(ov,e.currentTarget,()=>api("marca","POST",corpo),"Página atualizada");
+  });
+}
+
 /* ── diretores (calendário público do iCloud) ──────────────────────────── */
 function semLeitura(D){return(D.diretores||[]).some(d=>d.ativo&&!d.valido);}
 const haTexto=iso=>{if(!iso)return"nunca";const m=Math.round((Date.now()-+new Date(iso))/60000);return m<1?"agora há pouco":m<60?"há "+m+" min":m<1440?"há "+Math.round(m/60)+" h":"há "+Math.round(m/1440)+" dias";};
@@ -452,6 +541,42 @@ function abrirIphone(){
     if(!confirm("Gerar um endereço novo? O que estiver assinado no iPhone para de atualizar até você assinar o novo."))return;
     enviar(ov,e.currentTarget,()=>api("ics","POST",{}),"Endereço novo gerado: abra 📱 de novo para assinar");
   });
+}
+
+/* ── números no Painel Comercial ───────────────────────────────────────── */
+// Chamado pelo comDashRender (index.html) com o lugar e o mês do painel ("2026-11"). Quem não pode ver
+// (o servidor responde 403) não vê nada: o bloco some.
+const PAINEL={pedido:0};
+raiz.agPainelComercial=function(el,mes){
+  if(!el)return;const n=++PAINEL.pedido;
+  el.innerHTML='<div class="agp"><div class="agp-h">📅 Agenda Comercial</div><div class="agp-vazio">Carregando os números da agenda…</div></div>';
+  api("numeros","GET",null,"&mes="+encodeURIComponent(mes||"")).then(j=>{if(n===PAINEL.pedido&&el.isConnected)el.innerHTML=painelHtml(j);})
+    .catch(e=>{if(n!==PAINEL.pedido)return;if(e.status===403||e.status===401||e.codigo==="SEM_TABELA")el.innerHTML="";else el.innerHTML='<div class="agp"><div class="agp-h">📅 Agenda Comercial</div><div class="agp-vazio">Não consegui carregar os números da agenda.</div></div>';});
+};
+function painelHtml(j){
+  const A=j.atual,B=j.anterior,[ano,mm]=j.mes.split("-"),mesNome=MESL[Number(mm)-1]+" de "+ano;
+  const dif=(x,y,suf)=>y==null||x==null?"":(x===y?'<em class="agp-ig">= mês anterior</em>':'<em class="'+(x>y?"agp-up":"agp-dn")+'">'+(x>y?"▲":"▼")+" "+Math.abs(x-y)+(suf||"")+' vs mês anterior</em>');
+  const tile=(ic,cor,lbl,val,sub,cmp)=>'<div class="agp-k" style="border-top-color:'+cor+'"><span class="agp-ic">'+ic+'</span><span class="agp-l">'+lbl+'</span><b>'+val+'</b><span class="agp-s">'+sub+'</span>'+(cmp||"")+'</div>';
+  const barras=(pares,cor,vazio)=>{if(!pares.length)return'<div class="agp-vazio">'+vazio+'</div>';const mx=Math.max(...pares.map(p=>p[1]));
+    return pares.map(([k,v])=>'<div class="agp-b"><span>'+esc(k)+'</span><div><i style="width:'+Math.max(4,v/mx*100)+'%;background:'+cor+'"></i></div><b>'+v+'</b></div>').join("");};
+  const topHora=j.por_hora.slice().sort((a,b)=>b[1]-a[1])[0];
+  let h='<div class="agp"><div class="agp-h">📅 Agenda Comercial <small>reuniões de '+esc(mesNome)+' · pelo link e cadastradas</small></div><div class="agp-ks">';
+  h+=tile("🗓️","#2e8fef","Reuniões no mês",A.marcadas,A.futuras?A.futuras+" ainda vão acontecer":"todas já aconteceram",dif(A.marcadas,B.marcadas));
+  h+=tile("✅","#16a34a","Realizadas",A.realizadas,A.pendentes?"⚠️ "+A.pendentes+" sem resultado registrado":"resultado registrado");
+  h+=tile("🎯","#0d9488","Comparecimento",A.comparecimento==null?"—":A.comparecimento+"%",A.faltas+" não compareceu"+(A.faltas===1?"":"ram"),dif(A.comparecimento,B.comparecimento," pts"));
+  h+=tile("🔗","#7c3aed","Marcadas pelo link",A.pelo_link,A.marcadas?Math.round(A.pelo_link/A.marcadas*100)+"% do total":"o cliente escolhe o horário");
+  h+=tile("📨","#f97316","Viraram proposta",A.viraram_proposta,A.fecharam?A.fecharam+" já fechou"+(A.fecharam===1?"":"aram")+" negócio":"das reuniões realizadas");
+  h+=tile("❌","#dc2626","Canceladas",A.canceladas,A.canceladas_cliente+" pelo próprio cliente");
+  h+='</div><div class="agp-g">';
+  const serie=j.serie.map(s=>[MES[Number(s.mes.slice(5))-1],s.marcadas,s.realizadas]),mx=Math.max(1,...serie.map(s=>s[1]));
+  h+='<div class="agp-c"><div class="agp-t">Últimos 6 meses <span><i style="background:#93c5fd"></i>marcadas <i style="background:#16a34a"></i>realizadas</span></div><div class="agp-serie">'+
+    serie.map(([m,a,b])=>'<div><div class="agp-col"><i style="height:'+(a/mx*100)+'%;background:#93c5fd" title="'+a+' marcadas"></i><i style="height:'+(b/mx*100)+'%;background:#16a34a" title="'+b+' realizadas"></i></div><span>'+m+'</span><b>'+a+'</b></div>').join("")+'</div></div>';
+  h+='<div class="agp-c"><div class="agp-t">Horários mais procurados <span>'+(topHora?"pico às "+esc(topHora[0]):"últimos 6 meses")+'</span></div>'+barras(j.por_hora,"#2e8fef","Ainda sem reuniões marcadas.")+'</div>';
+  h+='<div class="agp-c"><div class="agp-t">Dias mais procurados <span>últimos 6 meses</span></div>'+barras(j.por_dia,"#7c3aed","Ainda sem reuniões marcadas.")+'</div>';
+  h+='<div class="agp-c"><div class="agp-t">Depois da reunião <span>próximo passo das realizadas</span></div>'+barras(j.proximos_passos,"#f97316","Registre o resultado das reuniões na Agenda Comercial.")+
+    (j.por_tipo.length?'<div class="agp-t" style="margin-top:12px">Por tipo de reunião</div>'+barras(j.por_tipo,"#0d9488",""):"")+'</div>';
+  h+='</div></div>';
+  return h;
 }
 
 // Sessão caiu ou outra pessoa entrou na mesma aba: nada da anterior fica na tela.

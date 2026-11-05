@@ -14,6 +14,9 @@ const { quando } = require("./_agenda_email");
 const primeiroNome = n => String(n || "").trim().split(/\s+/)[0] || "";
 const durTxt = m => m < 60 ? m + " minutos" : (m % 60 ? Math.floor(m / 60) + "h" + String(m % 60).padStart(2, "0") : m / 60 + (m === 60 ? " hora" : " horas"));
 
+// assinatura de quem atende (Painel › Agenda › 🎨 Sua página), quando configurada
+const assina = m => { const a = m && m.anfitriao; return a && a.nome ? `\n\n— ${a.nome}${a.cargo ? " · " + a.cargo : ""}\n*Grupo ServCamp*` : ""; };
+
 // "(19) 99999-8888" → "5519999998888". Fixo, número curto ou lixo → null (não manda).
 function celular(tel) {
   let d = String(tel || "").replace(/\D/g, "");
@@ -26,22 +29,22 @@ function celular(tel) {
 function confirmacao(m) {
   const q = quando(m.inicio);
   return `Olá, ${primeiroNome(m.nome)}! ✅\nSua reunião com o *Grupo ServCamp* está *confirmada*:\n\n📌 ${m.tipo}\n📅 ${q.extenso}, às *${q.hora}* (horário de Brasília)\n⏱ ${durTxt(m.duracao_min)}` +
-    (m.local ? `\n📍 ${m.local}` : "") + (m.gerenciar ? `\n\nPara remarcar ou cancelar (até 2 horas antes):\n${m.gerenciar}` : "");
+    (m.local ? `\n📍 ${m.local}` : "") + (m.gerenciar ? `\n\nPara remarcar ou cancelar (até 2 horas antes):\n${m.gerenciar}` : "") + assina(m);
 }
 function lembrete(m) {
   const q = quando(m.inicio);
   return `Olá, ${primeiroNome(m.nome)}! ⏰\nLembrete da sua reunião com o *Grupo ServCamp* *amanhã*:\n\n📌 ${m.tipo}\n📅 ${q.extenso}, às *${q.hora}* (horário de Brasília)` +
-    (m.local ? `\n📍 ${m.local}` : "") + (m.gerenciar ? `\n\nSe não conseguir comparecer, remarque ou cancele (até 2 horas antes):\n${m.gerenciar}` : "");
+    (m.local ? `\n📍 ${m.local}` : "") + (m.gerenciar ? `\n\nSe não conseguir comparecer, remarque ou cancele (até 2 horas antes):\n${m.gerenciar}` : "") + assina(m);
 }
 function remarcada(m) {
   const q = quando(m.inicio);
   return `Olá, ${primeiroNome(m.nome)}! 🔁\nSua reunião com o *Grupo ServCamp* foi *remarcada* para:\n\n📌 ${m.tipo}\n📅 ${q.extenso}, às *${q.hora}* (horário de Brasília)` +
-    (m.local ? `\n📍 ${m.local}` : "") + (m.gerenciar ? `\n\nPara remarcar ou cancelar:\n${m.gerenciar}` : "");
+    (m.local ? `\n📍 ${m.local}` : "") + (m.gerenciar ? `\n\nPara remarcar ou cancelar:\n${m.gerenciar}` : "") + assina(m);
 }
 function cancelada(m) {
   const q = quando(m.inicio);
   return `Olá, ${primeiroNome(m.nome)}.\nSua reunião *${m.tipo}* de ${q.extenso}, às ${q.hora}, foi *cancelada*.` +
-    (m.novo ? `\n\nPara marcar um novo horário:\n${m.novo}` : "\n\nSe quiser marcar outro horário, é só responder esta mensagem.");
+    (m.novo ? `\n\nPara marcar um novo horário:\n${m.novo}` : "\n\nSe quiser marcar outro horário, é só responder esta mensagem.") + assina(m);
 }
 
 // ── envio ───────────────────────────────────────────────────────────────────

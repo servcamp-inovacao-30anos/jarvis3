@@ -989,3 +989,149 @@ test("agendar.html avisa que a confirmação vai por WhatsApp e e-mail", () => {
   const PUB = fs.readFileSync(path.join(__dirname, "..", "agendar.html"), "utf8");
   assert.ok(PUB.includes("confirmação por <b>WhatsApp</b>"));
 });
+
+// ── 🎨 sua página, resultado e números do Painel Comercial ─────────────────
+const FOTO = "data:image/jpeg;base64," + Buffer.from("foto-de-teste").toString("base64");
+
+test("marca: quem atende aparece na página do cliente, com foto servida à parte; validação recusa o que não é imagem", async () => {
+  await comRelogio(AGORA, async () => {
+    const { tabelas, slug60 } = await preparar();
+    assert.ok(R.validarMarca({ nome: "Gabi", foto: "data:text/html;base64,PGI+" }).erro, "só imagem");
+    assert.ok(R.validarMarca({ nome: "Gabi", foto: "data:image/jpeg;base64," + "A".repeat(R.FOTO_MAX) }).erro, "nem grande demais");
+    assert.equal((await adm("marca", { method: "POST", usuario: "carlos", body: { nome: "X" } })).statusCode, 403, "só quem administra");
+    const r = await adm("marca", { method: "POST", body: { nome: "  Gabriela Alvarenga ", cargo: "Consultora Comercial", boas_vindas: "Olá!\nEscolha o horário.", foto: FOTO } });
+    assert.equal(r.statusCode, 200, JSON.stringify(r.body));
+    const h = await pub("horarios", { query: { s: slug60 } });
+    assert.equal(h.body.marca.nome, "Gabriela Alvarenga");
+    assert.equal(h.body.marca.cargo, "Consultora Comercial");
+    assert.match(h.body.marca.foto, /^\/api\/rh\?modulo=agendapub&t=foto&v=[0-9a-f]{10}$/);
+    assert.ok(!JSON.stringify(h.body).includes("base64"), "a foto não vai dentro da página");
+    const f = await pub("foto");
+    assert.equal(f.statusCode, 200);
+    assert.equal(f.cab["Content-Type"], "image/jpeg");
+    assert.equal(Buffer.from(f.body).toString(), "foto-de-teste");
+    // salvar sem mandar a foto mantém a foto; mandar "" tira
+    await adm("marca", { method: "POST", body: { nome: "Gabriela", cargo: "Comercial" } });
+    assert.equal(tabelas.ag_config[0].anfitriao_foto, FOTO);
+    await adm("marca", { method: "POST", body: { nome: "Gabriela", foto: "" } });
+    assert.equal(tabelas.ag_config[0].anfitriao_foto, null);
+    assert.equal((await pub("foto")).statusCode, 404);
+    assert.equal((await pub("horarios", { query: { s: slug60 } })).body.marca.foto, null);
+  });
+});
+
+test("marca: e-mail com logo e assinatura de quem atende; WhatsApp assinado", async () => {
+  process.env.MAIL_USER = "comercial@exemplo.com";
+  const c = correioFalso(), z = zapFalso();
+  try {
+    await comRelogio(AGORA, async () => {
+      const { slug60 } = await preparar();
+      await adm("marca", { method: "POST", body: { nome: "Gabriela Alvarenga", cargo: "Consultora Comercial", foto: FOTO } });
+      const r = await marcar(slug60, "10:00", pessoa(1, { email: "ana@exemplo.com" }));
+      assert.equal(r.statusCode, 201);
+      const cli = c.enviados.find(m => m.para === "ana@exemplo.com");
+      assert.ok(cli.html.includes("https://painel.exemplo/logo-servcamp-120.png"), "logo");
+      assert.ok(cli.html.includes("Gabriela Alvarenga") && cli.html.includes("Consultora Comercial"), "assinatura");
+      assert.ok(/https:\/\/painel\.exemplo\/api\/rh\?modulo=agendapub&amp;t=foto&amp;v=[0-9a-f]{10}/.test(cli.html), "foto com endereço completo");
+      assert.ok(cli.texto.endsWith("Gabriela Alvarenga · Consultora Comercial\nGrupo ServCamp"));
+      assert.ok(!aviso(c.enviados).html.includes("Consultora Comercial"), "o aviso interno não leva assinatura");
+      assert.ok(z.enviados[0].texto.endsWith("— Gabriela Alvarenga · Consultora Comercial\n*Grupo ServCamp*"));
+    });
+  } finally { c.solta(); z.solta(); }
+});
+
+test("resultado: só depois que a reunião começa; realizada/faltou, próximo passo, anotação e desfazer", async () => {
+  const c = correioFalso(), z = zapFalso();
+  try {
+    const { tabelas } = await comRelogio(AGORA, async () => {
+      const p = await preparar();
+      assert.equal((await marcar(p.slug60, "10:00", pessoa(1))).statusCode, 201);
+      return p;
+    });
+    const id = String(tabelas.ag_reunioes[0].id);
+    await comRelogio(AGORA, async () => {
+      assert.equal((await adm("resultado", { method: "POST", query: { id }, body: { resultado: "realizada" } })).statusCode, 409, "ainda não começou");
+    });
+    await comRelogio(R.paraUtc(QUI, "11:30"), async () => {
+      assert.equal((await adm("resultado", { method: "POST", query: { id }, body: { resultado: "talvez" } })).statusCode, 400);
+      assert.equal((await adm("resultado", { method: "POST", query: { id }, body: { resultado: "realizada", proximo: "voar" } })).statusCode, 400);
+      assert.equal((await adm("resultado", { method: "POST", usuario: "carlos", query: { id }, body: { resultado: "realizada" } })).statusCode, 403);
+      const ok = await adm("resultado", { method: "POST", query: { id }, body: { resultado: "realizada", proximo: "proposta", anotacao: "quer portaria 24h" } });
+      assert.equal(ok.statusCode, 200, JSON.stringify(ok.body));
+      const r = tabelas.ag_reunioes[0];
+      assert.equal(r.resultado, "realizada"); assert.equal(r.proximo_passo, "proposta"); assert.equal(r.resultado_obs, "quer portaria 24h"); assert.equal(r.resultado_por, "joaoygor");
+      assert.equal((await adm("")).body.reunioes[0].resultado, "realizada");
+      await adm("resultado", { method: "POST", query: { id }, body: { resultado: null } });
+      assert.equal(tabelas.ag_reunioes[0].resultado, null, "desfaz");
+      assert.equal(tabelas.ag_reunioes[0].resultado_em, null);
+    });
+  } finally { c.solta(); z.solta(); }
+});
+
+test("números: contas do mês (comparecimento, link, proposta, canceladas, horários e dias mais procurados)", () => {
+  const r = (dia, hora, extra) => Object.assign({ inicio: new Date(R.paraUtc(dia, hora)).toISOString(), tipo_nome: "Captação", origem: "link", status: "ativa", resultado: null, proximo_passo: null }, extra || {});
+  const rs = [
+    r("2026-11-03", "10:00", { resultado: "realizada", proximo_passo: "proposta" }),
+    r("2026-11-03", "14:00", { resultado: "realizada", proximo_passo: "fechou", origem: "manual", tipo_nome: "Reunião com cliente" }),
+    r("2026-11-04", "10:00", { resultado: "faltou" }),
+    r("2026-11-04", "11:00"),                                   // já passou, sem resultado
+    r("2026-11-20", "10:00"),                                   // futura
+    r("2026-11-05", "09:00", { status: "cancelada", cancelado_por: "cliente" }),
+    r("2026-10-15", "10:00", { resultado: "realizada" }),        // mês anterior
+    r("2026-10-16", "10:00", { resultado: "faltou" })
+  ];
+  const n = R.numeros(rs, "2026-11", AGORA);
+  assert.deepEqual(n.atual, { marcadas: 5, realizadas: 2, faltas: 1, pendentes: 1, futuras: 1, canceladas: 1, canceladas_cliente: 1, pelo_link: 4, comparecimento: 67, viraram_proposta: 2, fecharam: 1 });
+  assert.equal(n.anterior.comparecimento, 50);
+  assert.deepEqual(n.por_tipo, [["Captação", 4], ["Reunião com cliente", 1]]);
+  assert.deepEqual(n.por_hora, [["09h", 1], ["10h", 5], ["11h", 1], ["14h", 1]], "a procura conta também o que foi cancelado depois");
+  assert.deepEqual(n.por_dia.map(x => x[0]), ["Ter", "Qua", "Qui", "Sex"]);
+  assert.deepEqual(n.serie.map(s => s.mes), ["2026-06", "2026-07", "2026-08", "2026-09", "2026-10", "2026-11"]);
+  assert.deepEqual(n.serie[5], { mes: "2026-11", marcadas: 5, realizadas: 2, faltas: 1 });
+  assert.deepEqual(n.proximos_passos, [["Enviar proposta", 1], ["Fechou negócio", 1]]);
+  assert.equal(R.mesAntes("2026-01", 1), "2025-12");
+});
+
+test("números: API só para quem administra a agenda (por enquanto) e sem dados de ninguém", async () => {
+  await comRelogio(AGORA, async () => {
+    const { tabelas, slug60 } = await preparar();
+    tabelas.app_users.push({ user_key: "diretor", nome: "Diretor", ativo: true, perms: { comDash: true } });
+    assert.equal((await marcar(slug60, "10:00", pessoa(1))).statusCode, 201);
+    const ok = await adm("numeros", { query: { mes: "2026-11" } });
+    assert.equal(ok.statusCode, 200, JSON.stringify(ok.body));
+    assert.equal(ok.body.mes, "2026-11");
+    assert.equal(ok.body.atual.marcadas, 1);
+    assert.ok(!/Pessoa 1|1999999|exemplo\.com/.test(JSON.stringify(ok.body)), "só contagens");
+    assert.equal(agendaMod.NUMEROS_NO_PAINEL, false);
+    assert.equal((await adm("numeros", { usuario: "diretor" })).statusCode, 403, "Painel Comercial só vê quando a agenda for liberada");
+    assert.equal((await adm("numeros", { query: { mes: "lixo" } })).body.mes, "2026-11", "mês inválido vira o atual");
+  });
+});
+
+test("tela: reunião que já aconteceu sem resultado aparece para registrar; painel comercial desenha os números", async () => {
+  const real = Date.now;
+  Date.now = () => AGORA;
+  try {
+    const ontem = { id: 7, tipo_id: 1, tipo_nome: "Captação", inicio: new Date(R.paraUtc("2026-11-04", "10:00")).toISOString(), fim: new Date(R.paraUtc("2026-11-04", "10:30")).toISOString(), nome: "Bruno", origem: "link", status: "ativa" };
+    const dados = { config: R.CONFIG_PADRAO, ics_chave: "k", marca: {}, tipos: [{ id: 1, nome: "Captação", duracao_min: 30, cor: "#ea580c", slug: "abc", ativo: true }], bloqueios: [], reunioes: [ontem] };
+    const { ctx, pagina } = telaAgenda(dados);
+    ctx.agLoad();
+    await new Promise(r => setTimeout(r, 15));
+    assert.ok(pagina.innerHTML.includes("Como foram estas reuniões?") && pagina.innerHTML.includes('data-ag="res" data-r="realizada" data-id="7"'));
+    assert.ok(pagina.innerHTML.includes("🎨 Sua página"));
+    const n = R.numeros([{ inicio: ontem.inicio, tipo_nome: "Captação", origem: "link", status: "ativa", resultado: "realizada", proximo_passo: "proposta" }], "2026-11", AGORA);
+    const el = { innerHTML: "", isConnected: true };
+    const t2 = telaAgenda(Object.assign({ ok: true }, n));
+    t2.ctx.agPainelComercial(el, "2026-11");
+    await new Promise(r => setTimeout(r, 15));
+    assert.ok(el.innerHTML.includes("Agenda Comercial") && el.innerHTML.includes("novembro de 2026"));
+    assert.ok(el.innerHTML.includes("Comparecimento") && el.innerHTML.includes("100%"));
+    assert.ok(el.innerHTML.includes("Enviar proposta"));
+  } finally { Date.now = real; }
+});
+
+test("agendar.html: marca do Grupo ServCamp, etapas e cartão de quem atende", () => {
+  const PUB = fs.readFileSync(path.join(__dirname, "..", "agendar.html"), "utf8");
+  assert.ok(PUB.includes('src="/logo-servcamp-120.png"') && PUB.includes('id="agHost"') && PUB.includes('id="agSteps"') && PUB.includes('id="agBoas"'));
+  assert.ok(fs.existsSync(path.join(__dirname, "..", "logo-servcamp-120.png")));
+});

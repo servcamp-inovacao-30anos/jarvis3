@@ -18937,6 +18937,8 @@ function comDashRender(){
     <div style="font-size:.6rem;color:#94a3b8;margin-top:9px">A chance vem da etapa do funil, mais resposta do cliente e visita realizada, menos os dias parado. É um indicador de prioridade, não uma previsão.</div>`
     :`<div style="font-size:.72rem;color:#64748b;margin-top:8px">Nenhuma proposta atinge 70% agora. A chance sobe quando o cliente responde, quando há visita e quando a negociação avança de etapa.</div>`}
   </div>`;
+  /* ── AGENDA COMERCIAL: os números das reuniões do mês (assets/agenda/agenda.js preenche; quem não pode ver, não vê) ── */
+  h+='<div id="cd-agenda"></div>';
   /* ── GRÁFICOS: receita mensal + meta×realizado ── */
   h+=`<div style="display:grid;grid-template-columns:${COM_VALORES?"1fr 1fr":"1fr"};gap:14px;margin-bottom:14px">`;
   if(COM_VALORES)h+=`<div style="background:#fff;border:1px solid #e5e9f0;border-radius:14px;padding:18px 22px"><div style="font-size:.8rem;font-weight:800;color:#0d1f35;margin-bottom:10px">📈 Receita Fechada — últimos 6 meses</div><div style="height:190px"><canvas id="cdRev"></canvas></div></div>`;
@@ -18982,6 +18984,7 @@ function comDashRender(){
     <div style="font-size:.7rem">${tlGeral.length?tlGeral.map(l=>{const p=P.find(x=>x.id===l.proposta_id);const ic=l.etapa>0?(l.canal==="WHATSAPP"?"📱":"✉️"):({VISITA:"🏠",WHATSAPP:"📱",EMAIL:"✉️"}[l.canal]||"⚙️");return`<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid #f1f5f9;align-items:baseline"><span>${ic}</span><div style="flex:1"><b style="color:#0d1f35">${p?p.nome:"#"+l.proposta_id}</b> — ${l.etapa>0?(COM_ETAPA_LBL[l.etapa]||"")+(l.status==="falhou"?" ⚠️":""):l.detalhe||"evento"}</div><span style="color:#94a3b8;white-space:nowrap;font-size:.62rem">${new Date(l.enviado_em).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})}</span></div>`;}).join(""):'<div style="color:#94a3b8">Sem atividades registradas ainda.</div>'}</div></div>`;
   h+=`</div>`;
   el.innerHTML=h;
+  if(typeof agPainelComercial==="function")agPainelComercial(document.getElementById("cd-agenda"),mesKey.slice(0,7));
   /* gráficos Chart.js */
   try{
     if(COM_VALORES){dc2("cdRev");CH["cdRev"]=new Chart(document.getElementById("cdRev"),{type:"line",data:{labels:mesesLbl,datasets:[{label:"Receita fechada",data:sFecR,borderColor:"#16a34a",backgroundColor:"rgba(22,163,74,.10)",borderWidth:2.5,pointRadius:4,pointBackgroundColor:"#16a34a",fill:true,tension:.35}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmtBRL0(c.parsed.y)}}},scales:{y:{ticks:{callback:v=>"R$ "+(v>=1000?(v/1000)+"k":v),font:{size:10}}},x:{ticks:{font:{size:10}}}}}});}

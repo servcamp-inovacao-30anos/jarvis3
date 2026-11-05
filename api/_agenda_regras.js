@@ -96,6 +96,76 @@ function validarPessoa(b, opcoes) {
   return { pessoa: { nome, telefone: tel || null, email: email || null, obs: txt(b && b.obs, 500) || null } };
 }
 
+// A "cara" da página do cliente e dos e-mails: quem atende (nome, cargo, foto) e a mensagem de boas-vindas.
+// A foto chega já reduzida pela tela (quadrada, JPEG); aqui só se confere que é imagem e não é grande.
+// foto: undefined = mantém a atual · "" ou null = tira · "data:image/...;base64,..." = troca.
+const FOTO_MAX = 200000;
+function validarMarca(b) {
+  if (!b || typeof b !== "object") return { erro: "Dados inválidos." };
+  const marca = { anfitriao_nome: txt(b.nome, 60) || null, anfitriao_cargo: txt(b.cargo, 60) || null, boas_vindas: txt(b.boas_vindas, 300) || null };
+  if (b.foto !== undefined) {
+    const f = b.foto == null ? "" : String(b.foto);
+    if (f && !/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(f)) return { erro: "A foto precisa ser uma imagem JPG, PNG ou WebP." };
+    if (f.length > FOTO_MAX) return { erro: "Foto grande demais. Escolha outra." };
+    marca.anfitriao_foto = f || null;
+  }
+  return { marca };
+}
+
+// Resultado de uma reunião que já começou: aconteceu ou a pessoa não veio, e o próximo passo.
+const RESULTADOS = { realizada: "Realizada", faltou: "Não compareceu" };
+const PROXIMOS = { proposta: "Enviar proposta", visita: "Agendar visita", nova_reuniao: "Nova reunião", fechou: "Fechou negócio", sem_interesse: "Sem interesse", remarcar: "Remarcar", outro: "Outro" };
+function validarResultado(b) {
+  if (!b || typeof b !== "object") return { erro: "Dados inválidos." };
+  if (b.resultado == null || b.resultado === "") return { resultado: { resultado: null, proximo_passo: null, resultado_obs: null } }; // desfaz
+  if (!RESULTADOS[b.resultado]) return { erro: "Escolha se a reunião aconteceu ou se a pessoa não veio." };
+  const proximo = b.proximo == null || b.proximo === "" ? null : String(b.proximo);
+  if (proximo && !PROXIMOS[proximo]) return { erro: "Próximo passo inválido." };
+  return { resultado: { resultado: b.resultado, proximo_passo: proximo, resultado_obs: txt(b.anotacao, 1000) || null } };
+}
+
+// ── números (Painel Comercial) ─────────────────────────────────────────────
+// reunioes: [{ inicio, tipo_nome, origem, status, cancelado_por, resultado, proximo_passo }] · mes: "2026-11"
+const mesDe = ms => deUtc(+new Date(ms)).dia.slice(0, 7);
+function mesAntes(mes, n) { const [a, m] = mes.split("-").map(Number), d = new Date(Date.UTC(a, m - 1 - n, 15)); return d.toISOString().slice(0, 7); }
+function numerosDoMes(rs, mes, agora) {
+  const doMes = rs.filter(r => mesDe(r.inicio) === mes);
+  const valem = doMes.filter(r => r.status === "ativa");
+  const canceladas = doMes.filter(r => r.status !== "ativa");
+  const realizadas = valem.filter(r => r.resultado === "realizada").length, faltas = valem.filter(r => r.resultado === "faltou").length;
+  return {
+    marcadas: valem.length, realizadas, faltas,
+    pendentes: valem.filter(r => !r.resultado && +new Date(r.inicio) <= agora).length,
+    futuras: valem.filter(r => +new Date(r.inicio) > agora).length,
+    canceladas: canceladas.length, canceladas_cliente: canceladas.filter(r => r.cancelado_por === "cliente").length,
+    pelo_link: valem.filter(r => r.origem === "link").length,
+    comparecimento: realizadas + faltas ? Math.round(realizadas / (realizadas + faltas) * 100) : null,
+    viraram_proposta: valem.filter(r => r.resultado === "realizada" && (r.proximo_passo === "proposta" || r.proximo_passo === "fechou")).length,
+    fecharam: valem.filter(r => r.resultado === "realizada" && r.proximo_passo === "fechou").length
+  };
+}
+function numeros(rs, mes, agora) {
+  const lista = Array.isArray(rs) ? rs : [];
+  const atual = numerosDoMes(lista, mes, agora), anterior = numerosDoMes(lista, mesAntes(mes, 1), agora);
+  const contar = (arr, fn) => { const m = {}; arr.forEach(r => { const k = fn(r); m[k] = (m[k] || 0) + 1; }); return m; };
+  const doMes = lista.filter(r => mesDe(r.inicio) === mes && r.status === "ativa");
+  const porTipo = Object.entries(contar(doMes, r => r.tipo_nome || "Reunião")).sort((a, b) => b[1] - a[1]);
+  const porResultado = Object.entries(contar(doMes.filter(r => r.resultado === "realizada"), r => PROXIMOS[r.proximo_passo] || "Sem próximo passo")).sort((a, b) => b[1] - a[1]);
+  // procura: tudo o que foi marcado (inclusive o que depois foi cancelado) nos últimos 6 meses até o mês escolhido
+  const seis = new Set([0, 1, 2, 3, 4, 5].map(i => mesAntes(mes, i)));
+  const procura = lista.filter(r => seis.has(mesDe(r.inicio)));
+  const horas = contar(procura, r => deUtc(+new Date(r.inicio)).hora.slice(0, 2) + "h");
+  const SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+  const dias = contar(procura, r => SEMANA[new Date(deUtc(+new Date(r.inicio)).dia + "T12:00:00Z").getUTCDay()]);
+  return {
+    mes, atual, anterior,
+    por_tipo: porTipo, proximos_passos: porResultado,
+    por_hora: Object.entries(horas).sort((a, b) => a[0] < b[0] ? -1 : 1),
+    por_dia: SEMANA.filter(d => dias[d]).map(d => [d, dias[d]]),
+    serie: [5, 4, 3, 2, 1, 0].map(i => { const m = mesAntes(mes, i), n = numerosDoMes(lista, m, agora); return { mes: m, marcadas: n.marcadas, realizadas: n.realizadas, faltas: n.faltas }; })
+  };
+}
+
 // Faixa que a reunião ocupa (com o intervalo depois dela).
 function faixa(dia, hora, duracao_min, intervalo_min) {
   const inicio = paraUtc(dia, hora), fim = inicio + duracao_min * MIN;
@@ -169,5 +239,6 @@ function ics(eventos, opcoes) {
 module.exports = {
   OFFSET, CONFIG_PADRAO, TIPOS_PADRAO, HORA, DIA,
   paraUtc, deUtc, somaDias, diaSemana, hojeBR, faixa,
-  validarConfig, validarTipo, validarPessoa, horariosDoDia, horariosLivres, ics, icsTxt
+  validarConfig, validarTipo, validarPessoa, horariosDoDia, horariosLivres, ics, icsTxt,
+  validarMarca, validarResultado, numeros, mesAntes, RESULTADOS, PROXIMOS, FOTO_MAX
 };

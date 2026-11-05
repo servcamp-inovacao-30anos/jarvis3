@@ -536,3 +536,14 @@ alter table public.ag_config add column if not exists email_aviso text;
 
 -- AGENDA COMERCIAL — WhatsApp da confirmação (situação do envio). Só cria; pode rodar de novo.
 alter table public.ag_reunioes add column if not exists whatsapp_status text;
+
+-- Agenda Comercial: quem atende (página do cliente e e-mails) e resultado das reuniões (Painel Comercial)
+alter table public.ag_config add column if not exists anfitriao_nome text;
+alter table public.ag_config add column if not exists anfitriao_cargo text;
+alter table public.ag_config add column if not exists anfitriao_foto text;
+alter table public.ag_config add column if not exists boas_vindas text;
+alter table public.ag_reunioes add column if not exists resultado text check (resultado in ('realizada','faltou'));
+alter table public.ag_reunioes add column if not exists proximo_passo text;
+alter table public.ag_reunioes add column if not exists resultado_obs text;
+alter table public.ag_reunioes add column if not exists resultado_em timestamptz;
+alter table public.ag_reunioes add column if not exists resultado_por text;

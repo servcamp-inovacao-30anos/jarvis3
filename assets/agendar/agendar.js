@@ -16,7 +16,7 @@ const diaTxt=d=>{const x=new Date(d+"T12:00:00Z");return SEM[x.getUTCDay()]+", "
 const durTxt=m=>m<60?m+" minutos":(m%60?Math.floor(m/60)+"h"+String(m%60).padStart(2,"0"):m/60+(m===60?" hora":" horas"));
 // "2026-11-06T13:00:00Z" → { dia, hora } em Brasília
 const br=iso=>{const d=new Date(+new Date(iso)-3*3600000).toISOString();return{dia:d.slice(0,10),hora:d.slice(11,16)};};
-const E={tipo:null,dias:{},dia:null,hora:null,remarcando:false,minha:null};
+const E={tipo:null,dias:{},dia:null,hora:null,remarcando:false,minha:null,marca:null};
 
 async function api(t,metodo,corpo){
   let q="/api/rh?modulo=agendapub&t="+t;
@@ -29,10 +29,30 @@ async function api(t,metodo,corpo){
   if(!r.ok){const e=new Error(j.error||"Não foi possível agora. Tente de novo.");e.codigo=j.codigo;e.status=r.status;throw e;}
   return j;
 }
-function erroTopo(m){$("agInfo").textContent=m;$("agPasso1").hidden=true;$("agForm").hidden=true;$("agMinha").hidden=true;}
-function cabecalho(t){
+function erroTopo(m){$("agInfo").textContent=m;$("agPasso1").hidden=true;$("agForm").hidden=true;$("agMinha").hidden=true;$("agSteps").hidden=true;}
+// iniciais para quando não há foto ("Gabriela Alvarenga" → "GA")
+const iniciais=n=>String(n||"").trim().split(/\s+/).filter(Boolean).map(p=>p[0]).slice(0,2).join("").toUpperCase();
+function avatar(el,marca){
+  if(marca.foto&&/^\/api\/rh\?/.test(marca.foto)){el.textContent="";el.style.backgroundImage='url("'+marca.foto+'")';}
+  else{el.style.backgroundImage="";el.textContent=iniciais(marca.nome);}
+}
+// Cartão da reunião: quem atende (foto, nome, cargo), o tipo, duração, local e a mensagem de boas-vindas.
+function cabecalho(t,marca){
+  const m=marca||{};
   $("agTit").textContent=t.nome;
   document.querySelector(".ag-topo").style.setProperty("--cor",/^#[0-9a-f]{6}$/i.test(t.cor||"")?t.cor:"#1e4d8c");
+  const chips=["⏱ "+durTxt(t.duracao_min)];
+  if(t.local)chips.push((/^https?:\/\//i.test(t.local)||/meet|teams|zoom|v[íi]deo/i.test(t.local)?"💻 ":"📍 ")+t.local);
+  chips.push("🌎 Horário de Brasília");
+  $("agChips").innerHTML=chips.map(c=>"<li>"+esc(c)+"</li>").join("");$("agChips").hidden=false;
+  if(m.nome){$("agHost").hidden=false;$("agHostNome").textContent=m.nome;$("agHostCargo").textContent=(m.cargo?m.cargo+" · ":"")+"Grupo ServCamp";avatar($("agAvatar"),m);}
+  if(m.boas_vindas&&!COD){$("agBoas").hidden=false;$("agBoas").textContent=m.boas_vindas;}
+  E.marca=m;
+}
+// Etapas: 1 dia e horário · 2 seus dados · 3 confirmado
+function passo(n){
+  $("agSteps").hidden=!!COD;
+  document.querySelectorAll("#agSteps li").forEach(li=>{const p=+li.dataset.p;li.classList.toggle("on",p===n);li.classList.toggle("feito",p<n||(n===3&&p===3));});
 }
 
 /* ── marcar ─────────────────────────────────────────────────────────────── */
@@ -41,13 +61,13 @@ async function carregar(manterDia){
   let j;
   try{j=await api("horarios");}catch(e){erroTopo(e.message);return;}
   E.tipo=j.tipo;E.dias=j.dias||{};
-  cabecalho(j.tipo);
-  $("agInfo").innerHTML="⏱ "+esc(durTxt(j.tipo.duracao_min))+(j.tipo.local?"<br>📍 "+esc(j.tipo.local):"");
+  cabecalho(j.tipo,j.marca);
+  $("agInfo").textContent="";
   const dias=Object.keys(E.dias).sort();
-  $("agPasso1").hidden=false;
+  $("agPasso1").hidden=false;passo(1);
   if(!dias.length){$("agDias").innerHTML='<p class="ag-vazio">Não há horários livres nos próximos dias. Fale com o nosso Comercial.</p>';$("agHoras").innerHTML="";$("agTitHoras").hidden=true;return;}
   if(!manterDia||!E.dias[E.dia])E.dia=dias[0];
-  $("agDias").innerHTML=dias.map(d=>{const x=new Date(d+"T12:00:00Z");return'<button type="button" class="ag-dia'+(d===E.dia?" on":"")+'" data-d="'+d+'" role="option" aria-selected="'+(d===E.dia)+'"><span>'+SEM[x.getUTCDay()]+'</span><b>'+x.getUTCDate()+'</b><span>'+MES[x.getUTCMonth()]+'</span></button>';}).join("");
+  $("agDias").innerHTML=dias.map(d=>{const x=new Date(d+"T12:00:00Z");return'<button type="button" class="ag-dia'+(d===E.dia?" on":"")+'" data-d="'+d+'" role="option" aria-selected="'+(d===E.dia)+'"><span>'+SEM[x.getUTCDay()]+'</span><b>'+x.getUTCDate()+'</b><span>'+MES[x.getUTCMonth()]+'</span><em>'+E.dias[d].length+' horário'+(E.dias[d].length===1?'':'s')+'</em></button>';}).join("");
   horas();
 }
 function horas(){
@@ -67,10 +87,11 @@ $("agHoras").addEventListener("click",async e=>{
   if(E.remarcando){await remarcar();return;}
   $("agEscolha").textContent="📅 "+diaTxt(E.dia)+" às "+E.hora;
   $("agErro").textContent="";
-  $("agPasso1").hidden=true;$("agForm").hidden=false;
+  $("agPasso1").hidden=true;$("agForm").hidden=false;passo(2);
   $("agNome").focus();
 });
-$("agTrocar").addEventListener("click",()=>{$("agForm").hidden=true;$("agPasso1").hidden=false;});
+$("agTrocar").addEventListener("click",()=>{$("agForm").hidden=true;$("agPasso1").hidden=false;passo(1);});
+document.querySelectorAll(".ag-rolar").forEach(b=>b.addEventListener("click",()=>{const d=$("agDias");d.scrollBy({left:Number(b.dataset.r)*Math.max(200,d.clientWidth*.8),behavior:"smooth"});}));
 $("agTel").addEventListener("input",e=>{ // (19) 99999-9999 enquanto digita
   const d=e.target.value.replace(/\D/g,"").slice(0,11);
   e.target.value=d.length>6?"("+d.slice(0,2)+") "+d.slice(2,d.length-4)+"-"+d.slice(-4):d.length>2?"("+d.slice(0,2)+") "+d.slice(2):d;
@@ -84,7 +105,8 @@ $("agForm").addEventListener("submit",async e=>{
   bt.disabled=true;bt.textContent="Agendando…";
   try{
     const j=await api("agendar","POST",corpo);
-    $("agForm").hidden=true;$("agPasso1").hidden=true;$("agOk").hidden=false;
+    $("agForm").hidden=true;$("agPasso1").hidden=true;$("agOk").hidden=false;passo(3);
+    if(E.marca&&E.marca.nome){const o=$("agOkHost");o.hidden=false;o.innerHTML='<span class="ag-avatar" aria-hidden="true"></span><span>Você vai falar com <b>'+esc(E.marca.nome)+'</b>'+(E.marca.cargo?', '+esc(E.marca.cargo):'')+'.</span>';avatar(o.querySelector(".ag-avatar"),E.marca);}
     $("agOkTxt").innerHTML="<b>"+esc(j.tipo)+"</b><br>"+esc(diaTxt(j.dia))+" às "+esc(j.hora)+" ("+esc(durTxt(j.duracao_min))+")"+(j.local?"<br>📍 "+esc(j.local):"");
     if(j.convite)$("agIcs").href="/api/rh?modulo=agendapub&t=convite&id="+encodeURIComponent(j.convite.id)+"&c="+encodeURIComponent(j.convite.c);
     else $("agIcs").hidden=true;
@@ -98,7 +120,7 @@ $("agForm").addEventListener("submit",async e=>{
     bt.disabled=false;bt.textContent="Confirmar agendamento";
     if(err.codigo==="OCUPADO"){ // alguém marcou antes: volta aos horários atualizados
       await carregar(true);
-      $("agForm").hidden=true;$("agPasso1").hidden=false;
+      $("agForm").hidden=true;$("agPasso1").hidden=false;passo(1);
       $("agInfo").insertAdjacentHTML("beforeend",'<br><b style="color:#b91c1c">'+esc(err.message)+'</b>');
     }else $("agErro").textContent=err.message;
   }
@@ -107,8 +129,7 @@ $("agForm").addEventListener("submit",async e=>{
 /* ── Sua reunião (remarcar ou cancelar) ─────────────────────────────────── */
 function mostrarMinha(){
   const m=E.minha,i=br(m.inicio),f=br(m.fim);
-  cabecalho(m.tipo);
-  $("agTit").textContent=m.tipo.nome;
+  cabecalho(m.tipo,m.marca);
   $("agInfo").innerHTML="Olá, "+esc(m.nome)+"!";
   $("agPasso1").hidden=true;$("agForm").hidden=true;$("agOk").hidden=true;$("agMinha").hidden=false;
   $("agMinhaTxt").innerHTML="📅 <b>"+esc(diaTxt(i.dia))+" às "+esc(i.hora)+"</b> ("+esc(durTxt(m.tipo.duracao_min))+")"+(m.local?"<br>📍 "+esc(m.local):"")+"<br><small>horário de Brasília</small>";
@@ -158,7 +179,7 @@ async function remarcar(){
   E.remarcando=false;
   document.querySelectorAll("#agPasso1 .ag-link").forEach(x=>x.remove());
   await carregarMinha();
-  $("agMinhaAviso").textContent="✅ Reunião remarcada! Você receberá a confirmação por e-mail, se informou um.";
+  $("agMinhaAviso").textContent="✅ Reunião remarcada! Enviamos o novo horário para o seu WhatsApp (e e-mail, se informou um).";
 }
 
 if(COD)carregarMinha();else carregar(false);

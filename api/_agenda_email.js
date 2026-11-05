@@ -20,13 +20,30 @@ function quando(inicioMs) {
 const durTxt = m => m < 60 ? m + " minutos" : (m % 60 ? Math.floor(m / 60) + "h" + String(m % 60).padStart(2, "0") : m / 60 + (m === 60 ? " hora" : " horas"));
 const primeiroNome = n => String(n || "").trim().split(/\s+/)[0] || "";
 
-const moldura = (cor, titulo, corpo, rodape) => `<!doctype html><html lang="pt-BR"><body style="margin:0;background:#f4f7fb;font-family:Arial,Helvetica,sans-serif;color:#0d1f35">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f7fb;padding:24px 12px"><tr><td align="center">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e2e8f0">
-<tr><td style="background:${esc(cor)};color:#ffffff;padding:18px 24px;font-size:18px;font-weight:bold">${esc(titulo)}</td></tr>
-<tr><td style="padding:22px 24px;font-size:15px;line-height:1.55">${corpo}</td></tr>
-<tr><td style="padding:14px 24px 20px;border-top:1px solid #eef2f7;font-size:12px;color:#64748b">${rodape || "Grupo ServCamp"}</td></tr>
+// Moldura com a marca: logo do Grupo ServCamp no topo (precisa do endereço do painel, m.base), a faixa colorida
+// com o título, o texto, a assinatura de quem atende (m.anfitriao: nome, cargo, foto) e o rodapé.
+// m = null (aviso interno para a Comercial): sem assinatura.
+const AZUL = "#0d1f35", VERDE = "#15803d", AMARELO = "#facc15";
+function assinatura(m) {
+  const a = m && m.anfitriao;
+  if (!a || !a.nome) return "";
+  const foto = a.foto && /^https:\/\//.test(a.foto) ? `<td width="56" style="padding-right:12px;vertical-align:middle"><img src="${esc(a.foto)}" width="52" height="52" alt="" style="display:block;width:52px;height:52px;border-radius:26px;border:2px solid ${AMARELO}"></td>` : "";
+  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:22px;border-top:1px solid #eef2f7;padding-top:16px;width:100%"><tr>${foto}<td style="vertical-align:middle;font-size:14px;line-height:1.45"><b style="color:${AZUL}">${esc(a.nome)}</b>` +
+    (a.cargo ? `<br><span style="color:#64748b">${esc(a.cargo)}</span>` : "") + `<br><span style="color:${VERDE};font-weight:bold">Grupo ServCamp</span></td></tr></table>`;
+}
+const assinaTxt = m => { const a = m && m.anfitriao; return a && a.nome ? a.nome + (a.cargo ? " · " + a.cargo : "") + "\nGrupo ServCamp" : "Grupo ServCamp"; };
+const moldura = (m, cor, titulo, corpo, rodape) => {
+  const base = m && m.base && /^https:\/\//.test(m.base) ? m.base : (process.env.PAINEL_URL && /^https:\/\//.test(process.env.PAINEL_URL) ? process.env.PAINEL_URL.replace(/\/+$/, "") : "");
+  const logo = base ? `<img src="${esc(base)}/logo-servcamp-120.png" width="29" height="40" alt="" style="display:inline-block;vertical-align:middle;width:29px;height:40px;border:0">` : "";
+  return `<!doctype html><html lang="pt-BR"><body style="margin:0;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif;color:${AZUL}">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:24px 12px"><tr><td align="center">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0">
+<tr><td style="background:${AZUL};padding:16px 24px;border-bottom:4px solid ${AMARELO}">${logo}<span style="display:inline-block;vertical-align:middle;margin-left:${logo ? 10 : 0}px;color:#ffffff;font-size:17px;font-weight:bold;letter-spacing:.3px">Grupo ServCamp</span></td></tr>
+<tr><td style="padding:22px 24px 0"><div style="display:inline-block;background:${esc(cor)};color:#ffffff;border-radius:999px;padding:6px 14px;font-size:14px;font-weight:bold">${esc(titulo)}</div></td></tr>
+<tr><td style="padding:16px 24px 24px;font-size:15px;line-height:1.55">${corpo}${assinatura(m)}</td></tr>
+<tr><td style="padding:14px 24px 20px;background:#f8fafc;border-top:1px solid #eef2f7;font-size:12px;line-height:1.5;color:#64748b">${rodape || "Grupo ServCamp · você recebeu esta mensagem porque agendou uma reunião com o nosso Comercial."}</td></tr>
 </table></td></tr></table></body></html>`;
+};
 const quadro = linhas => `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:14px 0;background:#f4f7fb;border-radius:10px;width:100%"><tr><td style="padding:14px 16px;font-size:15px;line-height:1.7">${linhas.filter(Boolean).join("<br>")}</td></tr></table>`;
 const botao = (url, txt, cor) => `<a href="${esc(url)}" style="display:inline-block;background:${esc(cor || "#ea580c")};color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 22px;border-radius:10px;font-size:15px">${esc(txt)}</a>`;
 
@@ -38,8 +55,8 @@ function confirmacao(m) {
   const corpo = `<p style="margin:0 0 6px">Olá, ${esc(primeiroNome(m.nome))}!</p><p style="margin:0">Sua reunião com o Grupo ServCamp está <b>confirmada</b>:</p>${quadro(detalhes)}` +
     `<p style="margin:0 0 14px">O convite vai anexo: abra para colocar na sua agenda.</p>` +
     (m.gerenciar ? `<p style="margin:0 0 14px">Precisa mudar? Você pode remarcar ou cancelar até 2 horas antes:</p><p style="margin:0">${botao(m.gerenciar, "Remarcar ou cancelar")}</p>` : "");
-  const texto = `Olá, ${primeiroNome(m.nome)}!\n\nSua reunião com o Grupo ServCamp está confirmada:\n\n${m.tipo}\n${q.extenso}, às ${q.hora} (horário de Brasília)\nDuração: ${durTxt(m.duracao_min)}\n${m.local ? "Local: " + m.local + "\n" : ""}\n${m.gerenciar ? "Para remarcar ou cancelar (até 2 horas antes): " + m.gerenciar + "\n" : ""}\nGrupo ServCamp`;
-  return { assunto, html: moldura(m.cor || "#1e4d8c", "Reunião confirmada ✅", corpo), texto };
+  const texto = `Olá, ${primeiroNome(m.nome)}!\n\nSua reunião com o Grupo ServCamp está confirmada:\n\n${m.tipo}\n${q.extenso}, às ${q.hora} (horário de Brasília)\nDuração: ${durTxt(m.duracao_min)}\n${m.local ? "Local: " + m.local + "\n" : ""}\n${m.gerenciar ? "Para remarcar ou cancelar (até 2 horas antes): " + m.gerenciar + "\n" : ""}\n${assinaTxt(m)}`;
+  return { assunto, html: moldura(m, m.cor || "#1e4d8c", "Reunião confirmada ✅", corpo), texto };
 }
 
 function lembrete(m) {
@@ -48,8 +65,8 @@ function lembrete(m) {
   const detalhes = [`<b>${esc(m.tipo)}</b>`, `📅 ${esc(q.extenso)}, às <b>${esc(q.hora)}</b> (horário de Brasília)`, m.local ? `📍 ${esc(m.local)}` : ""];
   const corpo = `<p style="margin:0 0 6px">Olá, ${esc(primeiroNome(m.nome))}!</p><p style="margin:0">Passando para lembrar da nossa reunião:</p>${quadro(detalhes)}` +
     (m.gerenciar ? `<p style="margin:0 0 14px">Se não conseguir comparecer, avise remarcando ou cancelando (até 2 horas antes):</p><p style="margin:0">${botao(m.gerenciar, "Remarcar ou cancelar")}</p>` : "");
-  const texto = `Olá, ${primeiroNome(m.nome)}!\n\nLembrete da nossa reunião:\n\n${m.tipo}\n${q.extenso}, às ${q.hora} (horário de Brasília)\n${m.local ? "Local: " + m.local + "\n" : ""}\n${m.gerenciar ? "Remarcar ou cancelar (até 2 horas antes): " + m.gerenciar + "\n" : ""}\nGrupo ServCamp`;
-  return { assunto, html: moldura(m.cor || "#1e4d8c", "Lembrete de reunião ⏰", corpo), texto };
+  const texto = `Olá, ${primeiroNome(m.nome)}!\n\nLembrete da nossa reunião:\n\n${m.tipo}\n${q.extenso}, às ${q.hora} (horário de Brasília)\n${m.local ? "Local: " + m.local + "\n" : ""}\n${m.gerenciar ? "Remarcar ou cancelar (até 2 horas antes): " + m.gerenciar + "\n" : ""}\n${assinaTxt(m)}`;
+  return { assunto, html: moldura(m, m.cor || "#1e4d8c", "Lembrete de reunião ⏰", corpo), texto };
 }
 
 function remarcada(m) {
@@ -58,8 +75,8 @@ function remarcada(m) {
   const detalhes = [`<b>${esc(m.tipo)}</b>`, `📅 ${esc(q.extenso)}, às <b>${esc(q.hora)}</b> (horário de Brasília)`, `⏱ ${esc(durTxt(m.duracao_min))}`, m.local ? `📍 ${esc(m.local)}` : ""];
   const corpo = `<p style="margin:0 0 6px">Olá, ${esc(primeiroNome(m.nome))}!</p><p style="margin:0">Sua reunião foi <b>remarcada</b> para:</p>${quadro(detalhes)}<p style="margin:0 0 14px">O convite novo vai anexo.</p>` +
     (m.gerenciar ? `<p style="margin:0">${botao(m.gerenciar, "Remarcar ou cancelar")}</p>` : "");
-  const texto = `Olá, ${primeiroNome(m.nome)}!\n\nSua reunião foi remarcada para:\n\n${m.tipo}\n${q.extenso}, às ${q.hora} (horário de Brasília)\n${m.local ? "Local: " + m.local + "\n" : ""}\n${m.gerenciar ? "Remarcar ou cancelar: " + m.gerenciar + "\n" : ""}\nGrupo ServCamp`;
-  return { assunto, html: moldura(m.cor || "#1e4d8c", "Reunião remarcada 🔁", corpo), texto };
+  const texto = `Olá, ${primeiroNome(m.nome)}!\n\nSua reunião foi remarcada para:\n\n${m.tipo}\n${q.extenso}, às ${q.hora} (horário de Brasília)\n${m.local ? "Local: " + m.local + "\n" : ""}\n${m.gerenciar ? "Remarcar ou cancelar: " + m.gerenciar + "\n" : ""}\n${assinaTxt(m)}`;
+  return { assunto, html: moldura(m, m.cor || "#1e4d8c", "Reunião remarcada 🔁", corpo), texto };
 }
 
 function cancelada(m) {
@@ -67,8 +84,8 @@ function cancelada(m) {
   const assunto = `Reunião cancelada — ${m.tipo} · ${q.curto} às ${q.hora}`;
   const corpo = `<p style="margin:0 0 6px">Olá, ${esc(primeiroNome(m.nome))}!</p><p style="margin:0">A reunião <b>${esc(m.tipo)}</b> de ${esc(q.extenso)}, às ${esc(q.hora)}, foi <b>cancelada</b>.</p>` +
     (m.novo ? `<p style="margin:14px 0">Para escolher um novo horário:</p><p style="margin:0">${botao(m.novo, "Marcar novo horário")}</p>` : `<p style="margin:14px 0 0">Se quiser marcar outro horário, é só falar com o nosso Comercial.</p>`);
-  const texto = `Olá, ${primeiroNome(m.nome)}!\n\nA reunião ${m.tipo} de ${q.extenso}, às ${q.hora}, foi cancelada.\n${m.novo ? "Para marcar um novo horário: " + m.novo + "\n" : ""}\nGrupo ServCamp`;
-  return { assunto, html: moldura("#b91c1c", "Reunião cancelada", corpo), texto };
+  const texto = `Olá, ${primeiroNome(m.nome)}!\n\nA reunião ${m.tipo} de ${q.extenso}, às ${q.hora}, foi cancelada.\n${m.novo ? "Para marcar um novo horário: " + m.novo + "\n" : ""}\n${assinaTxt(m)}`;
+  return { assunto, html: moldura(m, "#b91c1c", "Reunião cancelada", corpo), texto };
 }
 
 // Aviso para a Comercial (leva os dados de contato de quem marcou: só vai para a caixa dela)
@@ -82,7 +99,7 @@ function aviso(m) {
     `👤 ${esc(m.nome)}`, m.telefone ? `📞 ${esc(m.telefone)}` : "", m.email ? `✉️ ${esc(m.email)}` : "", m.obs ? `💬 “${esc(m.obs)}”` : "", m.origem === "link" ? "Marcada pelo link" : ""];
   const corpo = `<p style="margin:0">${esc(rot)}:</p>${quadro(linhas)}<p style="margin:0;color:#64748b;font-size:13px">Veja e administre em Painel › Agenda Comercial.</p>`;
   const texto = `${rot}:\n\n${m.tipo}\n${q.extenso}, às ${q.hora}\n${antes ? "Era " + antes.extenso + ", às " + antes.hora + "\n" : ""}${m.nome}\n${m.telefone ? "Telefone: " + m.telefone + "\n" : ""}${m.email ? "E-mail: " + m.email + "\n" : ""}${m.obs ? "Observação: " + m.obs + "\n" : ""}`;
-  return { assunto, html: moldura(m.acao === "cancelada" ? "#b91c1c" : "#1e4d8c", rot, corpo, "Aviso automático da Agenda Comercial"), texto };
+  return { assunto, html: moldura(null, m.acao === "cancelada" ? "#b91c1c" : "#1e4d8c", rot, corpo, "Aviso automático da Agenda Comercial"), texto };
 }
 
 // ── envio ───────────────────────────────────────────────────────────────────
@@ -135,4 +152,4 @@ function convite(m) {
   return R.ics([{ id: "convite-" + m.id, inicio: m.inicio, fim: m.fim, local: m.local, titulo: m.tipo + " — Grupo ServCamp", descricao: "Reunião com o Comercial do Grupo ServCamp." }]);
 }
 
-module.exports = { confirmacao, lembrete, remarcada, cancelada, aviso, enviar, convite, definirCorreio, quando, comNovaTentativa, passageiro };
+module.exports = { assinatura, assinaTxt, confirmacao, lembrete, remarcada, cancelada, aviso, enviar, convite, definirCorreio, quando, comNovaTentativa, passageiro };

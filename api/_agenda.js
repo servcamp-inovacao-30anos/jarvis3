@@ -10,11 +10,15 @@
 //   POST t=bloqueio      bloqueia um horário ou dias inteiros       · DELETE t=bloqueio&id= tira
 //   POST t=reuniao       reunião cadastrada à mão · PATCH t=reuniao&id= remarca · POST t=cancelar&id= cancela
 //   POST t=ics           troca a chave da assinatura do iPhone (a antiga para de funcionar)
+//   POST t=marca         quem atende (nome, cargo, foto) e a mensagem de boas-vindas da página e dos e-mails
+//   POST t=resultado&id= reunião que já começou: realizada ou não compareceu, próximo passo e anotação
+//   GET  t=numeros&mes=  os números do mês para o Painel Comercial (só contagens, sem dados de ninguém)
 //
 // Pública (/api/rh?modulo=agendapub, SEM login — quem marca não tem conta; entra antes da exigência de token):
 //   GET  t=horarios&s=   o tipo de reunião e os horários livres (nada de quem já marcou)
 //   POST t=agendar       marca um horário livre
 //   GET  t=ics&k=        a assinatura do iPhone da Comercial (.ics), só com a chave secreta
+//   GET  t=foto          a foto de quem atende (página e e-mails)
 //   GET  t=convite&id=&c= o convite (.ics) de UMA reunião para quem marcou pôr na própria agenda; o c é uma
 //                        assinatura (HMAC) que só a resposta do agendamento conhece
 //
@@ -44,6 +48,9 @@ const DIR_VALIDO_H = 6;             // sem conseguir ler há mais que isso, o ti
 const DIR_DIAS = 130;               // quantos dias à frente se guardam dos compromissos do diretor
 const CANCELA_ATE_H = 2;            // o cliente remarca ou cancela pelo link até 2 horas antes
 const MAX_REMARCACOES = 2;          // e remarca no máximo 2 vezes pelo link (depois, fala com o Comercial)
+// Os números da agenda no Painel Comercial: enquanto a agenda não for liberada, só quem administra a agenda
+// vê. Ao liberar para a Gabriela, pôr true: aí quem tem o Painel Comercial (perms.comDash) também vê.
+const NUMEROS_NO_PAINEL = false;
 
 const erro = (res, status, mensagem, codigo) => res.status(status).json({ error: mensagem, codigo });
 const enc = encodeURIComponent;
@@ -164,6 +171,13 @@ async function bloqueiosDosDiretores(db, tipo, agora) {
 }
 const mascarar = u => { try { const x = new URL(ICS.normalizarUrl(u) || u); return x.hostname + "/…" + x.pathname.slice(-6); } catch (e) { return "…"; } };
 
+// ── quem atende (página do cliente e e-mails) ─────────────────────────────
+// A foto mora no banco (já reduzida pela tela) e sai por /api/rh?modulo=agendapub&t=foto; o v= muda quando a
+// foto muda, para o navegador e o e-mail não mostrarem a antiga.
+const fotoUrl = (c, base) => c && c.anfitriao_foto ? (base || "") + "/api/rh?modulo=agendapub&t=foto&v=" + crypto.createHash("sha1").update(String(c.anfitriao_foto)).digest("hex").slice(0, 10) : null;
+const marcaDe = (c, base) => ({ nome: (c && c.anfitriao_nome) || null, cargo: (c && c.anfitriao_cargo) || null, boas_vindas: (c && c.boas_vindas) || null, foto: fotoUrl(c, base) });
+const extraMarca = (c, base) => ({ anfitriao: marcaDe(c, base), base: base || null });
+
 // ── e-mails ────────────────────────────────────────────────────────────────
 
 // Dados de uma reunião para os textos dos e-mails
@@ -181,7 +195,7 @@ const resumoEnvio = (r, tem) => !tem ? "sem e-mail" : (r.ok ? "enviado" : "falho
 // Nada aqui lança: o e-mail é um extra, a reunião já está gravada.
 async function emailMarcada(db, r, tipo, cfg, base, opcoes) {
   try {
-    const m = dadosMail(r, tipo, base);
+    const m = dadosMail(r, tipo, base, extraMarca(cfg, base));
     const [cli, av, zap] = await Promise.all([
       r.email && !(opcoes && opcoes.semAviso) ? EMAIL.enviar(Object.assign({ para: r.email, convite: EMAIL.convite(m) }, EMAIL.confirmacao(m))) : Promise.resolve({ ok: false, motivo: "sem e-mail" }),
       (opcoes && opcoes.semComercial) ? Promise.resolve(null) : EMAIL.enviar(Object.assign({ para: paraAviso(cfg) }, EMAIL.aviso(Object.assign({ acao: "nova" }, m)))),
@@ -213,13 +227,14 @@ async function livresPara(db, cfg, tipo, agora, ignorarId) {
 async function pubHorarios({ req, res, db }) {
   const tipo = await tipoPeloLink(db, req.query.s);
   if (!tipo) return erro(res, 404, "Este link de agendamento não existe ou foi desativado.", "SEM_TIPO");
-  const cfg = cfgDe(await lerConfig(db)), agora = Date.now();
+  const cfgL = await lerConfig(db), cfg = cfgDe(cfgL), agora = Date.now();
   // remarcando pelo link: o horário atual da própria reunião não conta como ocupado
   const rid = req.query.r ? idDoCodigo(req.query.r) : null;
   let ignorar = null;
   if (rid) { const [m] = await db.obter(`ag_reunioes?select=id,tipo_id,status&id=eq.${rid}&limit=1`); if (m && m.status === "ativa" && String(m.tipo_id) === String(tipo.id)) ignorar = m.id; }
   return res.status(200).json({
     tipo: { nome: tipo.nome, duracao_min: tipo.duracao_min, local: tipo.local || null, cor: tipo.cor },
+    marca: marcaDe(cfgL, ""),
     dias: await livresPara(db, cfg, tipo, agora, ignorar)
   });
 }
@@ -274,7 +289,9 @@ async function pubMinha({ req, res, db }) {
   const { r, tipo } = await reuniaoDoCodigo(db, req.query.r);
   if (!r) return erro(res, 404, "Este link não existe ou não vale mais.", "SEM_REUNIAO");
   const agora = Date.now(), mexe = podeMexer(r, agora);
+  const cfgL = await lerConfig(db);
   return res.status(200).json({ // nada de telefone, e-mail ou observação
+    marca: marcaDe(cfgL, ""),
     nome: String(r.nome || "").split(/\s+/)[0], status: r.status, inicio: r.inicio, fim: r.fim, local: r.local || null,
     tipo: { nome: r.tipo_nome || (tipo && tipo.nome) || "Reunião", duracao_min: Math.round((+new Date(r.fim) - +new Date(r.inicio)) / 60000), cor: tipo && tipo.cor, slug: tipo && tipo.ativo ? tipo.slug : null },
     pode_cancelar: mexe, pode_remarcar: mexe && !!(tipo && tipo.ativo) && (r.remarcacoes || 0) < MAX_REMARCACOES,
@@ -312,7 +329,7 @@ async function pubRemarcarMinha({ req, res, db }) {
   catch (e) { if (conflito(e)) return erro(res, 409, "Esse horário acabou de ser ocupado. Escolha outro.", "OCUPADO"); throw e; }
   registrar(db, "cliente", "AGENDA_REMARCADA", r.id, { de: r.inicio, para: iso(f.inicio), pelo: "link" });
   const novo = Object.assign({}, r, { inicio: iso(f.inicio), fim: iso(f.fim) });
-  const base = baseUrl(req), m = dadosMail(novo, tipo, base);
+  const base = baseUrl(req), m = dadosMail(novo, tipo, base, extraMarca(cfgL, base));
   const [cli, , zap] = await Promise.all([
     r.email ? EMAIL.enviar(Object.assign({ para: r.email, convite: EMAIL.convite(m) }, EMAIL.remarcada(m))) : Promise.resolve({ ok: false, motivo: "sem e-mail" }),
     EMAIL.enviar(Object.assign({ para: paraAviso(cfgL) }, EMAIL.aviso(Object.assign({ acao: "remarcada", de: +new Date(r.inicio) }, m)))),
@@ -334,11 +351,11 @@ async function cron(req, res) {
     const de = R.paraUtc(amanha, "00:00"), ate = R.paraUtc(R.somaDias(amanha, 1), "00:00");
     const rs = await db.listar(`ag_reunioes?select=*&status=eq.ativa&lembrete_em=is.null&inicio=gte.${iso(de)}&inicio=lt.${iso(ate)}&order=inicio.asc`);
     const tipos = await db.listar("ag_tipos?select=id,nome,cor,slug&order=id.asc");
-    const base = baseUrl(req);
+    const base = baseUrl(req), cfgL = await lerConfig(db);
     let enviados = 0; const falhas = [];
     for (const r of rs) {
       const t = tipos.find(x => String(x.id) === String(r.tipo_id)) || null;
-      const m = dadosMail(r, t, base);
+      const m = dadosMail(r, t, base, extraMarca(cfgL, base));
       const em = r.email ? await EMAIL.enviar(Object.assign({ para: r.email, convite: EMAIL.convite(m) }, EMAIL.lembrete(m))) : null;
       const zp = await ZAP.enviar({ telefone: r.telefone, texto: ZAP.lembrete(m) });
       if (!r.email && zp.naoTenta) { await db.atualizar(`ag_reunioes?id=eq.${r.id}`, { lembrete_em: iso(agora) }).catch(() => {}); continue; } // sem como avisar: não fica repetindo
@@ -366,6 +383,15 @@ async function pubConvite({ req, res, db }) {
   return res.status(200).send(corpo);
 }
 
+async function pubFoto({ res, db }) {
+  const c = await lerConfig(db);
+  const m = String(c.anfitriao_foto || "").match(/^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/);
+  if (!m) return erro(res, 404, "Sem foto.", "SEM_FOTO");
+  res.setHeader("Content-Type", m[1]);
+  res.setHeader("Cache-Control", "public, max-age=86400"); // o endereço muda (v=) quando a foto muda
+  return res.status(200).send(Buffer.from(m[2], "base64"));
+}
+
 async function pubIcs({ req, res, db }) {
   const k = String((req.query && req.query.k) || "");
   const c = await lerConfig(db);
@@ -383,7 +409,7 @@ async function pubIcs({ req, res, db }) {
 }
 
 const ROTAS_PUB = { "GET horarios": pubHorarios, "POST agendar": pubAgendar, "GET ics": pubIcs, "GET convite": pubConvite,
-  "GET minha": pubMinha, "POST cancelar-minha": pubCancelarMinha, "POST remarcar-minha": pubRemarcarMinha };
+  "GET minha": pubMinha, "GET foto": pubFoto, "POST cancelar-minha": pubCancelarMinha, "POST remarcar-minha": pubRemarcarMinha };
 
 async function publico(req, res) {
   const t = String((req.query && req.query.t) || "");
@@ -407,14 +433,14 @@ async function tudo({ res, db }) {
   const [tipos, bloqueios, reunioes, dirs] = await Promise.all([
     db.listar("ag_tipos?select=id,nome,duracao_min,local,cor,slug,ativo,ordem,diretores&order=ordem.asc,id.asc"),
     db.listar(`ag_bloqueios?select=id,inicio,fim,motivo&fim=gt.${iso(agora - 90 * 86400000)}&order=inicio.asc`),
-    db.listar(`ag_reunioes?select=id,tipo_id,tipo_nome,inicio,fim,nome,telefone,email,obs,local,origem,status,criado_em,email_status,whatsapp_status,remarcacoes,cancelado_por&inicio=gt.${iso(agora - 90 * 86400000)}&order=inicio.asc`),
+    db.listar(`ag_reunioes?select=id,tipo_id,tipo_nome,inicio,fim,nome,telefone,email,obs,local,origem,status,criado_em,email_status,whatsapp_status,remarcacoes,cancelado_por,resultado,proximo_passo,resultado_obs,resultado_em,resultado_por&inicio=gt.${iso(agora - 90 * 86400000)}&order=inicio.asc`),
     db.listar("ag_diretores?select=id,nome,url,ativo,ocupado,lido_em,erro&order=id.asc")
   ]);
   await Promise.all(dirs.filter(d => d.ativo && velho(d, agora)).map(async d => Object.assign(d, await atualizarDiretor(db, d, agora))));
   const ate = agora + 90 * 86400000, ocupados = [];
   dirs.filter(d => d.ativo).forEach(d => (d.ocupado || []).forEach(([a, b]) => { if (b > agora - 7 * 86400000 && a < ate) ocupados.push({ dir: d.id, nome: d.nome, inicio: iso(a), fim: iso(b) }); }));
   const diretores = dirs.map(d => ({ id: d.id, nome: d.nome, ativo: d.ativo, lido_em: d.lido_em, erro: d.erro || null, valido: valido(d, agora), link: mascarar(d.url), compromissos: (d.ocupado || []).filter(([a, b]) => b > agora && a < ate).length }));
-  return res.status(200).json({ config: cfgDe(c), ics_chave: c.ics_chave, tipos, bloqueios, reunioes, diretores, ocupados });
+  return res.status(200).json({ config: cfgDe(c), marca: Object.assign(marcaDe(c, ""), { foto_dados: c.anfitriao_foto || null }), ics_chave: c.ics_chave, tipos, bloqueios, reunioes, diretores, ocupados });
 }
 
 async function salvarConfig({ res, db, ator, body }) {
@@ -537,7 +563,7 @@ async function remarcar({ req, res, db, ator, body }) {
   if (!R.DIA.test(String(body.dia || "")) || !R.HORA.test(String(body.hora || ""))) return erro(res, 400, "Escolha o novo dia e horário.", "INVALIDO");
   const [r] = await db.obter(`ag_reunioes?select=*&id=eq.${id}&limit=1`);
   if (!r || r.status !== "ativa") return erro(res, 404, "Reunião não encontrada (ou já cancelada).", "NAO_ENCONTRADA");
-  const cfg = cfgDe(await lerConfig(db));
+  const cfgL = await lerConfig(db), cfg = cfgDe(cfgL);
   const dur = Math.round((+new Date(r.fim) - +new Date(r.inicio)) / 60000);
   const f = R.faixa(body.dia, body.hora, dur, cfg.intervalo_min);
   if (await bate(db, f, id)) return erro(res, 409, "Já existe reunião nesse horário (contando o intervalo entre reuniões).", "OCUPADO");
@@ -547,7 +573,7 @@ async function remarcar({ req, res, db, ator, body }) {
   let email = null, whatsapp = null;
   if ((r.email || r.telefone) && body.avisar !== false) {
     const [tipo] = r.tipo_id != null ? await db.obter(`ag_tipos?select=id,nome,cor&id=eq.${r.tipo_id}&limit=1`) : [];
-    const m = dadosMail(Object.assign({}, r, { inicio: iso(f.inicio), fim: iso(f.fim) }), tipo, baseUrl(req));
+    const base = baseUrl(req), m = dadosMail(Object.assign({}, r, { inicio: iso(f.inicio), fim: iso(f.fim) }), tipo, base, extraMarca(cfgL, base));
     const [x, z] = await Promise.all([
       r.email ? EMAIL.enviar(Object.assign({ para: r.email, convite: EMAIL.convite(m) }, EMAIL.remarcada(m))) : Promise.resolve(null),
       ZAP.enviar({ telefone: r.telefone, texto: ZAP.remarcada(m) })
@@ -568,7 +594,7 @@ async function cancelar({ req, res, db, ator, body }) {
   if (r && r.status === "ativa" && (r.email || r.telefone) && body.avisar !== false) {
     const [tipo] = r.tipo_id != null ? await db.obter(`ag_tipos?select=id,nome,cor,slug,ativo&id=eq.${r.tipo_id}&limit=1`) : [];
     const base = baseUrl(req);
-    const m = dadosMail(r, tipo, base, { novo: tipo && tipo.ativo && base ? base + "/agendar.html?s=" + tipo.slug : null });
+    const m = dadosMail(r, tipo, base, Object.assign(extraMarca(await lerConfig(db), base), { novo: tipo && tipo.ativo && base ? base + "/agendar.html?s=" + tipo.slug : null }));
     const [x, z] = await Promise.all([
       r.email ? EMAIL.enviar(Object.assign({ para: r.email }, EMAIL.cancelada(m))) : Promise.resolve(null),
       ZAP.enviar({ telefone: r.telefone, texto: ZAP.cancelada(m) })
@@ -576,6 +602,46 @@ async function cancelar({ req, res, db, ator, body }) {
     email = x ? resumoEnvio(x, true) : null; whatsapp = resumoZap(z);
   }
   return res.status(200).json({ ok: true, email_cliente: email, whatsapp_cliente: whatsapp });
+}
+
+async function salvarMarca({ res, db, ator, body }) {
+  const v = R.validarMarca(body);
+  if (v.erro) return erro(res, 400, v.erro, "INVALIDO");
+  await lerConfig(db);
+  await db.atualizar("ag_config?id=eq.1", Object.assign({}, v.marca, { atualizado_em: iso(Date.now()), atualizado_por: ator }));
+  registrar(db, ator, "AGENDA_MARCA", "marca", { nome: v.marca.anfitriao_nome, cargo: v.marca.anfitriao_cargo, foto: v.marca.anfitriao_foto === undefined ? "mantida" : (v.marca.anfitriao_foto ? "trocada" : "tirada") });
+  return res.status(200).json({ ok: true });
+}
+
+// Resultado: só de reunião ativa que já começou (antes disso não há o que registrar).
+async function salvarResultado({ req, res, db, ator, body }) {
+  const id = idDe(req);
+  if (!id) return erro(res, 400, "Informe a reunião.", "SEM_ID");
+  const v = R.validarResultado(body);
+  if (v.erro) return erro(res, 400, v.erro, "INVALIDO");
+  const [r] = await db.obter(`ag_reunioes?select=id,inicio,status&id=eq.${id}&limit=1`);
+  if (!r || r.status !== "ativa") return erro(res, 404, "Reunião não encontrada (ou cancelada).", "NAO_ENCONTRADA");
+  const agora = Date.now();
+  if (v.resultado.resultado && +new Date(r.inicio) > agora) return erro(res, 409, "A reunião ainda não começou.", "AINDA_NAO");
+  const patch = Object.assign({}, v.resultado, v.resultado.resultado ? { resultado_em: iso(agora), resultado_por: ator } : { resultado_em: null, resultado_por: null });
+  await db.atualizar(`ag_reunioes?id=eq.${id}`, patch);
+  registrar(db, ator, "AGENDA_RESULTADO", id, { resultado: v.resultado.resultado, proximo: v.resultado.proximo_passo });
+  return res.status(200).json({ ok: true });
+}
+
+// Números do mês para o Painel Comercial: só contagens (nada de nome, telefone ou e-mail).
+async function numerosDoPainel({ req, res, db }) {
+  const agora = Date.now();
+  const mes = /^\d{4}-(0[1-9]|1[0-2])$/.test(String(req.query.mes || "")) ? String(req.query.mes) : R.hojeBR(agora).slice(0, 7);
+  const de = R.paraUtc(R.mesAntes(mes, 6) + "-01", "00:00"), ate = R.paraUtc(R.mesAntes(mes, -1) + "-01", "00:00");
+  const rs = await db.listar(`ag_reunioes?select=inicio,tipo_nome,origem,status,cancelado_por,resultado,proximo_passo&inicio=gte.${iso(de)}&inicio=lt.${iso(ate)}&order=inicio.asc`);
+  return res.status(200).json(Object.assign({ ok: true }, R.numeros(rs, mes, agora)));
+}
+async function podeVerNumeros(db, ator) {
+  if (await podeAdministrar(db, ator)) return true;
+  if (!NUMEROS_NO_PAINEL || !ator) return false;
+  const [u] = await db.obter(`app_users?select=perms,ativo&user_key=eq.${enc(ator)}&limit=1`);
+  return !!(u && u.ativo !== false && u.perms && u.perms.comDash === true);
 }
 
 async function trocarIcs({ res, db, ator }) {
@@ -590,7 +656,8 @@ const ROTAS = {
   "GET ": tudo, "POST config": salvarConfig, "POST tipo": salvarTipo, "DELETE tipo": desativarTipo,
   "POST bloqueio": criarBloqueio, "DELETE bloqueio": tirarBloqueio,
   "POST diretor": salvarDiretor, "POST atualizar": atualizarDiretores, "DELETE diretor": tirarDiretor,
-  "POST reuniao": criarReuniao, "PATCH reuniao": remarcar, "POST cancelar": cancelar, "POST ics": trocarIcs
+  "POST reuniao": criarReuniao, "PATCH reuniao": remarcar, "POST cancelar": cancelar, "POST ics": trocarIcs,
+  "POST marca": salvarMarca, "POST resultado": salvarResultado, "GET numeros": numerosDoPainel
 };
 
 module.exports = async function agenda(req, res) {
@@ -602,7 +669,8 @@ module.exports = async function agenda(req, res) {
   res.setHeader("Cache-Control", "no-store");
   try {
     const ator = quemPede(req);
-    if (!(await podeAdministrar(db, ator))) return erro(res, 403, "Só a administradora da agenda.", "NAO_AUTORIZADO");
+    const pode = t === "numeros" ? await podeVerNumeros(db, ator) : await podeAdministrar(db, ator);
+    if (!pode) return erro(res, 403, "Só a administradora da agenda.", "NAO_AUTORIZADO");
     return await fn({ req, res, db, ator, body: req.body || {} });
   } catch (e) {
     const msg = String((e && e.message) || e);
@@ -615,3 +683,4 @@ module.exports.publico = publico;
 module.exports.cron = cron;
 module.exports.definirPausaWa = ms => { const antes = pausaWaMs; pausaWaMs = ms; return antes; };
 module.exports.GESTORES = GESTORES;
+module.exports.NUMEROS_NO_PAINEL = NUMEROS_NO_PAINEL;
