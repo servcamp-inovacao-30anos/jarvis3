@@ -533,3 +533,6 @@ alter table public.ag_reunioes add column if not exists lembrete_em timestamptz;
 alter table public.ag_reunioes add column if not exists remarcacoes int not null default 0;
 alter table public.ag_reunioes add column if not exists email_status text;
 alter table public.ag_config add column if not exists email_aviso text;
+
+-- AGENDA COMERCIAL — WhatsApp da confirmação (situação do envio). Só cria; pode rodar de novo.
+alter table public.ag_reunioes add column if not exists whatsapp_status text;

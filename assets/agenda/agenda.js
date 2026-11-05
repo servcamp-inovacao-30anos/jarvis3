@@ -234,7 +234,8 @@ function abrirReuniao(r){
     '<div class="agc-det" style="border-left-color:'+esc(c)+'"><b>'+esc(r.nome)+'</b><span>'+esc(diaLongo(a.dia))+' · '+a.hora+'–'+b.hora+'</span>'+
       (r.local?'<span>📍 '+esc(r.local)+'</span>':'')+
       '<span>'+(r.origem==="link"?"Marcada pelo link":"Cadastrada aqui")+(r.cancelado_por==="cliente"?" · cancelada pelo cliente":"")+(r.remarcacoes?" · remarcada "+r.remarcacoes+"x pelo cliente":"")+'</span>'+
-      (r.email_status?'<span>✉️ Confirmação: '+(/^enviado/.test(r.email_status)?"enviada":/^falhou/.test(r.email_status)?"não saiu ("+esc(r.email_status.split(" · ")[0].replace(/^falhou:\s*/,""))+")":esc(r.email_status.split(" · ")[0]))+'</span>'+(/aviso à Comercial falhou/.test(r.email_status)?'<span>⚠️ O aviso para a Comercial não saiu: confira esta reunião na agenda</span>':''):'')+'</div>'+
+      (r.email_status?'<span>✉️ Confirmação: '+(/^enviado/.test(r.email_status)?"enviada":/^falhou/.test(r.email_status)?"não saiu ("+esc(r.email_status.split(" · ")[0].replace(/^falhou:\s*/,""))+")":esc(r.email_status.split(" · ")[0]))+'</span>'+(/aviso à Comercial falhou/.test(r.email_status)?'<span>⚠️ O aviso para a Comercial não saiu: confira esta reunião na agenda</span>':''):'')+
+      (r.whatsapp_status?'<span>💬 WhatsApp: '+(/^enviado/.test(r.whatsapp_status)?"enviado":/^falhou/.test(r.whatsapp_status)?"não saiu ("+esc(r.whatsapp_status.replace(/^falhou:\s*/,""))+")":esc(r.whatsapp_status))+'</span>':'')+'</div>'+
     (r.telefone?'<div class="agc-det-l">📞 <a href="tel:'+esc(r.telefone)+'">'+esc(telTxt(r.telefone))+'</a> · <a href="'+esc(zap(r.telefone))+'" target="_blank" rel="noopener">WhatsApp</a></div>':'')+
     (r.email?'<div class="agc-det-l">✉️ <a href="mailto:'+esc(r.email)+'">'+esc(r.email)+'</a></div>':'')+
     (r.obs?'<div class="agc-det-o">“'+esc(r.obs)+'”</div>':'')+
@@ -285,7 +286,7 @@ async function acao(fn,msg,b){
 }
 function cancelar(r,b){
   if(!r)return;const a=br(r.inicio);
-  if(!confirm("Cancelar a reunião de "+r.nome+" em "+diaLongo(a.dia)+" às "+a.hora+"?\n\nO horário volta a ficar livre no link."+(r.email?"\nA pessoa recebe um e-mail avisando do cancelamento.":"\nA pessoa não informou e-mail: avise por telefone ou WhatsApp.")))return;
+  if(!confirm("Cancelar a reunião de "+r.nome+" em "+diaLongo(a.dia)+" às "+a.hora+"?\n\nO horário volta a ficar livre no link."+((r.email||r.telefone)?"\nA pessoa recebe o aviso do cancelamento por "+[r.telefone?"WhatsApp":"",r.email?"e-mail":""].filter(Boolean).join(" e ")+".":"\nA pessoa não deixou contato: avise de outro jeito.")))return;
   acao(()=>api("cancelar","POST",{},"&id="+r.id),"Reunião cancelada",b);
 }
 
@@ -319,7 +320,7 @@ function abrirMarcar(pre){
     campo("Nome",'<input id="agm-nome" maxlength="80">')+
     '<div class="agd-2">'+campo("Telefone <small>(opcional)</small>",'<input id="agm-tel" type="tel" maxlength="20">')+campo("E-mail <small>(opcional)</small>",'<input id="agm-email" type="email" maxlength="120">')+'</div>'+
     campo("Observação <small>(opcional)</small>",'<textarea id="agm-obs" maxlength="500" rows="2"></textarea>')+
-    '<label class="agd-ck"><input type="checkbox" id="agm-avisar" checked> Enviar a confirmação por e-mail para a pessoa (se tiver e-mail)</label>'+
+    '<label class="agd-ck"><input type="checkbox" id="agm-avisar" checked> Enviar a confirmação por WhatsApp e e-mail para a pessoa (o que ela tiver)</label>'+
     '<div class="agd-acoes"><button type="button" class="rh-btn rh-btn-sec" data-fechar="1">Voltar</button><button type="button" class="rh-btn" id="agm-ok">Marcar</button></div>');
   const v=id=>ov.querySelector(id).value;
   ov.querySelector("#agm-ok").addEventListener("click",e=>enviar(ov,e.currentTarget,()=>api("reuniao","POST",{tipo_id:v("#agm-tipo"),dia:v("#agm-dia"),hora:v("#agm-hora"),nome:v("#agm-nome"),telefone:v("#agm-tel"),email:v("#agm-email"),obs:v("#agm-obs"),avisar:ov.querySelector("#agm-avisar").checked}),"Reunião marcada"));
@@ -328,7 +329,7 @@ function abrirMarcar(pre){
 function abrirRemarcar(r){
   if(!r)return;const a=br(r.inicio);
   const ov=janela("Remarcar · "+r.nome,
-    '<p class="agd-dica">Hoje está em <b>'+esc(diaLongo(a.dia))+' às '+a.hora+'</b>. '+(r.email?'A pessoa recebe um e-mail com o novo horário.':'Ela não informou e-mail: avise por telefone ou WhatsApp.')+'</p>'+
+    '<p class="agd-dica">Hoje está em <b>'+esc(diaLongo(a.dia))+' às '+a.hora+'</b>. '+((r.email||r.telefone)?'A pessoa recebe o novo horário por '+[r.telefone?"WhatsApp":"",r.email?"e-mail":""].filter(Boolean).join(" e ")+'.':'Ela não deixou contato: avise de outro jeito.')+'</p>'+
     '<div class="agd-2">'+campo("Novo dia",'<input type="date" id="agr-dia" min="'+hojeBR()+'" value="'+a.dia+'">')+campo("Novo horário",'<input type="time" id="agr-hora" step="300" value="'+a.hora+'">')+'</div>'+
     '<div class="agd-acoes"><button type="button" class="rh-btn rh-btn-sec" data-fechar="1">Voltar</button><button type="button" class="rh-btn" id="agr-ok">Remarcar</button></div>');
   ov.querySelector("#agr-ok").addEventListener("click",e=>enviar(ov,e.currentTarget,()=>api("reuniao","PATCH",{dia:ov.querySelector("#agr-dia").value,hora:ov.querySelector("#agr-hora").value},"&id="+r.id),"Reunião remarcada"));

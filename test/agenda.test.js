@@ -812,3 +812,180 @@ test("e-mail: se o aviso da Comercial falhar, fica registrado na reunião mesmo 
     });
   } finally { EMAILM.definirCorreio(antes); delete process.env.MAIL_USER; }
 });
+
+// ── WhatsApp ────────────────────────────────────────────────────────────────
+const ZAPM = require("../api/_agenda_whatsapp");
+function zapFalso(resposta) {
+  const enviados = [];
+  const antes = ZAPM.definirZap(async m => { enviados.push(m); return typeof resposta === "function" ? resposta(m) : (resposta || { ok: true }); });
+  const pausaAntes = agendaMod.definirPausaWa(0);
+  return { enviados, solta: () => { ZAPM.definirZap(antes); agendaMod.definirPausaWa(pausaAntes); } };
+}
+
+test("whatsapp: só celular brasileiro; fixo, curto e lixo não recebem", () => {
+  assert.equal(ZAPM.celular("(19) 99999-8888"), "5519999998888");
+  assert.equal(ZAPM.celular("+55 19 99999-8888"), "5519999998888");
+  assert.equal(ZAPM.celular("5519999998888"), "5519999998888");
+  assert.equal(ZAPM.celular("019 99999 8888"), "5519999998888");
+  for (const ruim of ["(19) 3254-1234", "1932541234", "99999-8888", "123", "", null, undefined, "abc", "(00) 99999-8888"]) assert.equal(ZAPM.celular(ruim), null, String(ruim));
+});
+
+test("whatsapp: os textos levam o essencial, em português, com o link de remarcar, e sem telefone ou e-mail de ninguém", () => {
+  const m = { id: 1, tipo: "Captação", nome: "Ana Silva", telefone: "19999998888", email: "ana@exemplo.com", obs: "segredo", inicio: R.paraUtc(QUI, "10:00"), duracao_min: 30, local: "Rua A, 10", gerenciar: "https://x.com/agendar.html?r=1.abc", novo: "https://x.com/agendar.html?s=zzz" };
+  const c = ZAPM.confirmacao(m);
+  assert.ok(c.startsWith("Olá, Ana! ✅") && c.includes("*confirmada*") && c.includes("quinta-feira, 12 de novembro, às *10:00*") && c.includes("30 minutos") && c.includes("Rua A, 10") && c.includes("https://x.com/agendar.html?r=1.abc"));
+  assert.ok(ZAPM.lembrete(m).includes("*amanhã*") && ZAPM.remarcada(m).includes("*remarcada*"));
+  assert.ok(ZAPM.cancelada(m).includes("*cancelada*") && ZAPM.cancelada(m).includes("https://x.com/agendar.html?s=zzz"));
+  for (const t of [c, ZAPM.lembrete(m), ZAPM.remarcada(m), ZAPM.cancelada(m)]) assert.ok(!/19999998888|ana@exemplo|segredo/.test(t), "nada de dados de contato nem observação");
+});
+
+test("whatsapp: marcar pelo link manda a confirmação para o celular informado e guarda a situação", async () => {
+  const c = correioFalso(), z = zapFalso();
+  try {
+    await comRelogio(AGORA, async () => {
+      const { tabelas, slug60 } = await preparar();
+      const r = await marcar(slug60, "10:00", pessoa(1, { telefone: "(19) 99999-8888", email: "" }));
+      assert.equal(r.statusCode, 201, JSON.stringify(r.body));
+      assert.equal(r.body.whatsapp_cliente, "enviado");
+      assert.equal(z.enviados.length, 1);
+      assert.equal(z.enviados[0].telefone, "5519999998888");
+      assert.ok(z.enviados[0].texto.includes("*confirmada*") && z.enviados[0].texto.includes("https://painel.exemplo/agendar.html?r=" + r.body.gerenciar));
+      assert.equal(tabelas.ag_reunioes[0].whatsapp_status, "enviado");
+      assert.equal((await adm("")).body.reunioes[0].whatsapp_status, "enviado");
+    });
+  } finally { c.solta(); z.solta(); }
+});
+
+test("whatsapp: desconectado, fixo ou sem configuração não derrubam a reunião e o motivo fica registrado", async () => {
+  process.env.MAIL_USER = "comercial@exemplo.com";
+  const c = correioFalso();
+  try {
+    await comRelogio(AGORA, async () => {
+      const { tabelas, slug60, slug30 } = await preparar();
+      const caido = zapFalso({ ok: false, motivo: "WhatsApp do Comercial desconectado" });
+      try {
+        const r = await marcar(slug60, "10:00", pessoa(1));
+        assert.equal(r.statusCode, 201);
+        assert.equal(r.body.whatsapp_cliente, "falhou: WhatsApp do Comercial desconectado");
+        assert.equal(tabelas.ag_reunioes[0].email_status, "enviado", "o e-mail segue normalmente");
+      } finally { caido.solta(); }
+      const z = zapFalso({ ok: true });
+      try {
+        const fixo = await marcar(slug30, "14:00", pessoa(2, { telefone: "(19) 3254-1234" }));
+        assert.equal(fixo.statusCode, 201);
+        assert.equal(fixo.body.whatsapp_cliente, "não enviado: telefone não é celular");
+        assert.equal(z.enviados.length, 0, "fixo não recebe");
+      } finally { z.solta(); }
+      const sem = await marcar(slug30, "15:00", pessoa(3)); // sem a Evolution configurada (como nos testes)
+      assert.equal(sem.statusCode, 201);
+      assert.equal(sem.body.whatsapp_cliente, "não enviado: WhatsApp não configurado");
+    });
+  } finally { c.solta(); delete process.env.MAIL_USER; }
+});
+
+test("whatsapp: remarcar e cancelar pela Comercial e remarcar pelo cliente também avisam por WhatsApp", async () => {
+  const c = correioFalso(), z = zapFalso();
+  try {
+    await comRelogio(AGORA, async () => {
+      const { tabelas, slug60 } = await preparar();
+      const tipo = tabelas.ag_tipos.find(t => t.slug === slug60);
+      const cod = (await marcar(slug60, "10:00", pessoa(1, { telefone: "(19) 99999-1111", email: "" }))).body.gerenciar;
+      z.enviados.length = 0;
+      const cli = await pub("remarcar-minha", { method: "POST", headers: HOST, body: { r: cod, dia: QUI, hora: "10:30" } });
+      assert.equal(cli.statusCode, 200);
+      assert.match(z.enviados[0].texto, /\*remarcada\*/);
+      assert.equal(tabelas.ag_reunioes[0].whatsapp_status, "enviado");
+      z.enviados.length = 0;
+      const id = String(tabelas.ag_reunioes[0].id);
+      const adm1 = await adm("reuniao", { method: "PATCH", headers: HOST, query: { id }, body: { dia: QUI, hora: "15:00" } });
+      assert.equal(adm1.body.whatsapp_cliente, "enviado");
+      assert.match(z.enviados[0].texto, /\*remarcada\*/);
+      z.enviados.length = 0;
+      const x = await adm("cancelar", { method: "POST", headers: HOST, query: { id }, body: {} });
+      assert.equal(x.body.whatsapp_cliente, "enviado");
+      assert.match(z.enviados[0].texto, /\*cancelada\*/);
+      assert.ok(z.enviados[0].texto.includes("agendar.html?s=" + slug60), "oferece marcar outro horário");
+      z.enviados.length = 0;
+      const sem = await adm("reuniao", { method: "POST", body: { tipo_id: tipo.id, dia: QUI, hora: "09:00", nome: "Davi", telefone: "(19) 98888-7777", avisar: false } });
+      assert.equal(sem.body.whatsapp_cliente, null);
+      assert.equal(z.enviados.length, 0, "a Comercial pode marcar sem enviar nada");
+      const com = await adm("reuniao", { method: "POST", headers: HOST, body: { tipo_id: tipo.id, dia: QUI, hora: "11:30", nome: "Eva", telefone: "(19) 98888-6666" } });
+      assert.equal(com.body.whatsapp_cliente, "enviado", "à mão, só com telefone, também avisa por WhatsApp");
+    });
+  } finally { c.solta(); z.solta(); }
+});
+
+test("whatsapp: o lembrete do cron sai por WhatsApp e e-mail; quem só tem celular também recebe; fixo sem e-mail não fica repetindo", async () => {
+  process.env.MAIL_USER = "comercial@exemplo.com";
+  const c = correioFalso(), z = zapFalso();
+  try {
+    let tabelas, slug60;
+    await comRelogio(AGORA, async () => {
+      ({ tabelas, slug60 } = await preparar());
+      await marcar(slug60, "09:00", pessoa(1, { telefone: "(19) 99999-1111", email: "ana@exemplo.com" }));
+      await marcar(slug60, "10:30", pessoa(2, { telefone: "(19) 98888-2222", email: "" }));
+      await marcar(slug60, "13:00", pessoa(3, { telefone: "(19) 3254-3333", email: "" }));
+    });
+    z.enviados.length = 0; c.enviados.length = 0;
+    const r = await comRelogio(Date.parse("2026-11-11T20:00:00Z"), () => chamar(rh, { query: { modulo: "agenda", t: "cron" }, headers: HOST }));
+    assert.equal(r.statusCode, 200, JSON.stringify(r.body));
+    assert.equal(r.body.reunioes, 3);
+    assert.equal(r.body.enviados, 2, "a do fixo sem e-mail não tem como avisar");
+    assert.deepEqual(z.enviados.map(m => m.telefone).sort(), ["5519988882222", "5519999991111"]);
+    assert.ok(z.enviados.every(m => m.texto.includes("*amanhã*") && m.texto.includes("agendar.html?r=")));
+    assert.deepEqual(c.enviados.map(m => m.para), ["ana@exemplo.com"]);
+    assert.ok(tabelas.ag_reunioes.every(x => x.lembrete_em), "as três ficam marcadas (a do fixo para não repetir)");
+    z.enviados.length = 0;
+    assert.equal((await comRelogio(Date.parse("2026-11-11T20:00:00Z"), () => chamar(rh, { query: { modulo: "agenda", t: "cron" } }))).body.reunioes, 0, "não repete");
+    // só WhatsApp e ele cai: não marca, para tentar de novo
+    tabelas.ag_reunioes[1].lembrete_em = null;
+    z.solta();
+    const caido = zapFalso({ ok: false, motivo: "WhatsApp do Comercial desconectado" });
+    try {
+      const f = await comRelogio(Date.parse("2026-11-11T20:00:00Z"), () => chamar(rh, { query: { modulo: "agenda", t: "cron" } }));
+      assert.equal(f.body.enviados, 0);
+      assert.equal(f.body.falhas[0].motivo, "WhatsApp do Comercial desconectado");
+      assert.equal(tabelas.ag_reunioes[1].lembrete_em, null);
+    } finally { caido.solta(); }
+  } finally { c.solta(); z.solta(); delete process.env.MAIL_USER; }
+});
+
+test("whatsapp: sem a Evolution configurada nada sai pela rede; com ela, só envia se a instância estiver conectada", async () => {
+  const antesFetch = global.fetch, chamadas = [];
+  const chave = process.env.EVOLUTION_APIKEY_COM, chave2 = process.env.EVOLUTION_APIKEY;
+  delete process.env.EVOLUTION_APIKEY_COM; delete process.env.EVOLUTION_APIKEY;
+  try {
+    global.fetch = async (u, i) => { chamadas.push(String(u)); return { ok: true, status: 200, json: async () => ({}) }; };
+    const sem = await ZAPM.enviar({ telefone: "19999998888", texto: "oi" });
+    assert.deepEqual([sem.ok, sem.naoTenta], [false, true]);
+    assert.equal(chamadas.length, 0, "sem configuração não chama a Evolution");
+    process.env.EVOLUTION_APIKEY_COM = "chave-de-teste"; process.env.EVOLUTION_INSTANCE_COM = "inst-teste"; process.env.EVOLUTION_URL = "http://evolution.falsa";
+    global.fetch = async (u, i) => {
+      chamadas.push((i && i.method || "GET") + " " + String(u) + (i && i.body ? " " + i.body : ""));
+      if (String(u).includes("connectionState")) return { ok: true, status: 200, json: async () => ({ instance: { state: "close" } }) };
+      return { ok: true, status: 201, json: async () => ({}) };
+    };
+    const caido = await ZAPM.enviar({ telefone: "(19) 99999-8888", texto: "oi" });
+    assert.deepEqual([caido.ok, caido.motivo], [false, "WhatsApp do Comercial desconectado"]);
+    assert.ok(!chamadas.some(c => c.startsWith("POST")), "desconectado: não tenta enviar");
+    chamadas.length = 0;
+    global.fetch = async (u, i) => {
+      chamadas.push((i && i.method || "GET") + " " + String(u) + (i && i.body ? " " + i.body : ""));
+      if (String(u).includes("connectionState")) return { ok: true, status: 200, json: async () => ({ instance: { state: "open" } }) };
+      return { ok: true, status: 201, json: async () => ({}) };
+    };
+    const ok = await ZAPM.enviar({ telefone: "(19) 99999-8888", texto: "oi" });
+    assert.equal(ok.ok, true);
+    const post = chamadas.find(c => c.startsWith("POST"));
+    assert.ok(post.startsWith("POST http://evolution.falsa/message/sendText/inst-teste") && post.includes('"number":"5519999998888"') && post.includes('"text":"oi"'));
+  } finally {
+    global.fetch = antesFetch;
+    for (const [k, v] of [["EVOLUTION_APIKEY_COM", chave], ["EVOLUTION_APIKEY", chave2]]) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
+    delete process.env.EVOLUTION_INSTANCE_COM; delete process.env.EVOLUTION_URL;
+  }
+});
+
+test("agendar.html avisa que a confirmação vai por WhatsApp e e-mail", () => {
+  const PUB = fs.readFileSync(path.join(__dirname, "..", "agendar.html"), "utf8");
+  assert.ok(PUB.includes("confirmação por <b>WhatsApp</b>"));
+});

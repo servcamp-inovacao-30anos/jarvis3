@@ -38,3 +38,4 @@ body{margin:0;background:var(--fd);font-family:system-ui,-apple-system,"Segoe UI
 
 .ag-verm{color:#b91c1c}
 .ag-escolha small{font-weight:500;color:var(--cz)}
+.ag-aviso{font-size:.78rem;color:var(--cz);margin:0 0 12px;line-height:1.45}

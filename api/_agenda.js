@@ -29,6 +29,7 @@ const ponto = require("./_ponto");
 const R = require("./_agenda_regras");
 const ICS = require("./_agenda_ics");
 const EMAIL = require("./_agenda_email");
+const ZAP = require("./_agenda_whatsapp");
 const ADMINS = require("./users").ADMINS;
 
 // Administradora da agenda: vai ser a Gabriela, do Comercial. Por enquanto (pedido do João em 05/11/2026)
@@ -172,20 +173,26 @@ const dadosMail = (r, tipo, base, extra) => Object.assign({
   cor: (tipo && tipo.cor) || null, gerenciar: base ? base + "/agendar.html?r=" + codigoDe(r.id) : null
 }, extra || {});
 const paraAviso = cfg => (cfg && cfg.email_aviso) || process.env.MAIL_USER || null;
+const resumoZap = r => r.naoTenta ? "não enviado: " + (r.motivo || "") : (r.ok ? "enviado" : "falhou: " + (r.motivo || "erro"));
+// pausa entre um WhatsApp e outro nos lembretes em lote (o WhatsApp desconfia de rajada)
+let pausaWaMs = 2000;
+const pausaWa = () => pausaWaMs > 0 ? new Promise(r => setTimeout(r, pausaWaMs)) : Promise.resolve();
 const resumoEnvio = (r, tem) => !tem ? "sem e-mail" : (r.ok ? "enviado" : "falhou: " + (r.motivo || "erro"));
 // Nada aqui lança: o e-mail é um extra, a reunião já está gravada.
 async function emailMarcada(db, r, tipo, cfg, base, opcoes) {
   try {
     const m = dadosMail(r, tipo, base);
-    const [cli, av] = await Promise.all([
+    const [cli, av, zap] = await Promise.all([
       r.email && !(opcoes && opcoes.semAviso) ? EMAIL.enviar(Object.assign({ para: r.email, convite: EMAIL.convite(m) }, EMAIL.confirmacao(m))) : Promise.resolve({ ok: false, motivo: "sem e-mail" }),
-      (opcoes && opcoes.semComercial) ? Promise.resolve(null) : EMAIL.enviar(Object.assign({ para: paraAviso(cfg) }, EMAIL.aviso(Object.assign({ acao: "nova" }, m))))
+      (opcoes && opcoes.semComercial) ? Promise.resolve(null) : EMAIL.enviar(Object.assign({ para: paraAviso(cfg) }, EMAIL.aviso(Object.assign({ acao: "nova" }, m)))),
+      ZAP.enviar({ telefone: r.telefone, texto: ZAP.confirmacao(m) })
     ]);
+    const zapStatus = resumoZap(zap);
     // o aviso da Comercial também fica registrado: se ele falhar, ela precisa saber que não foi avisada
     const status = resumoEnvio(cli, !!r.email) + (av && !av.ok ? " · aviso à Comercial falhou: " + (av.motivo || "erro") : "");
-    await db.atualizar(`ag_reunioes?id=eq.${r.id}`, { email_status: status }).catch(() => {});
-    return { cliente: status.split(" · ")[0], comercial: av ? (av.ok ? "enviado" : "falhou: " + av.motivo) : null };
-  } catch (e) { console.error("[agenda] e-mail:", e && e.message); return { cliente: "falhou", comercial: null }; }
+    await db.atualizar(`ag_reunioes?id=eq.${r.id}`, { email_status: status, whatsapp_status: zapStatus }).catch(() => {});
+    return { cliente: status.split(" · ")[0], whatsapp: zapStatus, comercial: av ? (av.ok ? "enviado" : "falhou: " + av.motivo) : null };
+  } catch (e) { console.error("[agenda] e-mail:", e && e.message); return { cliente: "falhou", whatsapp: null, comercial: null }; }
 }
 
 // ── pública ─────────────────────────────────────────────────────────────────
@@ -248,7 +255,7 @@ async function pubAgendar({ req, res, db }) {
   const id = nova ? nova.id : null;
   const email = nova ? await emailMarcada(db, Object.assign({}, linha, { id }), tipo, await lerConfig(db), baseUrl(req)) : null;
   return res.status(201).json({ ok: true, tipo: tipo.nome, local: tipo.local || null, dia: b.dia, hora: b.hora, inicio: linha.inicio, fim: linha.fim, duracao_min: tipo.duracao_min,
-    convite: id != null ? { id, c: assinarConvite(id) } : null, gerenciar: id != null ? codigoDe(id) : null, email_cliente: email ? email.cliente : null });
+    convite: id != null ? { id, c: assinarConvite(id) } : null, gerenciar: id != null ? codigoDe(id) : null, email_cliente: email ? email.cliente : null, whatsapp_cliente: email ? email.whatsapp : null });
 }
 
 // ── o cliente mexe na própria reunião (link do e-mail: agendar.html?r=CODIGO) ──
@@ -306,11 +313,12 @@ async function pubRemarcarMinha({ req, res, db }) {
   registrar(db, "cliente", "AGENDA_REMARCADA", r.id, { de: r.inicio, para: iso(f.inicio), pelo: "link" });
   const novo = Object.assign({}, r, { inicio: iso(f.inicio), fim: iso(f.fim) });
   const base = baseUrl(req), m = dadosMail(novo, tipo, base);
-  const [cli] = await Promise.all([
+  const [cli, , zap] = await Promise.all([
     r.email ? EMAIL.enviar(Object.assign({ para: r.email, convite: EMAIL.convite(m) }, EMAIL.remarcada(m))) : Promise.resolve({ ok: false, motivo: "sem e-mail" }),
-    EMAIL.enviar(Object.assign({ para: paraAviso(cfgL) }, EMAIL.aviso(Object.assign({ acao: "remarcada", de: +new Date(r.inicio) }, m))))
+    EMAIL.enviar(Object.assign({ para: paraAviso(cfgL) }, EMAIL.aviso(Object.assign({ acao: "remarcada", de: +new Date(r.inicio) }, m)))),
+    ZAP.enviar({ telefone: r.telefone, texto: ZAP.remarcada(m) })
   ]);
-  await db.atualizar(`ag_reunioes?id=eq.${r.id}`, { email_status: resumoEnvio(cli, !!r.email) }).catch(() => {});
+  await db.atualizar(`ag_reunioes?id=eq.${r.id}`, { email_status: resumoEnvio(cli, !!r.email), whatsapp_status: resumoZap(zap) }).catch(() => {});
   return res.status(200).json({ ok: true, dia: b.dia, hora: b.hora, inicio: novo.inicio, fim: novo.fim });
 }
 
@@ -329,12 +337,14 @@ async function cron(req, res) {
     const base = baseUrl(req);
     let enviados = 0; const falhas = [];
     for (const r of rs) {
-      if (!r.email) { await db.atualizar(`ag_reunioes?id=eq.${r.id}`, { lembrete_em: iso(agora) }).catch(() => {}); continue; }
       const t = tipos.find(x => String(x.id) === String(r.tipo_id)) || null;
       const m = dadosMail(r, t, base);
-      const x = await EMAIL.enviar(Object.assign({ para: r.email, convite: EMAIL.convite(m) }, EMAIL.lembrete(m)));
-      if (x.ok) { enviados++; await db.atualizar(`ag_reunioes?id=eq.${r.id}`, { lembrete_em: iso(agora) }); }
-      else falhas.push({ id: r.id, motivo: x.motivo }); // sem marcar: tenta de novo na próxima rodada
+      const em = r.email ? await EMAIL.enviar(Object.assign({ para: r.email, convite: EMAIL.convite(m) }, EMAIL.lembrete(m))) : null;
+      const zp = await ZAP.enviar({ telefone: r.telefone, texto: ZAP.lembrete(m) });
+      if (!r.email && zp.naoTenta) { await db.atualizar(`ag_reunioes?id=eq.${r.id}`, { lembrete_em: iso(agora) }).catch(() => {}); continue; } // sem como avisar: não fica repetindo
+      if ((em && em.ok) || zp.ok) { enviados++; await db.atualizar(`ag_reunioes?id=eq.${r.id}`, { lembrete_em: iso(agora) }); }
+      else falhas.push({ id: r.id, motivo: (em && em.motivo) || zp.motivo }); // sem marcar: tenta de novo na próxima rodada
+      if (zp.ok) await pausaWa();
     }
     return res.status(200).json({ ok: true, amanha, reunioes: rs.length, enviados, falhas });
   } catch (e) {
@@ -397,7 +407,7 @@ async function tudo({ res, db }) {
   const [tipos, bloqueios, reunioes, dirs] = await Promise.all([
     db.listar("ag_tipos?select=id,nome,duracao_min,local,cor,slug,ativo,ordem,diretores&order=ordem.asc,id.asc"),
     db.listar(`ag_bloqueios?select=id,inicio,fim,motivo&fim=gt.${iso(agora - 90 * 86400000)}&order=inicio.asc`),
-    db.listar(`ag_reunioes?select=id,tipo_id,tipo_nome,inicio,fim,nome,telefone,email,obs,local,origem,status,criado_em,email_status,remarcacoes,cancelado_por&inicio=gt.${iso(agora - 90 * 86400000)}&order=inicio.asc`),
+    db.listar(`ag_reunioes?select=id,tipo_id,tipo_nome,inicio,fim,nome,telefone,email,obs,local,origem,status,criado_em,email_status,whatsapp_status,remarcacoes,cancelado_por&inicio=gt.${iso(agora - 90 * 86400000)}&order=inicio.asc`),
     db.listar("ag_diretores?select=id,nome,url,ativo,ocupado,lido_em,erro&order=id.asc")
   ]);
   await Promise.all(dirs.filter(d => d.ativo && velho(d, agora)).map(async d => Object.assign(d, await atualizarDiretor(db, d, agora))));
@@ -517,8 +527,8 @@ async function criarReuniao({ req, res, db, ator, body }) {
   catch (e) { if (conflito(e)) return erro(res, 409, "Já existe reunião nesse horário.", "OCUPADO"); throw e; }
   registrar(db, ator, "AGENDA_MARCADA", nova ? nova.id : "?", { tipo: tipo.nome, inicio: linha.inicio, origem: "manual" });
   // quem cadastrou já sabe: sem aviso para a Comercial; a pessoa recebe a confirmação se tiver e-mail e se a Comercial quiser
-  const email = nova && linha.email && body.avisar !== false ? await emailMarcada(db, Object.assign({}, linha, { id: nova.id }), tipo, await lerConfig(db), baseUrl(req), { semComercial: true }) : null;
-  return res.status(201).json({ ok: true, id: nova ? nova.id : null, email_cliente: email ? email.cliente : null });
+  const email = nova && (linha.email || linha.telefone) && body.avisar !== false ? await emailMarcada(db, Object.assign({}, linha, { id: nova.id }), tipo, await lerConfig(db), baseUrl(req), { semComercial: true }) : null;
+  return res.status(201).json({ ok: true, id: nova ? nova.id : null, email_cliente: email ? email.cliente : null, whatsapp_cliente: email ? email.whatsapp : null });
 }
 
 async function remarcar({ req, res, db, ator, body }) {
@@ -534,15 +544,18 @@ async function remarcar({ req, res, db, ator, body }) {
   try { await db.atualizar(`ag_reunioes?id=eq.${id}&status=eq.ativa`, { inicio: iso(f.inicio), fim: iso(f.fim), ocupa_ate: iso(f.ocupa_ate) }); }
   catch (e) { if (conflito(e)) return erro(res, 409, "Já existe reunião nesse horário.", "OCUPADO"); throw e; }
   registrar(db, ator, "AGENDA_REMARCADA", id, { de: r.inicio, para: iso(f.inicio) });
-  let email = null;
-  if (r.email && body.avisar !== false) {
+  let email = null, whatsapp = null;
+  if ((r.email || r.telefone) && body.avisar !== false) {
     const [tipo] = r.tipo_id != null ? await db.obter(`ag_tipos?select=id,nome,cor&id=eq.${r.tipo_id}&limit=1`) : [];
     const m = dadosMail(Object.assign({}, r, { inicio: iso(f.inicio), fim: iso(f.fim) }), tipo, baseUrl(req));
-    const x = await EMAIL.enviar(Object.assign({ para: r.email, convite: EMAIL.convite(m) }, EMAIL.remarcada(m)));
-    email = resumoEnvio(x, true);
-    await db.atualizar(`ag_reunioes?id=eq.${id}`, { email_status: email, lembrete_em: null }).catch(() => {});
+    const [x, z] = await Promise.all([
+      r.email ? EMAIL.enviar(Object.assign({ para: r.email, convite: EMAIL.convite(m) }, EMAIL.remarcada(m))) : Promise.resolve(null),
+      ZAP.enviar({ telefone: r.telefone, texto: ZAP.remarcada(m) })
+    ]);
+    email = x ? resumoEnvio(x, true) : null; whatsapp = resumoZap(z);
+    await db.atualizar(`ag_reunioes?id=eq.${id}`, { email_status: email || r.email_status || null, whatsapp_status: whatsapp, lembrete_em: null }).catch(() => {});
   }
-  return res.status(200).json({ ok: true, email_cliente: email });
+  return res.status(200).json({ ok: true, email_cliente: email, whatsapp_cliente: whatsapp });
 }
 
 async function cancelar({ req, res, db, ator, body }) {
@@ -551,14 +564,18 @@ async function cancelar({ req, res, db, ator, body }) {
   const [r] = await db.obter(`ag_reunioes?select=*&id=eq.${id}&limit=1`);
   await db.atualizar(`ag_reunioes?id=eq.${id}&status=eq.ativa`, { status: "cancelada", cancelado_em: iso(Date.now()), cancelado_por: ator });
   registrar(db, ator, "AGENDA_CANCELADA", id, null);
-  let email = null;
-  if (r && r.status === "ativa" && r.email && body.avisar !== false) {
+  let email = null, whatsapp = null;
+  if (r && r.status === "ativa" && (r.email || r.telefone) && body.avisar !== false) {
     const [tipo] = r.tipo_id != null ? await db.obter(`ag_tipos?select=id,nome,cor,slug,ativo&id=eq.${r.tipo_id}&limit=1`) : [];
     const base = baseUrl(req);
     const m = dadosMail(r, tipo, base, { novo: tipo && tipo.ativo && base ? base + "/agendar.html?s=" + tipo.slug : null });
-    email = resumoEnvio(await EMAIL.enviar(Object.assign({ para: r.email }, EMAIL.cancelada(m))), true);
+    const [x, z] = await Promise.all([
+      r.email ? EMAIL.enviar(Object.assign({ para: r.email }, EMAIL.cancelada(m))) : Promise.resolve(null),
+      ZAP.enviar({ telefone: r.telefone, texto: ZAP.cancelada(m) })
+    ]);
+    email = x ? resumoEnvio(x, true) : null; whatsapp = resumoZap(z);
   }
-  return res.status(200).json({ ok: true, email_cliente: email });
+  return res.status(200).json({ ok: true, email_cliente: email, whatsapp_cliente: whatsapp });
 }
 
 async function trocarIcs({ res, db, ator }) {
@@ -596,4 +613,5 @@ module.exports = async function agenda(req, res) {
 };
 module.exports.publico = publico;
 module.exports.cron = cron;
+module.exports.definirPausaWa = ms => { const antes = pausaWaMs; pausaWaMs = ms; return antes; };
 module.exports.GESTORES = GESTORES;

@@ -90,7 +90,8 @@ $("agForm").addEventListener("submit",async e=>{
     else $("agIcs").hidden=true;
     const z=iso=>new Date(iso).toISOString().replace(/[-:]/g,"").replace(/\.\d{3}/,"");
     $("agGoogle").href="https://calendar.google.com/calendar/render?action=TEMPLATE&text="+encodeURIComponent(j.tipo+" — Grupo ServCamp")+"&dates="+z(j.inicio)+"/"+z(j.fim)+(j.local?"&location="+encodeURIComponent(j.local):"");
-    if(j.email_cliente==="enviado"){$("agEmailOk").hidden=false;$("agEmailOk").textContent="📧 Enviamos a confirmação para o seu e-mail.";}
+    {const zap=j.whatsapp_cliente==="enviado",em=j.email_cliente==="enviado";
+      if(zap||em){$("agEmailOk").hidden=false;$("agEmailOk").textContent="📲 Enviamos a confirmação para o seu "+(zap&&em?"WhatsApp e e-mail":zap?"WhatsApp":"e-mail")+".";}}
     if(j.gerenciar){$("agGerenciar").hidden=false;$("agGerenciar").href="/agendar.html?r="+encodeURIComponent(j.gerenciar);}
     window.scrollTo(0,0);
   }catch(err){
