@@ -293,6 +293,17 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true, userKey: chave, nome, senha });
     }
 
+    // As guias liberadas/escondidas para quem está logado. O painel pergunta ao abrir e de tempos em
+    // tempos: assim o que o administrador muda em Configurações › 👁️ Guias vale sem a pessoa sair e
+    // entrar (quem usa "Manter conectado" quase nunca faz login de novo).
+    if (body.action === "minhas_guias") {
+      const a = _auth.requireAuth(req);
+      if (!a.ok || !a.enforced || !a.user || !a.user.u || a.user.s) return res.status(401).json({ ok: false, error: "Sessão vencida. Entre de novo." });
+      let row;
+      try { row = await lerUsuario(String(a.user.u)); } catch (e) { return res.status(502).json({ ok: false, error: "Erro ao consultar Supabase." }); }
+      return res.status(200).json({ ok: true, guias: (row && row.perms && row.perms.guias) || {} });
+    }
+
     // Guias que a pessoa vê (só administrador): { pagina: true|false } por cima da regra
     // do perfil. Só o que difere do padrão é guardado; {} volta tudo ao padrão.
     // Configurações fica de fora: nenhum administrador pode perder a tela que libera os outros.
@@ -414,7 +425,7 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true, token: secret ? emitirSessao(userKey, secret, body.manter === true) : null });
     }
 
-    return res.status(400).json({ error: "action inválida (use authenticate, renew, logout_all, change_password, admin_reset, create_user, set_active ou set_guias)." });
+    return res.status(400).json({ error: "action inválida (use authenticate, renew, logout_all, change_password, admin_reset, create_user, set_active, set_guias ou minhas_guias)." });
   }
 
   res.setHeader("Allow", "GET, POST");

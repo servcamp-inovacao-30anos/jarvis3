@@ -24,7 +24,7 @@ const MESL=["janeiro","fevereiro","março","abril","maio","junho","julho","agost
 
 // horário de Brasília (UTC-3) a partir do ISO do banco
 const br=iso=>{const d=new Date(+new Date(iso)-3*3600000).toISOString();return{dia:d.slice(0,10),hora:d.slice(11,16)};};
-const hojeBR=()=>br(new Date().toISOString()).dia;
+const hojeBR=()=>br(new Date(Date.now()).toISOString()).dia;
 const diaLongo=d=>{const x=new Date(d+"T12:00:00Z");return SEM[x.getUTCDay()]+", "+x.getUTCDate()+" de "+MES[x.getUTCMonth()];};
 const durTxt=m=>m<60?m+" min":(m%60?Math.floor(m/60)+"h"+String(m%60).padStart(2,"0"):m/60+"h");
 const telTxt=t=>{const d=String(t||"").replace(/\D/g,"");return d.length===11?"("+d.slice(0,2)+") "+d.slice(2,7)+"-"+d.slice(7):d.length===10?"("+d.slice(0,2)+") "+d.slice(2,6)+"-"+d.slice(6):d;};
@@ -220,7 +220,7 @@ function vistaGrade(dias,ativas){
       h+='<button type="button" class="agc-ev'+(dd<=30?" curto":"")+(r.resultado==="faltou"?" faltou":r.resultado==="realizada"?" feita":"")+'" data-ag="ver" data-id="'+r.id+'" style="top:'+y(a)+'px;height:'+Math.max(18,dd/60*H-2)+'px;background:'+rgba(c,.16)+';border-left-color:'+esc(c)+'" title="'+esc(br(r.inicio).hora+"–"+br(r.fim).hora+" · "+r.nome+" · "+(r.tipo_nome||""))+'">'+
         '<b>'+(r.resultado==="realizada"?"✅ ":r.resultado==="faltou"?"🚫 ":"")+(icMod(r.modalidade)?icMod(r.modalidade)+" ":"")+br(r.inicio).hora+' · '+esc(r.nome)+'</b><span>'+esc(r.tipo_nome||"")+'</span></button>';
     });
-    if(d===hoje){const n=minDe(br(new Date().toISOString()).hora);if(n>=ini&&n<=fim)h+='<div class="agc-agora" style="top:'+y(n)+'px"></div>';}
+    if(d===hoje){const n=minDe(br(new Date(Date.now()).toISOString()).hora);if(n>=ini&&n<=fim)h+='<div class="agc-agora" style="top:'+y(n)+'px"></div>';}
     h+='</div>';
   });
   h+='</div></div></div><p class="agc-dica">Toque num horário vazio para marcar uma reunião ali · toque numa reunião para ver os detalhes.</p>';

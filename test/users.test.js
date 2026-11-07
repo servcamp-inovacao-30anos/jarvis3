@@ -535,3 +535,13 @@ test("administrador redefine a senha de alguém: as sessões salvas dessa pessoa
   assert.equal(r.status, 200);
   assert.equal((await rotaProtegida(dele)).status, 401);
 });
+
+test("minhas_guias: quem está logado lê as próprias guias na hora (sem sair e entrar); sem login, nada", async () => {
+  sb.semear("raphaelvictor", { custom_password: await _senha.hash("senha-dele-1"), must_change: false });
+  assert.equal((await acao({ action: "minhas_guias" })).status, 401, "sem token");
+  assert.deepEqual((await acao({ action: "minhas_guias" }, comoComum())).dados, { ok: true, guias: {} });
+  assert.equal((await acao({ action: "set_guias", userKey: "raphaelvictor", guias: { agenda: true } }, comoAdmin())).status, 200);
+  const r = await acao({ action: "minhas_guias" }, comoComum());
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.dados.guias, { agenda: true }, "liberou agora, já vê");
+});

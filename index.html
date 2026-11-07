@@ -10888,7 +10888,7 @@ function cfgGuias(k){
   div.style.cssText="position:fixed;inset:0;background:rgba(13,31,53,.75);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px";
   div.innerHTML='<div style="background:#fff;border-radius:16px;padding:22px 24px;max-width:640px;width:100%;max-height:88vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.35)">'+
     '<div style="font-size:.72rem;font-weight:900;letter-spacing:.6px;text-transform:uppercase;color:#1e4d8c">👁️ Guias que '+_esc(u.nome)+' vê</div>'+
-    '<div style="font-size:.7rem;color:#64748b;margin:4px 0 14px">Marque para mostrar, desmarque para esconder. Vale a partir do próximo login. <span style="color:#b45309">●</span> = diferente do padrão do perfil.</div>'+
+    '<div style="font-size:.7rem;color:#64748b;margin:4px 0 14px">Marque para mostrar, desmarque para esconder. Vale em até 3 minutos, sem a pessoa precisar sair e entrar (ou na hora, se ela recarregar a página). <span style="color:#b45309">●</span> = diferente do padrão do perfil.</div>'+
     cats.map(c=>'<div style="margin-bottom:12px"><div style="font-size:.66rem;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:6px">'+_esc(c.t)+'</div>'+
       '<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 14px">'+c.itens.map(i=>{
         const pad=cfgPadraoGuia(u,i.perm),tem=Object.prototype.hasOwnProperty.call(g,i.pg),ver=tem?!!g[i.pg]:pad;
@@ -19388,7 +19388,7 @@ document.addEventListener("DOMContentLoaded",init);
 <link rel="stylesheet" href="/assets/comunicado/comunicado.css"><script src="/assets/comunicado/comunicado.js"></script>
 <link rel="stylesheet" href="/assets/celulares/celulares.css"><script src="/assets/celulares/celulares.js"></script>
 <link rel="stylesheet" href="/assets/ofensiva/ofensiva.css"><script src="/assets/ofensiva/ofensiva.js"></script>
-<link rel="stylesheet" href="/assets/agenda/agenda.css"><script src="/assets/agenda/agenda.js"></script>
+<link rel="stylesheet" href="/assets/agenda/agenda.css"><script src="/assets/agenda/agenda.js"></script><script src="/assets/sessao/guias.js"></script>
 <link rel="stylesheet" href="/assets/medida/assinatura.css"><script src="/assets/vendor/qrcode-generator.js"></script><script src="/assets/medida/assinatura.js"></script>
 </body>
 </html>
