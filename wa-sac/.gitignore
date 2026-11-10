@@ -1,0 +1,4 @@
+node_modules/
+# credenciais da sessão do WhatsApp: NUNCA versionar
+auth/
+.env

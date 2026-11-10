@@ -21,7 +21,10 @@ const ABONADAS = new Set(["A", "J", "L"]); // abonada · justificada · licença
 // Códigos do JARVIS (não vêm do SAR2G): a falta fica guardada, mas deixa de ser cobrada.
 const CODIGO_DEMITIDO = "D";   // quem já saiu da empresa: não há mais medida a aplicar
 const CODIGO_AFASTADO = "AF";  // dia coberto por afastamento ou licença lançado no SAR2G (INSS, doença, acidente, maternidade...)
-const NAO_COBRADAS = new Set([CODIGO_DEMITIDO, CODIGO_AFASTADO]);
+// Falta de quem já teve o feedback do SAC registrado e baixado pela coordenação (api/_lig_regras.js): sai da
+// cobrança e passa a ser acompanhada só no perfil da pessoa, na aba Feedback de Faltas (30 dias).
+const CODIGO_TRATADA = "T";
+const NAO_COBRADAS = new Set([CODIGO_DEMITIDO, CODIGO_AFASTADO, CODIGO_TRATADA]);
 // A lista de ativos só vale para dizer quem saiu se vier completa (a de verdade tem ~550). Planilha
 // com a aba cortada ou quase vazia não pode transformar todo mundo em demitido.
 const MIN_ATIVOS_PARA_DEMITIDOS = 100;
@@ -163,17 +166,20 @@ const MAX_LACUNA_AFASTAMENTO = 15;
 //   confirmados: Set "RE|PRIMEIRONOME" de quem NÃO é demitido mesmo fora da lista de ativos (contratação nova)
 //   ocorrencias: indexarOcorrencias(...)
 //   dias: RE → { "AAAA-MM-DD": situação da Ficha } (para saber se a pessoa voltou a trabalhar); opcional
+//   tratadas: Map "RE|PRIMEIRONOME" → [{ de, ate }]: janelas de acompanhamento de quem teve o feedback baixado.
+//             Só vale para o que ainda seria "I": abono, afastamento e demissão valem mais.
 function classificarFalta(f, ctx) {
   const c = ctx || {};
   const codigo = String(f.codigo == null ? "" : f.codigo).toUpperCase().trim();
   if (codigo !== "I") return codigo || null;
   const re = reDe(f.re == null ? f.RE : f.re), data = iso(f.data == null ? f.DATA : f.data), nome = f.nome == null ? f.NOME : f.nome;
   const quem = re + "|" + primeiroNome(nome);
+  const injustificada = () => (((c.tratadas && c.tratadas.get(quem)) || []).some(j => data >= j.de && data <= j.ate) ? CODIGO_TRATADA : "I");
   if (c.demitidos && c.demitidos.has(quem)) return CODIGO_DEMITIDO;
   // confirmados: contratação nova que a lista de ativos ainda não tem; não vira demitido por não estar nela
   if (c.ativos && c.ativos.size >= MIN_ATIVOS_PARA_DEMITIDOS && !(c.confirmados && c.confirmados.has(quem)) && !(c.ativos.has(re) && [].concat(c.ativos.get(re)).some(n => mesmaPessoa(n, nome)))) return CODIGO_DEMITIDO;
   const lista = ((c.ocorrencias && c.ocorrencias.get(re)) || []).filter(o => mesmaPessoa(o.nome, nome));
-  if (!lista.length) return "I";
+  if (!lista.length) return injustificada();
   const dias = (c.dias && c.dias(re)) || null;
   const trabalhou = d => trabalhouNoDia((dias || {})[d]) === true;
   const diasFicha = (de, ate) => Object.keys(dias || {}).filter(d => d > de && d < ate);
@@ -191,7 +197,7 @@ function classificarFalta(f, ctx) {
     const meio = diasFicha(antes, depois);
     if (meio.length && !meio.some(trabalhou)) return CODIGO_AFASTADO;
   }
-  return "I";
+  return injustificada();
 }
 
 // ── os casos ─────────────────────────────────────────────────────────────────
@@ -627,6 +633,6 @@ function dedupMedidas(lista) {
 }
 
 module.exports = {
-  FAMILIAS, SITUACOES, ABONADAS, CODIGO_DEMITIDO, CODIGO_AFASTADO, NAO_COBRADAS, MIN_ATIVOS_PARA_DEMITIDOS, MAX_LACUNA_AFASTAMENTO, indexarOcorrencias, classificarFalta, primeiroNome, familiaEscala, ehOperacional, trabalhouNoDia, trabalhandoRecente, montarCasos, reDe, competenciaDe, calendario, compactarCalendario, expandirCalendario, periodosDeAbono, dobrarAtestados, turnoDoSupervisor, SUPERVISORES_NOTURNOS, supervisorAtual,
+  FAMILIAS, SITUACOES, ABONADAS, CODIGO_DEMITIDO, CODIGO_AFASTADO, CODIGO_TRATADA, NAO_COBRADAS, MIN_ATIVOS_PARA_DEMITIDOS, MAX_LACUNA_AFASTAMENTO, indexarOcorrencias, classificarFalta, primeiroNome, familiaEscala, ehOperacional, trabalhouNoDia, trabalhandoRecente, montarCasos, reDe, competenciaDe, calendario, compactarCalendario, expandirCalendario, periodosDeAbono, dobrarAtestados, turnoDoSupervisor, SUPERVISORES_NOTURNOS, supervisorAtual,
   descreverMedida, somaDias, ddmm, medidaDoHistorico, dedupMedidas
 };

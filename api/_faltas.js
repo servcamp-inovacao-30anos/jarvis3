@@ -24,6 +24,7 @@ const MD = require("./_medida_regras");
 const COM = require("./_comunicado");
 const ASS = require("./_assinatura");
 const PUSH = require("./_push");
+const LIG = require("./_lig_regras");
 
 const ACAO_ABONO_TARDIO = "FALTA_ABONADA_DEPOIS";
 const ACAO_VIROU_I = "FALTA_VIROU_INJUSTIFICADA"; // tinha outro código e passou a "I" (veja anotarViradasInjustificada)
@@ -187,6 +188,7 @@ async function materializar(data, opcoes) {
   const registro = await lerRegistroDemissoes(db);
   const demitidos = new Set(registro.demitidos.map(b => b.re + "|" + b.nome1));
   const confirmados = new Set(registro.confirmados.map(b => b.re + "|" + b.nome1));
+  const tratadas = await lerTratadas(db); // feedback baixado pela coordenação: sem ele a falta voltaria a "I" a cada planilha
   const diasPorRE = new Map(); // RE → { dia: situação da Ficha }: serve para ver se a pessoa voltou a trabalhar
   Object.entries(data.fichaDias || {}).forEach(([reTxt, porDia]) => diasPorRE.set(R.reDe(reTxt), porDia || {}));
   await confirmarContratacoesNovas(db, data, { ativos, demitidos, confirmados, diasPorRE });
@@ -196,7 +198,7 @@ async function materializar(data, opcoes) {
   const guardadasOc = await lerOcorrencias(db); // Map chave → ocorrência
   const novasOc = await gravarOcorrencias(db, ocorrenciasDaPlanilha, guardadasOc);
   novasOc.forEach(x => guardadasOc.set(chaveOcorrencia(x), x));
-  const cobertura = { ativos, demitidos, confirmados, ocorrencias: R.indexarOcorrencias([...guardadasOc.values()]), dias: re => diasPorRE.get(re) };
+  const cobertura = { ativos, demitidos, confirmados, tratadas, ocorrencias: R.indexarOcorrencias([...guardadasOc.values()]), dias: re => diasPorRE.get(re) };
   const classificar = f => R.classificarFalta(f, cobertura);
   const codigoDaPlanilha = new Map(); // o que o SAR2G mandou, antes da conferência
   const classificadas = [];           // faltas cujo código mudou na conferência
@@ -336,7 +338,7 @@ async function reapurarComBanco(db) {
       ativos.get(re).push(a.NOME || "");
     });
   } catch (e) { /* sem planilha anterior: só a base e as ocorrências */ }
-  const cobertura = { ativos, demitidos: new Set(base.map(b => b.re + "|" + b.nome1)), confirmados: new Set(registro.confirmados.map(b => b.re + "|" + b.nome1)), ocorrencias: R.indexarOcorrencias([...(await lerOcorrencias(db)).values()]), dias: re => diasPorRE.get(re) };
+  const cobertura = { ativos, demitidos: new Set(base.map(b => b.re + "|" + b.nome1)), confirmados: new Set(registro.confirmados.map(b => b.re + "|" + b.nome1)), tratadas: await lerTratadas(db), ocorrencias: R.indexarOcorrencias([...(await lerOcorrencias(db)).values()]), dias: re => diasPorRE.get(re) };
   const mudou = [];
   const n = await reapurarInjustificadasGuardadas(db, cobertura, f => R.classificarFalta(f, cobertura), diasPorRE, agora, mudou);
   await anotarReapuradas(db, mudou);
@@ -360,13 +362,34 @@ async function lerRegistroDemissoes(db) {
 }
 const lerBaseDemitidos = async db => (await lerRegistroDemissoes(db)).demitidos;
 
-const MOTIVO_CODIGO = { [R.CODIGO_DEMITIDO]: "demitido", [R.CODIGO_AFASTADO]: "afastamento" };
+// Feedback do SAC com baixa dada pela coordenação (api/_lig_regras.js): janelas em que as faltas "I" de cada
+// pessoa viram "T". Se o log estiver fora do ar, devolver vazio faria todas as faltas tratadas voltarem a "I" de
+// uma vez (alarme falso em massa). Então, sem o log, vale o que já está guardado: cada falta "T" continua "T"
+// e nenhuma nova é baixada até o log voltar. (Como a base de demitidos, a planilha não deixa de ser processada.)
+async function lerTratadas(db) {
+  try {
+    const l = await db.listar(`fm_auditoria?select=id,chave,acao,depois,ator,criado_em&entidade=eq.${LIG.ENTIDADE}&acao=in.(${LIG.ACAO_BAIXA},${LIG.ACAO_BAIXA_FIM})&order=id.asc`);
+    return LIG.tratadasParaApuracao(LIG.baixasAtivas(l));
+  } catch (e) {
+    console.error("faltas: log de baixas indisponível, mantendo as faltas T como estão:", e && e.message);
+    const m = new Map();
+    (await db.listar("fm_faltas?select=re,data,nome&codigo=eq.T&order=re.asc,data.asc")).forEach(f => {
+      const k = R.reDe(f.re) + "|" + R.primeiroNome(f.nome), dia = String(f.data).slice(0, 10);
+      if (!m.has(k)) m.set(k, []);
+      m.get(k).push({ de: dia, ate: dia });
+    });
+    return m;
+  }
+}
+
+const MOTIVO_CODIGO = { [R.CODIGO_DEMITIDO]: "demitido", [R.CODIGO_AFASTADO]: "afastamento", [R.CODIGO_TRATADA]: "feedback do SAC com baixa (acompanhamento de 30 dias)" };
 const motivoDoCodigo = c => MOTIVO_CODIGO[c] || (R.ABONADAS.has(c) ? "abono lançado no SAR2G" : "");
 
 // Confere as faltas "I" que já estão no banco (de qualquer data) e troca o código das que não
 // são injustificadas. Devolve quantas mudaram; "mudou" recebe { re, data, de, para } de cada uma.
 async function reapurarInjustificadasGuardadas(db, cobertura, classificar, diasPorRE, agora, mudou) {
-  const guardadas = await db.listar("fm_faltas?select=re,data,codigo,nome&codigo=eq.I&order=re.asc,data.asc");
+  // "T" (feedback baixado) entra de novo na conferência: se a baixa foi desfeita ou a janela acabou, volta a "I"
+  const guardadas = await db.listar("fm_faltas?select=re,data,codigo,nome&codigo=in.(I,T)&order=re.asc,data.asc");
   // Os dias da Ficha de quem tem atestado ou afastamento lançado e ainda não estão na planilha de hoje
   // vêm do banco: sem eles não dá para saber se a pessoa voltou a trabalhar no meio.
   // A planilha de hoje manda: o do banco só preenche os dias que ela não trouxe.
@@ -384,12 +407,12 @@ async function reapurarInjustificadasGuardadas(db, cobertura, classificar, diasP
   const trocas = [];
   guardadas.forEach(f => {
     const dia = String(f.data).slice(0, 10);
-    const para = classificar({ re: f.re, data: dia, codigo: f.codigo, nome: f.nome });
-    if (para !== "I") trocas.push({ re: f.re, data: dia, codigo: para, atualizado_em: agora });
+    const para = classificar({ re: f.re, data: dia, codigo: "I", nome: f.nome }); // sempre como se fosse "I": o resultado diz o que ela é agora
+    if (para !== f.codigo) trocas.push({ re: f.re, data: dia, codigo: para, atualizado_em: agora, de: f.codigo });
   });
   if (!trocas.length) return 0;
-  await db.upsert("fm_faltas", trocas, "re,data");
-  trocas.forEach(t => mudou.push({ re: t.re, data: t.data, de: "I", para: t.codigo }));
+  await db.upsert("fm_faltas", trocas.map(({ de, ...linha }) => linha), "re,data");
+  trocas.forEach(t => mudou.push({ re: t.re, data: t.data, de: t.de, para: t.codigo }));
   return trocas.length;
 }
 
@@ -992,6 +1015,7 @@ module.exports = async function faltas(req, res) {
 };
 
 module.exports.materializar = materializar;
+module.exports.reapurarComBanco = reapurarComBanco; // o api/ligacoes.js chama depois de dar ou desfazer a baixa de um feedback
 module.exports.lerGeradas = lerGeradas; // o resumo semanal da coordenação (api/_faltas_email.js) lê as mesmas medidas geradas
 // eventos de atestado registrados à mão: o aviso semanal por e-mail (api/_faltas_email.js) desconta as faltas cobertas, igual à tela
 module.exports.ACOES_ATESTADO = [ACAO_ATESTADO, ACAO_ATESTADO_FIM, ACAO_ATESTADO_LANCADO];

@@ -20,7 +20,8 @@
     { "path": "/api/rh?modulo=faltasemail&t=cron&h=20", "schedule": "0 23 * * *" }
   ],
   "functions": {
-    "api/rh.js": { "maxDuration": 60 }
+    "api/rh.js": { "maxDuration": 60 },
+    "api/ligacoes.js": { "maxDuration": 30 }
   },
   "headers": [
     {
@@ -48,7 +49,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; img-src 'self' data: blob: https://*.tile.openstreetmap.org https://cdnjs.cloudflare.com; font-src 'self' data:; connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; img-src 'self' data: blob: https://*.tile.openstreetmap.org https://cdnjs.cloudflare.com; font-src 'self' data:; connect-src 'self' http://127.0.0.1:3939 http://localhost:3939; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'"
         }
       ]
     }
