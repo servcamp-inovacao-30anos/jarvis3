@@ -88,8 +88,16 @@ function render(){
     '<button type="button" class="rh-btn rh-btn-sec" data-ag="marca">🎨 Sua página</button>'+
     '<button type="button" class="rh-btn rh-btn-sec" data-ag="diretores">👔 Diretores'+(semLeitura(D)?' ⚠️':'')+'</button>'+
     '<button type="button" class="rh-btn rh-btn-sec" data-ag="iphone">📱 Ver no iPhone</button></div>';
-  h+='<div class="agd-kpis"><div><b>'+ativas.filter(r=>br(r.inicio).dia===hoje).length+'</b><span>hoje</span></div><div><b>'+semana+'</b><span>nos próximos 7 dias</span></div><div><b>'+ativas.length+'</b><span>marcadas no total</span></div><div><b>'+ativas.filter(r=>r.origem==="link").length+'</b><span>marcadas pelo link</span></div>'+
-    (()=>{const n=semResultado(D).length;return'<div class="'+(n?"agd-kpi-alerta":"")+'"><b>'+n+'</b><span>aguardando resultado</span></div>';})()+'</div>';
+  // Cada número guarda a lista que o formou: o clique mostra ESSA lista (nada de recalcular no clique).
+  AG.kpis={
+    hoje:{t:"📅 Reuniões de hoje",l:ativas.filter(r=>br(r.inicio).dia===hoje)},
+    semana:{t:"🗓️ Próximos 7 dias",l:ativas.filter(r=>br(r.inicio).dia<=somaDias(hoje,6))},
+    total:{t:"📋 Todas as reuniões marcadas",l:ativas},
+    link:{t:"🔗 Marcadas pelo link",l:ativas.filter(r=>r.origem==="link")},
+    pend:{t:"📝 Aguardando resultado",l:semResultado(D),pend:true}
+  };
+  {const k=(id,rot,cls)=>{const n=AG.kpis[id].l.length;return'<button type="button" class="agd-kpi'+(cls||"")+'" data-ag="kpi" data-k="'+id+'" aria-label="'+esc(rot+": "+n+". Ver a lista")+'"><b>'+n+'</b><span>'+rot+'</span><i aria-hidden="true">ver ›</i></button>';};
+  h+='<div class="agd-kpis">'+k("hoje","hoje")+k("semana","nos próximos 7 dias")+k("total","marcadas no total")+k("link","marcadas pelo link")+k("pend","aguardando resultado",AG.kpis.pend.l.length?" agd-kpi-alerta":"")+'</div>';}
   // reuniões que já aconteceram e esperam o resultado
   {const pend=semResultado(D);
   if(pend.length)h+='<div class="agd-card agd-pend"><div class="agd-h">📝 Como foram estas reuniões? <small>(registre o resultado: ele vai para os números do Painel Comercial)</small></div>'+
@@ -373,6 +381,24 @@ function navegar(passo){
   render();
 }
 
+// Lista que formou um número do topo. Tocar numa reunião abre os detalhes (ou o resultado, nas que aguardam).
+function abrirKpi(id){
+  const K=AG.kpis&&AG.kpis[id];if(!K)return;
+  const hoje=hojeBR(),porDia={};
+  K.l.slice().sort((a,b)=>K.pend?+new Date(b.inicio)-+new Date(a.inicio):+new Date(a.inicio)-+new Date(b.inicio)).forEach(r=>{const d=br(r.inicio).dia;(porDia[d]=porDia[d]||[]).push(r);});
+  const dias=Object.keys(porDia).sort(),ord=K.pend?dias.reverse():dias;
+  const linha=r=>{const a=br(r.inicio),b=br(r.fim);
+    return'<button type="button" class="agk-r" data-r="'+r.id+'" style="border-left-color:'+esc(corTipo(r))+'"><span class="agk-h">'+a.hora+'–'+b.hora+'</span>'+
+      '<span class="agk-t"><b>'+esc(r.nome)+'</b><span>'+esc(r.tipo_nome||"Reunião")+(r.modalidade?' · '+txtMod(r.modalidade):'')+(r.telefone?' · '+esc(telTxt(r.telefone)):'')+'</span></span>'+
+      '<span class="agk-tags">'+(r.origem==="link"?'<i class="agd-tag">pelo link</i>':'<i class="agd-tag agd-tag-m">cadastrada aqui</i>')+tagResultado(r)+'</span><span class="agk-ir" aria-hidden="true">›</span></button>';};
+  const ov=janela(K.t+" · "+K.l.length,
+    (K.l.length?ord.map(d=>'<div class="agk-dia">'+(d===hoje?"Hoje · ":d===somaDias(hoje,1)?"Amanhã · ":d===somaDias(hoje,-1)?"Ontem · ":"")+esc(diaLongo(d))+'</div>'+porDia[d].map(linha).join("")).join(""):
+      '<div class="agd-vazio">'+(K.pend?"Nenhuma reunião esperando resultado. 👍":"Nenhuma reunião aqui.")+'</div>')+
+    '<p class="agd-dica" style="margin-top:10px">'+(K.pend?"Toque numa reunião para dizer se ela aconteceu.":"Toque numa reunião para ver os detalhes, remarcar ou cancelar.")+'</p>'+
+    '<div class="agd-acoes"><button type="button" class="rh-btn" data-fechar="1">Fechar</button></div>',true);
+  ov.addEventListener("click",e=>{const b=e.target.closest("[data-r]");if(!b)return;const r=AG.dados.reunioes.find(x=>String(x.id)===b.dataset.r);if(!r)return;if(K.pend)abrirResultado(r);else abrirReuniao(r);});
+}
+
 // Detalhes de uma reunião (tocar no bloco do calendário)
 function abrirReuniao(r){
   if(!r)return;
@@ -439,6 +465,7 @@ function ligar(el){
     else if(a==="nav")navegar(Number(b.dataset.d)||0);
     else if(a==="hoje"){AG.ref=hojeBR();AG.sel=hojeBR();render();}
     else if(a==="dia"){AG.ref=b.dataset.dia;AG.vista="dia";render();}
+    else if(a==="kpi")abrirKpi(b.dataset.k);
     else if(a==="ver")abrirReuniao(AG.dados.reunioes.find(r=>String(r.id)===id));
     else if(a==="copiar"){const t=AG.dados.tipos.find(x=>String(x.id)===id);if(t)copiar(linkDe(t),"🔗 Link copiado: é só colar para o cliente");}
     else if(a==="remarcar")abrirRemarcar(AG.dados.reunioes.find(r=>String(r.id)===id));

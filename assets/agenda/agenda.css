@@ -1,9 +1,30 @@
 /* Agenda Comercial — guia da administradora no painel. */
 .agd-barra{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
 .agd-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px}
-.agd-kpis>div{background:var(--wh);border:1px solid var(--g200);border-radius:12px;padding:10px 14px}
+.agd-kpis>.agd-kpi{background:var(--wh);border:1px solid var(--g200);border-radius:12px;padding:10px 14px}
 .agd-kpis b{display:block;font-size:1.5rem;color:var(--g800)}
 .agd-kpis span{font-size:.66rem;color:var(--g500);font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+/* os números do topo são botões: o clique mostra a lista que formou cada um */
+.agd-kpi{position:relative;display:block;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;transition:transform .12s,box-shadow .15s,border-color .15s}
+.agd-kpi:hover{transform:translateY(-1px);border-color:#2e8fef!important;box-shadow:0 6px 18px rgba(46,143,239,.15)!important}
+.agd-kpi:focus-visible{outline:2px solid #2e8fef;outline-offset:2px}
+.agd-kpi i{position:absolute;right:12px;top:10px;font-style:normal;font-size:.62rem;font-weight:800;color:#1d6fc4;opacity:0;transition:opacity .15s}
+.agd-kpi:hover i,.agd-kpi:focus-visible i{opacity:1}
+@media (hover:none){.agd-kpi i{opacity:.7}}
+html[data-theme="dark"] .agd-kpi i{color:#8cc6ff}
+/* lista de um número (janela) */
+.agk-dia{font-size:.66rem;font-weight:800;text-transform:uppercase;letter-spacing:.3px;color:var(--g500);margin:10px 0 6px}
+.agk-dia:first-child{margin-top:0}
+.agk-r{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:9px 10px;margin-bottom:6px;border:1px solid var(--g200);border-left:4px solid #1e4d8c;border-radius:10px;background:var(--wh);font:inherit;color:var(--g800);cursor:pointer}
+.agk-r:hover{border-color:#2e8fef}
+.agk-h{font-weight:800;font-size:.76rem;min-width:84px}
+.agk-t{flex:1;min-width:0;display:flex;flex-direction:column;font-size:.7rem}
+.agk-t b{font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.agk-t span{color:var(--g500)}
+.agk-tags{display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end;max-width:45%}
+.agk-tags i{font-style:normal}
+.agk-ir{color:var(--g400,#94a3b8);font-size:1.1rem}
+@media (max-width:640px){.agk-r{flex-wrap:wrap}.agk-h{min-width:0}.agk-tags{max-width:none;justify-content:flex-start}}
 .agd-card{background:var(--wh);border:1px solid var(--g200);border-radius:14px;padding:12px 16px;margin-bottom:12px}
 .agd-h{font-weight:800;font-size:.86rem;color:var(--g800);margin-bottom:10px}
 .agd-h small{font-weight:500;color:var(--g500)}
@@ -167,8 +188,8 @@ html[data-theme="dark"] .agdi-s.ok{color:#75e0a7}
 html[data-theme="dark"] .agdi-s.ruim,html[data-theme="dark"] .agdi-e{color:#fda29b}
 
 /* ── resultado das reuniões ── */
-.agd-kpis>div.agd-kpi-alerta{border-color:#fdba74;background:#fff7ed}
-.agd-kpis>div.agd-kpi-alerta b{color:#c2410c}
+.agd-kpis>.agd-kpi.agd-kpi-alerta{border-color:#fdba74;background:#fff7ed}
+.agd-kpis>.agd-kpi.agd-kpi-alerta b{color:#c2410c}
 .agd-pend{border-left:4px solid #f97316}
 .agd-pr{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--g100)}
 .agd-pr:first-of-type{border-top:none}
@@ -186,7 +207,7 @@ html[data-theme="dark"] .agdi-s.ruim,html[data-theme="dark"] .agdi-e{color:#fda2
 .agd-res-op input:focus-visible+span{outline:2px solid #2e8fef;outline-offset:2px}
 .agc-ev.feita{opacity:.75}
 .agc-ev.faltou{opacity:.55;text-decoration:line-through}
-html[data-theme="dark"] .agd-kpis>div.agd-kpi-alerta{background:rgba(249,115,22,.12);border-color:rgba(249,115,22,.5)}
+html[data-theme="dark"] .agd-kpis>.agd-kpi.agd-kpi-alerta{background:rgba(249,115,22,.12);border-color:rgba(249,115,22,.5)}
 html[data-theme="dark"] .agd-tag-ok{background:rgba(22,163,74,.18);color:#86efac}
 html[data-theme="dark"] .agd-res-op input:checked+span{background:rgba(22,163,74,.15);color:#86efac}
 html[data-theme="dark"] .agd-res-op.falta input:checked+span{background:rgba(217,45,32,.15);color:#fda29b}
@@ -247,18 +268,18 @@ html[data-theme="dark"] .agd-res-op.falta input:checked+span{background:rgba(217
 .agd-tela{--agd-vidro:rgba(255,255,255,.74);--agd-vidro2:rgba(255,255,255,.58);--agd-vborda:rgba(255,255,255,.8);--agd-sombra:0 8px 26px rgba(13,31,53,.07);--agd-sel:#eff6ff;
   background:radial-gradient(1100px 460px at 88% -12%,rgba(46,143,239,.14),transparent 62%),radial-gradient(800px 420px at -8% 108%,rgba(250,204,21,.09),transparent 62%),var(--g50);
   border-radius:18px;padding:14px;margin-top:2px}
-.agd-tela .agd-card,.agd-tela .agd-kpis>div{background:var(--agd-vidro);border:1px solid var(--agd-vborda);box-shadow:var(--agd-sombra);border-radius:16px;-webkit-backdrop-filter:blur(12px) saturate(140%);backdrop-filter:blur(12px) saturate(140%)}
-.agd-tela .agd-kpis>div.agd-kpi-alerta{background:rgba(255,247,237,.85);border-color:#fdba74}
+.agd-tela .agd-card,.agd-tela .agd-kpis>.agd-kpi{background:var(--agd-vidro);border:1px solid var(--agd-vborda);box-shadow:var(--agd-sombra);border-radius:16px;-webkit-backdrop-filter:blur(12px) saturate(140%);backdrop-filter:blur(12px) saturate(140%)}
+.agd-tela .agd-kpis>.agd-kpi.agd-kpi-alerta{background:rgba(255,247,237,.85);border-color:#fdba74}
 .agd-tela .agd-pend{border-left:4px solid #f97316}
 .agd-tela .agd-url{background:var(--agd-vidro2)}
 .agd-tela .agc-nav,.agd-tela .agc-hoje{background:var(--agd-vidro2)}
 html[data-theme="dark"] .agd-tela{--agd-vidro:rgba(24,34,52,.66);--agd-vidro2:rgba(24,34,52,.46);--agd-vborda:rgba(255,255,255,.07);--agd-sombra:0 10px 28px rgba(0,0,0,.35);--agd-sel:rgba(46,143,239,.14);
   background:radial-gradient(1100px 460px at 88% -12%,rgba(46,143,239,.20),transparent 62%),radial-gradient(800px 420px at -8% 108%,rgba(22,163,74,.08),transparent 62%),#0b1220}
-html[data-theme="dark"] .agd-tela .agd-kpis>div.agd-kpi-alerta{background:rgba(249,115,22,.12);border-color:rgba(249,115,22,.5)}
+html[data-theme="dark"] .agd-tela .agd-kpis>.agd-kpi.agd-kpi-alerta{background:rgba(249,115,22,.12);border-color:rgba(249,115,22,.5)}
 /* no escuro, as bolinhas de cor escura (azul-marinho) ganham um anel claro para aparecer */
 html[data-theme="dark"] .agc-pts i,html[data-theme="dark"] .agd-tela .agd-cor{box-shadow:0 0 0 1.5px rgba(255,255,255,.55)}
 html[data-theme="dark"] .agc-n-bl{color:#fda29b}
-@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.agd-tela .agd-card,.agd-tela .agd-kpis>div{background:var(--wh)}}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.agd-tela .agd-card,.agd-tela .agd-kpis>.agd-kpi{background:var(--wh)}}
 
 /* ── mês + painel do dia ── */
 .agc-2col{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:12px;align-items:start;margin-bottom:12px}

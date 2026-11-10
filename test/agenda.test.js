@@ -273,7 +273,7 @@ test("API pública: o mesmo telefone (ou e-mail) não segura mais que 2 reuniõe
 // ── tela: calendário ────────────────────────────────────────────────────────
 const vm = require("vm");
 function telaAgenda(dados, opcoes) {
-  const o = opcoes || {}, ouvintes = {}, pedidos = [];
+  const o = opcoes || {}, ouvintes = {}, pedidos = [], janelas = [];
   const pagina = { innerHTML: "", addEventListener(n, f) { ouvintes[n] = f; }, contains: () => true, __ag: false };
   // clicar num botão com data-ag (o painel usa delegação de eventos no #ag-content)
   pagina.clicar = dataset => ouvintes.click({ target: { closest: s => (s === "[data-ag]" ? { dataset, disabled: false } : null) } });
@@ -282,14 +282,18 @@ function telaAgenda(dados, opcoes) {
     console, Promise, setTimeout, clearTimeout, Date, JSON, Map, Set, encodeURIComponent, location: { origin: "https://painel.exemplo" },
     sessionStorage: { getItem: k => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, String(v)) },
     localStorage: { getItem: k => (k === "agd_vista" ? o.vista || null : null), setItem() {} },
-    document: { readyState: "complete", addEventListener() {}, querySelector: () => null, getElementById: id => (id === "ag-content" ? pagina : null) },
+    document: { readyState: "complete", addEventListener() {}, querySelector: () => null,
+      getElementById: id => (id === "ag-content" ? pagina : id === "agd-ov" ? janelas[janelas.length - 1] || null : null),
+      // janelas (abrirKpi, abrirReuniao…): guarda o HTML e os ouvintes de clique
+      createElement: () => { const j = { innerHTML: "", ouv: [], addEventListener(n, f) { if (n === "click") j.ouv.push(f); }, remove() { janelas.splice(janelas.indexOf(j), 1); }, querySelector: () => null }; return j; },
+      body: { appendChild: j => janelas.push(j) } },
     fetch: async url => { pedidos.push(String(url)); const r = o.rotas && o.rotas(String(url)); return r || { ok: true, status: 200, json: async () => dados }; },
     ST: { pg: "agenda" }
   };
   ctx.window = ctx;
   vm.createContext(ctx);
   vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "assets", "agenda", "agenda.js"), "utf8"), ctx, { filename: "agenda.js" });
-  return { ctx, pagina, pedidos };
+  return { ctx, pagina, pedidos, janelas };
 }
 test("tela: semana como o iPhone (seg a sex), reunião no horário e na altura da duração, bloqueio e nome escapado", async () => {
   const real = Date.now;
@@ -1422,5 +1426,26 @@ test("tela: resposta de horários livres pedida antes de uma mudança na agenda 
     ctx.agLoad(); await new Promise(r => setTimeout(r, 20)); // a agenda mudou e foi recarregada com os pedidos antigos a caminho
     liberar(); await new Promise(r => setTimeout(r, 30));
     assert.ok(pagina.innerHTML.includes("16:30") && !pagina.innerHTML.includes(">16:00<"), "fica o horário de depois da mudança");
+  } finally { Date.now = real; }
+});
+
+test("tela: os números do topo são botões e mostram a lista que formou cada um", async () => {
+  const real = Date.now; Date.now = () => AGORA;
+  try {
+    const { ctx, pagina, janelas } = telaAgenda(dadosMes(), { rotas: livresFalsos });
+    ctx.agLoad(); await new Promise(r => setTimeout(r, 20));
+    const h = pagina.innerHTML;
+    // agora são 10h do dia 05/11: a das 9h (Bruno) já acabou, a das 14h (Ana) ainda vai; 12/11 (Carla) está nos 7 dias
+    assert.ok(/data-ag="kpi" data-k="hoje"[^>]*><b>1<\/b>/.test(h), "hoje: só a que ainda vai acontecer");
+    assert.ok(/data-k="semana"[^>]*><b>1<\/b>/.test(h) && /data-k="total"[^>]*><b>2<\/b>/.test(h) && /data-k="link"[^>]*><b>2<\/b>/.test(h));
+    assert.ok(/data-k="pend"[^>]*><b>0<\/b>/.test(h) && !h.includes("agd-kpi agd-kpi-alerta"), "Bruno já tem resultado");
+    pagina.clicar({ ag: "kpi", k: "total" });
+    assert.equal(janelas.length, 1);
+    const j = janelas[0].innerHTML;
+    assert.ok(j.includes("Todas as reuniões marcadas · 2") && j.includes("Hoje · Quinta, 5 de nov") && j.includes("Quinta, 12 de nov"));
+    assert.ok(j.indexOf("&lt;b&gt;Ana&lt;/b&gt;") < j.indexOf("Carla") && !j.includes("<b>Ana</b>"), "em ordem e escapado");
+    assert.ok(j.includes("💻 Online") && j.includes('data-r="5"'));
+    pagina.clicar({ ag: "kpi", k: "pend" });
+    assert.ok(janelas[janelas.length - 1].innerHTML.includes("Aguardando resultado · 0") && janelas[janelas.length - 1].innerHTML.includes("Nenhuma reunião esperando resultado"));
   } finally { Date.now = real; }
 });
