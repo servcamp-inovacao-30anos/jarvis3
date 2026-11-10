@@ -69,7 +69,7 @@ function validarConfig(b) {
   // online/presencial de cada dia da semana (padrão; um dia específico pode mudar em modalidade_dias)
   const ms = b.modalidade_semana && typeof b.modalidade_semana === "object" ? b.modalidade_semana : {};
   const modalidade_semana = {};
-  for (const d of DIAS_SEMANA) if (MOD_DIA.includes(ms[d]) && ms[d] !== "ambos") modalidade_semana[d] = ms[d];
+  for (const d of DIAS_SEMANA) { const m = normMod(ms[d]); if (m && m !== "ambos") modalidade_semana[d] = m; }
   // e-mail que recebe o aviso de reunião nova, remarcada ou cancelada (vazio = a caixa do Comercial, MAIL_USER)
   const aviso = txt(b.email_aviso, 120).toLowerCase();
   if (aviso && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(aviso)) return { erro: "E-mail dos avisos inválido." };
@@ -77,23 +77,40 @@ function validarConfig(b) {
 }
 
 // ── online ou presencial ───────────────────────────────────────────────────
-// Cada dia atende "ambos", só "online" ou só "presencial". Vale o que a Comercial marcou para aquele dia
-// (modalidade_dias), senão o padrão do dia da semana (modalidade_semana), senão os dois.
+// Cada dia atende "ambos", só "online" ou só "presencial" — ou é DIVIDIDO em dois períodos:
+// { corte: "12:00", antes: "online", depois: "presencial" } (antes do corte vale um jeito, a partir dele o outro).
+// Vale o que a Comercial marcou para aquele dia (modalidade_dias), senão o padrão do dia da semana
+// (modalidade_semana), senão os dois. A reunião segue o jeito do horário em que ela COMEÇA.
 const MODALIDADES = { online: "Online", presencial: "Presencial" };
 const MOD_DIA = ["ambos", "online", "presencial"];
-function modalidadeDoDia(cfg, dia) {
-  const d = ((cfg && cfg.modalidade_dias) || {})[dia];
-  if (MOD_DIA.includes(d)) return d;
-  const s = ((cfg && cfg.modalidade_semana) || {})[diaSemana(dia)];
-  return MOD_DIA.includes(s) ? s : "ambos";
+// Valor guardado → "ambos" | "online" | "presencial" | { corte, antes, depois } | null (inválido).
+// Divisão com os dois lados iguais vira o jeito simples.
+function normMod(v) {
+  if (MOD_DIA.includes(v)) return v;
+  if (!v || typeof v !== "object" || Array.isArray(v)) return null;
+  const corte = String(v.corte || ""), antes = v.antes, depois = v.depois;
+  if (!HORA.test(corte) || minutos(corte) < 30 || minutos(corte) > 23 * 60 + 30) return null;
+  if (!MOD_DIA.includes(antes) || !MOD_DIA.includes(depois)) return null;
+  return antes === depois ? antes : { corte, antes, depois };
 }
-const aceita = (doDia, m) => doDia === "ambos" ? !!MODALIDADES[m] : m === doDia;
-// { dia, modalidade } — modalidade null/"" = volta ao padrão da semana
+function modalidadeDoDia(cfg, dia) {
+  const d = normMod(((cfg && cfg.modalidade_dias) || {})[dia]);
+  if (d) return d;
+  return normMod(((cfg && cfg.modalidade_semana) || {})[diaSemana(dia)]) || "ambos";
+}
+// O jeito que vale num horário do dia (dia dividido: antes ou depois do corte).
+function modalidadeDoHorario(cfg, dia, hora) {
+  const m = modalidadeDoDia(cfg, dia);
+  return typeof m === "object" ? (minutos(String(hora)) < minutos(m.corte) ? m.antes : m.depois) : m;
+}
+const aceita = (doHorario, m) => doHorario === "ambos" ? !!MODALIDADES[m] : m === doHorario;
+// { dia, modalidade } — modalidade null/""/"padrao" = volta ao padrão da semana; pode ser a divisão { corte, antes, depois }
 function validarModalidadeDia(b) {
   const dia = String((b && b.dia) || "");
   if (!DIA.test(dia)) return { erro: "Dia inválido." };
-  const m = b.modalidade == null || b.modalidade === "" || b.modalidade === "padrao" ? null : String(b.modalidade);
-  if (m && !MOD_DIA.includes(m)) return { erro: "Escolha online, presencial ou os dois." };
+  if (b.modalidade == null || b.modalidade === "" || b.modalidade === "padrao") return { dia, modalidade: null };
+  const m = normMod(b.modalidade);
+  if (!m) return { erro: typeof b.modalidade === "object" ? "Divisão inválida: confira o horário (HH:MM) e o jeito de cada período." : "Escolha online, presencial ou os dois." };
   return { dia, modalidade: m };
 }
 // Onde fica a reunião: online usa o link/instruções do tipo; presencial, o endereço.
@@ -269,5 +286,5 @@ module.exports = {
   paraUtc, deUtc, somaDias, diaSemana, hojeBR, faixa,
   validarConfig, validarTipo, validarPessoa, horariosDoDia, horariosLivres, ics, icsTxt,
   validarMarca, validarResultado, numeros, mesAntes, RESULTADOS, PROXIMOS, FOTO_MAX,
-  MODALIDADES, MOD_DIA, modalidadeDoDia, aceita, validarModalidadeDia, localDe
+  MODALIDADES, MOD_DIA, normMod, modalidadeDoDia, modalidadeDoHorario, aceita, validarModalidadeDia, localDe
 };

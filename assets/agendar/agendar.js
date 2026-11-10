@@ -19,6 +19,10 @@ const br=iso=>{const d=new Date(+new Date(iso)-3*3600000).toISOString();return{d
 const E={tipo:null,dias:{},mods:{},modalidade:null,dia:null,hora:null,remarcando:false,minha:null,marca:null};
 // online ou presencial: o dia aceita os dois ("ambos") ou um só
 const aceita=(md,m)=>!m||md==="ambos"||!md||md===m;
+// dia dividido ({corte, antes, depois}): antes do corte vale um jeito, a partir dele o outro
+const modHora=(d,h)=>{const m=E.mods[d];return m&&typeof m==="object"?(h<m.corte?m.antes:m.depois):m;};
+// horários do dia que aceitam o jeito escolhido
+const horasDe=d=>(E.dias[d]||[]).filter(h=>aceita(modHora(d,h),E.modalidade));
 // "💻 Online: link" · "📍 Presencial — endereço" · reunião antiga sem modalidade: só o local
 function ondeTxt(m,local){
   if(m==="online")return"💻 Online"+(local?": "+local:"");
@@ -76,7 +80,7 @@ async function carregar(manterDia){
   try{j=await api("horarios");}catch(e){erroTopo(e.message);return;}
   E.tipo=j.tipo;E.dias=j.dias||{};E.mods=j.modalidades||{};
   // que jeitos existem nos dias livres; remarcando, vale o da reunião (o servidor já filtrou os dias)
-  const tem=m=>Object.keys(E.dias).some(d=>aceita(E.mods[d],m)&&(E.mods[d]==="ambos"||!E.mods[d]||E.mods[d]===m));
+  const tem=m=>Object.keys(E.dias).some(d=>(E.dias[d]||[]).some(h=>{const x=modHora(d,h);return!x||x==="ambos"||x===m;}));
   E.opcoes=["online","presencial"].filter(tem);
   if(E.remarcando)E.modalidade=j.modalidade||null;
   else if(E.opcoes.length===1)E.modalidade=E.opcoes[0];
@@ -93,14 +97,14 @@ async function carregar(manterDia){
 }
 // dias que aceitam o jeito escolhido
 function desenharDias(manterDia){
-  const dias=Object.keys(E.dias).sort().filter(d=>aceita(E.mods[d],E.modalidade));
+  const dias=Object.keys(E.dias).sort().filter(d=>horasDe(d).length>0);
   if(!dias.length){$("agDias").innerHTML='<p class="ag-vazio">Não há horários livres'+(E.modalidade&&E.opcoes&&E.opcoes.length===2?' '+(E.modalidade==="online"?"online":"presenciais"):"")+' nos próximos dias. Fale com o nosso Comercial.</p>';$("agHoras").innerHTML="";$("agTitHoras").hidden=true;return;}
   if(!manterDia||!dias.includes(E.dia))E.dia=dias[0];
-  $("agDias").innerHTML=dias.map(d=>{const x=new Date(d+"T12:00:00Z");return'<button type="button" class="ag-dia'+(d===E.dia?" on":"")+'" data-d="'+d+'" role="option" aria-selected="'+(d===E.dia)+'"><span>'+SEM[x.getUTCDay()]+'</span><b>'+x.getUTCDate()+'</b><span>'+MES[x.getUTCMonth()]+'</span><em>'+E.dias[d].length+' horário'+(E.dias[d].length===1?'':'s')+'</em></button>';}).join("");
+  $("agDias").innerHTML=dias.map(d=>{const x=new Date(d+"T12:00:00Z");return'<button type="button" class="ag-dia'+(d===E.dia?" on":"")+'" data-d="'+d+'" role="option" aria-selected="'+(d===E.dia)+'"><span>'+SEM[x.getUTCDay()]+'</span><b>'+x.getUTCDate()+'</b><span>'+MES[x.getUTCMonth()]+'</span><em>'+horasDe(d).length+' horário'+(horasDe(d).length===1?'':'s')+'</em></button>';}).join("");
   horas();
 }
 function horas(){
-  const h=E.dias[E.dia]||[];
+  const h=horasDe(E.dia);
   $("agTitHoras").hidden=false;
   $("agHoras").innerHTML=h.map(x=>'<button type="button" class="ag-hora" data-h="'+x+'" role="option">'+x+'</button>').join("");
 }

@@ -239,7 +239,7 @@ async function pubHorarios({ req, res, db }) {
   const dias = await livresPara(db, cfg, tipo, agora, ignorar), modalidades = {};
   for (const d of Object.keys(dias)) {
     const md = R.modalidadeDoDia(cfg, d);
-    if (sua && !R.aceita(md, sua)) { delete dias[d]; continue; }
+    if (sua) { dias[d] = dias[d].filter(h => R.aceita(R.modalidadeDoHorario(cfg, d, h), sua)); if (!dias[d].length) { delete dias[d]; continue; } }
     modalidades[d] = md;
   }
   return res.status(200).json({
@@ -261,11 +261,11 @@ async function pubAgendar({ req, res, db }) {
   const livres = await livresPara(db, cfg, tipo, agora);
   if (!(livres[b.dia] || []).includes(b.hora)) return erro(res, 409, "Esse horário não está mais disponível. Escolha outro.", "OCUPADO");
   // online ou presencial: o dia precisa aceitar o que a pessoa escolheu (dia de um só jeito já decide sozinho)
-  const md = R.modalidadeDoDia(cfg, b.dia);
+  const md = R.modalidadeDoHorario(cfg, b.dia, b.hora); // dia dividido: vale o período do horário escolhido
   const modalidade = md === "ambos" ? String(b.modalidade || "") : (b.modalidade ? String(b.modalidade) : md);
   // (página antiga em cache não manda nada: em dia que aceita os dois, fica "não definida")
   if (modalidade && !R.MODALIDADES[modalidade]) return erro(res, 400, "Escolha se a reunião é online ou presencial.", "INVALIDO");
-  if (modalidade && !R.aceita(md, modalidade)) return erro(res, 409, "Neste dia a reunião é só " + (md === "online" ? "online" : "presencial") + ". Escolha outro dia.", "MODALIDADE");
+  if (modalidade && !R.aceita(md, modalidade)) return erro(res, 409, "Neste horário a reunião é só " + (md === "online" ? "online" : "presencial") + ". Escolha outro horário.", "MODALIDADE");
 
   // limites contra quem tenta lotar a agenda
   const p = v.pessoa, ip = ipDe(req);
@@ -340,7 +340,7 @@ async function pubRemarcarMinha({ req, res, db }) {
   const cfgL = await lerConfig(db), cfg = cfgDe(cfgL);
   const livres = await livresPara(db, cfg, tipo, agora, r.id);
   if (!(livres[b.dia] || []).includes(b.hora)) return erro(res, 409, "Esse horário não está mais disponível. Escolha outro.", "OCUPADO");
-  if (r.modalidade && !R.aceita(R.modalidadeDoDia(cfg, b.dia), r.modalidade)) return erro(res, 409, "Neste dia não atendemos " + (r.modalidade === "online" ? "online" : "presencialmente") + ". Escolha outro dia.", "MODALIDADE");
+  if (r.modalidade && !R.aceita(R.modalidadeDoHorario(cfg, b.dia, b.hora), r.modalidade)) return erro(res, 409, "Neste horário não atendemos " + (r.modalidade === "online" ? "online" : "presencialmente") + ". Escolha outro dia.", "MODALIDADE");
   const f = R.faixa(b.dia, b.hora, Math.round((+new Date(r.fim) - +new Date(r.inicio)) / 60000), cfg.intervalo_min);
   try { await db.atualizar(`ag_reunioes?id=eq.${r.id}&status=eq.ativa`, { inicio: iso(f.inicio), fim: iso(f.fim), ocupa_ate: iso(f.ocupa_ate), remarcacoes: (r.remarcacoes || 0) + 1, lembrete_em: null }); }
   catch (e) { if (conflito(e)) return erro(res, 409, "Esse horário acabou de ser ocupado. Escolha outro.", "OCUPADO"); throw e; }
@@ -546,8 +546,8 @@ async function criarBloqueio({ res, db, ator, body }) {
   const parcial = !!(de || ate);
   let modalidade = null;
   if (parcial && body.modalidade != null && body.modalidade !== "") {
-    modalidade = String(body.modalidade);
-    if (!R.MOD_DIA.includes(modalidade)) return erro(res, 400, "Escolha online, presencial ou os dois.", "INVALIDO");
+    modalidade = R.normMod(body.modalidade);
+    if (!modalidade) return erro(res, 400, "Escolha online, presencial, os dois ou a divisão do dia.", "INVALIDO");
   }
   const dias = [];
   for (let d = dia; d <= ateDia && dias.length < 31; d = R.somaDias(d, 1)) dias.push(d);
@@ -676,7 +676,7 @@ async function podeVerNumeros(db, ator) {
 async function aplicarModalidade(db, ator, listaDias, modalidade) {
   const c = await lerConfig(db), ontem = R.somaDias(R.hojeBR(Date.now()), -1);
   const dias = {};
-  for (const [d, m] of Object.entries(c.modalidade_dias || {})) if (d >= ontem && R.MOD_DIA.includes(m)) dias[d] = m;
+  for (const [d, m] of Object.entries(c.modalidade_dias || {})) { const n = R.normMod(m); if (d >= ontem && n) dias[d] = n; }
   for (const d of listaDias) { if (modalidade) dias[d] = modalidade; else delete dias[d]; }
   await db.atualizar("ag_config?id=eq.1", { modalidade_dias: dias, atualizado_em: iso(Date.now()), atualizado_por: ator });
   registrar(db, ator, "AGENDA_MODALIDADE_DIA", listaDias[0], { dias: listaDias.length, modalidade: modalidade || "padrão" });

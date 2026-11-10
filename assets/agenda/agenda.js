@@ -38,10 +38,29 @@ const linkDe=t=>location.origin+"/agendar.html?s="+encodeURIComponent(t.slug);
 const RESULTADOS={realizada:"Realizada",faltou:"Não compareceu"};
 const PROXIMOS={proposta:"Enviar proposta",visita:"Agendar visita",nova_reuniao:"Nova reunião",fechou:"Fechou negócio",sem_interesse:"Sem interesse",remarcar:"Remarcar",outro:"Outro"};
 const comecou=r=>+new Date(r.inicio)<=Date.now();
-// online ou presencial: cada dia aceita os dois, só online ou só presencial (o dia específico vence o padrão da semana)
+// online ou presencial: cada dia aceita os dois, só online, só presencial, ou é DIVIDIDO em dois períodos
+// ({corte:"12:00", antes:"online", depois:"presencial"}). O dia específico vence o padrão da semana.
+// A mesma regra do servidor (api/_agenda_regras.js: normMod, modalidadeDoDia, modalidadeDoHorario).
 const MODS={ambos:"Online e presencial",online:"Só online",presencial:"Só presencial"};
-const modDia=d=>{const c=(AG.dados&&AG.dados.config)||{},x=(c.modalidade_dias||{})[d];if(MODS[x])return x;const s=(c.modalidade_semana||{})[String(new Date(d+"T12:00:00Z").getUTCDay())];return MODS[s]?s:"ambos";};
+const normMod=v=>{if(MODS[v])return v;if(v&&typeof v==="object"&&/^\d{2}:\d{2}$/.test(v.corte||"")&&MODS[v.antes]&&MODS[v.depois])return v.antes===v.depois?v.antes:v;return null;};
+const modDia=d=>{const c=(AG.dados&&AG.dados.config)||{};return normMod((c.modalidade_dias||{})[d])||normMod((c.modalidade_semana||{})[String(new Date(d+"T12:00:00Z").getUTCDay())])||"ambos";};
+const dividido=m=>!!m&&typeof m==="object";
+const restrito=m=>dividido(m)||(!!m&&m!=="ambos");
+const modHoraAdm=(d,h)=>{const m=modDia(d);return dividido(m)?(String(h)<m.corte?m.antes:m.depois):m;};
+const curtoMod=m=>m==="online"?"só online":m==="presencial"?"só presencial":"online e presencial";
+const hCorte=x=>{const[a,b]=String(x).split(":");return Number(a)+"h"+(b&&b!=="00"?b:"");};
+const txtModDia=m=>dividido(m)?"Até "+hCorte(m.corte)+" "+curtoMod(m.antes)+" · depois "+curtoMod(m.depois):MODS[m]||MODS.ambos;
 const icMod=m=>m==="online"?"💻":m==="presencial"?"📍":"";
+const icModDia=m=>dividido(m)?(icMod(m.antes)||"💻📍")+"|"+(icMod(m.depois)||"💻📍"):icMod(m);
+// Campos da divisão do dia (horário do corte + o jeito antes e depois), usados no dia, no bloqueio e na semana.
+function camposDivisao(m){
+  const v=dividido(m)?m:{corte:"12:00",antes:"online",depois:"presencial"};
+  const op=s=>["ambos","online","presencial"].map(k=>'<option value="'+k+'"'+(s===k?" selected":"")+'>'+MODS[k]+'</option>').join("");
+  return'<span class="agc-div"><span>Divide às</span><input type="time" class="dv-corte" step="300" value="'+esc(v.corte)+'" aria-label="Horário que divide o dia">'+
+    '<span>Antes</span><select class="dv-antes" aria-label="Antes do horário">'+op(v.antes)+'</select>'+
+    '<span>A partir daí</span><select class="dv-depois" aria-label="A partir do horário">'+op(v.depois)+'</select></span>';
+}
+const lerDivisao=box=>{const q=s=>box.querySelector(s);return{corte:q(".dv-corte").value,antes:q(".dv-antes").value,depois:q(".dv-depois").value};};
 const txtMod=m=>m==="online"?"💻 Online":m==="presencial"?"📍 Presencial":"";
 // reuniões que já começaram e ainda não têm resultado (as dos últimos 30 dias)
 const semResultado=D=>D.reunioes.filter(r=>r.status==="ativa"&&!r.resultado&&comecou(r)&&Date.now()-+new Date(r.inicio)<30*86400000).sort((a,b)=>+new Date(b.inicio)-+new Date(a.inicio));
@@ -217,11 +236,13 @@ function calendario(ativas){
 
 // "Neste dia, o link oferece [padrão / os dois / só online / só presencial]" (a mudança vai pelo "change" em ligar)
 function seletorModalidade(d){
-  const c=(AG.dados.config||{}),proprio=MODS[(c.modalidade_dias||{})[d]]?(c.modalidade_dias||{})[d]:"";
-  const s=(c.modalidade_semana||{})[String(dowDe(d))],padrao=MODS[s]?s:"ambos";
-  return'<label class="agc-modsel">Neste dia, o link oferece <select data-ag-mod="'+d+'" aria-label="Online ou presencial neste dia">'+
-    '<option value=""'+(proprio?"":" selected")+'>Padrão da '+esc(SEM[dowDe(d)].toLowerCase())+' ('+MODS[padrao].toLowerCase()+')</option>'+
-    ["ambos","online","presencial"].map(k=>'<option value="'+k+'"'+(proprio===k?" selected":"")+'>'+MODS[k]+'</option>').join("")+'</select></label>';
+  const c=(AG.dados.config||{}),proprio=normMod((c.modalidade_dias||{})[d]);
+  const padrao=normMod((c.modalidade_semana||{})[String(dowDe(d))])||"ambos",div=dividido(proprio);
+  return'<div class="agc-modsel" data-mod-box="'+d+'"><label class="agc-modsel-l">Neste dia, o link oferece <select data-ag-mod="'+d+'" aria-label="Online ou presencial neste dia">'+
+    '<option value=""'+(proprio?"":" selected")+'>Padrão da '+esc(SEM[dowDe(d)].toLowerCase())+' ('+esc(txtModDia(padrao).toLowerCase())+')</option>'+
+    ["ambos","online","presencial"].map(k=>'<option value="'+k+'"'+(proprio===k?" selected":"")+'>'+MODS[k]+'</option>').join("")+
+    '<option value="dividir"'+(div?" selected":"")+'>Dividir o dia (manhã / tarde)…</option></select></label>'+
+    '<div class="agc-moddiv"'+(div?"":" hidden")+'>'+camposDivisao(proprio)+'<button type="button" class="rh-btn agc-moddiv-ok" data-ag="moddiv" data-dia="'+d+'">Salvar divisão</button></div></div>';
 }
 
 // Semana e Dia: colunas com as horas, como o calendário do iPhone. Faixa clara = horário de atendimento;
@@ -237,7 +258,7 @@ function vistaGrade(dias,ativas){
   const alt=(fim-ini)/60*H,y=m=>(m-ini)/60*H;
   let h='<div class="agc-rola"><div class="agc-grade" style="--cols:'+dias.length+'"><div class="agc-cab"><div></div>'+dias.map(d=>{
     const x=new Date(d+"T12:00:00Z");
-    return'<button type="button" class="agc-cd'+(d===hoje?" hoje":"")+'" data-ag="dia" data-dia="'+d+'" title="Ver o dia'+(modDia(d)!=="ambos"?" · "+MODS[modDia(d)]:"")+'"><span>'+SEMC[x.getUTCDay()]+(modDia(d)!=="ambos"?" "+icMod(modDia(d)):"")+'</span><b>'+x.getUTCDate()+'</b></button>';
+    return'<button type="button" class="agc-cd'+(d===hoje?" hoje":"")+'" data-ag="dia" data-dia="'+d+'" title="Ver o dia'+(restrito(modDia(d))?" · "+esc(txtModDia(modDia(d))):"")+'"><span>'+SEMC[x.getUTCDay()]+(restrito(modDia(d))?" "+icModDia(modDia(d)):"")+'</span><b>'+x.getUTCDate()+'</b></button>';
   }).join("")+'</div><div class="agc-corpo"><div class="agc-horas" style="height:'+alt+'px">';
   for(let m=ini+60;m<fim;m+=60)h+='<span style="top:'+y(m)+'px">'+hhmm(m)+'</span>';
   h+='</div>';
@@ -286,8 +307,8 @@ function vistaMes(ativas){
     const d=somaDias(ini,i);
     if(i===35&&d.slice(0,7)!==mes)break; // 6ª linha só quando o mês precisa
     const rs=doDiaAtivas(ativas,d),bloq=diaBloqueado(d),md=modDia(d),atende=temAtend(dowDe(d));
-    h+='<button type="button" class="agc-dm'+(d.slice(0,7)!==mes?" fora":"")+(d===hoje?" hoje":"")+(d===AG.sel?" sel":"")+(bloq?" bloq":"")+(!atende?" fds":"")+(d<hoje?" passado":"")+'" data-ag="sel" data-dia="'+d+'" aria-pressed="'+(d===AG.sel)+'" aria-label="'+esc(diaLongo(d)+(d===hoje?", hoje":"")+(rs.length?", "+rs.length+" reuni"+(rs.length===1?"ão":"ões"):"")+(bloq?", bloqueado":"")+(!atende?", sem atendimento":md!=="ambos"?", "+MODS[md].toLowerCase():""))+'">'+
-      '<span class="agc-dm-n"><b>'+Number(d.slice(8))+'</b>'+(md!=="ambos"&&atende?'<small class="agc-mod" title="'+MODS[md]+'">'+icMod(md)+'</small>':'')+'</span>'+
+    h+='<button type="button" class="agc-dm'+(d.slice(0,7)!==mes?" fora":"")+(d===hoje?" hoje":"")+(d===AG.sel?" sel":"")+(bloq?" bloq":"")+(!atende?" fds":"")+(d<hoje?" passado":"")+'" data-ag="sel" data-dia="'+d+'" aria-pressed="'+(d===AG.sel)+'" aria-label="'+esc(diaLongo(d)+(d===hoje?", hoje":"")+(rs.length?", "+rs.length+" reuni"+(rs.length===1?"ão":"ões"):"")+(bloq?", bloqueado":"")+(!atende?", sem atendimento":restrito(md)?", "+txtModDia(md).toLowerCase():""))+'">'+
+      '<span class="agc-dm-n"><b>'+Number(d.slice(8))+'</b>'+(restrito(md)&&atende?'<small class="agc-mod" title="'+esc(txtModDia(md))+'">'+icModDia(md)+'</small>':'')+'</span>'+
       (rs.length?'<span class="agc-pts">'+rs.slice(0,5).map(r=>'<i style="background:'+esc(corTipo(r))+'"></i>').join("")+(rs.length>5?'<em>+'+(rs.length-5)+'</em>':'')+'</span><span class="agc-n">'+rs.length+' reuni'+(rs.length===1?"ão":"ões")+'</span>':(bloq?'<span class="agc-n agc-n-bl">bloqueado</span>':''))+'</button>';
   }
   h+='</div></div>';
@@ -425,11 +446,10 @@ function ligar(el){
   if(el.__ag)return;el.__ag=true;
   el.addEventListener("change",e=>{
     const s=e.target.closest("[data-ag-mod]");if(!s)return;
-    s.disabled=true;AG.modPendente=true;
-    api("modalidade","POST",{dia:s.dataset.agMod,modalidade:s.value||null})
-      .then(j=>{AG.dados.config.modalidade_dias=j.modalidade_dias||{};toast("✅ "+(s.value?diaLongo(s.dataset.agMod)+": "+MODS[s.value].toLowerCase():"Dia voltou ao padrão"));render();})
-      .catch(err=>{toast("⚠️ "+err.message);render();})
-      .then(()=>{AG.modPendente=false;limparLivres();if(AG.vista==="mes")render();}); // o link mudou: os horários livres também
+    const box=s.closest("[data-mod-box]"),dv=box&&box.querySelector(".agc-moddiv");
+    if(s.value==="dividir"){if(dv){dv.hidden=false;const c=dv.querySelector(".dv-corte");if(c)c.focus();}return;} // só salva no "Salvar divisão"
+    if(dv)dv.hidden=true;
+    salvarModDia(s.dataset.agMod,s.value||null,s);
   });
   el.addEventListener("click",e=>{
     // horário vazio na grade (Semana/Dia): marcar uma reunião ali, no passo de horários da configuração
@@ -466,6 +486,7 @@ function ligar(el){
     else if(a==="hoje"){AG.ref=hojeBR();AG.sel=hojeBR();render();}
     else if(a==="dia"){AG.ref=b.dataset.dia;AG.vista="dia";render();}
     else if(a==="kpi")abrirKpi(b.dataset.k);
+    else if(a==="moddiv"){const box=b.closest&&b.closest("[data-mod-box]");if(box)salvarModDia(b.dataset.dia,lerDivisao(box),b);}
     else if(a==="ver")abrirReuniao(AG.dados.reunioes.find(r=>String(r.id)===id));
     else if(a==="copiar"){const t=AG.dados.tipos.find(x=>String(x.id)===id);if(t)copiar(linkDe(t),"🔗 Link copiado: é só colar para o cliente");}
     else if(a==="remarcar")abrirRemarcar(AG.dados.reunioes.find(r=>String(r.id)===id));
@@ -481,6 +502,14 @@ function ligar(el){
     }
     else if(a==="tirarbl"){if(confirm("Tirar este bloqueio? O horário volta a aparecer no link."))acao(()=>api("bloqueio","DELETE",null,"&id="+id),"Bloqueio tirado",b);}
   });
+}
+// Grava o jeito de um dia (null = volta ao padrão) e redesenha; os horários livres do link mudam junto.
+function salvarModDia(dia,modalidade,ctrl){
+  if(ctrl)ctrl.disabled=true;AG.modPendente=true;
+  api("modalidade","POST",{dia,modalidade})
+    .then(j=>{AG.dados.config.modalidade_dias=j.modalidade_dias||{};toast("✅ "+(modalidade?diaLongo(dia)+": "+txtModDia(normMod(modalidade)||modalidade).toLowerCase():"Dia voltou ao padrão"));render();})
+    .catch(err=>{toast("⚠️ "+err.message);render();})
+    .then(()=>{AG.modPendente=false;limparLivres();if(AG.vista==="mes")render();});
 }
 function copiar(t,msg){
   (navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast(msg)).catch(()=>{prompt("Copie o link:",t);});
@@ -531,8 +560,8 @@ function abrirMarcar(pre){
     '<div class="agd-acoes"><button type="button" class="rh-btn rh-btn-sec" data-fechar="1">Voltar</button><button type="button" class="rh-btn" id="agm-ok">Marcar</button></div>');
   const v=id=>ov.querySelector(id).value;
   ov.querySelector("#agm-ok").addEventListener("click",e=>enviar(ov,e.currentTarget,()=>api("reuniao","POST",{tipo_id:v("#agm-tipo"),dia:v("#agm-dia"),hora:v("#agm-hora"),nome:v("#agm-nome"),telefone:v("#agm-tel"),email:v("#agm-email"),obs:v("#agm-obs"),modalidade:v("#agm-mod")||null,avisar:ov.querySelector("#agm-avisar").checked}),"Reunião marcada"));
-  {const md=modDia(v("#agm-dia"));if(md!=="ambos")ov.querySelector("#agm-mod").value=md;
-   ov.querySelector("#agm-dia").addEventListener("change",()=>{const m=modDia(v("#agm-dia"));if(m!=="ambos")ov.querySelector("#agm-mod").value=m;});}
+  {const ajusta=()=>{const m=modHoraAdm(v("#agm-dia"),v("#agm-hora"));if(m!=="ambos")ov.querySelector("#agm-mod").value=m;};
+   ajusta();ov.querySelector("#agm-dia").addEventListener("change",ajusta);ov.querySelector("#agm-hora").addEventListener("change",ajusta);}
   ov.querySelector("#agm-nome").focus();
 }
 function abrirRemarcar(r){
@@ -550,18 +579,20 @@ function abrirBloqueio(dia){
     '<div class="agd-2">'+campo("De",'<input type="date" id="agb-dia" min="'+hojeBR()+'" value="'+d0+'">')+campo("Até",'<input type="date" id="agb-ate" min="'+hojeBR()+'" value="'+d0+'">')+'</div>'+
     '<label class="agd-ck"><input type="checkbox" id="agb-inteiro" checked> Dia(s) inteiro(s)</label>'+
     '<div id="agb-horas" hidden><div class="agd-2">'+campo("Das",'<input type="time" id="agb-de" step="300" value="12:00">')+campo("Até as",'<input type="time" id="agb-ateh" step="300" value="14:00">')+'</div>'+
-      campo("No resto do dia, o cliente pode marcar",'<select id="agb-mod"><option value="ambos">Online e presencial</option><option value="online">Só online</option><option value="presencial">Só presencial</option></select>')+
+      campo("No resto do dia, o cliente pode marcar",'<select id="agb-mod"><option value="ambos">Online e presencial</option><option value="online">Só online</option><option value="presencial">Só presencial</option><option value="dividir">Dividir o dia (manhã / tarde)…</option></select>')+
+      '<div id="agb-div" hidden></div>'+
       '<p class="agd-dica" id="agb-mod-d">Só vale para os horários que continuam livres neste dia.</p></div>'+
     campo("Motivo <small>(opcional, só você vê)</small>",'<input id="agb-motivo" maxlength="120" placeholder="Ex.: férias, feriado, visita">')+
     '<div class="agd-acoes"><button type="button" class="rh-btn rh-btn-sec" data-fechar="1">Voltar</button><button type="button" class="rh-btn" id="agb-ok">Bloquear</button></div>');
   const q=s=>ov.querySelector(s);
-  const modAtual=()=>{q("#agb-mod").value=modDia(q("#agb-dia").value);};
+  const modAtual=()=>{const m=modDia(q("#agb-dia").value);q("#agb-mod").value=dividido(m)?"dividir":m;q("#agb-div").innerHTML=camposDivisao(m);q("#agb-div").hidden=!dividido(m);};
+  q("#agb-mod").addEventListener("change",()=>{q("#agb-div").hidden=q("#agb-mod").value!=="dividir";});
   modAtual();
   q("#agb-dia").addEventListener("change",()=>{if(q("#agb-ate").value<q("#agb-dia").value)q("#agb-ate").value=q("#agb-dia").value;modAtual();});
   q("#agb-inteiro").addEventListener("change",()=>{q("#agb-horas").hidden=q("#agb-inteiro").checked;});
   q("#agb-ok").addEventListener("click",e=>{
     const inteiro=q("#agb-inteiro").checked;
-    enviar(ov,e.currentTarget,()=>api("bloqueio","POST",{dia:q("#agb-dia").value,ateDia:q("#agb-ate").value,de:inteiro?null:q("#agb-de").value,ate:inteiro?null:q("#agb-ateh").value,modalidade:inteiro?null:q("#agb-mod").value,motivo:q("#agb-motivo").value}),inteiro?"Horário bloqueado":"Horário bloqueado e jeito do dia definido");
+    enviar(ov,e.currentTarget,()=>api("bloqueio","POST",{dia:q("#agb-dia").value,ateDia:q("#agb-ate").value,de:inteiro?null:q("#agb-de").value,ate:inteiro?null:q("#agb-ateh").value,modalidade:inteiro?null:(q("#agb-mod").value==="dividir"?lerDivisao(q("#agb-div")):q("#agb-mod").value),motivo:q("#agb-motivo").value}),inteiro?"Horário bloqueado":"Horário bloqueado e jeito do dia definido");
   });
 }
 function abrirConfig(){
@@ -572,7 +603,9 @@ function abrirConfig(){
       '<span class="s-f"><input type="time" class="s-a1" step="300" value="'+f1[0]+'">–<input type="time" class="s-b1" step="300" value="'+f1[1]+'"></span>'+
       '<label class="agd-ck s-2l"><input type="checkbox" class="s-2"'+(f2?" checked":"")+'> 2ª faixa</label>'+
       '<span class="s-f s-f2"'+(f2?"":" hidden")+'><input type="time" class="s-a2" step="300" value="'+(f2?f2[0]:"14:00")+'">–<input type="time" class="s-b2" step="300" value="'+(f2?f2[1]:"17:00")+'"></span>'+
-      '<select class="s-mod" aria-label="Online ou presencial na '+SEM[i]+'">'+["ambos","online","presencial"].map(k=>'<option value="'+k+'"'+((((c.modalidade_semana||{})[String(i)])||"ambos")===k?" selected":"")+'>'+MODS[k]+'</option>').join("")+'</select></div>';
+      (()=>{const m=normMod((c.modalidade_semana||{})[String(i)])||"ambos",div=dividido(m);
+        return'<select class="s-mod" aria-label="Online ou presencial na '+SEM[i]+'">'+["ambos","online","presencial"].map(k=>'<option value="'+k+'"'+(m===k?" selected":"")+'>'+MODS[k]+'</option>').join("")+'<option value="dividir"'+(div?" selected":"")+'>Dividir (manhã / tarde)…</option></select>'+
+          '<span class="s-div"'+(div?"":" hidden")+'>'+camposDivisao(m)+'</span>';})()+'</div>';
   };
   const tipoLinha=t=>'<div class="agd-tipo" data-id="'+(t?t.id:"")+'"><input type="color" class="t-cor" value="'+esc((t&&t.cor)||"#1e4d8c")+'" aria-label="Cor">'+
     '<input class="t-nome" maxlength="60" placeholder="Nome (ex.: Captação)" value="'+esc(t?t.nome:"")+'">'+
@@ -594,7 +627,10 @@ function abrirConfig(){
     '<button type="button" class="agd-lk" id="agc-novo">+ novo tipo</button>'+
     '<div class="agd-acoes"><button type="button" class="rh-btn rh-btn-sec" data-fechar="1">Voltar</button><button type="button" class="rh-btn" id="agc-ok">Salvar</button></div>',true);
   const q=s=>ov.querySelector(s);
-  ov.addEventListener("change",e=>{if(e.target.classList.contains("s-2"))e.target.closest(".agd-sem").querySelector(".s-f2").hidden=!e.target.checked;});
+  ov.addEventListener("change",e=>{
+    if(e.target.classList.contains("s-2"))e.target.closest(".agd-sem").querySelector(".s-f2").hidden=!e.target.checked;
+    if(e.target.classList.contains("s-mod"))e.target.closest(".agd-sem").querySelector(".s-div").hidden=e.target.value!=="dividir";
+  });
   q("#agc-novo").addEventListener("click",()=>{q("#agc-tipos").insertAdjacentHTML("beforeend",tipoLinha(null));});
   q("#agc-ok").addEventListener("click",e=>{
     const semana={};
@@ -605,7 +641,7 @@ function abrirConfig(){
       semana[l.dataset.d]=f;
     });
     const modalidade_semana={};
-    ov.querySelectorAll(".agd-sem").forEach(l=>{const m=l.querySelector(".s-mod").value;if(m&&m!=="ambos")modalidade_semana[l.dataset.d]=m;});
+    ov.querySelectorAll(".agd-sem").forEach(l=>{const m=l.querySelector(".s-mod").value;if(m==="dividir")modalidade_semana[l.dataset.d]=lerDivisao(l.querySelector(".s-div"));else if(m&&m!=="ambos")modalidade_semana[l.dataset.d]=m;});
     const cfg={modalidade_semana,semana,intervalo_min:+q("#agc-int").value,antecedencia_h:+q("#agc-ant").value,janela_dias:+q("#agc-jan").value,passo_min:+q("#agc-passo").value,email_aviso:q("#agc-aviso").value};
     const tipos=[...ov.querySelectorAll(".agd-tipo")].map(l=>({id:l.dataset.id||null,nome:l.querySelector(".t-nome").value,duracao_min:+l.querySelector(".t-dur").value,local:l.querySelector(".t-local").value,local_online:l.querySelector(".t-online").value,cor:l.querySelector(".t-cor").value,ativo:l.querySelector(".t-ativo").checked,diretores:[...l.querySelectorAll(".t-d:checked")].map(i=>Number(i.value))}))
       .filter(t=>t.id||t.nome.trim()); // linha nova em branco é ignorada

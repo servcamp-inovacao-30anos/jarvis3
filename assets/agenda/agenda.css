@@ -293,10 +293,22 @@ html[data-theme="dark"] .agc-n-bl{color:#fda29b}
 .agc-dp-t{min-width:0}
 .agc-dp-t b{display:block;font-size:.92rem;color:var(--g800)}
 .agc-dp-t span{font-size:.7rem;color:var(--g500);line-height:1.4}
-.agc-modsel{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:.72rem;font-weight:700;color:var(--g600,#475569)}
+.agc-modsel{display:flex;flex-direction:column;gap:6px}
+.agc-modsel-l{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:.72rem;font-weight:700;color:var(--g600,#475569)}
+.agc-moddiv{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px;padding:8px 10px;border:1px dashed var(--g300,#c8d0de);border-radius:10px;background:var(--agd-vidro2,var(--g50))}
+.agc-moddiv[hidden]{display:none}
+.agc-moddiv-ok{padding:7px 14px}
+/* divisão do dia: "Divide às [hora]" "Antes [jeito]" "A partir daí [jeito]" */
+.agc-div{display:grid;grid-template-columns:auto 1fr;gap:5px 8px;align-items:center;font-size:.7rem;font-weight:700;color:var(--g600,#475569);flex:1 1 220px}
+.agc-div input,.agc-div select{padding:5px 8px;border:1px solid var(--g200);border-radius:7px;font:inherit;font-size:.74rem;background:var(--wh);color:var(--g800);min-width:0}
+.agd-sem .s-div{flex-basis:100%;padding:4px 0 6px 100px}
+.agd-sem .s-div[hidden]{display:none}
+#agb-div{margin-bottom:10px}
 .agc-modsel select{padding:5px 8px;border:1px solid var(--g200);border-radius:8px;font:inherit;font-size:.74rem;background:var(--wh);color:var(--g800)}
-.agc-dp .agc-modsel{margin-bottom:12px;flex-direction:column;align-items:stretch;gap:4px}
-.agc-dp .agc-modsel select{width:100%;background:var(--agd-vidro2,var(--wh))}
+.agc-dp .agc-modsel{margin-bottom:12px}
+.agc-dp .agc-modsel-l{flex-direction:column;align-items:stretch;gap:4px}
+.agc-dp .agc-moddiv-ok{width:100%}
+.agc-dp .agc-modsel-l select{width:100%;background:var(--agd-vidro2,var(--wh))}
 .agc-pev{display:flex;gap:10px;width:100%;text-align:left;padding:9px 10px;border-radius:11px;background:var(--agd-vidro2,var(--wh));border:1px solid var(--g200);border-left:4px solid #1e4d8c;margin-bottom:7px;cursor:pointer;font:inherit;color:var(--g800)}
 .agc-pev:hover{border-color:#2e8fef}
 .agc-pev.foi{opacity:.72}
@@ -331,3 +343,4 @@ html[data-theme="dark"] .agc-dp-sem em{color:#8cc6ff}
 html[data-theme="dark"] .agc-modsel select{background:var(--g100)}
 @media (max-width:1100px){.agc-2col{grid-template-columns:1fr}.agc-dp{position:static}}
 @media (max-width:640px){.agd-tela{padding:8px;border-radius:14px}}
+@media (max-width:640px){.agd-sem .s-div{padding-left:0}}

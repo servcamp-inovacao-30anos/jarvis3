@@ -1263,7 +1263,7 @@ test("bloqueio parcial: a Comercial diz como o cliente marca no resto do dia; bl
 
 test("tela: bloqueio parcial pergunta online ou presencial para o resto do dia", () => {
   const JS = fs.readFileSync(path.join(__dirname, "..", "assets", "agenda", "agenda.js"), "utf8");
-  assert.ok(JS.includes("No resto do dia, o cliente pode marcar") && JS.includes('modalidade:inteiro?null:q("#agb-mod").value'));
+  assert.ok(JS.includes("No resto do dia, o cliente pode marcar") && JS.includes("modalidade:inteiro?null:(q(\"#agb-mod\").value===\"dividir\"?lerDivisao(q(\"#agb-div\")):q(\"#agb-mod\").value)"));
 });
 
 test("excluir: apaga de vez reunião cancelada ou que já terminou; ativa e futura não; e todas as canceladas de uma vez", async () => {
@@ -1447,5 +1447,75 @@ test("tela: os números do topo são botões e mostram a lista que formou cada u
     assert.ok(j.includes("💻 Online") && j.includes('data-r="5"'));
     pagina.clicar({ ag: "kpi", k: "pend" });
     assert.ok(janelas[janelas.length - 1].innerHTML.includes("Aguardando resultado · 0") && janelas[janelas.length - 1].innerHTML.includes("Nenhuma reunião esperando resultado"));
+  } finally { Date.now = real; }
+});
+
+// ── dia dividido: manhã de um jeito, tarde de outro ─────────────────────────
+const DIV = { corte: "12:00", antes: "online", depois: "presencial" };
+
+test("dia dividido: regras — vale o período do horário em que a reunião começa", () => {
+  const c = { modalidade_dias: { [QUI]: DIV }, modalidade_semana: { "5": { corte: "13:00", antes: "presencial", depois: "ambos" } } };
+  assert.deepEqual(R.modalidadeDoDia(c, QUI), DIV);
+  assert.equal(R.modalidadeDoHorario(c, QUI, "11:30"), "online");
+  assert.equal(R.modalidadeDoHorario(c, QUI, "12:00"), "presencial", "o corte já é o segundo período");
+  assert.equal(R.modalidadeDoHorario(c, "2026-11-13", "10:00"), "presencial", "padrão da sexta dividido");
+  assert.equal(R.modalidadeDoHorario(c, "2026-11-13", "15:00"), "ambos");
+  assert.equal(R.normMod({ corte: "12:00", antes: "online", depois: "online" }), "online", "dois lados iguais viram o jeito simples");
+  for (const ruim of [{ corte: "12h", antes: "online", depois: "presencial" }, { corte: "00:00", antes: "online", depois: "presencial" }, { corte: "12:00", antes: "remoto", depois: "presencial" }, ["online"]])
+    assert.equal(R.normMod(ruim), null, JSON.stringify(ruim));
+  assert.ok(R.validarModalidadeDia({ dia: QUI, modalidade: { corte: "25:00", antes: "online", depois: "presencial" } }).erro);
+  assert.deepEqual(R.validarModalidadeDia({ dia: QUI, modalidade: DIV }), { dia: QUI, modalidade: DIV });
+  const v = R.validarConfig(Object.assign(cfg(), { modalidade_semana: { "5": DIV, "1": { corte: "x" } } }));
+  assert.deepEqual(v.config.modalidade_semana, { "5": DIV }, "a semana também aceita dividir; o inválido sai");
+});
+
+test("dia dividido: o link mostra o dia, aceita online de manhã e presencial à tarde e recusa o contrário", async () => {
+  const c = correioFalso(), z = zapFalso();
+  try {
+    await comRelogio(AGORA, async () => {
+      const { tabelas, slug30 } = await preparar();
+      const m = await adm("modalidade", { method: "POST", body: { dia: QUI, modalidade: DIV } });
+      assert.equal(m.statusCode, 200, JSON.stringify(m.body));
+      assert.deepEqual(tabelas.ag_config[0].modalidade_dias[QUI], DIV);
+      const h = await pub("horarios", { query: { s: slug30 } });
+      assert.deepEqual(h.body.modalidades[QUI], DIV, "a página do cliente recebe a divisão");
+      const ag = (hora, modalidade, n) => pub("agendar", { method: "POST", headers: HOST, body: Object.assign({ s: slug30, dia: QUI, hora, modalidade }, pessoa(n)) });
+      assert.equal((await ag("10:00", "presencial", 1)).statusCode, 409, "presencial de manhã: não");
+      assert.equal((await ag("14:00", "online", 2)).statusCode, 409, "online à tarde: não");
+      const manha = await ag("10:00", "online", 3);
+      assert.equal(manha.statusCode, 201, JSON.stringify(manha.body));
+      assert.equal(manha.body.modalidade, "online");
+      const tarde = await ag("14:00", undefined, 4);
+      assert.equal(tarde.statusCode, 201, JSON.stringify(tarde.body));
+      assert.equal(tarde.body.modalidade, "presencial", "sem dizer, à tarde vira presencial");
+      // remarcando a reunião online pelo link: só os horários da manhã desse dia
+      const h2 = await pub("horarios", { query: { s: slug30, r: manha.body.gerenciar } });
+      assert.ok(h2.body.dias[QUI].every(x => x < "12:00") && h2.body.dias[QUI].length > 0);
+      const rem = await pub("remarcar-minha", { method: "POST", headers: HOST, body: { r: manha.body.gerenciar, dia: QUI, hora: "15:00" } });
+      assert.equal(rem.statusCode, 409); assert.equal(rem.body.codigo, "MODALIDADE");
+      // bloqueio parcial também pode dividir o resto do dia
+      const b = await adm("bloqueio", { method: "POST", body: { dia: "2026-11-13", ateDia: "2026-11-13", de: "14:00", ate: "16:00", motivo: "Reunião gerencial", modalidade: { corte: "13:00", antes: "online", depois: "presencial" } } });
+      assert.equal(b.statusCode, 200, JSON.stringify(b.body));
+      assert.deepEqual(tabelas.ag_config[0].modalidade_dias["2026-11-13"], { corte: "13:00", antes: "online", depois: "presencial" });
+      assert.equal((await adm("bloqueio", { method: "POST", body: { dia: "2026-11-16", de: "14:00", ate: "15:00", modalidade: { corte: "x" } } })).statusCode, 400);
+      // voltar ao padrão tira a divisão
+      await adm("modalidade", { method: "POST", body: { dia: QUI, modalidade: null } });
+      assert.equal(tabelas.ag_config[0].modalidade_dias[QUI], undefined);
+    });
+  } finally { c.solta(); z.solta(); }
+});
+
+test("tela: dia dividido aparece no mês (💻|📍) e o seletor do dia já vem com a divisão preenchida", async () => {
+  const real = Date.now; Date.now = () => AGORA;
+  try {
+    const d = dadosMes();
+    d.config = Object.assign({}, R.CONFIG_PADRAO, { modalidade_dias: { "2026-11-05": DIV } });
+    const { ctx, pagina } = telaAgenda(d, { rotas: livresFalsos });
+    ctx.agLoad(); await new Promise(r => setTimeout(r, 20));
+    const h = pagina.innerHTML;
+    assert.ok(h.includes('title="Até 12h só online · depois só presencial">💻|📍</small>'), "ícone dividido no cartão do dia");
+    assert.ok(h.includes("até 12h só online · depois só presencial\">"), "o leitor de tela também ouve");
+    assert.ok(h.includes('<option value="dividir" selected>') && /class="agc-moddiv">/.test(h), "seletor do painel com a divisão aberta");
+    assert.ok(h.includes('class="dv-corte" step="300" value="12:00"') && h.includes('data-ag="moddiv" data-dia="2026-11-05"'));
   } finally { Date.now = real; }
 });
