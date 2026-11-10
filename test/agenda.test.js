@@ -272,21 +272,24 @@ test("API pública: o mesmo telefone (ou e-mail) não segura mais que 2 reuniõe
 
 // ── tela: calendário ────────────────────────────────────────────────────────
 const vm = require("vm");
-function telaAgenda(dados) {
-  const pagina = { innerHTML: "", addEventListener() {}, __ag: false };
+function telaAgenda(dados, opcoes) {
+  const o = opcoes || {}, ouvintes = {}, pedidos = [];
+  const pagina = { innerHTML: "", addEventListener(n, f) { ouvintes[n] = f; }, contains: () => true, __ag: false };
+  // clicar num botão com data-ag (o painel usa delegação de eventos no #ag-content)
+  pagina.clicar = dataset => ouvintes.click({ target: { closest: s => (s === "[data-ag]" ? { dataset, disabled: false } : null) } });
   const store = new Map([["userKey", "joaoygor"], ["logged", "1"]]);
   const ctx = {
     console, Promise, setTimeout, clearTimeout, Date, JSON, Map, Set, encodeURIComponent, location: { origin: "https://painel.exemplo" },
     sessionStorage: { getItem: k => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, String(v)) },
-    localStorage: { getItem: () => null, setItem() {} },
+    localStorage: { getItem: k => (k === "agd_vista" ? o.vista || null : null), setItem() {} },
     document: { readyState: "complete", addEventListener() {}, querySelector: () => null, getElementById: id => (id === "ag-content" ? pagina : null) },
-    fetch: async () => ({ ok: true, status: 200, json: async () => dados }),
+    fetch: async url => { pedidos.push(String(url)); const r = o.rotas && o.rotas(String(url)); return r || { ok: true, status: 200, json: async () => dados }; },
     ST: { pg: "agenda" }
   };
   ctx.window = ctx;
   vm.createContext(ctx);
   vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "assets", "agenda", "agenda.js"), "utf8"), ctx, { filename: "agenda.js" });
-  return { ctx, pagina };
+  return { ctx, pagina, pedidos };
 }
 test("tela: semana como o iPhone (seg a sex), reunião no horário e na altura da duração, bloqueio e nome escapado", async () => {
   const real = Date.now;
@@ -301,7 +304,7 @@ test("tela: semana como o iPhone (seg a sex), reunião no horário e na altura d
         { id: 6, tipo_id: 1, tipo_nome: "Captação", inicio: new Date(R.paraUtc("2026-11-06", "15:00")).toISOString(), fim: new Date(R.paraUtc("2026-11-06", "15:30")).toISOString(), nome: "Cancelada", origem: "link", status: "cancelada" }
       ]
     };
-    const { ctx, pagina } = telaAgenda(dados);
+    const { ctx, pagina } = telaAgenda(dados, { vista: "semana" });
     ctx.agLoad();
     await new Promise(r => setTimeout(r, 15));
     const h = pagina.innerHTML;
@@ -484,7 +487,7 @@ test("tela: horários do diretor aparecem em cinza no calendário e o botão avi
       diretores: [{ id: 7, nome: "Paulo <b>", ativo: true, valido: false, erro: "rede caiu", link: "icloud.com/…23456", compromissos: 0, lido_em: null }],
       ocupados: [{ dir: 7, nome: "Paulo <b>", inicio: new Date(R.paraUtc("2026-11-06", "10:00")).toISOString(), fim: new Date(R.paraUtc("2026-11-06", "11:30")).toISOString() }]
     };
-    const { ctx, pagina } = telaAgenda(dados);
+    const { ctx, pagina } = telaAgenda(dados, { vista: "semana" });
     ctx.agLoad();
     await new Promise(r => setTimeout(r, 15));
     const h = pagina.innerHTML;
@@ -1288,4 +1291,136 @@ test("excluir: apaga de vez reunião cancelada ou que já terminou; ativa e futu
       assert.equal(tabelas.ag_reunioes.length, 0);
     });
   } finally { c.solta(); z.solta(); }
+});
+
+
+// ── mês com o painel do dia (layout novo) ──────────────────────────────────
+function dadosMes() {
+  const iso = (d, hh) => new Date(R.paraUtc(d, hh)).toISOString();
+  return {
+    config: R.CONFIG_PADRAO, ics_chave: "k", marca: {},
+    tipos: [{ id: 1, nome: "Reunião Comercial", duracao_min: 60, cor: "#1e4d8c", slug: "rc1", ativo: true }, { id: 2, nome: "Lead", duracao_min: 30, cor: "#ea580c", slug: "ld2", ativo: true }],
+    bloqueios: [{ id: 9, inicio: iso("2026-11-05", "12:00"), fim: iso("2026-11-05", "13:00"), motivo: "Almoço" }, { id: 10, inicio: iso("2026-11-20", "00:00"), fim: iso("2026-11-21", "00:00"), motivo: "Feriado" }],
+    ocupados: [{ dir: 1, nome: "Paulo", inicio: iso("2026-11-05", "15:00"), fim: iso("2026-11-05", "16:00") }],
+    reunioes: [
+      { id: 5, tipo_id: 1, tipo_nome: "Reunião Comercial", inicio: iso("2026-11-05", "14:00"), fim: iso("2026-11-05", "15:00"), nome: "<b>Ana</b>", origem: "link", status: "ativa", modalidade: "online" },
+      { id: 6, tipo_id: 2, tipo_nome: "Lead", inicio: iso("2026-11-05", "09:00"), fim: iso("2026-11-05", "09:30"), nome: "Bruno", origem: "manual", status: "ativa", resultado: "realizada" },
+      { id: 7, tipo_id: 2, tipo_nome: "Lead", inicio: iso("2026-11-12", "10:00"), fim: iso("2026-11-12", "10:30"), nome: "Carla", origem: "link", status: "ativa" },
+      { id: 8, tipo_id: 2, tipo_nome: "Lead", inicio: iso("2026-11-12", "16:00"), fim: iso("2026-11-12", "16:30"), nome: "Cancelada", origem: "link", status: "cancelada" }
+    ]
+  };
+}
+const livresFalsos = url => {
+  if (!url.includes("modulo=agendapub&t=horarios")) return null;
+  const dias = url.includes("s=rc1") ? { "2026-11-05": ["16:00"], "2026-11-12": ["09:00", "11:00", "14:00"] } : { "2026-11-12": ["09:00", "09:30"] };
+  return { ok: true, status: 200, json: async () => ({ dias, modalidades: {} }) };
+};
+
+test("tela: mês é a visão padrão, com o dia de hoje escolhido e o painel do dia ao lado", async () => {
+  const real = Date.now; Date.now = () => AGORA;
+  try {
+    const { ctx, pagina, pedidos } = telaAgenda(dadosMes(), { rotas: livresFalsos });
+    ctx.agLoad();
+    await new Promise(r => setTimeout(r, 20));
+    const h = pagina.innerHTML;
+    assert.ok(h.includes('class="agd-tela"'), "tudo dentro da tela com vidro");
+    assert.ok(h.includes("Novembro de 2026") && h.includes('class="agc-2col"'), "mês com o painel ao lado");
+    assert.ok(/class="agc-dm hoje sel[^"]*" data-ag="sel" data-dia="2026-11-05" aria-pressed="true"/.test(h), "hoje escolhido");
+    assert.ok(h.includes("Quinta, 5 de novembro") && h.includes("Hoje · 2 reuniões · atendimento 9h–17h"));
+    assert.ok(h.indexOf("Bruno") < h.indexOf("&lt;b&gt;Ana&lt;/b&gt;"), "reuniões do dia na ordem do horário");
+    assert.ok(!h.includes("<b>Ana</b>"), "nada do banco vira HTML");
+    assert.ok(h.includes("💻 Online") && h.includes("✅ realizada"), "modalidade e resultado no painel");
+    assert.ok(h.includes("⛔ 12:00–13:00 · Almoço") && h.includes("👔 Paulo ocupado 15:00–16:00"), "bloqueio e diretor do dia");
+    assert.ok(h.includes('data-ag-mod="2026-11-05"'), "online/presencial do dia no painel");
+    assert.ok(h.includes('data-ag="marcar" data-dia="2026-11-05"') && h.includes('data-ag="bloquear" data-dia="2026-11-05"'));
+    // horários livres: o mesmo que o link mostra, pedido uma vez por tipo
+    assert.equal(pedidos.filter(u => u.includes("t=horarios")).length, 2);
+    assert.ok(/Reunião Comercial<\/b><span>16:00<\/span>/.test(h), "horários livres de cada tipo");
+    assert.ok(/Lead<\/b><span><span class="agc-dp-cz">nenhum<\/span>/.test(h));
+    // faixa da semana (dom 1 a sáb 7) com a quantidade
+    assert.ok(/data-ag="sel" data-dia="2026-11-05" aria-pressed="true" aria-label="Quinta, 5 de nov, hoje, 2 reuniões"><span>qui<\/span><b>5<\/b><em>2<\/em>/.test(h));
+    // mês: bolinhas, dia bloqueado, cancelada fora
+    assert.ok(/data-dia="2026-11-12"[^>]*>.*?<span class="agc-n">1 reunião<\/span>/.test(h), "cancelada não conta");
+    assert.ok(/class="agc-dm bloq[^"]*" data-ag="sel" data-dia="2026-11-20"/.test(h), "feriado bloqueado");
+    // renderizar de novo não pede os horários de novo (guarda por 1 minuto)
+    ctx.agLoad(); await new Promise(r => setTimeout(r, 20));
+    assert.equal(pedidos.filter(u => u.includes("t=horarios")).length, 4, "recarregar a agenda apaga e pede de novo");
+  } finally { Date.now = real; }
+});
+
+test("tela: tocar num dia do mês troca o painel; dia de outro mês leva ao mês dele; dia passado não oferece marcar", async () => {
+  const real = Date.now; Date.now = () => AGORA;
+  try {
+    const { ctx, pagina } = telaAgenda(dadosMes(), { rotas: livresFalsos });
+    ctx.agLoad(); await new Promise(r => setTimeout(r, 20));
+    pagina.clicar({ ag: "sel", dia: "2026-11-12" });
+    let h = pagina.innerHTML;
+    assert.ok(h.includes("Quinta, 12 de novembro") && h.includes("1 reunião") && h.includes("Carla") && !h.includes(">Cancelada<"));
+    assert.ok(/Reunião Comercial<\/b><span>09:00 · 11:00 · 14:00<\/span>/.test(h));
+    assert.ok(h.includes("Novembro de 2026"), "continua no mês");
+    // dia passado: sem marcar nem bloquear, sem online/presencial
+    pagina.clicar({ ag: "sel", dia: "2026-11-03" });
+    h = pagina.innerHTML;
+    assert.ok(h.includes("Terça, 3 de novembro") && !h.includes('data-ag="marcar" data-dia="2026-11-03"') && !h.includes('data-ag-mod="2026-11-03"') && !h.includes("Horários livres no link"));
+    // dia de dezembro na última linha: vai para dezembro
+    pagina.clicar({ ag: "sel", dia: "2026-12-02" });
+    h = pagina.innerHTML;
+    assert.ok(h.includes("Dezembro de 2026") && h.includes("Quarta, 2 de dezembro"));
+    // ‹ volta para novembro e escolhe o dia de hoje
+    pagina.clicar({ ag: "nav", d: "-1" });
+    h = pagina.innerHTML;
+    assert.ok(h.includes("Novembro de 2026") && h.includes("Quinta, 5 de novembro"));
+    // ver as horas: abre o Dia
+    pagina.clicar({ ag: "dia", dia: "2026-11-12" });
+    assert.ok(pagina.innerHTML.includes("Quinta, 12 de nov") && pagina.innerHTML.includes('class="agc-col'), "visão Dia com a grade de horas");
+  } finally { Date.now = real; }
+});
+
+test("tela: sem conseguir ler os horários do link, o painel avisa e não fica pedindo sem parar", async () => {
+  const real = Date.now; Date.now = () => AGORA;
+  try {
+    const { ctx, pagina, pedidos } = telaAgenda(dadosMes(), { rotas: url => (url.includes("t=horarios") ? { ok: false, status: 503, json: async () => ({}) } : null) });
+    ctx.agLoad(); await new Promise(r => setTimeout(r, 30));
+    assert.ok(pagina.innerHTML.includes("não consegui ver agora"));
+    assert.equal(pedidos.filter(u => u.includes("t=horarios")).length, 2, "uma vez por tipo");
+  } finally { Date.now = real; }
+});
+
+test("tela: Semana e Dia abrem no dia escolhido no Mês, e o Mês volta no dia que estava na tela", async () => {
+  const real = Date.now; Date.now = () => AGORA;
+  try {
+    const { ctx, pagina } = telaAgenda(dadosMes(), { rotas: livresFalsos });
+    ctx.agLoad(); await new Promise(r => setTimeout(r, 20));
+    pagina.clicar({ ag: "sel", dia: "2026-11-24" });
+    pagina.clicar({ ag: "vista", v: "semana" });
+    assert.ok(pagina.innerHTML.includes("23 a 29 de novembro"), "semana do dia escolhido");
+    pagina.clicar({ ag: "vista", v: "dia" });
+    assert.ok(pagina.innerHTML.includes("Terça, 24 de nov"), "o dia escolhido");
+    pagina.clicar({ ag: "nav", d: "1" });
+    pagina.clicar({ ag: "vista", v: "mes" });
+    assert.ok(pagina.innerHTML.includes("Quarta, 25 de novembro"), "o Mês volta no dia que estava na tela");
+    // sábado escolhido: o leitor de tela ouve que não tem atendimento
+    pagina.clicar({ ag: "sel", dia: "2026-11-28" });
+    assert.ok(pagina.innerHTML.includes('aria-label="Sábado, 28 de nov, sem atendimento"'));
+  } finally { Date.now = real; }
+});
+
+test("tela: resposta de horários livres pedida antes de uma mudança na agenda não fica no painel", async () => {
+  const real = Date.now; Date.now = () => AGORA;
+  try {
+    let liberar, rodada = 0;
+    const lento = new Promise(r => { liberar = r; });
+    const rotas = url => {
+      if (!url.includes("t=horarios")) return null;
+      rodada++;
+      const velho = rodada <= 2; // os 2 primeiros pedidos (um por tipo) demoram e trazem o horário de antes
+      const corpo = { dias: { "2026-11-05": [velho ? "16:00" : "16:30"] }, modalidades: {} };
+      return velho ? lento.then(() => ({ ok: true, status: 200, json: async () => corpo })) : { ok: true, status: 200, json: async () => corpo };
+    };
+    const { ctx, pagina } = telaAgenda(dadosMes(), { rotas });
+    ctx.agLoad(); await new Promise(r => setTimeout(r, 20));
+    ctx.agLoad(); await new Promise(r => setTimeout(r, 20)); // a agenda mudou e foi recarregada com os pedidos antigos a caminho
+    liberar(); await new Promise(r => setTimeout(r, 30));
+    assert.ok(pagina.innerHTML.includes("16:30") && !pagina.innerHTML.includes(">16:00<"), "fica o horário de depois da mudança");
+  } finally { Date.now = real; }
 });
