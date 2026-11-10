@@ -13,6 +13,8 @@
 //   POST t=marca         quem atende (nome, cargo, foto) e a mensagem de boas-vindas da página e dos e-mails
 //   POST t=resultado&id= reunião que já começou: realizada ou não compareceu, próximo passo e anotação
 //   GET  t=numeros&mes=  os números do mês para o Painel Comercial (só contagens, sem dados de ninguém)
+//   DELETE t=reuniao&id= apaga de vez uma reunião cancelada ou que já terminou (ativa e futura, nunca)
+//   DELETE t=canceladas  apaga de vez todas as canceladas
 //   POST t=modalidade    { dia, modalidade }: neste dia só online, só presencial, os dois ou volta ao padrão
 //
 // Pública (/api/rh?modulo=agendapub, SEM login — quem marca não tem conta; entra antes da exigência de token):
@@ -686,6 +688,25 @@ async function salvarModalidadeDia({ res, db, ator, body }) {
   return res.status(200).json({ ok: true, modalidade_dias: await aplicarModalidade(db, ator, [v.dia], v.modalidade) });
 }
 
+// Apagar de vez: só o que não ocupa mais a agenda (cancelada) ou já terminou. Reunião ativa e futura se cancela,
+// não se apaga (a pessoa precisa ser avisada). O registro de quem apagou fica na auditoria.
+async function excluirReuniao({ req, res, db, ator }) {
+  const id = idDe(req);
+  if (!id) return erro(res, 400, "Informe a reunião.", "SEM_ID");
+  const [r] = await db.obter(`ag_reunioes?select=id,nome,tipo_nome,inicio,fim,status&id=eq.${id}&limit=1`);
+  if (!r) return res.status(200).json({ ok: true, ja: true });
+  if (r.status === "ativa" && +new Date(r.fim) > Date.now()) return erro(res, 409, "Esta reunião ainda vai acontecer: cancele antes de excluir.", "ATIVA");
+  await db.remover(`ag_reunioes?id=eq.${id}`);
+  registrar(db, ator, "AGENDA_REUNIAO_EXCLUIDA", id, { nome: r.nome, tipo: r.tipo_nome, inicio: r.inicio, status: r.status });
+  return res.status(200).json({ ok: true });
+}
+async function excluirCanceladas({ res, db, ator }) {
+  const rs = await db.listar("ag_reunioes?select=id&status=neq.ativa&order=id.asc");
+  if (rs.length) await db.remover(`ag_reunioes?status=neq.ativa&id=in.(${rs.map(r => r.id).join(",")})`);
+  registrar(db, ator, "AGENDA_CANCELADAS_EXCLUIDAS", "canceladas", { quantas: rs.length });
+  return res.status(200).json({ ok: true, excluidas: rs.length });
+}
+
 async function trocarIcs({ res, db, ator }) {
   await lerConfig(db);
   const k = novaChave(24);
@@ -697,7 +718,7 @@ async function trocarIcs({ res, db, ator }) {
 const ROTAS = {
   "GET ": tudo, "POST config": salvarConfig, "POST tipo": salvarTipo, "DELETE tipo": desativarTipo,
   "POST bloqueio": criarBloqueio, "DELETE bloqueio": tirarBloqueio,
-  "POST diretor": salvarDiretor, "POST atualizar": atualizarDiretores, "DELETE diretor": tirarDiretor,
+  "POST diretor": salvarDiretor, "POST atualizar": atualizarDiretores, "DELETE diretor": tirarDiretor, "DELETE reuniao": excluirReuniao, "DELETE canceladas": excluirCanceladas,
   "POST reuniao": criarReuniao, "PATCH reuniao": remarcar, "POST cancelar": cancelar, "POST ics": trocarIcs,
   "POST marca": salvarMarca, "POST resultado": salvarResultado, "GET numeros": numerosDoPainel, "POST modalidade": salvarModalidadeDia
 };

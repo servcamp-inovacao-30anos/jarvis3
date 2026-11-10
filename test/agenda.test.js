@@ -1258,3 +1258,34 @@ test("tela: bloqueio parcial pergunta online ou presencial para o resto do dia",
   const JS = fs.readFileSync(path.join(__dirname, "..", "assets", "agenda", "agenda.js"), "utf8");
   assert.ok(JS.includes("No resto do dia, o cliente pode marcar") && JS.includes('modalidade:inteiro?null:q("#agb-mod").value'));
 });
+
+test("excluir: apaga de vez reunião cancelada ou que já terminou; ativa e futura não; e todas as canceladas de uma vez", async () => {
+  const c = correioFalso(), z = zapFalso();
+  try {
+    const { tabelas } = await comRelogio(AGORA, async () => {
+      const p = await preparar();
+      for (const [h, n] of [["09:00", 1], ["11:00", 2], ["14:00", 3]]) assert.equal((await marcar(p.slug60, h, pessoa(n))).statusCode, 201);
+      return p;
+    });
+    const [a, b2, c3] = tabelas.ag_reunioes.map(r => String(r.id));
+    await comRelogio(AGORA, async () => {
+      const ativa = await adm("reuniao", { method: "DELETE", query: { id: a } });
+      assert.equal(ativa.statusCode, 409, "ainda vai acontecer: cancela antes");
+      assert.equal((await adm("reuniao", { method: "DELETE", usuario: "carlos", query: { id: a } })).statusCode, 403);
+      await adm("cancelar", { method: "POST", query: { id: b2 }, body: { avisar: false } });
+      await adm("cancelar", { method: "POST", query: { id: c3 }, body: { avisar: false } });
+      assert.equal((await adm("reuniao", { method: "DELETE", query: { id: b2 } })).statusCode, 200);
+      assert.deepEqual(tabelas.ag_reunioes.map(r => String(r.id)), [a, c3]);
+      const todas = await adm("canceladas", { method: "DELETE" });
+      assert.equal(todas.statusCode, 200);
+      assert.equal(todas.body.excluidas, 1);
+      assert.deepEqual(tabelas.ag_reunioes.map(r => String(r.id)), [a], "a ativa fica");
+      assert.ok(tabelas.fm_auditoria.some(x => x.acao === "AGENDA_REUNIAO_EXCLUIDA") && tabelas.fm_auditoria.some(x => x.acao === "AGENDA_CANCELADAS_EXCLUIDAS"), "fica registrado quem apagou");
+    });
+    // depois que terminou, pode apagar mesmo ativa
+    await comRelogio(R.paraUtc(QUI, "12:00"), async () => {
+      assert.equal((await adm("reuniao", { method: "DELETE", query: { id: a } })).statusCode, 200);
+      assert.equal(tabelas.ag_reunioes.length, 0);
+    });
+  } finally { c.solta(); z.solta(); }
+});

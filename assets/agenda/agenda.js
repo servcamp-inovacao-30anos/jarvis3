@@ -104,7 +104,9 @@ function render(){
   h+='<div class="agd-card"><div class="agd-h">⛔ Bloqueios <small>(horários que não aparecem no link)</small></div>'+
     (bls.length?bls.map(b=>'<div class="agd-bl"><span>'+esc(txtFaixa(b.inicio,b.fim))+(b.motivo?' · <i>'+esc(b.motivo)+'</i>':'')+'</span><button type="button" class="agd-lk" data-ag="tirarbl" data-id="'+b.id+'">tirar</button></div>').join(""):'<div class="agd-vazio">Nenhum bloqueio. Use ⛔ para férias, feriados ou um compromisso fora do painel.</div>')+'</div>';
   // passadas e canceladas
-  h+='<div class="agd-card"><button type="button" class="agd-toggle" data-ag="passadas">'+(AG.verPassadas?"▾":"▸")+' Passadas e canceladas (últimos 30 dias) · '+outras.length+'</button>'+
+  const nCanc=D.reunioes.filter(r=>r.status!=="ativa").length;
+  h+='<div class="agd-card"><div class="agd-pass-h"><button type="button" class="agd-toggle" data-ag="passadas">'+(AG.verPassadas?"▾":"▸")+' Passadas e canceladas (últimos 30 dias) · '+outras.length+'</button>'+
+    (AG.verPassadas&&nCanc?'<button type="button" class="agd-lk agd-lk-v" data-ag="excluircanc">🗑 excluir todas as canceladas ('+nCanc+')</button>':'')+'</div>'+
     (AG.verPassadas?(outras.length?outras.map(linhaReuniao).join(""):'<div class="agd-vazio">Nada por aqui.</div>'):"")+'</div>';
   el.innerHTML=h;
 }
@@ -126,6 +128,7 @@ function linhaReuniao(r){
       (r.email?(r.telefone?' · ':'')+'<a href="mailto:'+esc(r.email)+'">'+esc(r.email)+'</a>':'')+'</div>'+
       (r.obs?'<div class="agd-r-o">“'+esc(r.obs)+'”</div>':'')+'</div>'+
     (!canc&&comecou(r)?'<div class="agd-r-a"><button type="button" class="agd-lk" data-ag="res" data-id="'+r.id+'">'+(r.resultado?"mudar resultado":"registrar resultado")+'</button></div>':'')+
+    (canc||passou?'<div class="agd-r-a"><button type="button" class="agd-lk agd-lk-v" data-ag="excluir" data-id="'+r.id+'" title="Apagar de vez">🗑 excluir</button></div>':'')+
     (canc||passou?'':'<div class="agd-r-a"><button type="button" class="agd-lk" data-ag="remarcar" data-id="'+r.id+'">remarcar</button><button type="button" class="agd-lk agd-lk-v" data-ag="cancelar" data-id="'+r.id+'">cancelar</button></div>')+'</div>';
 }
 
@@ -319,6 +322,15 @@ function ligar(el){
     else if(a==="copiar"){const t=AG.dados.tipos.find(x=>String(x.id)===id);if(t)copiar(linkDe(t),"🔗 Link copiado: é só colar para o cliente");}
     else if(a==="remarcar")abrirRemarcar(AG.dados.reunioes.find(r=>String(r.id)===id));
     else if(a==="cancelar")cancelar(AG.dados.reunioes.find(r=>String(r.id)===id),b);
+    else if(a==="excluir"){
+      const r=AG.dados.reunioes.find(x=>String(x.id)===id);if(!r)return;const d=br(r.inicio);
+      if(confirm("Excluir de vez a reunião de "+r.nome+" ("+diaLongo(d.dia)+" às "+d.hora+")?\n\nIsso não pode ser desfeito."+(r.status==="ativa"?"\nEla também sai dos números do Painel Comercial.":"")))
+        acao(()=>api("reuniao","DELETE",null,"&id="+id),"Reunião excluída",b);
+    }
+    else if(a==="excluircanc"){
+      const n=AG.dados.reunioes.filter(r=>r.status!=="ativa").length;
+      if(confirm("Excluir de vez as "+n+" reuniões canceladas?\n\nIsso não pode ser desfeito."))acao(()=>api("canceladas","DELETE"),"Canceladas excluídas",b);
+    }
     else if(a==="tirarbl"){if(confirm("Tirar este bloqueio? O horário volta a aparecer no link."))acao(()=>api("bloqueio","DELETE",null,"&id="+id),"Bloqueio tirado",b);}
   });
 }

@@ -13,7 +13,7 @@ function filtrar(linhas, params) {
   let out = linhas;
   for (const [k, v] of params) {
     if (PARAMS_DE_CONTROLE.has(k)) continue;
-    const m = String(v).match(/^(not\.)?(eq|gte|lte|gt|lt|in|is)\.(.*)$/);
+    const m = String(v).match(/^(not\.)?(neq|eq|gte|lte|gt|lt|in|is)\.(.*)$/);
     if (!m) continue;
     const [, nao, op, val] = m;
     const passa = l => {
@@ -21,6 +21,7 @@ function filtrar(linhas, params) {
       if (op === "is") return val === "null" ? x == null : x === val;
       if (x == null) return false;
       if (op === "eq") return x === val;
+      if (op === "neq") return x !== val;
       if (op === "gte") return x >= val;
       if (op === "lte") return x <= val;
       if (op === "gt") return x > val;

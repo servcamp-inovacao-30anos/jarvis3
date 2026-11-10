@@ -229,3 +229,5 @@ html[data-theme="dark"] .agd-res-op.falta input:checked+span{background:rgba(217
 .agc-modbar small{color:var(--g500)}
 .agc-mod{font-size:.6rem;font-weight:400}
 @media (max-width:640px){.agd-sem .s-mod{margin-left:0}}
+
+.agd-pass-h{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:6px}
