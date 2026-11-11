@@ -803,7 +803,7 @@ function fbLotePessoa(x,faltas){const p=fbPessoaDaFila(x)||{};return{key:x.key,n
 function ligSelVG(i,cx){const g=LIG_VIEW_VG[i];if(!g)return;fbSelMarca(g.key,fbLotePessoa(g,g.faltas),cx);}
 /* WhatsApp do SAC na Visão geral: estado e, para a coordenação, conectar pelo QR code */
 function fbZapVG(){
-  const z=LIG_ZAP||{},e=fbZapEstado(),pode=z.configurado!==false&&z.ok&&z.pode_conectar;
+  const z=LIG_ZAP||{},e=fbZapEstado(),pode=!!LIG_PODE_BAIXAR;
   return'<span class="fb-wa '+e.cls+'" id="lig-vg-zap"><i class="fb-dot"></i><span><b>WhatsApp do SAC</b> '+_esc(e.txt)+'</span>'
     +(pode&&z.state!=="open"?'<button type="button" class="fb-btn sm pri" onclick="ligZapConectar()">'+fbI("qr")+'Conectar pelo QR code</button>':"")
     +(pode&&z.state==="open"?'<button type="button" class="fb-btn ghost sm" onclick="ligZapDesconectar()">'+fbI("power")+'Desconectar</button>':"")+'</span>';
