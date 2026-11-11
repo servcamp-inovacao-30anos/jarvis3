@@ -94,14 +94,14 @@ module.exports = async function handler(req, res) {
       // batimento em vez de virarem chamadas próprias: rh_vagas tem +1200 linhas
       // e baixá-las inteiras a cada carregamento, só para exibir um número,
       // seria desperdício. Aqui volta apenas o essencial.
-      const [pr, mr, sr, vr, lr, hr, sc, ex] = await Promise.all([
+      const [pr, mr, sr, vr, lr, hr, sc, ex, fc, rc] = await Promise.all([
         fetch(`${SUPABASE_URL}/rest/v1/app_users?select=user_key,presence_page,presence_at`, { headers }),
         fetch(`${SUPABASE_URL}/rest/v1/hq_mensagens?select=id,user_key,nome,texto,para,criado_em&order=criado_em.desc&limit=80${filtro}`, { headers }),
         fetch(`${SUPABASE_URL}/rest/v1/dashboard_snapshots?select=created_at&order=created_at.desc&limit=1`, { headers }),
         fetch(`${SUPABASE_URL}/rest/v1/rh_vagas?select=id&status=not.in.(%22PREENCHIDA%22,%22CANCELADA%22)`, { headers }),
         // duracao_min entra aqui para a Visão Geral poder mostrar o tempo médio
         // de conversa sem precisar abrir a guia Ligações.
-        fetch(`${SUPABASE_URL}/rest/v1/lig_contatos?select=colaborador,data_contato,criado_em,duracao_min&limit=5000`, { headers }),
+        fetch(`${SUPABASE_URL}/rest/v1/lig_contatos?select=id,colaborador,data_contato,criado_em,duracao_min&limit=5000`, { headers }),
         // série do quadro de pessoal: 1 linha por dia, ~365/ano — leve o bastante
         // para vir junto em vez de virar uma consulta própria
         fetch(`${SUPABASE_URL}/rest/v1/hist_efetivo?select=dia,ativos&order=dia.asc&limit=400`, { headers }),
@@ -112,7 +112,12 @@ module.exports = async function handler(req, res) {
           method: "POST", headers, body: JSON.stringify({ dias: 30 })
         }),
         // RH e Comercial da Visao Geral: cinco numeros do mes corrente
-        fetch(`${SUPABASE_URL}/rest/v1/rpc/vg_extras`, { method: "POST", headers, body: "{}" })
+        fetch(`${SUPABASE_URL}/rest/v1/rpc/vg_extras`, { method: "POST", headers, body: "{}" }),
+        // Código que a apuração das faltas deu às faltas recentes que NÃO são injustificadas (abonada, afastamento,
+        // demitido, feedback baixado): o card Ligações da Visão Geral só cobra contato de falta injustificada, igual à guia.
+        fetch(`${SUPABASE_URL}/rest/v1/fm_faltas?select=re,data,nome,codigo&codigo=in.(A,J,L,AF,D,T)&data=gte.${new Date(Date.now() - 3 * 3600000 - 120 * 86400000).toISOString().slice(0, 10)}&order=data.desc&limit=4000`, { headers }),
+        // resultado de cada contato do Feedback de Faltas: tentativa sem conversa não tira ninguém da fila do card
+        fetch(`${SUPABASE_URL}/rest/v1/fm_auditoria?select=chave,depois&entidade=eq.lig_contato&acao=eq.LIG_RESULTADO&order=id.asc&limit=10000`, { headers })
       ]);
       const presenca = pr.ok ? await pr.json() : [];
       const msgs = mr.ok ? await mr.json() : [];
@@ -122,6 +127,18 @@ module.exports = async function handler(req, res) {
       if (vr.ok) { const v = await vr.json().catch(() => null); if (Array.isArray(v)) vagasAbertas = v.length; }
       let ligContatos = [];
       if (lr.ok) { const l = await lr.json().catch(() => []); if (Array.isArray(l)) ligContatos = l; }
+      if (rc && rc.ok) {
+        const ev = await rc.json().catch(() => []), ult = {};
+        if (Array.isArray(ev)) ev.forEach(e => { ult[String(e.chave)] = e.depois && e.depois.resultado; });
+        const TENTATIVA = new Set(Object.entries(require("./_lig_regras").RESULTADOS).filter(([, v]) => v.grupo === "tentativa").map(([k]) => k));
+        ligContatos = ligContatos.map(c => (TENTATIVA.has(ult[String(c.id)]) ? { ...c, tentativa: true } : c));
+      }
+      const ligCodigos = {};
+      if (fc && fc.ok) {
+        const f = await fc.json().catch(() => []);
+        const prim = s => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().trim().split(/\s+/)[0] || "";
+        if (Array.isArray(f)) f.forEach(x => { ligCodigos[String(x.re).replace(/^0+(?=\d)/, "") + "|" + prim(x.nome) + "|" + String(x.data).slice(0, 10)] = x.codigo; });
+      }
       let histEfetivo = [];
       if (hr.ok) { const h = await hr.json().catch(() => []); if (Array.isArray(h)) histEfetivo = h; }
       let saudeClientes = [];
@@ -136,6 +153,7 @@ module.exports = async function handler(req, res) {
         planilha,
         vagasAbertas,
         ligContatos,
+        ligCodigos,
         histEfetivo,
         saudeClientes,
         extras
