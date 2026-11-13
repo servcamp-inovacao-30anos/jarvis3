@@ -240,3 +240,21 @@ test("casos e histórico: supervisor recebe só a própria área; coordenação,
   assert.deepEqual(hist.body.medidas.map(m => Number(m.re)), [1], "histórico também: só a medida da área dele");
   assert.deepEqual(hist.body.faltas.map(x => Number(x.re)).sort(), [1, 2]);
 });
+
+test("excluir cobrança: só a conta do responsável; a falta some dos casos e o botão só aparece para ela", async () => {
+  const t = tabelasComCaso(); supabaseFalso(t);
+  const corpo = { re: 521, datas: [dia(-10)], nome: "MARIA" };
+  assert.equal((await pedir("POST", "excluir_cobranca", { body: corpo })).statusCode, 403, "aprovador comum não exclui");
+  assert.equal((await pedir("POST", "excluir_cobranca", { usuario: "supervisor.fulano", body: corpo })).statusCode, 403);
+  assert.equal((await pedir("GET", "casos")).body.pode_excluir, false);
+  const antes = await pedir("GET", "casos", { usuario: "raphaelvictor" });
+  assert.equal(antes.body.pode_excluir, true);
+  assert.equal(antes.body.casos.length, 1);
+  assert.equal((await pedir("POST", "excluir_cobranca", { usuario: "raphaelvictor", body: { re: 521, datas: ["ontem"] } })).body.codigo, "DATAS_INVALIDAS");
+  const r = await pedir("POST", "excluir_cobranca", { usuario: "raphaelvictor", body: corpo });
+  assert.equal(r.statusCode, 200, JSON.stringify(r.body));
+  assert.equal(r.body.excluidas, 1);
+  assert.equal((await pedir("POST", "excluir_cobranca", { usuario: "raphaelvictor", body: corpo })).body.excluidas, 0, "repetir não duplica");
+  assert.equal((await pedir("GET", "casos")).body.casos.length, 0, "a cobrança some para todos");
+  assert.equal(t.fm_auditoria.filter(e => e.acao === "COBRANCA_EXCLUIDA" && e.ator === "raphaelvictor").length, 1, "fica registrado quem excluiu");
+});
