@@ -10944,6 +10944,20 @@ function cfgAlternarAcesso(k,liberar){
     .then(()=>{if(typeof hqToast==="function")hqToast(liberar?"✅ Acesso de "+nome+" liberado":"🚫 Acesso de "+nome+" bloqueado");cfgLoad();})
     .catch(e=>{alert("Não foi possível "+(liberar?"liberar":"bloquear")+" o acesso: "+((e&&e.message)||e));});
 }
+/* Excluir usuário: some da lista, não entra mais e o painel aberto dele volta ao login.
+   Quem foi criado pela tela é apagado do banco; quem está no código fica bloqueado e marcado. */
+function cfgBotaoExcluir(k){
+  if(k===sessionStorage.getItem("userKey")||CFG_ADMINS_FIXOS.indexOf(k)>=0)return "";
+  return'<button type="button" class="rh-btn" title="Excluir usuário" aria-label="Excluir '+_esc((USERS[k]||{}).nome||k)+'" style="padding:5px 10px;font-size:.64rem;white-space:nowrap;margin-left:6px;background:linear-gradient(135deg,#dc2626,#b91c1c)" onclick="cfgExcluirUsuario(\''+k+'\')">🗑 Excluir</button>';
+}
+function cfgExcluirUsuario(k){
+  const nome=(USERS[k]||{}).nome||k;
+  if(!confirm("Excluir o usuário "+nome+"?\n\n"+nome+" não consegue mais entrar no painel e, se estiver com ele aberto, volta para a tela de login em alguns segundos.\n\nIsso não pode ser desfeito pela tela."))return;
+  fetch("/api/users",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"delete_user",userKey:k})})
+    .then(r=>r.json().catch(()=>({})).then(j=>{if(!r.ok||!j.ok)throw new Error(j.error||("HTTP "+r.status));return j;}))
+    .then(j=>{if(j.apagado)delete USERS[k];if(typeof hqToast==="function")hqToast("🗑 Usuário "+nome+" excluído");cfgLoad();})
+    .catch(e=>{alert("Não foi possível excluir o usuário: "+((e&&e.message)||e));});
+}
 function cfgRedefinirSenha(k){
   const nome=(USERS[k]||{}).nome||k;
   if(!confirm("Redefinir a senha de "+nome+"?\n\nA senha atual deixa de valer. O sistema gera uma senha temporária e "+nome+" cria a própria no próximo acesso."))return;
@@ -10973,7 +10987,7 @@ function cfgMostrarSenha(nome,k,senha,titulo){
 }
 function cfgRender(){
   const el=document.getElementById("cfg-content");if(!el)return;
-  const keys=Object.keys(USERS);
+  const keys=Object.keys(USERS).filter(k=>!(CFG_AUDIT[k]&&CFG_AUDIT[k].excluido)); // excluído (fixo do código) some da lista
   const total=keys.length;
   let comSenha=0,jaAcessou=0,online=0;
   keys.forEach(k=>{const a=CFG_AUDIT[k];if(a&&a.has_custom)comSenha++;if(a&&a.last_login){jaAcessou++;if(Date.now()-new Date(a.last_login).getTime()<8*60000)online++;}});
@@ -11014,7 +11028,7 @@ function cfgRender(){
       ${CFG_PANEIS.map(p=>`<td style="padding:8px 8px;text-align:center;font-size:.9rem">${p.has(u)?'<span style="color:#16a34a;font-weight:900">✓</span>':'<span style="color:#e2e8f0">·</span>'}</td>`).join("")}
       <td style="padding:8px 10px"><div style="color:${ac.cor};font-weight:${ac.peso};font-size:.7rem">${ac.desde||""}</div><div style="font-size:.6rem;color:#94a3b8">${ac.desde?ac.txt:""}</div></td>
       <td style="padding:8px 10px;text-align:center">${a.has_custom?'<span title="Senha própria" style="color:#16a34a">🔒</span>':'<span title="Ainda na senha padrão" style="color:#f97316">🔓</span>'}</td>
-      <td style="padding:8px 10px;text-align:center;white-space:nowrap"><button type="button" class="rh-btn" style="padding:5px 10px;font-size:.64rem;white-space:nowrap" onclick="cfgRedefinirSenha('${k}')">🔑 Redefinir senha</button><button type="button" class="rh-btn" style="padding:5px 10px;font-size:.64rem;white-space:nowrap;margin-left:6px" onclick="cfgGuias('${k}')">👁️ Guias</button>${cfgBotaoAcesso(k,bloq)}</td>
+      <td style="padding:8px 10px;text-align:center;white-space:nowrap"><button type="button" class="rh-btn" style="padding:5px 10px;font-size:.64rem;white-space:nowrap" onclick="cfgRedefinirSenha('${k}')">🔑 Redefinir senha</button><button type="button" class="rh-btn" style="padding:5px 10px;font-size:.64rem;white-space:nowrap;margin-left:6px" onclick="cfgGuias('${k}')">👁️ Guias</button>${cfgBotaoAcesso(k,bloq)}${cfgBotaoExcluir(k)}</td>
     </tr>`;
   });
   h+=`</tbody></table></div>`;
