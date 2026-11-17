@@ -177,7 +177,9 @@ module.exports = async function handler(req, res) {
 
   let supabaseResp;
   try {
-    supabaseResp = await fetch(`${SUPABASE_URL}/rest/v1/dashboard_snapshots`, {
+    // select=...: o banco devolve só as colunas leves. Sem isso ele monta de volta o snapshot inteiro (~600 kB)
+    // dentro da mesma consulta, o que dobra o trabalho e estourava o limite de 8 s do Supabase.
+    supabaseResp = await fetch(`${SUPABASE_URL}/rest/v1/dashboard_snapshots?select=id,created_at,source_filename,row_count,fingerprint,origem`, {
       method: "POST",
       headers: { ...headers, Prefer: "return=representation" },
       body: JSON.stringify({
