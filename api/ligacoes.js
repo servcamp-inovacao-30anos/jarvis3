@@ -303,7 +303,7 @@ async function motivo({ res, db, ator, body }) {
 async function indicadores({ res, db }) {
   const hoje = hojeSP(), desde = L.somaDias(hoje, -IND.DIAS_INDICADORES);
   const [faltas, lista, mot, envEv] = await Promise.all([
-    db.listar(`fm_faltas?select=re,data,nome,posto,supervisor,codigo&data=gte.${desde}&order=data.asc,re.asc`),
+    db.listar(`fm_faltas?select=re,data,nome,posto,supervisor,codigo,tipo,cargo&data=gte.${desde}&order=data.asc,re.asc`),
     contatosCompletos(db),
     lerMotivos(db),
     eventosDe(db, [L.ACAO_ZAP_ENVIO], `&criado_em=gte.${desde}T00:00:00Z`)
@@ -338,7 +338,16 @@ async function colaborador({ req, res, db }) {
     p = { key: chave, re: re != null ? String(re) : L.reDe(u.re), nome: nomeCompleto, posto: u.posto || (contatos[0] && contatos[0].posto) || "", supervisor: u.supervisor || (contatos[0] && contatos[0].supervisor) || "", telefone,
       hist: minhas.map(f => [String(f.data).slice(0, 10), f.codigo || "I"]), envios: envios.map(e => e.data).sort(), situacao: "sem", faltas: [] };
   } else p.hist = minhas.map(f => [String(f.data).slice(0, 10), f.codigo || "I"]); // o histórico inteiro, não só a janela do painel
+  if (!p.acomp) p.fb_fim = resultadoUltimoFeedback(minhas, contatos, hoje); // feedback com mais de 30 dias: o mesmo resultado do Desempenho
   return res.status(200).json({ ok: true, hoje, pessoa: p });
+}
+
+// Resultado do último feedback efetivo pela regra única (P.antesDepois); null sem feedback ou se foi desligado depois dele.
+function resultadoUltimoFeedback(faltas, contatos, hoje) {
+  const dc = contatos.filter(c => c.efetivo).map(P.dataDoContato).filter(Boolean).sort().pop();
+  if (!dc || faltas.some(f => f.codigo === "D" && String(f.data).slice(0, 10) >= dc)) return null;
+  const ad = P.antesDepois(faltas.filter(f => P.conta(f.codigo || "I")).map(f => f.data), dc, hoje);
+  return { data: dc, antes: ad.antes, depois: ad.depois, dias: ad.dias, veredito: ad.veredito };
 }
 
 // ── WhatsApp do SAC ─────────────────────────────────────────────────────────

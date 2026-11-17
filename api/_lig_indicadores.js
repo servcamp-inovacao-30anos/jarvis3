@@ -5,11 +5,11 @@
 //   • topo: faltas de hoje, do período da folha (26 a 25) e de um período escolhido, separando "sem justificativa"
 //     de "abonadas" (atestado, justificada, licença, afastamento). Filtros de turno e área valem para tudo;
 //   • Desempenho, mês a mês (folha 26–25 ou mês do calendário, a tela escolhe):
-//       1) as faltas de quem recebeu feedback (mês inicial x mês atual, em %), e quantas % melhoraram;
+//       1) cada feedback com o antes x depois e o veredito (a mesma regra do Monitoramento: P.antesDepois), e quantas % melhoraram;
 //       2) as faltas da empresa toda;
 //       3) a % de cada motivo sobre as faltas tratadas (conversas registradas);
 //       4) a média de minutos de cada feedback;
-//       5) a mesma conta para cada colaborador;
+//       5) o veredito de cada colaborador;
 //   • motivos novos: qualquer pessoa do SAC cria; a coordenação renomeia ou desativa. Sem tabela nova: eventos
 //     LIG_MOTIVO na fm_auditoria (o último de cada chave vale), como a mensagem padrão do WhatsApp.
 // A tela recebe os dados já resumidos por dia e por supervisor, e faz as contas do filtro escolhido.
@@ -17,6 +17,7 @@
 "use strict";
 
 const L = require("./_lig_regras");
+const P = require("./_lig_painel"); // antesDepois: a mesma regra do Monitoramento
 
 const ACAO_MOTIVO = "LIG_MOTIVO";
 const DIAS_INDICADORES = 400;      // ~13 meses: dá para comparar o mesmo mês do ano anterior
@@ -85,9 +86,11 @@ function montarIndicadores({ hoje, faltas, contatos, motivos, turnoDe, envios })
   hoje = iso(hoje);
   const postos = [], posPosto = new Map();
   const idxPosto = nome => { if (!posPosto.has(nome)) { posPosto.set(nome, postos.length); postos.push(nome); } return posPosto.get(nome); };
-  const brutas = [];             // [data, chave da pessoa, código, posto, "R" reserva | "E" efetivo] (I pendente, T tratada, A abonada)
+  const cargos = [], posCargo = new Map();
+  const idxCargo = nome => { nome = String(nome || "").trim(); if (!nome) return null; if (!posCargo.has(nome)) { posCargo.set(nome, cargos.length); cargos.push(nome); } return posCargo.get(nome); };
+  const brutas = [];             // [data, chave da pessoa, código, posto, "R" reserva | "E" efetivo, supervisor da falta, cargo] (I pendente, T tratada, A abonada)
   const dias = new Map();        // "data|supervisor" → [data, supervisor, sem justificativa, abonadas]
-  const pessoas = new Map();     // "RE|PRIMEIRONOME" → { re, nome, posto, supervisor, faltas: [[data, cod]] }
+  const pessoas = new Map();     // "RE|PRIMEIRONOME" → { re, nome, posto, supervisor, sj: [datas I/T], dl: [datas de desligamento] }
   const sups = new Set();
   (faltas || []).forEach(f => {
     const cod = String(f.codigo || "I").toUpperCase(), d = iso(f.data);
@@ -97,23 +100,24 @@ function montarIndicadores({ hoje, faltas, contatos, motivos, turnoDe, envios })
     if (sup) sups.add(sup);
     const k = L.reDe(f.re) + "|" + L.primeiroNome(f.nome);
     let p = pessoas.get(k);
-    if (!p) { p = { key: k, re: L.reDe(f.re), nome: f.nome || "", posto: f.posto || "", supervisor: sup, faltas: [] }; pessoas.set(k, p); }
+    if (!p) { p = { key: k, re: L.reDe(f.re), nome: f.nome || "", posto: f.posto || "", supervisor: sup, sj: [], dl: [] }; pessoas.set(k, p); }
     if (f.posto) p.posto = f.posto;
     if (sup) p.supervisor = sup;
+    if (cod === "D") p.dl.push(d);
     if (!sj && !ab) return;
-    p.faltas.push([d, sj ? "S" : "A"]);
+    if (sj) p.sj.push(d);
     const po = postoDaFalta(f, sup);
-    brutas.push([d, k, cod === "T" ? "T" : sj ? "I" : "A", idxPosto(po.nome), po.reserva ? "R" : "E"]);
+    brutas.push([d, k, cod === "T" ? "T" : sj ? "I" : "A", idxPosto(po.nome), po.reserva ? "R" : "E", sup, idxCargo(f.cargo)]);
     const kd = d + "|" + sup;
     if (!dias.has(kd)) dias.set(kd, [d, sup, 0, 0]);
     dias.get(kd)[sj ? 2 : 3]++;
   });
 
-  // conversas registradas (as tentativas não são feedback): uma pessoa entra no "com feedback" a partir da primeira
+  // conversas registradas (as tentativas não são feedback): cada uma vira uma avaliação antes x depois
   const porNome = new Map(), porRE = new Map();
   pessoas.forEach(p => { porNome.set(L.norm(p.nome), p); if (p.re) porRE.set(p.re, p); });
   const conversas = [], convP = [];
-  const fb = new Map();
+  const fb = new Map();          // "chave da pessoa|data" → avaliação (uma por feedback, sem repetir pessoa + data)
   (contatos || []).forEach(c => {
     if (!c.efetivo) return;
     const d = dataDoContato(c);
@@ -122,12 +126,15 @@ function montarIndicadores({ hoje, faltas, contatos, motivos, turnoDe, envios })
     const p = (re && porRE.get(re)) || porNome.get(L.norm(c.colaborador));
     const sup = String(c.supervisor || (p && p.supervisor) || "").trim();
     if (sup) sups.add(sup);
-    conversas.push([d, nomeAtual(motivos, c.motivo) || "Sem motivo", Number.isInteger(c.duracao_min) && c.duracao_min > 0 ? c.duracao_min : null, sup, String(c.criado_por || "").split(" ")[0]]);
+    conversas.push([d, nomeAtual(motivos, c.motivo) || "Sem motivo", Number.isInteger(c.duracao_min) && c.duracao_min > 0 ? c.duracao_min : null, sup, String(c.criado_por || "").split(" ")[0], c.id]);
     const k = p ? p.key : "?|" + L.norm(c.colaborador);
     if (p) convP.push([d, k]);
-    const x = fb.get(k) || { key: k, re: p ? p.re : re, nome: p ? p.nome : c.colaborador, posto: p ? p.posto : (c.posto || ""), supervisor: sup, contatos: [] };
-    x.contatos.push(d);
-    fb.set(k, x);
+    if (fb.has(k + "|" + d)) return;
+    // sem pessoa na planilha: nenhuma falta → sem_faltas aos 30 dias (Em observação antes disso)
+    const ad = P.antesDepois(p ? p.sj : [], d, hoje);
+    fb.set(k + "|" + d, { key: k, nome: p ? p.nome : String(c.colaborador || ""), re: p ? p.re : re, sup, d,
+      antes: ad.antes, depois: ad.depois, dias: ad.dias, veredito: ad.veredito, faltas_antes: ad.faltas_antes, faltas_depois: ad.faltas_depois,
+      desligado: !!p && p.dl.some(x => x >= d) }); // desligado depois do feedback: fora das contas (D de antes não tira)
   });
 
   const supervisores = [...sups].sort((a, b) => a.localeCompare(b));
@@ -136,6 +143,7 @@ function montarIndicadores({ hoje, faltas, contatos, motivos, turnoDe, envios })
   // pessoas em ordem de nome; o funil se refere a elas pela posição na lista
   const lista = [...pessoas.values()].sort((a, b) => a.nome.localeCompare(b.nome)), pos = new Map(lista.map((p, i) => [p.key, i]));
   const ordem = (a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : a[1] - b[1]);
+  const posSup = new Map(supervisores.map((s, i) => [s, i]));
   const enviosP = [];
   (envios || []).forEach(e => { const d = iso(e.data), i = pos.get(String(e.chave)); if (d && d <= hoje && i !== undefined) enviosP.push([d, i]); });
   return {
@@ -146,18 +154,22 @@ function montarIndicadores({ hoje, faltas, contatos, motivos, turnoDe, envios })
     pessoas: lista.map(p => [p.re, p.nome, p.posto, p.supervisor]),
     // funil das faltas (Visão geral): cada falta, cada WhatsApp enviado e cada feedback registrado, por pessoa (posição em "pessoas")
     funil: {
-      faltas: brutas.map(x => [x[0], pos.get(x[1]), x[2], x[3], x[4]]).sort(ordem),
+      // 7º campo: posição do cargo em "cargos" (null sem cargo na planilha)
+      // 6º campo: posição do supervisor DA FALTA em "supervisores" (o filtro de área vale pelo fato, não pela pessoa hoje)
+      faltas: brutas.map(x => [x[0], pos.get(x[1]), x[2], x[3], x[4], posSup.has(x[5]) ? posSup.get(x[5]) : null, x[6]]).sort(ordem),
       envios: enviosP.sort(ordem),
       feedbacks: convP.map(x => [x[0], pos.get(x[1])]).sort(ordem)
     },
-    // quem teve feedback: datas das conversas e as faltas (S sem justificativa, A abonada) para as contas por mês
-    com_feedback: [...fb.values()].map(x => {
-      const p = pessoas.get(x.key);
-      return { key: x.key, re: x.re, nome: x.nome, posto: x.posto, supervisor: x.supervisor, contatos: [...new Set(x.contatos)].sort(), faltas: p ? p.faltas.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)) : [] };
-    }).sort((a, b) => a.nome.localeCompare(b.nome)),
+    // cada feedback efetivo com o antes x depois e o veredito (P.antesDepois); i = posição em "pessoas" ou null;
+    // sup = supervisor gravado no contato (reserva: o da pessoa)
+    avaliacoes: [...fb.values()].map(x => {
+      const i = pos.get(x.key);
+      return { i: i === undefined ? null : i, nome: x.nome, re: x.re, sup: x.sup, d: x.d, antes: x.antes, depois: x.depois, dias: x.dias, veredito: x.veredito,
+        faltas_antes: x.faltas_antes, faltas_depois: x.faltas_depois, desligado: x.desligado };
+    }).sort((a, b) => (a.d < b.d ? -1 : a.d > b.d ? 1 : a.nome.localeCompare(b.nome))),
     conversas: conversas.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)),
     // nomes dos postos (o 4º campo de cada falta do funil aponta para cá); a reserva técnica de cada supervisor é um deles
-    postos,
+    postos, cargos,
     supervisores, turnos
   };
 }

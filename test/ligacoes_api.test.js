@@ -385,7 +385,7 @@ test("painel: 'Falei com a pessoa' e a baixa levam ao acompanhamento com antes x
   assert.equal(p.situacao, "acomp");
   assert.equal(p.acomp.antes, 2, "as duas faltas até o dia do contato (a baixa as trata)");
   assert.equal(p.acomp.depois, 1);
-  assert.equal(p.acomp.veredito, "melhorando");
+  assert.equal(p.acomp.veredito, "comecando", "1 falta depois, abaixo das 2 de antes, no dia 4 de 30: ainda Em observação");
   assert.equal(p.contato.por, "Raphael Victor");
   assert.ok(p.contato.baixa, "mostra quem deu a baixa");
   assert.equal(p.acomp.sem_baixa, false);
@@ -404,4 +404,16 @@ test("painel: acordo com prazo é conferido sozinho quando a falta vira abonada"
   t.fm_faltas[0].codigo = "I";
   assert.equal((await pedir(t, "ingridycampana", { method: "PATCH", body: { id: t.lig_contatos[0].id, acordo_prazo: dia(-1) } })).statusCode, 200);
   assert.equal(pessoaDe(await painel(t), "PESSOA 1").contato.acordo_auto, "nao_cumpriu", "passou o prazo e a falta segue sem justificativa");
+});
+
+test("histórico do colaborador: feedback com mais de 30 dias traz o mesmo resultado do Desempenho", async () => {
+  const t = tabelas();
+  t.fm_faltas.push(falta(9, dia(-50)), falta(9, dia(-30)), falta(9, dia(-20)));
+  t.lig_contatos.push({ id: 1, colaborador: "PESSOA 9", data_contato: dia(-40), criado_em: dia(-40) + "T10:00:00Z", resultado: "EXPLICOU", motivo: "Saúde" });
+  const r = await pedir(t, "ingridycampana", { query: { acao: "colaborador", re: "9" } });
+  assert.equal(r.statusCode, 200);
+  assert.deepEqual(r.body.pessoa.fb_fim, { data: dia(-40), antes: 1, depois: 2, dias: 30, veredito: "piorou" }, "antes = dc−29..dc; depois = dc+1..dc+30");
+  t.fm_faltas.push(falta(9, dia(-5), { codigo: "D" }));
+  const r2 = await pedir(t, "ingridycampana", { query: { acao: "colaborador", re: "9" } });
+  assert.equal(r2.body.pessoa.fb_fim, null, "desligado depois do feedback: fora, como no Desempenho");
 });

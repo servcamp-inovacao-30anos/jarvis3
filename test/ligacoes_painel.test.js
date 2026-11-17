@@ -84,13 +84,37 @@ test("a pessoa ligou e foi registrado: sai da fila e vai para o acompanhamento",
   assert.equal(r.resumo.mensagem + r.resumo.aguardando + r.resumo.base, 0);
 });
 
-test("antes x depois: menos faltas melhorou, igual é na mesma, mais é faltou de novo", () => {
-  assert.equal(P.veredito(4, 0, 12), "melhorando");
-  assert.equal(P.veredito(4, 1, 12), "melhorando");
-  assert.equal(P.veredito(3, 3, 12), "mesma");
-  assert.equal(P.veredito(2, 3, 12), "piorou");
-  assert.equal(P.veredito(2, 0, 3), "comecando", "ainda é cedo para dizer que melhorou");
-  assert.equal(P.veredito(0, 1, 3), "piorou");
+test("veredito (regra do Raphael): piorou e igual valem na hora; melhorou e sem faltas só aos 30 dias", () => {
+  assert.equal(P.veredito(3, 1, 10), "comecando", "3 antes, 1 depois: ainda Em observação");
+  assert.equal(P.veredito(3, 3, 10), "mesma", "chegou a 3: Igual a antes, na hora");
+  assert.equal(P.veredito(3, 4, 10), "piorou", "chegou a 4: Piorou, na hora");
+  assert.equal(P.veredito(3, 2, 30), "melhorando", "fechou os 30 dias com 2");
+  assert.equal(P.veredito(0, 0, 30), "sem_faltas");
+  assert.equal(P.veredito(0, 0, 10), "comecando");
+  assert.equal(P.veredito(0, 1, 5), "piorou");
+  assert.equal(P.veredito(2, 0, 30), "melhorando");
+  assert.equal(P.DIAS_ACOMPANHAMENTO, 30);
+});
+
+test("janela do antes x depois: antes = dc−29..dc (o dia do feedback conta como antes), depois = dc+1..dc+30", () => {
+  const dc = "2026-10-01", D = n => L.somaDias(dc, n);
+  const r = P.antesDepois([D(-30), D(-29), D(0), D(1), D(30), D(31)], dc, "2026-12-01");
+  assert.deepEqual(r.faltas_antes, [D(-29), D(0)], "dc−29 conta, dc−30 não; o dia do feedback conta como antes");
+  assert.deepEqual(r.faltas_depois, [D(1), D(30)], "dc+1 conta como depois; dc+31 já não");
+  assert.equal(r.dias, 30);
+  assert.equal(r.veredito, "mesma");
+  const meio = P.antesDepois([D(-5), D(3), D(9)], dc, D(5));
+  assert.deepEqual([meio.antes, meio.depois, meio.dias, meio.veredito], [1, 1, 5, "mesma"], "o depois vai só até hoje");
+  assert.equal(P.antesDepois([], dc, D(-1)).dias, 0, "feedback no futuro não tem dia negativo");
+});
+
+test("desligamento: D depois do feedback tira do monitoramento; D de antes do feedback não tira", () => {
+  const c = conversa(1, "PESSOA 1", d(-10));
+  assert.equal(de(painel({ faltas: [f(1, d(-12)), f(1, d(-3), "D")], contatos: [c] }), 1), undefined);
+  assert.equal(de(painel({ faltas: [f(1, d(-12)), f(1, d(-10), "D")], contatos: [c] }), 1), undefined, "D no dia do feedback também conta como depois do feedback");
+  const p = de(painel({ faltas: [f(1, d(-20), "D"), f(1, d(-12))], contatos: [c] }), 1);
+  assert.equal(p.situacao, "acomp", "desligado antes e readmitido: segue no acompanhamento");
+  assert.equal(p.acomp.antes, 1);
 });
 
 test("o acompanhamento conta só falta injustificada ou tratada; abonada aparece à parte", () => {
@@ -100,7 +124,7 @@ test("o acompanhamento conta só falta injustificada ou tratada; abonada aparece
   assert.equal(p.acomp.antes, 3, "40, 35 e 33 dias atrás estão nos 30 dias antes do contato (25 dias atrás)");
   assert.equal(p.acomp.depois, 2);
   assert.equal(p.acomp.abonadas_depois, 1);
-  assert.equal(p.acomp.veredito, "melhorando");
+  assert.equal(p.acomp.veredito, "comecando", "2 depois, abaixo das 3 de antes, no dia 25: ainda Em observação");
   assert.equal(p.acomp.ultima_falta_depois, d(-10));
   assert.deepEqual(p.acomp.faltas_depois, [d(-20), d(-10)], "as datas das faltas depois do contato, para o card mostrar quais foram");
 });
@@ -143,7 +167,11 @@ test("o resumo conta por situação e por veredito", () => {
   assert.equal(r.resumo.mensagem, 2, "pessoas 1 e 4");
   assert.equal(r.resumo.aguardando, 1);
   assert.equal(r.resumo.acomp, 2);
-  assert.equal(r.resumo.vereditos.melhorando + r.resumo.vereditos.mesma + r.resumo.vereditos.piorou + r.resumo.vereditos.comecando, 2);
+  assert.deepEqual(Object.keys(r.resumo.vereditos), ["melhorando", "mesma", "sem_faltas", "piorou", "comecando"]);
+  assert.equal(Object.values(r.resumo.vereditos).reduce((a, b) => a + b, 0), r.resumo.acomp, "a soma dos vereditos é o número em acompanhamento");
+  const fim = painel({ contatos: [conversa(1, "PESSOA 7", d(-30))] });
+  assert.equal(fim.resumo.vereditos.sem_faltas, 1, "30 dias sem falta antes e depois: Continuou sem faltas (chave nova, sem NaN)");
+  assert.equal(Object.values(fim.resumo.vereditos).reduce((a, b) => a + b, 0), fim.resumo.acomp);
 });
 
 test("contato registrado sem falta na planilha ainda entra no acompanhamento", () => {

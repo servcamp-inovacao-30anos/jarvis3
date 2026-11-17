@@ -744,6 +744,19 @@ aside.sb#sidebar #navRoot .ni.active{background:linear-gradient(135deg,rgba(255,
 aside.sb#sidebar .sb-recolher{border-radius:14px;background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.18);}
 aside.sb#sidebar .sb-foot,aside.sb#sidebar .sb-credit{border-top-color:rgba(255,255,255,.12);}
 aside.sb#sidebar.sb-mini .sb-perfil{margin:10px 8px;padding:8px 0;}
+/* Cartão do usuário: mesmo tamanho de antes, mas com texto claro sobre fundo sólido (antes: letra azul-escura sobre fundo transparente) */
+aside.sb#sidebar .sb-perfil{display:grid;padding:9px 12px;grid-template-columns:38px 1fr;column-gap:10px;row-gap:0;align-items:center;background:#16385f;border:1px solid #3b679c;box-shadow:0 4px 12px rgba(0,0,0,.28);}
+aside.sb#sidebar .sb-perfil>div:last-child{display:contents;}
+aside.sb#sidebar .sb-perfil-av{grid-row:1/4;grid-column:1;}
+aside.sb#sidebar .sb-perfil-n,aside.sb#sidebar .sb-perfil-c,aside.sb#sidebar .sb-perfil-on,aside.sb#sidebar .sb-of{grid-column:2;}
+aside.sb#sidebar .sb-perfil-n{font-size:.8rem;color:#fff;}
+aside.sb#sidebar .sb-perfil-c{font-size:.66rem;color:#d3e2f4;}
+aside.sb#sidebar .sb-perfil-on{font-size:.66rem;color:#86efac;}
+aside.sb#sidebar .sb-perfil-senha{grid-column:1/-1;display:block;margin:0;padding:1px 6px;border-radius:5px;font-size:.72rem;font-weight:600;line-height:1.25;color:#e8f0fb;}
+aside.sb#sidebar .sb-perfil-n+.sb-perfil-c+.sb-perfil-on~.sb-perfil-senha:first-of-type,aside.sb#sidebar .sb-perfil-on~a.sb-perfil-senha:first-of-type{margin-top:6px;}
+aside.sb#sidebar .sb-perfil-senha:hover,aside.sb#sidebar .sb-perfil-senha:focus-visible{background:rgba(255,255,255,.16);color:#fff;text-decoration:none;outline:none;}
+aside.sb#sidebar .sb-perfil-senha:focus-visible{box-shadow:0 0 0 2px #7cc0ff;}
+@media(max-width:768px){aside.sb#sidebar .sb-perfil-senha{padding:7px 8px;font-size:.8125rem;}}
 aside.sb#sidebar.sb-mini #navRoot .ni{margin:2px 8px;padding:9px 0;}
 @media(max-width:768px){aside.sb#sidebar{width:240px;min-width:240px;}}
 </style>
@@ -823,10 +836,10 @@ aside.sb#sidebar.sb-mini #navRoot .ni{margin:2px 8px;padding:9px 0;}
       <div class="sb-perfil-c" id="sbPerfilCargo"></div>
       <div class="sb-perfil-on">Sistema Online</div>
       <div id="sbOfensiva" class="sb-of" hidden></div>
-      <a class="sb-perfil-senha" href="#" onclick="showForcePasswordChange(sessionStorage.getItem('userKey'),'voluntaria');return false">🔑 Trocar senha</a>
-      <a class="sb-perfil-senha" id="sbFeEmail" href="#" style="display:none" onclick="feAbrir();return false">✉️ Aviso semanal por e-mail</a>
-      <a class="sb-perfil-senha" href="#" onclick="sessaoSair();return false">🚪 Sair</a>
-      <a class="sb-perfil-senha" href="#" onclick="sessaoSairDeTodos();return false">📵 Sair de todos os aparelhos</a>
+      <a class="sb-perfil-senha" href="#" onclick="showForcePasswordChange(sessionStorage.getItem('userKey'),'voluntaria');return false">Trocar senha</a>
+      <a class="sb-perfil-senha" id="sbFeEmail" href="#" style="display:none" onclick="feAbrir();return false">Aviso semanal por e-mail</a>
+      <a class="sb-perfil-senha" href="#" onclick="sessaoSair();return false">Sair</a>
+      <a class="sb-perfil-senha" href="#" onclick="sessaoSairDeTodos();return false">Sair de todos os aparelhos</a>
     </div>
   </div>
   <nav id="navRoot">

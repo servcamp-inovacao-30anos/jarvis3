@@ -28,7 +28,7 @@ O SAC **não liga**. Quem faltou sem justificar recebe um WhatsApp do número do
 | Enviar mensagem | Faltou sem justificar e ainda não recebeu o WhatsApp do SAC (ou faltou de novo depois da última mensagem) | O SAC envia a mensagem |
 | Aguardando ligação | A mensagem foi enviada e a pessoa ainda não ligou. Dentro do prazo mostra "Aguardando ligação"; passado o prazo, "Não ligou" | Ela liga (conversa registrada), ou faltar de novo |
 | Com a coordenação | 2 tentativas sem retorno: a coordenação conversa com a pessoa | A coordenação registra a conversa |
-| Em acompanhamento | Ligou e a conversa foi registrada, há até 30 dias | Passam os 30 dias, ou desligamento |
+| Em acompanhamento | Ligou e a conversa foi registrada, há até 30 dias | Passam os 30 dias, ou desligamento (código `D` com data igual ou depois do feedback) |
 
 - **Prazo da mensagem:** a pessoa tem até o fim do dia seguinte ao envio (`PRAZO_RESPOSTA_DIAS`). Passou, vira tentativa sem retorno.
 - **Tentativa:** mensagem enviada que venceu sem a pessoa ligar, ou "Não consegui falar" registrado à mão. A segunda só conta se a pessoa **faltou de novo** depois da primeira: duas mensagens para a mesma falta contam uma tentativa só. Duas tentativas levam à coordenação ("Com a coordenação"). Mensagem que falhou no envio não conta.
@@ -41,14 +41,40 @@ O SAC **não liga**. Quem faltou sem justificar recebe um WhatsApp do número do
 
 Cada pessoa é um card: nome, dia X de 30, **veredito**, calendário de 30 dias, com a data (dd/mm) em cada dia e as faltas coloridas, faltas nos 30 dias antes x depois do contato e quem falou com ela. Clicar abre o **panorama** (painel lateral): frase de conclusão, antes x depois, calendário de 60 dias com o contato no meio, o combinado e a linha do tempo (faltas, mensagens, conversas, baixa e medidas). Só falta injustificada (`I`) ou já tratada (`T`) pesa na conta; abonada, afastamento e desligamento não.
 
-| Veredito | Regra |
-|---|---|
-| Em observação | Nenhuma falta depois do contato e menos de 7 dias: cedo para concluir |
-| Melhorou | Nenhuma falta depois, ou menos faltas depois do que antes |
-| Igual a antes | Mesmo número de faltas antes e depois: a conversa não fez diferença |
-| Piorou | Mais faltas depois do que antes |
+### Veredito (regra do Raphael, 16/11/2026)
 
-A regra mora em um lugar só (`veredito` em `_lig_painel.js`) e é testada. "Falta a baixa da coordenação" aparece quando há conversa, falta pendente na janela e ninguém deu a baixa.
+Para cada feedback (data `dc`) conta só falta sem justificativa (`I` pendente ou `T` tratada):
+
+- **Antes (A)** = faltas de `dc−29` até `dc` (30 dias que terminam no dia do feedback; a falta do próprio dia conta como antes).
+- **Depois (D)** = faltas de `dc+1` até o menor entre hoje e `dc+30`.
+- **dias** = dias desde o feedback, de 0 a 30.
+- A janela da **baixa** continua outra: `dc−30` a `dc+30` (`JANELA_DIAS`).
+
+Decide-se nesta ordem:
+
+| # | Situação (chave) | Regra |
+|---|---|---|
+| 1 | Piorou (`piorou`) | D > A. Vale na hora, mesmo antes dos 30 dias |
+| 2 | Igual a antes (`mesma`) | A > 0 e D = A. Vale na hora |
+| 3 | Em observação (`comecando`) | Ainda dentro dos 30 dias e abaixo do número de antes |
+| 4 | Continuou sem faltas (`sem_faltas`) | Fechou os 30 dias com A = 0 e D = 0 |
+| 5 | Melhorou (`melhorando`) | Fechou os 30 dias com D < A |
+
+Exemplo do dono: 3 faltas antes. Faltou 1 ou 2 nos 30 dias → continua Em observação; chegou a 3 → Igual a antes; chegou a 4 → Piorou na hora; terminou os 30 dias com 0, 1 ou 2 → Melhorou.
+
+Ordem das situações em todas as telas: Melhorou · Igual a antes · Continuou sem faltas · Piorou · Em observação. No filtro "Todos" do Monitoramento os cards começam por quem piorou.
+
+- **Uma regra só:** `antesDepois` e `veredito` em `_lig_painel.js`. O Monitoramento (`montarPainel`) e o Desempenho (`montarIndicadores` → `avaliacoes`, uma por feedback, pessoa + data sem repetir) usam a mesma função, e um teste cruzado confere. A tela só lê o veredito (`FB_VD`); não recalcula.
+- **Taxas do Desempenho:** avaliados = Melhorou + Igual a antes + Piorou. Continuou sem faltas e Em observação ficam fora das taxas. Contato de quem não está na planilha conta como sem faltas (aos 30 dias).
+- **Desligados:** código `D` com data igual ou depois do feedback tira a pessoa do Monitoramento e das contas do Desempenho (contada à parte como desligado). `D` anterior ao feedback não tira.
+
+"Aguardando baixa da coordenação" aparece quando há conversa, falta pendente na janela da baixa e ninguém deu a baixa.
+
+### Área, tipo e mês fechado
+
+- **Área = supervisor registrado no fato.** Falta conta na área do supervisor gravado na falta (6º campo de `funil.faltas`), mesmo que a pessoa tenha mudado de supervisor. Feedback e avaliação contam na área do supervisor gravado no contato (reserva: o da pessoa).
+- **Efetivo × reserva:** a rota de indicadores lê a coluna `tipo` de `fm_faltas`. Antes não lia, e falta `RESERVA` com posto preenchido aparecia como efetivo.
+- **Mês fechado:** a planilha sobe de segunda a sexta; sábado e domingo entram na atualização de segunda. Um mês (folha 26 a 25 ou mês do calendário) só conta como fechado quando já chegou uma planilha com data posterior ao último dia do período. A data vem do "Última planilha" do painel geral (`_uploadInfo` no `index.html`); sem ela, vale a partir do primeiro dia útil (segunda a sexta) depois do fim do período (`fbMesFechado` na tela). O Desempenho lista só meses fechados e completos: sai o primeiro mês, se os dados começam no meio dele, e o mês em andamento.
 
 ## Acordo com prazo (conferência automática)
 
@@ -79,7 +105,7 @@ Não foi testado com o WhatsApp real pareado (precisa de um número). O primeiro
 Uma palavra para cada coisa, em todas as telas, sem expressões que exigem interpretação:
 
 - **Situações:** Enviar mensagem · Aguardando ligação · Com a coordenação · Em acompanhamento.
-- **Veredito:** Melhorou · Igual a antes · Piorou · Em observação (a explicação aparece acima da lista).
+- **Veredito:** Melhorou · Igual a antes · Continuou sem faltas · Piorou · Em observação (a explicação aparece acima da lista).
 - **Tempo:** "Contato há 9 dias" e "acompanhamento até 01/12". Não existe mais "dia 9 de 30".
 - **Combinado:** cumprido · pendente · não cumprido.
 

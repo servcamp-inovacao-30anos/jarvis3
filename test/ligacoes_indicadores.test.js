@@ -9,6 +9,7 @@ const assert = require("node:assert/strict");
 const { supabaseFalso, chamar } = require("./_supabase_falso");
 const ligacoes = require("../api/ligacoes");
 const IND = require("../api/_lig_indicadores");
+const P = require("../api/_lig_painel");
 const L = require("../api/_lig_regras");
 
 const hoje = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
@@ -48,10 +49,12 @@ test("indicadores: faltas por dia e supervisor, quem teve feedback e as conversa
   assert.deepEqual(r.dias, [[dia(-2), "PAULO SOUZA", 0, 1], [dia(-1), "FRANK PIMENTEL", 2, 1]], "D não é falta; futuro não entra; T conta como sem justificativa");
   assert.deepEqual(r.turnos, { "FRANK PIMENTEL": "DIURNO", "PAULO SOUZA": "NOTURNO" });
   assert.equal(r.pessoas.length, 5, "todas as pessoas da planilha para a busca do histórico");
-  assert.deepEqual(r.com_feedback.map(x => x.nome), ["PESSOA 1", "PESSOA 3"], "tentativa não é feedback");
-  assert.deepEqual(r.com_feedback[0].faltas, [[dia(-1), "S"]]);
-  assert.deepEqual(r.com_feedback[0].contatos, [dia(-1)]);
-  assert.deepEqual(r.conversas, [[dia(-1), "Saúde (atestado)", 12, "FRANK PIMENTEL", ""], [dia(-1), "Sem motivo", null, "FRANK PIMENTEL", ""]]);
+  assert.equal(r.com_feedback, undefined, "trocado por avaliacoes");
+  assert.deepEqual(r.avaliacoes.map(x => x.nome), ["PESSOA 1", "PESSOA 3"], "tentativa não é feedback");
+  assert.deepEqual(r.avaliacoes[0], { i: 0, nome: "PESSOA 1", re: "1", sup: "FRANK PIMENTEL", d: dia(-1), antes: 1, depois: 0, dias: 1, veredito: "comecando",
+    faltas_antes: [dia(-1)], faltas_depois: [], desligado: false }, "a falta do dia do feedback conta como antes; a futura não entra");
+  assert.equal(r.avaliacoes[1].antes, 0, "abonada não pesa no antes x depois");
+  assert.deepEqual(r.conversas, [[dia(-1), "Saúde (atestado)", 12, "FRANK PIMENTEL", "", 1], [dia(-1), "Sem motivo", null, "FRANK PIMENTEL", "", 2]], "sem supervisor no contato: vale o da pessoa; o id liga o card ao detalhe");
 });
 
 test("rota de indicadores: qualquer pessoa do SAC lê", async () => {
@@ -61,7 +64,10 @@ test("rota de indicadores: qualquer pessoa do SAC lê", async () => {
   const r = await pedir(t, "ingridycampana", { query: { acao: "indicadores" } });
   assert.equal(r.statusCode, 200);
   assert.equal(r.body.dias.length, 2);
-  assert.deepEqual(r.body.conversas, [[dia(-1), "Saúde", 9, "FRANK PIMENTEL", ""]]);
+  assert.deepEqual(r.body.conversas, [[dia(-1), "Saúde", 9, "FRANK PIMENTEL", "", 1]]);
+  t.fm_faltas.push(falta(3, dia(-4), "I", { tipo: "RESERVA", posto: "POSTO A" }));
+  const rr = await pedir(t, "ingridycampana", { query: { acao: "indicadores" } });
+  assert.equal(rr.body.funil.faltas.find(x => x[0] === dia(-4))[4], "R", "a rota lê o tipo: reserva com posto preenchido continua reserva");
   assert.equal((await pedir(t, "frankpimentel", { query: { acao: "indicadores" } })).statusCode, 403);
 });
 
@@ -114,4 +120,58 @@ test("funil: cada falta (I pendente, T tratada, A abonada), cada WhatsApp enviad
   assert.deepEqual(r.funil.faltas.map(x => x.slice(0, 3)), [[dia(-5), 0, "T"], [dia(-5), 1, "I"], [dia(-4), 0, "A"]], "desligamento não é falta");
   assert.deepEqual(r.funil.envios, [[dia(-4), 0], [dia(-4), 1]], "envio de quem não está na planilha fica de fora");
   assert.deepEqual(r.funil.feedbacks, [[dia(-2), 0]], "tentativa não é feedback");
+});
+
+test("falta tipo RESERVA com posto preenchido é reserva; a falta guarda o supervisor dela (6º campo)", () => {
+  const r = IND.montarIndicadores({
+    hoje, motivos: IND.motivosAtuais([]),
+    faltas: [falta(1, dia(-9), "I", { nome: "ANA", supervisor: "FRANK PIMENTEL" }), falta(1, dia(-3), "I", { nome: "ANA", supervisor: "PAULO SOUZA", tipo: "RESERVA", posto: "POSTO B" })]
+  });
+  assert.deepEqual(r.supervisores, ["FRANK PIMENTEL", "PAULO SOUZA"]);
+  assert.deepEqual(r.funil.faltas.map(x => [x[4], r.supervisores[x[5]], r.postos[x[3]]]), [["E", "FRANK PIMENTEL", "POSTO A"], ["R", "PAULO SOUZA", "Reserva técnica · PAULO SOUZA"]],
+    "a área da falta é a do dia da falta, mesmo que a pessoa tenha mudado de supervisor");
+  assert.deepEqual(r.pessoas[0], ["1", "ANA", "POSTO B", "PAULO SOUZA"]);
+});
+
+test("avaliações: uma por feedback (pessoa + data), desligado à parte, contato sem pessoa na planilha", () => {
+  const conv = (id, nome, d, extra) => ({ id, colaborador: nome, data_contato: d, efetivo: true, ...extra });
+  const r = IND.montarIndicadores({
+    hoje, motivos: IND.motivosAtuais([]),
+    faltas: [falta(1, dia(-50), "D", { nome: "ANA" }), falta(1, dia(-12), "I", { nome: "ANA" }), falta(2, dia(-12), "I", { nome: "BIA" }), falta(2, dia(-5), "D", { nome: "BIA" })],
+    contatos: [conv(1, "ANA", dia(-10), { supervisor: "JOAO" }), conv(2, "ANA", dia(-10)), conv(3, "BIA", dia(-10)), conv(4, "CARLOS FORA", dia(-30)), conv(5, "DUDA FORA", dia(-29))]
+  });
+  const de = n => r.avaliacoes.filter(x => x.nome === n);
+  assert.equal(de("ANA").length, 1, "dois registros no mesmo dia são um feedback só");
+  assert.equal(de("ANA")[0].sup, "JOAO", "a área da avaliação é o supervisor gravado no contato");
+  assert.equal(de("ANA")[0].desligado, false, "D de antes do feedback não tira");
+  assert.equal(de("BIA")[0].desligado, true, "D depois do feedback: fora das contas");
+  assert.deepEqual([de("CARLOS FORA")[0].i, de("CARLOS FORA")[0].veredito, de("CARLOS FORA")[0].dias], [null, "sem_faltas", 30], "sem pessoa na planilha: sem faltas aos 30 dias");
+  assert.equal(de("DUDA FORA")[0].veredito, "comecando", "ainda dentro dos 30 dias");
+});
+
+test("teste cruzado: Monitoramento (montarPainel) e Desempenho (montarIndicadores) dão o mesmo antes, depois e veredito", () => {
+  const casos = [
+    // [RE, dias atrás do feedback, faltas (dias relativos a hoje) com código]
+    [1, 10, [[-39, "I"], [-38, "T"], [-30, "I"], [-5, "I"]]],            // 3 antes (a 1ª é dc−29), 1 depois: em observação
+    [2, 10, [[-15, "I"], [-11, "I"], [-10, "I"], [-8, "I"], [-6, "T"], [-2, "I"], [-1, "I"]]], // piorou na hora
+    [3, 30, []],                                                       // sem faltas aos 30 dias
+    [4, 30, [[-45, "I"], [-31, "I"], [-20, "A"]]],                      // melhorou: 2 antes, abonada depois não conta
+    [5, 20, [[-40, "I"], [-50, "I"], [-49, "I"], [-3, "I"], [-2, "T"]]], // dc−30 fica fora, dc−29 entra: 2 antes, 2 depois
+    [6, 0, [[0, "I"]]]                                                  // feedback hoje, falta hoje: conta como antes
+  ];
+  const faltas = [], contatos = [];
+  casos.forEach(([re, dc, fs], k) => {
+    fs.forEach(([n, cod]) => faltas.push(falta(re, dia(n), cod, { nome: "PESSOA " + re })));
+    contatos.push({ id: k + 1, colaborador: "PESSOA " + re, data_contato: dia(-dc), efetivo: true, criado_por: "Ingridy Campana", baixa: null });
+  });
+  faltas.sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : a.re - b.re));
+  const pn = P.montarPainel({ hoje, faltas, contatos, envios: [], telefones: {} });
+  const ind = IND.montarIndicadores({ hoje, faltas, contatos, motivos: IND.motivosAtuais([]) });
+  const vistos = new Set();
+  casos.forEach(([re]) => {
+    const a = pn.pessoas.find(p => p.nome === "PESSOA " + re).acomp, b = ind.avaliacoes.find(x => x.nome === "PESSOA " + re);
+    assert.deepEqual([b.antes, b.depois, b.dias, b.veredito, b.faltas_antes, b.faltas_depois], [a.antes, a.depois, a.dia, a.veredito, a.faltas_antes, a.faltas_depois], "RE " + re);
+    vistos.add(a.veredito);
+  });
+  assert.deepEqual([...vistos].sort(), ["comecando", "melhorando", "mesma", "piorou", "sem_faltas"], "o teste passa pelos 5 vereditos");
 });

@@ -12,7 +12,7 @@ const FB_TENT=["NAO_ATENDEU","CAIXA_POSTAL","NUMERO_INVALIDO","SEM_RESPOSTA","RE
 let LIG_C=[],LIG_P=[],LIG_RESUMO=null,LIG_PRAZO=1,LIG_RES={},LIG_ABANDONO_N=0,LIG_COD={},LIG_PODE_BAIXAR=false,LIG_ZAP=null,LIG_MODELO=null,LIG_HOJE="",LIG_VIEW=[],LIG_TAB="mensagem",LIG_VF="todos",LIG_HIST=null,LIG_PAN=null;
 /* aba principal (fila · monit · desemp · hist), filtros do topo, números (GET ?acao=indicadores) e motivos (padrões + criados pelo SAC) */
 let LIG_ABA="visao",LIG_IND=null,LIG_MOT=LIG_MOTIVOS.map(m=>({chave:m[0],nome:m[0],ativo:true,padrao:true,antigos:[]})),LIG_MOT_EDITA=false;
-let LIG_F={per:"hoje",de:"",ate:"",turno:"todos",area:"todas",tipo:"todos"},LIG_DES={modo:"folha",ini:"",fim:"",ord:"var",dir:1,ef:"todos",mot:"",pt:"efetivo",ptord:"faltas"};
+let LIG_F={per:"hoje",de:"",ate:"",turno:"todos",area:"todas",tipo:"todos"},LIG_DES={modo:"folha",ini:"",fim:"",mot:""};
 try{const t=localStorage.getItem("fbTab2");if(t)LIG_TAB=t;const a=localStorage.getItem("fbAba3");if(a)LIG_ABA=a;const m=localStorage.getItem("fbDesModo");if(m)LIG_DES.modo=m;}catch(e){}
 let LIG_ASS="";
 function ligLoad(){
@@ -180,7 +180,6 @@ function fbTagCod(cod){
   const t={I:"tn-da",A:"tn-am",J:"tn-ok",L:"tn-br",AF:"tn-br",T:"tn-vi"}[cod]||"tn-gr";
   return '<span class="fb-tag '+t+'">'+_esc(FB_ABO_NOME[cod]||"Sem classificação")+'</span>';
 }
-function fbVazio(ic,titulo,texto,tom){return '<div class="fb-empty '+(tom||"tn-br")+'"><div class="fb-empty-i">'+fbI(ic)+'</div><h3>'+_esc(titulo)+'</h3><p>'+_esc(texto)+'</p></div>';}
 function fbAjuda(texto){return '<div class="fb-help">'+fbI("info")+'<div>'+texto+'</div></div>';}
 function fbBtn(label,onclick,cls,icone){return '<button type="button" class="fb-btn '+(cls||"")+'" onclick="'+onclick+'">'+(icone?fbI(icone):"")+_esc(label)+'</button>';}
 
@@ -240,7 +239,7 @@ function fbDialog(id,o){
     +'<div class="fb-dlg-b">'+(o.corpo||"")+'</div>'+(o.rodape?'<div class="fb-dlg-f">'+o.rodape+'</div>':"")+'</div>';
   ov.addEventListener("mousedown",e=>{if(e.target===ov)fbFechar(id);});
   document.body.appendChild(ov);
-  if(o.lateral&&fbMov()){const pf=ov.querySelector(".fb-pf");if(pf)[...pf.children].slice(0,8).forEach((x,i)=>x.animate([{opacity:0,transform:"translate3d(24px,0,0)"},{opacity:1,transform:"none"}],{duration:560,delay:120+i*45,easing:FB_EASE,fill:"backwards"}));}
+  if((o.lateral||o.tam==="pan")&&fbMov()){const pf=ov.querySelector(".fb-pf");if(pf)[...pf.children].slice(0,8).forEach((x,i)=>x.animate([{opacity:0,transform:"translate3d(24px,0,0)"},{opacity:1,transform:"none"}],{duration:560,delay:120+i*45,easing:FB_EASE,fill:"backwards"}));}
   const foco=ov.querySelector("[autofocus],input:not([type=hidden]):not([type=file]),textarea,button.pri");
   if(foco&&!o.semFoco)setTimeout(()=>{try{foco.focus({preventScroll:true});}catch(e){}},60);
   return ov;
@@ -443,8 +442,8 @@ function ligZapConectar(){
     if(j&&j.ok&&j.state==="open"){clearInterval(LIG_ZAP_TIMER);LIG_ZAP_TIMER=null;LIG_ZAP=Object.assign({},LIG_ZAP,j);ligZapChip();}
     box.innerHTML=corpoQr(j);
   };
-  fbDialog("lig-qr-modal",{titulo:"Conectar o WhatsApp do SAC",tam:"sm",semFoco:true,
-    corpo:'<ol class="fb-steps"><li>No celular do SAC, abra o <b>WhatsApp</b>.</li><li>Toque em <b>Aparelhos conectados</b> e depois em <b>Conectar um aparelho</b>.</li><li>Aponte a câmera para o código abaixo.</li></ol><div class="fb-qr" id="lq-corpo"><div class="fb-spin"></div><span class="fb-hint">Gerando o QR code…</span></div>',
+  fbDialog("lig-qr-modal",{titulo:"Conectar o WhatsApp do SAC",tam:"md",semFoco:true,
+    corpo:'<div class="qr-w"><div class="qr-st"><h3>Como conectar</h3><ol class="fb-steps"><li><span>No celular do SAC, abra o <b>WhatsApp</b>.</span></li><li><span>Toque em <b>Aparelhos conectados</b> e depois em <b>Conectar um aparelho</b>.</span></li><li><span>Aponte a câmera para o QR code.</span></li></ol></div><div class="fb-qr" id="lq-corpo"><div class="fb-spin"></div><span class="fb-hint">Gerando o QR code…</span></div></div>',
     rodape:'<button type="button" class="fb-btn" onclick="fbFechar(\'lig-qr-modal\');ligLoad()">Fechar</button>'});
   waLocal("POST","/connect",null,20000).then(r=>pinta(waComoZap(r))).catch(e=>pinta({ok:false,motivo:e.message}));
   clearInterval(LIG_ZAP_TIMER);
@@ -495,14 +494,17 @@ function ligPreencher(p){return{colaborador:p.nome,re:p.re,posto:p.posto,supervi
 
 /* ═════ vocabulário (uma palavra para cada coisa, em todas as telas) ═════
    Abas: Fila do SAC (Enviar mensagem · Aguardando ligação · Com a coordenação) · Monitoramento 30 dias · Desempenho · Histórico.
-   Resultado do monitoramento (faltas dos 30 dias antes do feedback × faltas depois): Piorou · Igual a antes · Em observação · Melhorou. */
+   Resultado do monitoramento (o servidor decide: _lig_painel.antesDepois; a tela só lê o veredito), nesta ordem:
+   Melhorou · Igual a antes · Continuou sem faltas · Piorou · Em observação. */
 const FB_VD={
   /* seta pelo significado em todo o módulo: melhorou = para cima, piorou = para baixo, observação = relógio */
-  piorou:{t:"Piorou",tom:"tn-da",ic:"down",cic:"down",d:"Faltou mais vezes do que antes."},
-  mesma:{t:"Igual a antes",tom:"tn-am",ic:"eq",cic:"eq",d:"Faltou o mesmo número de vezes."},
-  comecando:{t:"Em observação",tom:"tn-br",ic:"clock",cic:"clock",d:"Menos de 7 dias desde o contato e nenhuma falta."},
-  melhorando:{t:"Melhorou",tom:"tn-ok",ic:"up",cic:"up",d:"Faltou menos vezes do que antes."}
+  melhorando:{t:"Melhorou",tom:"tn-ok",ic:"up",cic:"up",d:"Terminou os 30 dias com menos faltas do que nos 30 dias antes do feedback."},
+  mesma:{t:"Igual a antes",tom:"tn-am",ic:"eq",cic:"eq",d:"Chegou ao mesmo número de faltas dos 30 dias antes do feedback."},
+  sem_faltas:{t:"Continuou sem faltas",tom:"tn-gr",ic:"ok",cic:"ok",d:"Nenhuma falta nos 30 dias antes nem nos 30 dias depois do feedback."},
+  piorou:{t:"Piorou",tom:"tn-da",ic:"down",cic:"down",d:"Passou do número de faltas dos 30 dias antes do feedback."},
+  comecando:{t:"Em observação",tom:"tn-br",ic:"clock",cic:"clock",d:"Dentro dos 30 dias após o feedback e abaixo do número de faltas de antes."}
 };
+const FB_VD_ORDEM=Object.keys(FB_VD);
 const FB_SIT=[
   {k:"mensagem",t:"Enviar mensagem",tom:"tn-br",d:"Faltaram sem justificar e ainda não receberam mensagem do SAC."},
   {k:"aguardando",t:"Aguardando ligação",tom:"tn-am",d:"Já receberam a mensagem. Falta a pessoa ligar para o SAC."},
@@ -510,6 +512,7 @@ const FB_SIT=[
   {k:"acomp",t:"Em acompanhamento",tom:"tn-ok",d:"Ligaram e a conversa foi registrada. Por 30 dias, as faltas são comparadas com as dos 30 dias antes do feedback."}
 ];
 const FB_FILA=["mensagem","aguardando","base"];
+const FB_FILA_IC={mensagem:"send",aguardando:"clock",base:"user"};
 const FB_ABAS=[{k:"visao",t:"Visão geral",ic:"chart"},{k:"fila",t:"Fila do SAC",ic:"list"},{k:"monit",t:"Monitoramento 30 dias",ic:"eye"},{k:"desemp",t:"Desempenho",ic:"chart"},{k:"hist",t:"Histórico",ic:"hist"}];
 const FB_ACOR={cumpriu:["Combinado cumprido","tn-ok"],pendente:["Combinado pendente","tn-am"],nao_cumpriu:["Combinado não cumprido","tn-da"]};
 const LIG_LOTE_MAX=15; // no máximo 15 mensagens por vez: o WhatsApp bloqueia número que dispara em massa
@@ -545,6 +548,8 @@ function fbMesFim(k,modo){
 }
 function fbMesRot(k){return FB_MESES[Number(k.slice(5,7))-1]+"/"+k.slice(0,4);}
 function fbTurnoDe(sup){const t=LIG_IND&&LIG_IND.turnos;return(t&&t[sup])||"DIURNO";}
+/* área = supervisor registrado no fato: no acompanhamento, o gravado no feedback; na fila, o das faltas */
+function fbSupDe(p){return(p.situacao==="acomp"&&p.contato&&p.contato.supervisor)||p.supervisor;}
 function fbSupOk(sup){
   sup=String(sup||"").trim();
   if(LIG_F.area!=="todas"&&sup!==LIG_F.area)return false;
@@ -663,9 +668,9 @@ if(!window._fbTilt&&document.addEventListener){window._fbTilt=1;
   },{passive:true});
 }
 function fbNavContagens(){
-  const P=LIG_P.filter(p=>fbSupOk(p.supervisor));
+  const P=LIG_P.filter(p=>fbSupOk(fbSupDe(p)));
   const n={fila:P.filter(p=>FB_FILA.indexOf(p.situacao)>=0).length,monit:P.filter(p=>p.situacao==="acomp").length,hist:fbContatosFiltrados().length};
-  document.querySelectorAll("#lig-root .fb-abas > button").forEach((b,i)=>{const a=FB_ABAS[i];if(!a||n[a.k]===undefined)return;const s=b.querySelector(".n");if(s){const de=Number(s.textContent)||0;s.textContent=String(n[a.k]);if(de!==n[a.k]){s.classList.remove("pulse");void s.offsetWidth;s.classList.add("pulse");}}});
+  document.querySelectorAll("#lig-root .fb-abas-t > button").forEach((b,i)=>{const a=FB_ABAS[i];if(!a||n[a.k]===undefined)return;const s=b.querySelector(".n");if(s){const de=Number(s.textContent)||0;s.textContent=String(n[a.k]);if(de!==n[a.k]){s.classList.remove("pulse");void s.offsetWidth;s.classList.add("pulse");}}});
 }
 /* estado da planilha e o tema claro/escuro (a barra branca do sistema some nesta tela, em tela cheia) */
 function fbBandaDir(){
@@ -684,15 +689,16 @@ function ligRender(){
   let h='<div class="fb" id="lig-root">';
   /* bloco do topo (referência 1): faixa azul-marinho com corte diagonal, filtros de turno e área, abas sublinhadas */
   h+='<section class="fb-topo"><header class="fb-band"><div class="fb-band-t"><svg class="fb-band-ic" viewBox="0 0 36 36" aria-hidden="true"><rect x="3" y="19" width="8" height="14" rx="2.5"/><rect x="14" y="11" width="8" height="22" rx="2.5"/><rect x="25" y="3" width="8" height="30" rx="2.5"/></svg>'
-    +'<div><h1>Feedback de Faltas</h1><p>Grupo ServCamp - Hoje - '+_esc(rhFmt(hj))+'</p></div></div>'+fbBandaDir()+'</header>';
+    +'<div><h1>Feedback de Faltas</h1><p>Grupo ServCamp - Hoje - '+_esc(rhFmt(hj))+'</p></div></div>@@FILTROS@@'+fbBandaDir()+'</header>';
   const sups=(LIG_IND&&LIG_IND.supervisores)||[...new Set(LIG_P.map(p=>p.supervisor).filter(Boolean))].sort();
   const selp=(id,campo,ops,val,cls)=>'<span class="fb-selp'+(cls?" "+cls:"")+'"><select id="'+id+'" onchange="ligFiltro(\''+campo+'\',this.value)">'+ops.map(o=>'<option value="'+_esc(o[0])+'"'+(val===o[0]?" selected":"")+'>'+_esc(o[1])+'</option>').join("")+'</select>'+fbI("chev")+'</span>';
-  h+='<div class="fb-filtros">'
+  const filtros='<div class="fb-filtros">'
     +'<div class="fb-fg"><label class="fb-fl" for="lig-turno">Turno</label>'+selp("lig-turno","turno",[["todos","Todos"],["DIURNO","Diurno"],["NOTURNO","Noturno"]],LIG_F.turno)+'</div>'
     +'<div class="fb-fg"><label class="fb-fl" for="lig-area">Área</label>'+selp("lig-area","area",[["todas","Todas as Áreas"]].concat(sups.map(s=>[s,s])),LIG_F.area,"wide")+'</div></div>';
-  const P=LIG_P.filter(p=>fbSupOk(p.supervisor));
+  h=h.replace("@@FILTROS@@",filtros);
+  const P=LIG_P.filter(p=>fbSupOk(fbSupDe(p)));
   const n={visao:null,fila:P.filter(p=>FB_FILA.indexOf(p.situacao)>=0).length,monit:P.filter(p=>p.situacao==="acomp").length,desemp:null,hist:fbContatosFiltrados().length};
-  h+='<nav class="fb-abas" role="tablist" aria-label="Seções" data-ind="linha">'+FB_ABAS.map(a=>'<button type="button" role="tab" class="'+(LIG_ABA===a.k?"on":"")+'" aria-selected="'+(LIG_ABA===a.k)+'" onclick="ligAba(\''+a.k+'\')">'+a.t+(n[a.k]!==null?'<span class="n">'+n[a.k]+'</span>':"")+'</button>').join("")
+  h+='<nav class="fb-abas" aria-label="Seções"><div class="fb-dsub fb-abas-t" role="tablist" aria-label="Seções" data-ind="fundo">'+FB_ABAS.map(a=>'<button type="button" role="tab" class="'+(LIG_ABA===a.k?"on":"")+'" aria-selected="'+(LIG_ABA===a.k)+'" onclick="ligAba(\''+a.k+'\')">'+fbI(a.ic)+a.t+(n[a.k]!==null?'<span class="n">'+n[a.k]+'</span>':"")+'</button>').join("")+'</div>'
     +'<div class="fb-abas-a"><div class="fb-bg"><label class="fb-search">'+fbI("search")+'<span class="fb-sr">Histórico do colaborador</span><input id="lig-bg" class="fb-in" type="search" placeholder="Histórico do colaborador" autocomplete="off" oninput="ligBuscaG(this.value)" onkeydown="ligBuscaGTecla(event)" onblur="setTimeout(ligBuscaGFecha,180)"></label><div class="fb-bg-r" id="lig-bg-r" role="listbox"></div></div>'
     +'<button type="button" class="fb-btn sm" onclick="ligZapAbrir(\'\',\'\',\'\',[],null)">'+fbI("chat")+'Enviar WhatsApp<span id="lig-zap-chip" class="fb-zp">'+ligZapChipHtml()+'</span></button>'
     +'<button type="button" class="fb-btn sm navy" onclick="ligForm()">'+fbI("phone")+'Registrar feedback</button></div></nav></section>';
@@ -712,7 +718,7 @@ let LIG_VG="faltaram";
 const FB_ETAPAS=[
   {k:"faltaram",t:"Faltaram",ic:"user",cls:"g-blue"},
   {k:"enviadas",t:"Mensagem enviada",ic:"chat",cls:"g-violet"},
-  {k:"ligaram",t:"Ligaram · feedback registrado",ic:"phone",cls:"g-green"},
+  {k:"ligaram",t:"Ligaram",ic:"phone",cls:"g-green"},
   {k:"naoresp",t:"Não responderam",ic:"alert",cls:"g-coral"}
 ];
 function fbIdxFaltas(){
@@ -725,11 +731,11 @@ function fbIdxFaltas(){
   return m;
 }
 function fbFunil(de,ate,o){
-  const hj=ligHojeISO(),pes=(LIG_IND&&LIG_IND.pessoas)||[],M=fbIdxFaltas(),gente=[],tipo=o&&o.tipo!==undefined?o.tipo:LIG_F.tipo;let abon=0,abonR=0;
+  const hj=ligHojeISO(),pes=(LIG_IND&&LIG_IND.pessoas)||[],S=(LIG_IND&&LIG_IND.supervisores)||[],M=fbIdxFaltas(),gente=[],tipo=o&&o.tipo!==undefined?o.tipo:LIG_F.tipo;let abon=0,abonR=0;
   Object.keys(M.falt).forEach(i=>{
-    const p=pes[i];if(!p||!fbSupOk(p[3]))return;
-    /* efetivo × reserva técnica: cada falta diz de qual dos dois era (o 5º campo) */
-    const fs=M.falt[i].filter(x=>x[0]>=de&&x[0]<=ate&&(tipo==="todos"||!tipo||(tipo==="reserva")===(x[4]==="R")));
+    const p=pes[i];if(!p)return;
+    /* efetivo × reserva técnica: cada falta diz de qual dos dois era (o 5º campo); área = supervisor da falta (o 6º) */
+    const fs=M.falt[i].filter(x=>x[0]>=de&&x[0]<=ate&&fbSupOk(S[x[5]])&&(tipo==="todos"||!tipo||(tipo==="reserva")===(x[4]==="R")));
     abonR+=fs.filter(x=>x[2]==="A"&&x[4]==="R").length;
     abon+=fs.filter(x=>x[2]==="A").length;
     const sj=fs.filter(x=>x[2]!=="A");if(!sj.length)return;
@@ -740,7 +746,7 @@ function fbFunil(de,ate,o){
     if(fb.length)st="ligou";
     else if(ult)st=hj>ligSomaDias(ult,LIG_PRAZO||1)?"naoresp":"prazo";
     const ultF=sj[sj.length-1],postoN=(LIG_IND.postos||[])[ultF[3]];
-    gente.push({i:Number(i),key:String(p[0]||"")+"|"+(_ligNorm(p[1]).split(" ")[0]||""),re:String(p[0]||""),nome:p[1],posto:postoN||p[2],sup:p[3],res:ultF[4]==="R",nf:{E:sj.filter(x=>x[4]!=="R").length,R:sj.filter(x=>x[4]==="R").length},faltas:sj.map(x=>x[0]),tratadas:sj.filter(x=>x[2]==="T").length,envios:env,feedback:fb.length?fb[fb.length-1]:null,st});
+    gente.push({i:Number(i),key:String(p[0]||"")+"|"+(_ligNorm(p[1]).split(" ")[0]||""),re:String(p[0]||""),nome:p[1],posto:postoN||p[2],sup:S[ultF[5]]||p[3],res:ultF[4]==="R",nf:{E:sj.filter(x=>x[4]!=="R").length,R:sj.filter(x=>x[4]==="R").length},faltas:sj.map(x=>x[0]),tratadas:sj.filter(x=>x[2]==="T").length,envios:env,feedback:fb.length?fb[fb.length-1]:null,st});
   });
   gente.sort((a,b)=>b.faltas.length-a.faltas.length||a.nome.localeCompare(b.nome));
   const de2=x=>gente.filter(x);
@@ -759,17 +765,18 @@ function fbPnlVisao(){
     +'<div class="fb-pills fb-tipo" role="group" aria-label="Efetivo ou reserva técnica" data-nav="tipo" data-ind="fundo">'+[["todos","Todos"],["efetivo","Efetivo"],["reserva","Reserva técnica"]].map(o=>'<button type="button" class="'+(LIG_F.tipo===o[0]?"on":"")+'" onclick="ligFiltro(\'tipo\',\''+o[0]+'\')">'+o[1]+'</button>').join("")+'</div>'
     +'<span class="fb-vg-zap" data-sync="vgzap">'+fbZapVG()+'</span></div>';
   if(!LIG_IND)return h+fbVazio();
-  const F=fbFunil(pe.de,pe.ate),tot=F.faltaram.length,pc=n=>tot?Math.round(n/tot*100)+"%":"—";
+  const F=fbFunil(pe.de,pe.ate),tot=F.faltaram.length,pc=n=>tot>=20?Math.round(n/tot*100)+"% de quem faltou":tot?n+" de "+tot+" que faltaram":"—";
   const nR=F.faltaram.filter(g=>g.res).length,nE=tot-nR;
   const subs={faltaram:(LIG_F.tipo==="todos"&&tot?nE+" efetivo · "+nR+" reserva · ":"")+(F.semmsg.length?F.semmsg.length+" sem mensagem":"todas com mensagem"),
-    enviadas:pc(F.enviadas.length)+" de quem faltou",ligaram:pc(F.ligaram.length)+" de quem faltou · fora da cobrança",naoresp:pc(F.naoresp.length)+" de quem faltou"+(F.prazo.length?" · "+F.prazo.length+" no prazo":"")};
+    enviadas:pc(F.enviadas.length),ligaram:pc(F.ligaram.length)+" · feedback registrado",naoresp:pc(F.naoresp.length)+(F.prazo.length?" · "+F.prazo.length+" no prazo":"")};
   if(!FB_ETAPAS.some(e=>e.k===LIG_VG))LIG_VG="faltaram";
   h+='<div class="fb-funil" data-cards="funil">'+FB_ETAPAS.map((e,i)=>'<div class="fb-fcw">'
     +'<button type="button" class="fb-fc '+e.cls+(LIG_VG===e.k?" on":"")+'" aria-pressed="'+(LIG_VG===e.k)+'" onclick="ligVG(\''+e.k+'\')"><span class="top"><span class="ic">'+fbI(e.ic)+'</span><small>'+(i+1)+' · '+e.t+'</small></span>'
-    +'<span class="mid"><b data-n="'+F[e.k].length+'">'+F[e.k].length+'</b>'+fbAvatares(F[e.k])+'</span><span class="sub">'+subs[e.k]+'</span></button>'
+    +'<span class="mid"><b data-n="'+F[e.k].length+'">'+F[e.k].length+'</b></span><span class="sub">'+subs[e.k]+'</span></button>'
     +'<span class="fb-con" aria-hidden="true">'+fbI("go")+'</span></div>').join("");
   const cv=fbConversasEntre(pe.de,pe.ate),dur=cv.filter(c=>c[2]),med=dur.length?Math.round(dur.reduce((t,c)=>t+c[2],0)/dur.length):null;
-  h+='<div class="fb-fcw"><div class="fb-fc g-amber info"><span class="top"><span class="ic">'+fbI("clock")+'</span><small>Tempo médio por feedback</small></span><span class="mid"><b'+(med===null?'>—':' data-n="'+med+'">'+med+'<em>min</em>')+'</b></span><span class="sub">'+(cv.length?fbPlural(cv.length,"conversa","conversas"):"nenhuma conversa")+'</span></div></div></div>';
+  h+='<div class="fb-fcw"><div class="fb-fc g-amber info"><span class="top"><span class="ic">'+fbI("clock")+'</span><small>Tempo médio por feedback</small></span><span class="mid"><b'+(med===null?'>—':' data-n="'+med+'">'+med+'<em>min</em>')+'</b></span><span class="sub">'+(cv.length?fbPlural(cv.length,"conversa","conversas"):"nenhuma conversa")+'</span></div></div>'
+    +'<div class="fb-fcw"><div class="fb-fc g-navy info" title="Pessoas que ligaram e tiveram o feedback registrado, sobre as pessoas que faltaram"><span class="top"><span class="ic">'+fbI("check")+'</span><small>Taxa de feedback</small></span><span class="mid"><b>'+(tot?Math.round(F.ligaram.length/tot*100)+'<em>%</em>':"—")+'</b></span><span class="sub">'+(tot?F.ligaram.length+" de "+tot+" que faltaram":"ninguém faltou")+'</span></div></div></div>';
   h+='<p class="fb-vg-nota" data-sync="vgnota">'+(F.abon?fbPlural(F.abon,"falta abonada","faltas abonadas")+' no período não entram no funil.':"")+'</p>';
   const lista=F[LIG_VG],et=FB_ETAPAS.find(e=>e.k===LIG_VG);
   const selv=lista.filter(fbSelecionavel);
@@ -818,8 +825,8 @@ function ligAba(a){
   if(a!==LIG_ABA){LIG_LIM=24;LIG_SEL=new Set();LIG_BUSCA_P="";}
   const ia=FB_ABAS.findIndex(x=>x.k===LIG_ABA),ib=FB_ABAS.findIndex(x=>x.k===a);LIG_DX=ib>ia?28:ib<ia?-28:0;
   LIG_ABA=a;try{localStorage.setItem("fbAba3",a);}catch(e){}
-  const nav=document.querySelector("#lig-root .fb-abas"),ant=fbPosOn(nav);
-  document.querySelectorAll("#lig-root .fb-abas > button").forEach((b,i)=>{if(!FB_ABAS[i])return;const on=FB_ABAS[i].k===a;b.classList.toggle("on",on);b.setAttribute("aria-selected",on);});
+  const nav=document.querySelector("#lig-root .fb-abas-t"),ant=fbPosOn(nav);
+  document.querySelectorAll("#lig-root .fb-abas-t > button").forEach((b,i)=>{if(!FB_ABAS[i])return;const on=FB_ABAS[i].k===a;b.classList.toggle("on",on);b.setAttribute("aria-selected",on);});
   fbIndica(nav,ant);
   ligPanel();
 }
@@ -832,7 +839,7 @@ function ligTab(t){
   if(LIG_ABA!=="fila"){ligAba("fila");return;}
   ligPanel();
 }
-function ligVF(v){const o=["todos","piorou","mesma","comecando","melhorando"];LIG_DX=o.indexOf(v)>o.indexOf(LIG_VF)?20:o.indexOf(v)<o.indexOf(LIG_VF)?-20:0;LIG_VF=v;LIG_LIM=24;ligPanel();}
+function ligVF(v){const o=["todos"].concat(FB_VD_ORDEM);LIG_DX=o.indexOf(v)>o.indexOf(LIG_VF)?20:o.indexOf(v)<o.indexOf(LIG_VF)?-20:0;LIG_VF=v;LIG_LIM=24;ligPanel();}
 function ligMais(){LIG_LIM+=24;ligPanel();}
 function fbBusca(){return'<label class="fb-search">'+fbI("search")+'<span class="fb-sr">Buscar por nome ou RE</span><input id="lig-busca-p" class="fb-in" type="search" placeholder="Buscar por nome ou RE" autocomplete="off" value="'+_esc(LIG_BUSCA_P)+'" oninput="ligFiltraPend(this.value)"></label><span id="lig-busca-n" class="fb-count"></span>';}
 function ligPanel(){
@@ -840,17 +847,17 @@ function ligPanel(){
   if(LIG_ABA==="hist"){LIG_VIEW=[];LIG_TRUNC=false;fbMostra(box,'<div class="fb-panel">'+fbPnlHist()+'</div>');return;}
   if(LIG_ABA==="desemp"){LIG_VIEW=[];LIG_TRUNC=false;fbMostra(box,'<div class="fb-panel">'+fbPnlDes()+'</div>');return;}
   if(LIG_ABA==="visao"){LIG_VIEW=[];fbMostra(box,'<div class="fb-panel">'+fbPnlVisao()+'</div>');return;}
-  const P=LIG_P.filter(p=>fbSupOk(p.supervisor));
+  const P=LIG_P.filter(p=>fbSupOk(fbSupDe(p)));
   let h='<div class="fb-panel">',lista,total;
   if(LIG_ABA==="monit"){
-    const ac=P.filter(p=>p.situacao==="acomp"),V={piorou:0,mesma:0,comecando:0,melhorando:0};
+    const ac=P.filter(p=>p.situacao==="acomp"),V={};
     ac.forEach(p=>{V[p.acomp.veredito]=(V[p.acomp.veredito]||0)+1;});
-    const op=[["todos","Todos",ac.length],["piorou","Piorou",V.piorou],["mesma","Igual a antes",V.mesma],["comecando","Em observação",V.comecando],["melhorando","Melhorou",V.melhorando]];
-    h+='<div class="fb-sub"><div class="fb-tabs2" role="tablist" aria-label="Resultado do monitoramento" data-nav="sub" data-ind="linha">'+op.map(o=>'<button type="button" role="tab" class="'+(LIG_VF===o[0]?"on":"")+'" aria-selected="'+(LIG_VF===o[0])+'" title="'+_esc(o[0]==="todos"?"Todas as pessoas em acompanhamento":FB_VD[o[0]].d)+'" onclick="ligVF(\''+o[0]+'\')">'+o[1]+'<span class="n">'+o[2]+'</span></button>').join("")+'</div><div class="fb-sub-a" data-sync="suba">'+fbBusca()+'</div></div>';
+    const op=[["todos","Todos",ac.length]].concat(FB_VD_ORDEM.map(k=>[k,FB_VD[k].t,V[k]||0]));
+    h+='<div class="fb-sub"><div class="fb-dsub" role="tablist" aria-label="Resultado do monitoramento" data-nav="sub" data-ind="fundo">'+op.map(o=>'<button type="button" role="tab" class="'+(LIG_VF===o[0]?"on":"")+'" aria-selected="'+(LIG_VF===o[0])+'" title="'+_esc(o[0]==="todos"?"Todas as pessoas em acompanhamento":FB_VD[o[0]].d)+'" onclick="ligVF(\''+o[0]+'\')">'+fbI(o[0]==="todos"?"list":FB_VD[o[0]].ic)+o[1]+'<span class="n">'+o[2]+'</span></button>').join("")+'</div><div class="fb-sub-a" data-sync="suba">'+fbBusca()+'</div></div>';
     total=ac.length;lista=LIG_VF==="todos"?ac:ac.filter(p=>p.acomp.veredito===LIG_VF);
   }else{
     const cont={};FB_FILA.forEach(k=>{cont[k]=P.filter(p=>p.situacao===k).length;});
-    h+='<div class="fb-sub"><div class="fb-tabs2" role="tablist" aria-label="Fila do SAC" data-nav="sub" data-ind="linha">'+FB_FILA.map(k=>{const s=FB_SIT.find(x=>x.k===k);return'<button type="button" role="tab" class="'+(LIG_TAB===k?"on":"")+'" aria-selected="'+(LIG_TAB===k)+'" title="'+_esc(s.d)+'" onclick="ligTab(\''+k+'\')">'+s.t+'<span class="n">'+cont[k]+'</span></button>';}).join("")+'</div>'
+    h+='<div class="fb-sub"><div class="fb-dsub" role="tablist" aria-label="Fila do SAC" data-nav="sub" data-ind="fundo">'+FB_FILA.map(k=>{const s=FB_SIT.find(x=>x.k===k);return'<button type="button" role="tab" class="'+(LIG_TAB===k?"on":"")+'" aria-selected="'+(LIG_TAB===k)+'" title="'+_esc(s.d)+'" onclick="ligTab(\''+k+'\')">'+fbI(FB_FILA_IC[k]||"list")+s.t+'<span class="n">'+cont[k]+'</span></button>';}).join("")+'</div>'
       +'<div class="fb-sub-a" data-sync="suba">'+fbBusca()+(LIG_TAB==="mensagem"&&cont.mensagem?'<button type="button" class="fb-btn sm" onclick="ligSelTodos()">Selecionar '+Math.min(LIG_LOTE_MAX,cont.mensagem)+(cont.mensagem>LIG_LOTE_MAX?" primeiras":(cont.mensagem===1?" pessoa":" pessoas"))+'</button>':"")+'</div></div>';
     h+='<div id="lig-lista">';
     if(LIG_TAB==="mensagem")h+='<div id="lig-lote">'+fbBarraLote()+'</div>';
@@ -884,7 +891,7 @@ function fbVazio(){
 function fbDia(p,d,cod,env,hj,marca){
   const c=cod[d];let k="ok",t="Sem falta registrada";
   if(d>hj){k="fut";t="Ainda não chegou";}
-  else if(c==="I"||c==="T"){k="f";t=c==="T"?"Falta (já tratada pelo SAC)":"Falta sem justificar";}
+  else if(c==="I"||c==="T"){k="f";t="Falta sem justificar";}
   else if(c==="A"||c==="J"||c==="L"||c==="AF"){k="a";t=FB_ABO_NOME[c]||"Abonada";}
   if(marca&&d===marca){k+=" c";t="Dia do feedback";}
   if(env[d]){k+=" m";t+=" · mensagem do SAC enviada";}
@@ -959,21 +966,22 @@ function fbCard(p,i){
     +fbCabCard(p,tom,"",ck)
     +'<div class="fb-pc-b"><div class="fb-pc-c">'+pill+'</div>'+corpo+'</div><div class="fb-pc-a" onclick="event.stopPropagation()">'+acoes+'</div></article>';
 }
-/* monitoramento (referência 4): fundo na cor do resultado, faltas antes × depois com as datas, ícone de tendência e seta */
+/* Monitoramento: o que decide numa olhada. Resultado (selo), faltas antes → depois, quantos dos 30 dias já passaram, motivo e combinado.
+   Datas, mensagens e o registro completo ficam no panorama (clique no card). */
 function fbCardM(p,i){
-  const a=p.acomp,v=FB_VD[a.veredito]||FB_VD.mesma,c=p.contato||{},hj=ligHojeISO();
-  const nome=_esc(p.nome),plF=n=>n===1?"Falta":"Faltas";
-  const ini=ligSomaDias(c.data,-30),fimAntes=c.data,iniDep=ligSomaDias(c.data,1),fimDep=ligSomaDias(c.data,30)<hj?ligSomaDias(c.data,30):hj;
-  const col=(rot,n,dias,de,ate)=>'<div class="fb-mc" title="'+rot+'"><div><b>'+n+'</b><span>'+plF(n)+'</span></div><em>em '+fbPlural(dias,"dia","dias")+'</em><em>('+fbDd(de)+' a '+fbDd(ate)+')</em></div>';
+  const a=p.acomp,v=FB_VD[a.veredito]||FB_VD.mesma,c=p.contato||{},nome=_esc(p.nome);
+  const dia=Math.min(30,Math.max(0,a.dia)),reg=LIG_C.find(x=>x.id===c.id)||null;
+  const mot=reg&&reg.motivo?fbMotNome(reg.motivo):"",diz=reg&&reg.justificativa?String(reg.justificativa):"";
   const extras=[];
   if(c.acordo_auto&&FB_ACOR[c.acordo_auto])extras.push(fbTag(FB_ACOR[c.acordo_auto][0],FB_ACOR[c.acordo_auto][1]));
   if(a.sem_baixa)extras.push(fbTag("Aguardando baixa da coordenação","tn-am"));
+  const falta=n=>n===1?"falta":"faltas";
   return'<article class="fb-pc fb-pm '+v.tom+'" style="--i:'+Math.min(i,12)+'" tabindex="0" role="button" aria-label="Abrir o panorama de '+nome+'" onclick="ligAbrir('+i+')" onkeydown="if(event.key===\'Enter\'&&event.target===this)ligAbrir('+i+')" data-lb="'+_esc(_ligNorm(p.nome))+'" data-re="'+_esc(String(p.re||""))+'">'
     +fbCabCard(p,v.tom,'<span class="fb-vp">'+fbI(v.ic)+_esc(v.t)+'</span>')
-    +'<div class="fb-pm-b">'+col("Antes do feedback",a.antes,30,ini,fimAntes)+(a.dia>0?col("Depois do feedback",a.depois,a.dia,iniDep,fimDep):'<div class="fb-mc" title="Depois do feedback"><div><b>'+a.depois+'</b><span>'+plF(a.depois)+'</span></div><em>feedback hoje</em><em>('+fbDd(c.data)+')</em></div>')
-    +'<span class="fb-pm-ic">'+fbI(v.cic)+'</span><span class="fb-pm-go">'+fbI("go")+'</span></div>'
-    +fbRegistro(LIG_C.find(x=>x.id===c.id)||null)
-    +(extras.length?'<div class="fb-tags fb-pm-t">'+extras.join("")+'</div>':"")+'</article>';
+    +'<div class="fb-pm-b"><div class="fb-pm-n" title="Faltas sem justificativa: 30 dias antes do feedback → depois dele"><b>'+a.antes+'</b><i aria-hidden="true">→</i><b class="d">'+a.depois+'</b><span>faltas antes → depois</span></div>'
+    +'<div class="fb-pm-pg"><div class="fb-pm-prog" role="progressbar" aria-valuemin="0" aria-valuemax="30" aria-valuenow="'+dia+'" title="Acompanhamento de 30 dias"><i style="width:'+Math.round(dia/30*100)+'%"></i></div>'
+    +'<span class="fb-pm-d">'+(dia>=30?"Concluído":dia>0?"Dia "+dia+" de 30":"Feedback hoje")+'</span></div></div>'
+    +(mot||diz||extras.length?'<div class="fb-pm-m">'+(mot||diz?'<p>'+(mot?'<b>'+_esc(mot)+'</b>':"")+(diz?'<span>'+(mot?" · ":"")+"“"+_esc(diz)+"”"+'</span>':"")+'</p>':"")+extras.join("")+'</div>':"")+'</article>';
 }
 function ligEnviarI(i){const p=LIG_VIEW[i];if(p)ligZapAbrir(p.nome,fbFone(p.telefone)||ligTelefoneDe(p.nome),p.re,p.faltas||[],null);}
 function ligRegistrarI(i){const p=LIG_VIEW[i];if(p)ligForm(null,ligPreencher(p));}
@@ -1020,23 +1028,33 @@ function ligBuscaGAbrir(i){const x=LIG_BG[i];if(!x)return;ligBuscaGFecha();const
 function ligColab(re,nome){
   fbToast("Abrindo o histórico de "+String(nome||"").split(" ")[0]+"…");
   return ligApi("/api/ligacoes?acao=colaborador&re="+encodeURIComponent(re||"")+"&nome="+encodeURIComponent(nome||""))
-    .then(j=>{if(j&&j.pessoa)ligPanorama(j.pessoa);})
+    .then(j=>{if(j&&j.pessoa){j.pessoa._completo=1;ligPanorama(j.pessoa);}})
     .catch(e=>fbToast(e.message||"Não consegui abrir o histórico.","err"));
 }
 
 /* ═════ aba Desempenho: painel de diretoria ═════
-   Quatro sub-abas: Resumo executivo · Efeito do feedback · Empresa e áreas · Motivos e atendimento.
-   % sempre sobre as faltas SEM justificativa; abonadas só como contexto; mês em andamento marcado como parcial e projetado. */
+   Cinco sub-abas: Resumo executivo · Efeito do feedback · Empresa e áreas · Postos e reserva · Motivos e atendimento.
+   Só meses fechados nas comparações; % só com base de 20 ou mais; o mês em andamento aparece à parte, como estimativa. */
+/* mês fechado (regra do Raphael): a planilha sobe de segunda a sexta (sábado e domingo entram na de segunda).
+   O período que termina em "fim" está fechado quando já chegou uma planilha com data depois de "fim" (a data da última
+   planilha é a mesma do "Última planilha" do painel geral). Sem essa data: a partir do 1º dia útil depois de "fim". */
+function fbMesFechado(fim){
+  let pl="";
+  try{const m=typeof _uploadInfo==="function"?_uploadInfo():null;if(m&&m.ts)pl=new Date(Number(m.ts)-3*3600000).toISOString().slice(0,10);}catch(e){}
+  if(pl)return pl>fim;
+  let d=ligSomaDias(fim,1);
+  while([0,6].indexOf(new Date(d+"T12:00:00Z").getUTCDay())>=0)d=ligSomaDias(d,1);
+  return ligHojeISO()>=d;
+}
+/* só meses fechados e completos: sai o 1º mês (se os dados começam no meio dele) e o mês em andamento */
 function fbMesesDisp(modo){
-  const hj=ligHojeISO(),ini=fbMesChave((LIG_IND&&LIG_IND.desde)||ligSomaDias(hj,-365),modo),fim=fbMesChave(hj,modo),out=[];
-  let a=Number(ini.slice(0,4)),m=Number(ini.slice(5,7));
-  for(let k=ini;k<=fim&&out.length<40;){out.push(k);m++;if(m>12){m=1;a++;}k=a+"-"+String(m).padStart(2,"0");}
+  const hj=ligHojeISO(),desde=(LIG_IND&&LIG_IND.desde)||ligSomaDias(hj,-365),out=[];
+  let k=fbMesChave(desde,modo);
+  if(fbMesIni(k,modo)<desde)k=fbProxMes(k,1);
+  for(;fbMesFechado(fbMesFim(k,modo))&&out.length<40;k=fbProxMes(k,1))out.push(k);
   return out;
 }
-function fbPct(a,b){return a>0?Math.round((b-a)/a*100):null;}
-function fbPctTxt(p){return p===null?"—":(p>0?"+":p<0?"−":"")+Math.abs(p)+"%";}
 function fbTomVar(p){return p===null||p===0?"tn-gr":p<0?"tn-ok":"tn-da";}
-function fbSoma(lista,de,ate){const r={sj:0,ab:0};lista.forEach(x=>(x.faltas||[]).forEach(f=>{if(f[0]>=de&&f[0]<=ate)r[f[1]==="S"?"sj":"ab"]++;}));return r;}
 function fbMesCurto(k){return FB_MESES[Number(k.slice(5,7))-1]+"/"+k.slice(2,4);}
 function fbProxMes(k,n){let a=Number(k.slice(0,4)),m=Number(k.slice(5,7))+n;while(m>12){m-=12;a++;}while(m<1){m+=12;a--;}return a+"-"+String(m).padStart(2,"0");}
 function fbNum(n,d){return Number(n||0).toLocaleString("pt-BR",{maximumFractionDigits:d||0});}
@@ -1045,59 +1063,43 @@ try{const s=localStorage.getItem("fbDesSub");if(s)LIG_DSUB=s;}catch(e){}
 const FB_DSUBS=[["resumo","Resumo executivo","chart"],["efeito","Efeito do feedback","ok"],["areas","Empresa e áreas","list"],["postos","Postos e reserva","pin"],["motivos","Motivos e atendimento","doc"]];
 function ligDes(k,v){
   if(k==="mot"&&LIG_DES.mot===v)v=""; /* clicar de novo no mesmo motivo fecha o detalhe */
-  if(k==="ef"||k==="mot"||k==="pt"||k==="ptord")LIG_DX=0;
+  if(k==="mot")LIG_DX=0;
   if(k==="sub"){const o=FB_DSUBS.map(s=>s[0]);LIG_DX=o.indexOf(v)>o.indexOf(LIG_DSUB)?24:o.indexOf(v)<o.indexOf(LIG_DSUB)?-24:0;LIG_DSUB=v;try{localStorage.setItem("fbDesSub",v);}catch(e){}}
   else LIG_DES[k]=v;
   if(k==="modo"){LIG_DES.ini="";LIG_DES.fim="";try{localStorage.setItem("fbDesModo",v);}catch(e){}}
-  if(k==="ord"){if(LIG_DES._o===v)LIG_DES.dir=-LIG_DES.dir;else LIG_DES.dir=v==="nome"?1:-1;LIG_DES._o=v;}
   ligPanel();
 }
 
-/* ── os números do painel: um mês por linha ── */
+/* ── Desempenho: só meses FECHADOS entram nas comparações; o mês em andamento aparece à parte, como estimativa ── */
 function fbDesDados(){
   const hj=ligHojeISO(),modo=LIG_DES.modo==="civil"?"civil":"folha",meses=fbMesesDisp(modo);
   let fim=meses.indexOf(LIG_DES.fim);if(fim<0)fim=meses.length-1;
   let ini=meses.indexOf(LIG_DES.ini);if(ini<0||ini>fim)ini=Math.max(0,fim-5);
-  const coorte=((LIG_IND&&LIG_IND.com_feedback)||[]).filter(x=>fbSupOk(x.supervisor));
   const L=meses.map(k=>{
-    const de=fbMesIni(k,modo),fimM=fbMesFim(k,modo),ate=fimM<hj?fimM:hj,parcial=fimM>hj;
-    const emp=fbFaltasEntre(de,ate),cv=fbConversasEntre(de,ate),dur=cv.filter(c=>c[2]),F=fbFunil(de,ate,{tipo:"todos"});
-    const passados=fbDiasEntre(de,ate)+1,total=fbDiasEntre(de,fimM)+1;
-    const resp=F.enviadas.filter(g=>g.st==="ligou").length;
-    return{k,de,ate,fimM,parcial,passados,total,emp,fech:parcial?Math.round(emp.sj/passados*total):emp.sj,
-      conv:cv.length,min:dur.length?Math.round(dur.reduce((t,c)=>t+c[2],0)/dur.length):null,env:F.enviadas.length,ret:F.enviadas.length?Math.round(resp/F.enviadas.length*100):null,cvs:cv};
+    const de=fbMesIni(k,modo),fimM=fbMesFim(k,modo),ate=fimM<hj?fimM:hj,cv=fbConversasEntre(de,ate),dur=cv.filter(c=>c[2]);
+    return{k,de,ate,fimM,parcial:fimM>hj,emp:fbFaltasEntre(de,ate),conv:cv.length,min:dur.length?Math.round(dur.reduce((t,c)=>t+c[2],0)/dur.length):null,cvs:cv};
   });
-  /* tendência: reta dos últimos 6 meses fechados, 3 meses à frente, faixa de ± o desvio dos resíduos */
-  const fech=L.filter(x=>!x.parcial).slice(-6),n=fech.length;
-  let tend=null;
-  if(n>=3){
-    const xs=fech.map((_,i)=>i),ys=fech.map(x=>x.emp.sj),mx=xs.reduce((a,b)=>a+b,0)/n,my=ys.reduce((a,b)=>a+b,0)/n;
-    const b=xs.reduce((t,x,i)=>t+(x-mx)*(ys[i]-my),0)/(xs.reduce((t,x)=>t+(x-mx)*(x-mx),0)||1),a=my-b*mx;
-    const dp=Math.sqrt(ys.reduce((t,y,i)=>t+Math.pow(y-(a+b*i),2),0)/n);
-    const base=L[L.length-1].parcial?n+1:n;
-    tend={meses:[1,2,3].map(j=>fbProxMes(L[L.length-1].k,j)),vals:[0,1,2].map(j=>Math.max(0,Math.round(a+b*(base+j)))),banda:Math.round(dp),incl:b};
-  }
-  return{hj,modo,meses,ini,fim,kI:meses[ini],kF:meses[fim],faixa:L.slice(ini,fim+1),todos:L,coorte,tend};
+  return{hj,modo,meses,ini,fim,kI:meses[ini],kF:meses[fim],faixa:L.slice(ini,fim+1),todos:L};
 }
-/* efeito do feedback: cada conversa registrada no intervalo, faltas 30 dias antes × depois (proporcional a 30 dias) */
+/* efeito do feedback: lê as avaliações do servidor (antes × depois e veredito já decididos lá, a mesma regra do Monitoramento).
+   Área = supervisor gravado no feedback. Desligado depois do feedback fica fora das contas (contado à parte). */
+const FB_CAT={melhorando:"melh",mesma:"igual",piorou:"pior"};
 function fbEfeito(D){
-  const M=fbIdxFaltas(),pes=(LIG_IND&&LIG_IND.pessoas)||[],hj=D.hj,de=fbMesIni(D.kI,D.modo),ate=D.faixa[D.faixa.length-1].ate,vistos=new Set(),cont=[];
-  ((LIG_IND&&LIG_IND.funil&&LIG_IND.funil.feedbacks)||[]).forEach(x=>{
-    const d=x[0],i=x[1],p=pes[i];if(d<de||d>ate||!p||!fbSupOk(p[3])||vistos.has(i+"|"+d))return;vistos.add(i+"|"+d);
-    const fs=(M.falt[i]||[]).filter(f=>f[2]!=="A").map(f=>f[0]);
-    const dias=Math.min(30,fbDiasEntre(d,hj)),fa=fs.filter(f=>f>=ligSomaDias(d,-30)&&f<=d),fd=fs.filter(f=>f>d&&f<=ligSomaDias(d,dias)),antes=fa.length,depois=fd.length;
-    cont.push({i,d,nome:p[1],re:String(p[0]||""),sup:p[3],posto:p[2],antes,depois,fa,fd,dias,norm:dias>0?depois*30/dias:0,mes:fbMesChave(d,D.modo)});
+  const de=fbMesIni(D.kI,D.modo),ate=D.faixa[D.faixa.length-1].ate,cont=[],desl=new Set();
+  ((LIG_IND&&LIG_IND.avaliacoes)||[]).forEach(x=>{
+    if(x.d<de||x.d>ate||!fbSupOk(x.sup))return;
+    if(x.desligado){desl.add(x.i!==null&&x.i!==undefined?x.i:"?"+x.nome);return;}
+    cont.push(Object.assign({},x,{re:String(x.re||"")}));
   });
-  // a última conversa de cada pessoa decide o resultado dela
-  const ult={};cont.forEach(c=>{if(!ult[c.i]||ult[c.i].d<c.d)ult[c.i]=c;});
-  const av=Object.values(ult).filter(c=>c.dias>=7);
-  const r={melh:0,igual:0,pior:0};av.forEach(c=>{if(c.depois===0||c.depois<c.antes)r.melh++;else if(c.depois===c.antes)r.igual++;else r.pior++;});
-  const sa=av.reduce((t,c)=>t+c.antes,0),sd=av.reduce((t,c)=>t+c.norm,0);
-  return{cont,av,r,red:sa>0?Math.round((sd-sa)/sa*100):null};
+  /* a última conversa de cada pessoa decide o resultado dela; avaliados = melhorou, igual a antes ou piorou */
+  const ult={};cont.forEach(c=>{const k=c.i!==null&&c.i!==undefined?c.i:"?"+c.nome;if(!ult[k]||ult[k].d<c.d)ult[k]=c;});
+  const pessoas=Object.values(ult),av=pessoas.filter(c=>FB_CAT[c.veredito]);
+  const r={melh:0,igual:0,pior:0,sem:0,obs:0};pessoas.forEach(c=>{r[FB_CAT[c.veredito]||(c.veredito==="sem_faltas"?"sem":"obs")]++;});
+  return{cont,pessoas,av,r,deslig:desl.size};
 }
 
 /* ── gráficos em SVG: área com projeção, colunas, rosca e mini-área ── */
-function fbTeto(v){if(v<=4)return 4;const p=Math.pow(10,Math.floor(Math.log10(v))),f=v/p;return(f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*p;}
+function fbTeto(v){if(v<=40)return Math.max(4,Math.ceil(v/4)*4); /* eixo com 4 intervalos inteiros: 0, 2, 4, 6, 8 */const p=Math.pow(10,Math.floor(Math.log10(v))),f=v/p;return(f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*p;}
 function fbCurva(pts){
   if(!pts.length)return"";let d="M"+pts[0][0].toFixed(1)+" "+pts[0][1].toFixed(1);
   for(let i=0;i<pts.length-1;i++){const p0=pts[i-1]||pts[i],p1=pts[i],p2=pts[i+1],p3=pts[i+2]||p2,t=.18;
@@ -1153,29 +1155,28 @@ function fbGCols(o){
   });
   return s+'</svg>';
 }
-function fbGRosca(partes,centro,sub){
-  const R=62,C=2*Math.PI*R,tot=partes.reduce((t,p)=>t+p.v,0)||1;let off=0;
-  let s='<svg class="fb-rosca" viewBox="0 0 170 170" role="img" aria-label="'+_esc(sub||"")+'"><circle cx="85" cy="85" r="'+R+'" class="trilho"/>';
-  partes.forEach(p=>{const l=p.v/tot*C;if(p.v)s+='<circle cx="85" cy="85" r="'+R+'" stroke="'+p.cor+'" stroke-dasharray="'+Math.max(0,l-3)+' '+(C-Math.max(0,l-3))+'" stroke-dashoffset="'+(-off)+'" data-tip="'+_esc(p.nome+": "+p.v+" ("+Math.round(p.v/tot*100)+"%)")+'"/>';off+=l;});
-  return s+'<text x="85" y="84" class="c1">'+centro+'</text><text x="85" y="106" class="c2">'+_esc(sub||"")+'</text></svg>';
-}
-function fbGSpark(vals,cor){
-  const W=220,H=56,id="s"+(++FB_GID),mx=Math.max(1,...vals),n=vals.length,X=i=>n>1?i*W/(n-1):W/2,Y=v=>6+(H-12)*(1-v/mx),p=vals.map((v,i)=>[X(i),Y(v)]);
-  return'<svg class="fb-spark" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="'+id+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="'+cor+'" stop-opacity=".45"/><stop offset="1" stop-color="'+cor+'" stop-opacity="0"/></linearGradient></defs>'
-    +(n>1?'<path d="'+fbCurva(p)+' L'+W+' '+H+' L0 '+H+'Z" fill="url(#'+id+')"/><path d="'+fbCurva(p)+'" fill="none" stroke="'+cor+'" stroke-width="2.5" stroke-linecap="round"/>':"")+'</svg>';
-}
 /* etiqueta ao passar o mouse sobre qualquer marca com data-tip */
 /* etiqueta própria do módulo no lugar da barra preta do navegador: vale para data-tip e para qualquer title dentro do módulo */
+/* etiqueta desenhada do mapa de calor: posto e mês no topo, o número grande, o selo do resultado com a % e quem faltou */
+function fbTipRico(o,esc){
+  const k=o.c&&o.c.k==="up"?"up":o.c&&o.c.k==="dn"?"dn":"eq";
+  let h='<div class="tx-h"><b>'+esc(o.h)+'</b><span>'+esc(o.s)+'</span></div><div class="tx-n"><b>'+esc(o.n)+'</b><span>'+esc(o.u)+'</span></div>';
+  if(o.c)h+='<div class="tx-c '+k+'"><em>'+esc(o.c.p)+(o.c.g?' <b>'+esc(o.c.g)+'</b>':"")+'</em><span>'+esc(o.c.t)+'</span></div>';
+  if(o.q&&o.q.length)h+='<div class="tx-q"><small>Quem faltou</small><ul>'+o.q.map(p=>'<li><span>'+esc(p[0])+'</span><b>'+esc(p[1])+'</b></li>').join("")+'</ul>'+(o.m?'<small class="m">e mais '+esc(o.m)+(o.m===1?" pessoa":" pessoas")+'</small>':"")+'</div>';
+  if(o.x)h+='<div class="tx-x">'+esc(o.x)+'</div>';
+  return h;
+}
 function fbTipInit(){
   if(window._fbTip)return;window._fbTip=1;
   const t=document.createElement("div");t.className="fb-tip";t.setAttribute("role","tooltip");document.body.appendChild(t);
   const esc=x=>String(x).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
   document.addEventListener("mousemove",e=>{
-    const a=e.target&&e.target.closest?e.target.closest("[data-tip],[title]"):null;
+    const a=e.target&&e.target.closest?e.target.closest("[data-tipj],[data-tip],[title]"):null;
     if(!a||!a.closest("#lig-root,.fb-ov")){t.classList.remove("on");return;}
     if(a.hasAttribute("title")){const v=a.getAttribute("title");a.removeAttribute("title");if(v&&!a.hasAttribute("data-tip"))a.setAttribute("data-tip",v);}
-    const txt=a.getAttribute("data-tip");if(!txt){t.classList.remove("on");return;}
-    if(t._txt!==txt){t._txt=txt;const p=txt.split(" · ");t.innerHTML="<b>"+esc(p[0])+"</b>"+(p.length>1?"<span>"+esc(p.slice(1).join(" · "))+"</span>":"");}
+    const rj=a.getAttribute("data-tipj"),txt=rj||a.getAttribute("data-tip");if(!txt){t.classList.remove("on");return;}
+    if(t._txt!==txt){t._txt=txt;let o=null;if(rj){try{o=JSON.parse(rj);}catch(er){o=null;}}t.classList.toggle("rx",!!o);
+      if(o){t.classList.remove("lg");t.innerHTML=fbTipRico(o,esc);}else{const n=txt.indexOf("\n")>=0,p=n?txt.split("\n"):txt.split(" · ");t.classList.toggle("lg",n);t.innerHTML="<b>"+esc(p[0])+"</b>"+(p.length>1?(n?p.slice(1).map(x=>"<span>"+esc(x)+"</span>").join(""):"<span>"+esc(p.slice(1).join(" · "))+"</span>"):"");}}
     t.classList.add("on");
     const w=t.offsetWidth,h=t.offsetHeight;let y=e.clientY-h-16;if(y<8)y=e.clientY+20;
     t.style.left=Math.min(window.innerWidth-w-8,Math.max(8,e.clientX-w/2))+"px";t.style.top=y+"px";},{passive:true});
@@ -1183,185 +1184,318 @@ function fbTipInit(){
 }
 
 /* ── peças do painel ── */
-function fbKgB(cls,ic,rot,num,sub,fn,on){return'<button type="button" class="fb-kg cli '+cls+(on?" on":"")+'" aria-pressed="'+(!!on)+'" onclick="'+fn+'"><span class="ic">'+fbI(ic)+'</span><small>'+rot+'</small><b>'+num+'</b><span class="s">'+sub+'</span></button>';}
-function fbCatEf(c){return c.depois===0||c.depois<c.antes?"melh":c.depois===c.antes?"igual":"pior";}
-function fbEfLista(E){
-  const k=LIG_DES.ef||"todos",lst=E.av.filter(c=>k==="todos"||fbCatEf(c)===k).sort((a,b)=>(b.antes-b.depois)-(a.antes-a.depois)||a.nome.localeCompare(b.nome));
-  const nome={todos:"Todas as pessoas avaliadas",melh:"Quem melhorou",igual:"Quem ficou igual a antes",pior:"Quem piorou"}[k];
-  const sa=lst.reduce((t,c)=>t+c.antes,0),sd=lst.reduce((t,c)=>t+c.norm,0),red=sa>0?Math.round((sd-sa)/sa*100):null;
-  LIG_DES_ROWS=lst.map(c=>({re:c.re,nome:c.nome}));
-  const sit=c=>{const x=fbCatEf(c);return x==="melh"?fbTag("Melhorou","tn-ok"):x==="pior"?fbTag("Piorou","tn-da"):fbTag("Igual a antes","tn-am");};
-  return fbPainel(nome,'<span class="fb-pill-s">'+fbPlural(lst.length,"pessoa","pessoas")+(E.av.length?" · "+Math.round(lst.length/E.av.length*100)+"% dos avaliados":"")+(red!==null?" · média "+(red<0?"de redução":"de aumento")+" de "+Math.abs(red)+"%":"")+'</span>',lst.length
-    ?'<div class="fb-tab ind"><table><thead><tr><th>Colaborador</th><th>Contato</th><th>Faltas antes</th><th>Faltas depois</th><th>Resultado</th></tr></thead><tbody>'+lst.map((c,i)=>'<tr tabindex="0" onclick="ligDesAbrir('+i+')"><td><b>'+_esc(c.nome)+'</b><small>'+_esc(fbTitulo(c.sup||""))+'</small></td><td>'+fbDd(c.d)+'</td><td>'+c.antes+fbChipsDatas(c.fa,"f")+'</td><td>'+c.depois+fbChipsDatas(c.fd,"f")+'</td><td>'+sit(c)+'</td></tr>').join("")+'</tbody></table></div>'
-    :'<p class="fb-gnota">Ninguém nesta situação.</p>');
-}
 function fbKg(cls,ic,rot,num,sub,var_){return'<div class="fb-kg '+cls+'"><span class="ic">'+fbI(ic)+'</span><small>'+rot+'</small><b>'+num+'</b>'+(var_?'<span class="v">'+var_+'</span>':"")+'<span class="s">'+sub+'</span></div>';}
 function fbPainel(t,dir,corpo,cls){return'<section class="fb-pn'+(cls?" "+cls:"")+'"><header><h4>'+t+'</h4>'+(dir||"")+'</header>'+corpo+'</section>';}
 function fbLeg(itens){return'<ul class="fb-gleg">'+itens.map(i=>'<li><i style="background:'+i[1]+'"'+(i[2]?' class="pj"':"")+'></i>'+i[0]+'</li>').join("")+'</ul>';}
-/* seta pelo significado: para cima quando melhora (menos faltas), para baixo quando piora */
-function fbSeta(p,inv){if(p===null)return"";const bom=inv?p>0:p<0;return'<span class="fb-var '+(p===0?"z":bom?"bom":"mau")+'">'+fbI(p===0?"flat":bom?"up":"down")+fbPctTxt(p)+'</span>';}
-function fbIcVar(p){return p===null||p===0?"eq":p>0?"down":"up";} /* p = variação das faltas */
 
 function fbPnlDes(){
   if(!LIG_IND)return fbVazio();
   fbTipInit();
   const D=fbDesDados();
-  if(!D.faixa.length)return fbVazio();
+  if(!D.faixa.length)return'<div class="fb-dash"><p class="fb-per">Ainda não há mês fechado para comparar. Um mês entra aqui quando chega a planilha do dia seguinte ao fim dele.</p>'+fbVazio()+'</div>';
   const sel=(id,val,fn)=>'<span class="fb-selp"><select id="'+id+'" onchange="'+fn+'">'+D.meses.map(k=>'<option value="'+k+'"'+(k===val?" selected":"")+'>'+fbMesRot(k)+'</option>').join("")+'</select>'+fbI("chev")+'</span>';
   if(!FB_DSUBS.some(s=>s[0]===LIG_DSUB))LIG_DSUB="resumo";
   let h='<div class="fb-dash"><div class="fb-dash-bar"><nav class="fb-dsub" role="tablist" aria-label="Desempenho" data-nav="dsub" data-ind="fundo">'+FB_DSUBS.map(s=>'<button type="button" role="tab" class="'+(LIG_DSUB===s[0]?"on":"")+'" aria-selected="'+(LIG_DSUB===s[0])+'" onclick="ligDes(\'sub\',\''+s[0]+'\')">'+fbI(s[2])+s[1]+'</button>').join("")+'</nav>'
     +'<div class="fb-dash-f"><div class="fb-pills" role="group" aria-label="Como contar o mês" data-nav="modo" data-ind="fundo"><button type="button" class="'+(D.modo==="folha"?"on":"")+'" onclick="ligDes(\'modo\',\'folha\')">Folha 26 a 25</button><button type="button" class="'+(D.modo==="civil"?"on":"")+'" onclick="ligDes(\'modo\',\'civil\')">Mês do calendário</button></div>'
     +'<span class="fb-dash-sel" data-sync="dsel"><label class="fb-fl" for="ld-ini">De</label>'+sel("ld-ini",D.kI,"ligDes('ini',this.value)")+'<label class="fb-fl" for="ld-fim">até</label>'+sel("ld-fim",D.kF,"ligDes('fim',this.value)")+'</span></div></div>';
-  h+='<div id="lig-lista">'+({resumo:fbDesResumo,efeito:fbDesEfeito,areas:fbDesAreas,postos:fbDesPostos,motivos:fbDesMotivos}[LIG_DSUB])(D)+'</div>';
+  h+='<div id="lig-lista">'+(LIG_DSUB==="postos"?fbLinhaPostos(D):fbLinhaPer(D))+({resumo:fbDesResumo,efeito:fbDesEfeito,areas:fbDesAreas,postos:fbDesPostos,motivos:fbDesMotivos}[LIG_DSUB])(D)+'</div>';
   return h+'</div>';
 }
 const FB_COR={azul:"#2563eb",azulc:"#93c5fd",verde:"#10b981",coral:"#f43f5e",ambar:"#f59e0b",violeta:"#8b5cf6",navy:"#1e3a8a"};
 function fbRotM(l){return fbMesCurto(l.k)+(l.parcial?"*":"");}
+/* ── peças do Desempenho: card compacto (rótulo, número, uma linha), diferença em número, linha de período ── */
+function fbDif(n){return(n>0?"+":n<0?"−":"")+Math.abs(n);}
+function fbDc(cor,rot,num,linha,tom){return'<div class="fb-dc '+cor+'"><small>'+rot+'</small><b'+(tom?' class="'+tom+'"':"")+'>'+num+'</b><span>'+linha+'</span></div>';}
+function fbMesMud(d){return d>0?"Aumentou":d<0?"Diminuiu":"Sem mudança";}
+function fbTagMud(d){return fbTag(fbMesMud(d),d>0?"tn-da":d<0?"tn-ok":"tn-gr");}
+/* porcentagem só quando a base (o mês anterior) tem 20 faltas ou mais; abaixo disso, só a diferença em número */
+function fbPctB(d,base){return base>=20?" · "+(d>0?"+":d<0?"−":"")+Math.abs(Math.round(d/base*100))+"%":"";}
+function fbFaixaRot(D){return D.kI===D.kF?fbMesCurto(D.kF):fbMesCurto(D.kI)+" a "+fbMesCurto(D.kF);}
+function fbArea(s){return s==="Sem supervisor"?s:fbTitulo(s);}
+function fbDesAnt(D){const i=D.todos.indexOf(D.faixa[D.faixa.length-1]);return i>0?D.todos[i-1]:null;}
+function fbLinhaPer(D){
+  const L1=D.faixa[D.faixa.length-1],a=fbDesAnt(D),per=l=>fbMesCurto(l.k)+" ("+fbDd(l.de)+"–"+fbDd(l.fimM)+")",f=[];
+  if(LIG_F.area&&LIG_F.area!=="todas")f.push("Área: "+fbTitulo(LIG_F.area));
+  if(LIG_F.turno&&LIG_F.turno!=="todos")f.push("Turno: "+(LIG_F.turno==="NOTURNO"?"Noturno":"Diurno"));
+  return'<p class="fb-per">'+(a?"Comparação: <b>"+per(L1)+"</b> × "+per(a):"Sem mês anterior para comparar")+" · meses fechados · hoje "+fbDd(D.hj)+(f.length?" · "+_esc(f.join(" · "))+'<br>Com filtro, as faltas contam pela área da falta e os feedbacks pela área registrada no feedback.':"")+'</p>';
+}
+/* faltas sem justificativa por área (supervisor da falta) em um mês */
+function fbAreasMes(l){const m={};((LIG_IND&&LIG_IND.dias)||[]).forEach(x=>{if(x[0]>=l.de&&x[0]<=l.ate&&x[2]&&fbSupOk(x[1])){const s=x[1]||"Sem supervisor";m[s]=(m[s]||0)+x[2];}});return m;}
+function fbAreasComp(D){
+  const L1=D.faixa[D.faixa.length-1],a=fbDesAnt(D);if(!a)return[];
+  const m1=fbAreasMes(L1),m0=fbAreasMes(a);
+  return[...new Set(Object.keys(m0).concat(Object.keys(m1)))].map(s=>({s,v0:m0[s]||0,v1:m1[s]||0,d:(m1[s]||0)-(m0[s]||0)})).sort((x,y)=>y.d-x.d||x.s.localeCompare(y.s));
+}
+/* linha de lista: nome, de → para, diferença e botão Ver */
+function fbDLinha(nome,de,para,d,fn){return'<li><span class="n">'+_esc(nome)+'</span><span class="ab">'+de+' → '+para+'</span><b class="'+fbTomVar(d)+'">'+fbDif(d)+'</b><button type="button" class="fb-btn ghost sm" onclick="'+fn+'">Ver</button></li>';}
+
 function fbDesResumo(D){
-  const F=D.faixa,L0=F[0],L1=F[F.length-1],E=fbEfeito(D),tot=E.av.length;
-  const pEmp=fbPct(L0.emp.sj,L1.fech),pMin=L0.min&&L1.min?fbPct(L0.min,L1.min):null;
-  let h='<div class="fb-kgs">'
-    +fbKg(pEmp===null||pEmp===0?"g-blue":pEmp>0?"g-coral":"g-green",fbIcVar(pEmp),"Faltas da empresa",fbPctTxt(pEmp),fbMesCurto(L0.k)+" "+fbNum(L0.emp.sj)+" → "+fbMesCurto(L1.k)+" "+fbNum(L1.fech)+(L1.parcial?" (projeção)":""),"")
-    +fbKg(E.red===null||E.red===0?"g-blue":E.red>0?"g-coral":"g-green",fbIcVar(E.red),"Efeito do feedback",E.red===null?"—":fbPctTxt(E.red),E.red===null?"Sem contatos para avaliar":"faltas 30 dias depois × 30 dias antes do feedback","")
-    +fbKg("g-violet","ok","Taxa de melhora",tot?Math.round(E.r.melh/tot*100)+"%":"—",tot?E.r.melh+" de "+fbPlural(tot,"pessoa avaliada","pessoas avaliadas"):"Ninguém para avaliar","")
-    +fbKg("g-amber","clock","Tempo médio por feedback",L1.min===null?"—":L1.min+" min",fbMesCurto(L1.k)+(pMin!==null?" · "+fbPctTxt(pMin)+" contra "+fbMesCurto(L0.k):""),"")
+  const F=D.faixa,L1=F[F.length-1],a=fbDesAnt(D),E=fbEfeito(D),tot=E.av.length,rot=fbFaixaRot(D);
+  const d1=a?L1.emp.sj-a.emp.sj:0,areas=fbAreasComp(D),aum=areas.filter(x=>x.d>0),piorou=E.av.filter(c=>c.veredito==="piorou").sort((x,y)=>(y.depois-y.antes)-(x.depois-x.antes)||x.nome.localeCompare(y.nome));
+  const pct=n=>tot>=20?Math.round(n/tot*100)+"% dos avaliados · "+rot:"dos "+tot+" avaliados · feedbacks de "+rot;
+  let h='<div class="fb-dcs">'
+    +fbDc("tn-br","Faltas sem justificativa em "+fbMesCurto(L1.k),fbNum(L1.emp.sj),a?fbMesMud(d1)+" "+fbDif(d1)+" vs "+fbMesCurto(a.k)+" ("+fbNum(a.emp.sj)+")"+fbPctB(d1,a.emp.sj):"Sem mês anterior",a?fbTomVar(d1):"")
+    +fbDc("tn-ok","Pessoas que melhoraram depois do feedback",tot?E.r.melh+" de "+tot:"—",(tot?pct(E.r.melh):"Ninguém avaliado em "+rot)+(E.r.obs?" · "+E.r.obs+" em observação":""),"")
+    +fbDc("tn-da","Pessoas que pioraram depois do feedback",tot?E.r.pior+" de "+tot:"—",tot?pct(E.r.pior):"Ninguém avaliado em "+rot,E.r.pior?"tn-da":"")
+    +fbDc("tn-am","Áreas com mais faltas que no mês anterior",a?aum.length+" de "+areas.length:"—",a?(aum.length?"Maior: "+_esc(fbArea(aum[0].s))+" "+fbDif(aum[0].d):"Nenhuma área aumentou"):"Sem mês anterior",aum.length?"tn-da":"")
     +'</div>';
-  const graf=fbGArea({rot:"Faltas sem justificativa por mês",rots:F.map(fbRotM),vals:F.map(l=>l.emp.sj),parcial:L1.parcial,fech:L1.fech,tend:D.fim===D.meses.length-1?D.tend:null,cor:FB_COR.azul,rotular:true,h:290});
-  h+='<div class="fb-dg">'+fbPainel("Faltas sem justificativa, mês a mês",fbLeg([["Realizado",FB_COR.azul],["Projeção",FB_COR.azul,1]]),graf+(L1.parcial?'<p class="fb-gnota">* '+fbMesCurto(L1.k)+' em andamento até '+fbDd(D.hj)+'. A linha tracejada mostra o fechamento pelo ritmo atual e a tendência dos próximos meses.</p>':""),"big");
-  /* fechamento projetado do mês final */
-  const ant=D.todos[D.todos.indexOf(L1)-1],pAnt=ant?fbPct(ant.emp.sj,L1.fech):null,semanas=[];
-  for(let d=L1.de,s=0;d<=L1.fimM;d=ligSomaDias(d,1)){const w=Math.floor(fbDiasEntre(L1.de,d)/7);semanas[w]=semanas[w]||{v:0,fut:true,ini:d};if(d<=D.hj){semanas[w].fut=false;}}
-  ((LIG_IND&&LIG_IND.dias)||[]).forEach(x=>{if(x[0]>=L1.de&&x[0]<=L1.ate&&fbSupOk(x[1])){semanas[Math.floor(fbDiasEntre(L1.de,x[0])/7)].v+=x[2];}});
-  const mxs=Math.max(1,...semanas.map(s=>s.v));
-  h+=fbPainel(L1.parcial?"Fechamento projetado":"Fechamento do mês","",'<div class="fb-fech"><b>'+fbNum(L1.fech)+'<em>faltas</em></b><span class="l">'+fbMesRot(L1.k)+(L1.parcial?" · "+fbNum(L1.emp.sj)+" até hoje, "+String(Math.round(L1.emp.sj/L1.passados*10)/10).replace(".",",")+" por dia":"")+'</span>'
-    +(pAnt!==null?'<span class="cmp">'+fbSeta(pAnt)+' contra '+fbMesRot(ant.k)+' ('+fbNum(ant.emp.sj)+')</span>':"")
-    +'<div class="fb-sem">'+semanas.map((s,i)=>'<div class="'+(s.fut?"fut":"")+'" data-tip="'+_esc("Semana "+(i+1)+" (a partir de "+fbDd(s.ini)+"): "+s.v+" faltas")+'"><i style="--h:'+Math.round(s.v/mxs*100)+'%"></i><span>S'+(i+1)+'</span></div>').join("")+'</div></div>',"side")+'</div>';
-  /* três mini-cards com a tendência */
-  const sp=(cls,ic,rot,val,sub,vals,cor)=>'<div class="fb-mini2 '+cls+'"><div class="t"><span class="ic">'+fbI(ic)+'</span><small>'+rot+'</small></div><b>'+val+'</b><span class="s">'+sub+'</span>'+fbGSpark(vals,cor)+'</div>';
-  h+='<div class="fb-minis">'
-    +sp("c-violet","chat","Mensagens enviadas",fbNum(L1.env),fbMesRot(L1.k),F.map(l=>l.env),FB_COR.violeta)
-    +sp("c-green","phone","Feedbacks registrados",fbNum(L1.conv),fbMesRot(L1.k),F.map(l=>l.conv),FB_COR.verde)
-    +sp("c-coral","ok","Retorno das mensagens",L1.ret===null?"—":L1.ret+"%","das mensagens viraram feedback",F.map(l=>l.ret||0),FB_COR.coral)
+  h+='<div class="fb-dg2">'
+    +fbPainel("Áreas com aumento de faltas",'<span class="fb-pill-s">'+(a?fbMesCurto(a.k)+" → "+fbMesCurto(L1.k):"")+'</span>',aum.length
+      ?'<ul class="fb-dl">'+aum.slice(0,5).map(x=>fbDLinha(fbArea(x.s),x.v0,x.v1,x.d,"ligDes('sub','areas')")).join("")+'</ul>'
+      :'<p class="fb-gnota">'+(a?"Nenhuma área teve aumento em "+fbMesCurto(L1.k)+".":"Sem mês anterior para comparar.")+'</p>')
+    +fbPainel("Pioraram após o feedback",'<span class="fb-pill-s">antes → depois</span>',piorou.length
+      ?'<ul class="fb-dl">'+piorou.slice(0,5).map((c,i)=>{LIG_DES_ROWS[i]={re:c.re,nome:c.nome};return fbDLinha(c.nome,c.antes,c.depois,c.depois-c.antes,"ligDesAbrir("+i+")");}).join("")+'</ul>'
+      :'<p class="fb-gnota">Ninguém piorou após o feedback de '+rot+'.</p>')
     +'</div>';
   return h;
 }
+
 function fbDesEfeito(D){
-  const E=fbEfeito(D),tot=E.av.length,F=D.faixa;
-  const porMes=F.map(l=>{const cs=E.cont.filter(c=>c.mes===l.k);return{k:l.k,parcial:l.parcial,antes:cs.reduce((t,c)=>t+c.antes,0),depois:cs.reduce((t,c)=>t+c.depois,0),proj:Math.round(cs.reduce((t,c)=>t+(c.dias<30&&c.dias>0?c.norm-c.depois:0),0))};});
-  let h='<div class="fb-kgs">'
-    +fbKgB("g-blue","user","Pessoas avaliadas",fbNum(tot),"com 7 dias ou mais desde o contato","ligDes('ef','todos')",LIG_DES.ef==="todos")
-    +fbKgB("g-green","up","Melhoraram",tot?Math.round(E.r.melh/tot*100)+"%":"—",fbPlural(E.r.melh,"pessoa","pessoas"),"ligDes('ef','melh')",LIG_DES.ef==="melh")
-    +fbKgB("g-amber","eq","Igual a antes",tot?Math.round(E.r.igual/tot*100)+"%":"—",fbPlural(E.r.igual,"pessoa","pessoas"),"ligDes('ef','igual')",LIG_DES.ef==="igual")
-    +fbKgB("g-coral","down","Pioraram",tot?Math.round(E.r.pior/tot*100)+"%":"—",fbPlural(E.r.pior,"pessoa","pessoas"),"ligDes('ef','pior')",LIG_DES.ef==="pior")+'</div>'+fbEfLista(E);
-  h+='<div class="fb-dg r">'+fbPainel("Resultado do feedback","",'<div class="fb-rosca-w">'+fbGRosca([{nome:"Melhoraram",v:E.r.melh,cor:FB_COR.verde},{nome:"Igual a antes",v:E.r.igual,cor:FB_COR.ambar},{nome:"Pioraram",v:E.r.pior,cor:FB_COR.coral}],tot?Math.round(E.r.melh/tot*100)+"%":"—","melhoraram")
-      +fbLeg([["Melhoraram",FB_COR.verde],["Igual a antes",FB_COR.ambar],["Pioraram",FB_COR.coral]])+(E.red!==null&&E.red!==0?'<p class="fb-rosca-r'+(E.red>0?' mau':'')+'">'+(E.red<0?'Redução':'Aumento')+' médio de <b>'+Math.abs(E.red)+'%</b> nas faltas depois do feedback</p>':"")+'</div>',"side")
-    +fbPainel("Faltas antes × depois do feedback, por mês do contato",fbLeg([["30 dias antes",FB_COR.navy],["30 dias depois",FB_COR.verde],["Projeção",FB_COR.verde,1]]),
-      fbGCols({rot:"Antes e depois do feedback",rots:porMes.map(m=>fbMesCurto(m.k)+(m.proj?"*":"")),pj:porMes.map(m=>!!m.proj),series:[{nome:"30 dias antes",cor:FB_COR.navy,vals:porMes.map(m=>m.antes)},{nome:"30 dias depois",cor:FB_COR.verde,vals:porMes.map(m=>m.depois),proj:porMes.map(m=>m.proj)}]})
-      +'<p class="fb-gnota">* contatos com menos de 30 dias: a parte hachurada projeta o restante da janela pelo ritmo atual.</p>',"big")+'</div>';
-  /* maiores melhoras e pioras */
-  const ult={};E.cont.forEach(c=>{if(!ult[c.i]||ult[c.i].d<c.d)ult[c.i]=c;});
-  const av=Object.values(ult).filter(c=>c.dias>=7).map(c=>Object.assign({dif:c.depois-c.antes},c));
-  const top=(lst,cls)=>lst.length?'<ol class="fb-top">'+lst.map((c,j)=>'<li tabindex="0" onclick="ligColab(\''+_esc(c.re)+'\',\''+_esc(c.nome).replace(/'/g,"")+'\')"><span class="p">'+(j+1)+'</span><span class="n"><b>'+_esc(c.nome)+'</b><small>'+_esc(c.sup||"")+'</small></span><span class="ab">'+c.antes+' → '+c.depois+'</span><span class="fb-var '+cls+'">'+(c.dif>0?"+":c.dif<0?"−":"")+Math.abs(c.dif)+'</span></li>').join("")+'</ol>':'<p class="fb-gnota">Ninguém nesta lista.</p>';
-  h+='<div class="fb-dg h">'+fbPainel("Maiores melhoras",'<span class="fb-pill-s bom">faltas antes → depois</span>',top(av.filter(c=>c.dif<0).sort((a,b)=>a.dif-b.dif).slice(0,5),"bom"))
-    +fbPainel("Maiores pioras",'<span class="fb-pill-s mau">faltas antes → depois</span>',top(av.filter(c=>c.dif>0).sort((a,b)=>b.dif-a.dif).slice(0,5),"mau"))+'</div>';
-  /* cada colaborador */
-  const modo=D.modo,ate=k=>{const f=fbMesFim(k,modo);return f<D.hj?f:D.hj;};
-  const rows=D.coorte.map(x=>{const a=fbSoma([x],fbMesIni(D.kI,modo),ate(D.kI)).sj,b=fbSoma([x],fbMesIni(D.kF,modo),ate(D.kF)).sj;return{x,a,b,p:fbPct(a,b),d:b-a};});
-  const o=LIG_DES.ord,dir=LIG_DES.dir;
-  rows.sort((r,s)=>o==="nome"?dir*r.x.nome.localeCompare(s.x.nome):o==="a"?dir*(r.a-s.a):o==="b"?dir*(r.b-s.b):dir*(r.d-s.d)||r.x.nome.localeCompare(s.x.nome));
-  const th=(k,t)=>'<th><button type="button" class="'+(o===k?"on":"")+'" onclick="ligDes(\'ord\',\''+k+'\')">'+t+(o===k?(dir>0?" ↑":" ↓"):"")+'</button></th>';
-  LIG_DES_ROWS=rows.map(r=>r.x);
-  const res=r=>r.b<r.a?fbTag("Melhorou","tn-ok"):r.b>r.a?fbTag("Piorou","tn-da"):fbTag("Igual a antes","tn-am");
-  h+=fbPainel("Cada colaborador",'<span class="fb-pill-s">'+fbPlural(rows.length,"pessoa","pessoas")+' com feedback</span>',rows.length
-    ?'<div class="fb-tab ind"><table><thead><tr>'+th("nome","Colaborador")+'<th>Supervisor</th>'+th("a",fbMesRot(D.kI))+th("b",fbMesRot(D.kF)+(D.faixa[D.faixa.length-1].parcial?" *":""))+th("var","Variação")+'<th>Resultado</th></tr></thead><tbody>'
-      +rows.slice(0,400).map((r,i)=>'<tr tabindex="0" onclick="ligDesAbrir('+i+')" onkeydown="if(event.key===\'Enter\')ligDesAbrir('+i+')"><td><b>'+_esc(r.x.nome)+'</b><small>'+(r.x.re?"RE "+_esc(r.x.re):"")+'</small></td><td>'+_esc(r.x.supervisor||"—")+'</td><td>'+r.a+'</td><td>'+r.b+'</td><td class="'+fbTomVar(r.d===0?0:r.d)+'"><b>'+(r.p===null?(r.b>0?"+"+r.b+" falta"+(r.b>1?"s":""):"—"):fbPctTxt(r.p))+'</b></td><td>'+res(r)+'</td></tr>').join("")+'</tbody></table></div>'
-    :'<p class="fb-gnota">Ninguém recebeu feedback com este filtro.</p>');
-  return h;
+  const E=fbEfeito(D),tot=E.av.length,pessoas=E.pessoas,rot=fbFaixaRot(D);
+  const de=fbMesIni(D.kI,D.modo),ate=D.faixa[D.faixa.length-1].ate;
+  const cont={};FB_VD_ORDEM.forEach(k=>{cont[k]=pessoas.filter(c=>c.veredito===k);});
+  const sit=FB_VD_ORDEM.indexOf(LIG_DES.sit)>=0?LIG_DES.sit:"piorou",tom=FB_VD[sit].tom;
+  const resp=tot?E.r.melh+" de "+tot+" melhoraram"+(tot>=20?" ("+Math.round(E.r.melh/tot*100)+"%)":"")+"; "+E.r.pior+" "+(E.r.pior===1?"piorou":"pioraram")+".":"Ninguém avaliado neste período.";
+  const hero=fbPainel("Como ficaram as "+pessoas.length+" pessoas?",'<span class="fb-pill-s">Feedbacks de '+fbDd(de)+' a '+fbDd(ate)+'</span>',
+    '<p class="fb-resp ef-resp">'+resp+'</p>'
+    +'<div class="fb-sit5">'+FB_VD_ORDEM.map(k=>'<button type="button" class="'+FB_VD[k].tom+(k===sit?" on":"")+'" aria-pressed="'+(k===sit)+'" onclick="ligDesSit(\''+k+'\')">'+fbTag(FB_VD[k].t,FB_VD[k].tom)+'<b>'+cont[k].length+'</b><span>'+(k===sit?"Lista abaixo":cont[k].length?"Ver lista":"Ninguém")+'</span></button>').join("")+'</div>'
+);
+  /* a lista da situação escolhida */
+  LIG_DES_ROWS=[];
+  const ordem={piorou:(x,y)=>(y.depois-y.antes)-(x.depois-x.antes),melhorando:(x,y)=>(x.depois-x.antes)-(y.depois-y.antes)};
+  const lst=cont[sit].slice().sort((x,y)=>((ordem[sit]&&ordem[sit](x,y))||0)||x.nome.localeCompare(y.nome));
+  const linhas=lst.map((c,i)=>{LIG_DES_ROWS[i]={re:c.re,nome:c.nome};const d=c.depois-c.antes,dia=Math.min(30,c.dias);
+    return'<tr tabindex="0" title="Abrir o panorama de '+_esc(fbTitulo(c.nome))+'" onclick="ligDesAbrir('+i+')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();ligDesAbrir('+i+')}">'
+      +'<td><span class="ef-p"><span class="av">'+_esc(fbIni(c.nome))+'</span><span class="nm"><b>'+_esc(c.nome)+'</b><small>'+_esc(fbTitulo(c.sup||"Sem supervisor"))+'</small></span></span></td>'
+      +'<td><b class="dt">'+fbDd(c.d)+'</b></td>'
+      +'<td><span class="ef-pg"><span class="pg"><i style="width:'+Math.round(dia/30*100)+'%"></i></span><small>'+(c.dias>=30?"Concluído (30 dias)":"Dia "+c.dias+" de 30")+'</small></span></td>'
+      +'<td class="n">'+c.antes+'</td><td class="n">'+c.depois+'</td><td class="n"><span class="df '+fbTomVar(d)+'">'+fbDif(d)+'</span></td></tr>';}).join("");
+  const tab=lst.length?'<div class="ef-tw"><table class="ef-tb"><thead><tr><th>Colaborador</th><th>Feedback em</th><th>Acompanhamento</th><th class="n">Antes</th><th class="n">Depois</th><th class="n">Diferença</th></tr></thead><tbody>'+linhas+'</tbody></table></div>'
+    :'<div class="ef-vz"><b>Ninguém nesta situação no período.</b><span>Escolha outro card acima para ver as outras situações.</span></div>';
+  const lista='<section class="fb-pn ef-lista '+tom+'"><header class="ef-lh"><div class="ef-lt">'+fbTag(FB_VD[sit].t,tom)+'<b>'+fbPlural(lst.length,"pessoa","pessoas")+'</b></div></header>'+tab
+    +(lst.length?'<footer class="ef-lf">Clique numa linha para abrir o panorama da pessoa'+(ordem[sit]?" · ordenado "+(sit==="piorou"?"da maior piora para a menor":"da maior melhora para a menor"):" · ordem alfabética")+'</footer>':"")+'</section>';
+  return hero+lista;
 }
+
 function fbDesAreas(D){
-  const F=D.faixa,L1=F[F.length-1],L0=F[0],ultimo=D.fim===D.meses.length-1&&D.tend;
-  const rots=F.map(fbRotM).concat(ultimo?D.tend.meses.map(m=>fbMesCurto(m)+" proj."):[]);
-  const sj=F.map(l=>l.emp.sj).concat(ultimo?D.tend.vals.map(()=>0):[]),ab=F.map(l=>l.emp.ab).concat(ultimo?D.tend.vals.map(()=>0):[]);
-  const pj=F.map(l=>l.parcial?Math.max(0,l.fech-l.emp.sj):0).concat(ultimo?D.tend.vals:[]);
-  const media=Math.round(F.filter(l=>!l.parcial).reduce((t,l)=>t+l.emp.sj,0)/(F.filter(l=>!l.parcial).length||1));
-  let h='<div class="fb-kgs">'
-    +fbKg("g-blue","cal",L1.parcial?"Fechamento projetado":"Faltas no mês",fbNum(L1.fech),fbMesRot(L1.k)+" · sem justificativa","")
-    +fbKg("g-violet","chart","Média mensal",fbNum(media),"meses fechados do intervalo","")
-    +fbKg(fbPct(L0.emp.sj,L1.fech)>0?"g-coral":"g-green",fbIcVar(fbPct(L0.emp.sj,L1.fech)),"Variação no intervalo",fbPctTxt(fbPct(L0.emp.sj,L1.fech)),fbMesCurto(L0.k)+" → "+fbMesCurto(L1.k),"")
-    +fbKg("g-amber","doc","Abonadas no mês",fbNum(L1.emp.ab),"atestados, justificadas e licenças","")+'</div>';
-  h+=fbPainel("Faltas da empresa por mês e projeção",fbLeg([["Sem justificativa",FB_COR.azul],["Abonadas",FB_COR.azulc],["Projeção",FB_COR.azul,1]]),
-    fbGCols({rot:"Faltas por mês",rots,empilha:true,pj:rots.map((_,i)=>i>=F.length||(F[i]&&F[i].parcial)),series:[{nome:"Sem justificativa",cor:FB_COR.azul,vals:sj,proj:pj},{nome:"Abonadas",cor:FB_COR.azulc,vals:ab}],h:210})
-    +'<p class="fb-gnota">Hachurado: o fechamento do mês em andamento pelo ritmo atual'+(ultimo?' e a tendência dos próximos 3 meses (± '+D.tend.banda+')':"")+'.</p>',"big");
-  /* ranking por área: mês final (projetado se em andamento) contra o mês inicial */
-  const por=(l)=>{const m={};((LIG_IND&&LIG_IND.dias)||[]).forEach(x=>{if(x[0]>=l.de&&x[0]<=l.ate&&fbSupOk(x[1])){const s=x[1]||"Sem supervisor";m[s]=(m[s]||0)+x[2];}});return m;};
-  const a0=por(L0),a1=por(L1),areas=[...new Set(Object.keys(a0).concat(Object.keys(a1)))].map(s=>{const v1=a1[s]||0,f1=L1.parcial?Math.round(v1/L1.passados*L1.total):v1,v0=a0[s]||0;return{s,v1,f1,v0,p:fbPct(v0,f1)};}).sort((a,b)=>b.f1-a.f1);
-  const mx=Math.max(1,...areas.map(a=>a.f1));
-  const comp=areas.filter(a=>a.v0>0&&a.p!==null),melhor=comp.slice().sort((a,b)=>a.p-b.p)[0],pior=comp.slice().sort((a,b)=>b.p-a.p)[0];
-  const supsL=areas.slice().sort((x,y)=>x.s.localeCompare(y.s));
-  h+=fbPainel("Cada supervisor: melhorou ou piorou",'<span class="fb-pill-s">'+fbMesRot(L1.k)+(L1.parcial?" (projeção)":"")+' contra '+fbMesRot(L0.k)+'</span>',supsL.length
-    ?'<div class="fb-tab ind"><table><thead><tr><th>Supervisor</th><th>Turno</th><th>'+fbMesRot(L0.k)+'</th><th>'+fbMesRot(L1.k)+(L1.parcial?" *":"")+'</th><th>Variação</th><th>Resultado</th></tr></thead><tbody>'
-      +supsL.map(a=>{const d=a.f1-a.v0;return'<tr><td><b>'+_esc(fbTitulo(a.s))+'</b></td><td>'+(fbTurnoDe(a.s)==="NOTURNO"?"Noturno":"Diurno")+'</td><td>'+a.v0+'</td><td>'+a.f1+'</td><td class="'+fbTomVar(d===0?0:d)+'"><b>'+(a.p===null?(d>0?"+"+d:"—"):fbPctTxt(a.p))+'</b> <small>('+(d>0?"+":d<0?"−":"")+Math.abs(d)+')</small></td><td>'+(d<0?fbTag("Melhorou","tn-ok"):d>0?fbTag("Piorou","tn-da"):fbTag("Igual","tn-am"))+'</td></tr>';}).join("")+'</tbody></table></div>'
-      +'<div class="fb-dest">'+(melhor?fbKg("g-green","up","Área que mais melhorou",_esc(fbTitulo(melhor.s)),melhor.v0+" → "+melhor.f1+" faltas",fbPctTxt(melhor.p)):"")+(pior&&pior!==melhor?fbKg("g-coral","down","Área que mais piorou",_esc(fbTitulo(pior.s)),pior.v0+" → "+pior.f1+" faltas",fbPctTxt(pior.p)):"")+'</div>'
-    :'<p class="fb-gnota">Sem faltas no intervalo.</p>',"big");
+  const F=D.faixa,L1=F[F.length-1],a=fbDesAnt(D),E=fbEfeito(D),areas=fbAreasComp(D),aum=areas.filter(x=>x.d>0);
+  const dj=a?L1.emp.sj-a.emp.sj:0,da=a?L1.emp.ab-a.emp.ab:0,dt=a?(L1.emp.sj+L1.emp.ab)-(a.emp.sj+a.emp.ab):0;
+  const lin=(d,base,ant)=>a?fbMesMud(d)+" "+fbDif(d)+" vs "+fbMesCurto(a.k)+" ("+fbNum(ant)+")"+fbPctB(d,base):"Sem mês anterior";
+  let h='<div class="fb-dcs">'
+    +fbDc("tn-br","Sem justificativa em "+fbMesCurto(L1.k),fbNum(L1.emp.sj),lin(dj,a&&a.emp.sj,a&&a.emp.sj),a?fbTomVar(dj):"")
+    +fbDc("tn-vi","Abonadas em "+fbMesCurto(L1.k),fbNum(L1.emp.ab),lin(da,a&&a.emp.ab,a&&a.emp.ab),a?fbTomVar(da):"")
+    +fbDc("tn-gr","As duas juntas em "+fbMesCurto(L1.k),fbNum(L1.emp.sj+L1.emp.ab),lin(dt,a&&(a.emp.sj+a.emp.ab),a&&(a.emp.sj+a.emp.ab)),a?fbTomVar(dt):"")
+    +fbDc("tn-am","Áreas com mais faltas que no mês anterior",a?aum.length+" de "+areas.length:"—",a?(aum.length?"Maior: "+_esc(fbArea(aum[0].s))+" "+fbDif(aum[0].d):"Nenhuma área aumentou"):"Sem mês anterior",aum.length?"tn-da":"")
+    +'</div>';
+  /* gráfico: só meses fechados; o número sobre a coluna é a soma das duas séries (sem justificativa + abonadas) */
+  const rots=F.map(l=>fbMesCurto(l.k)),sj=F.map(l=>l.emp.sj),ab=F.map(l=>l.emp.ab);
+  const resp=a?(dj>0?"Aumentaram":dj<0?"Diminuíram":"Ficaram iguais")+": "+fbNum(L1.emp.sj)+" sem justificativa em "+fbMesCurto(L1.k)+", "+fbDif(dj)+" vs "+fbMesCurto(a.k)+".":"Sem mês anterior para comparar.";
+  const graf=fbPainel("As faltas aumentaram ou diminuíram?",fbLeg([["Sem justificativa",FB_COR.azul],["Abonadas",FB_COR.azulc]]),
+    '<p class="fb-resp">'+resp+'</p>'+fbGCols({rot:"Faltas por mês fechado",rots,empilha:true,series:[{nome:"Sem justificativa",cor:FB_COR.azul,vals:sj},{nome:"Abonadas",cor:FB_COR.azulc,vals:ab}],h:220})
+    +'<p class="fb-gnota">Número sobre a coluna: sem justificativa + abonadas. '+(D.modo==="folha"?"Mês = dia 26 ao 25.":"Mês = dia 1 ao último dia.")+'</p>');
+  /* estimativa do mês em andamento: fica fora de qualquer comparação */
+  const kc=fbMesChave(D.hj,D.modo),dc=fbMesIni(kc,D.modo),fc=fbMesFim(kc,D.modo),pass=fbDiasEntre(dc,D.hj)+1,total=fbDiasEntre(dc,fc)+1,fc1=fbFaltasEntre(dc,D.hj);
+  const est=fbPainel(fbMesCurto(kc)+" em andamento",fbTag("Estimativa","tn-gr"),
+    '<ul class="fb-est"><li><span>Até '+fbDd(D.hj)+' ('+pass+' de '+total+' dias)</span><b>'+fbNum(fc1.sj)+'</b></li><li><span>'+(pass>=7?"No ritmo atual, fecha em":"Estimativa a partir de "+fbDd(ligSomaDias(dc,6)))+'</span><b>'+(pass>=7?"~"+fbNum(Math.round(fc1.sj/pass*total)):"—")+'</b></li></ul><p class="fb-gnota">Não entra nas comparações. Sem justificativa.</p>');
+  h+='<div class="fb-dg3">'+graf+est+'</div>';
+  /* tabela por área: diferença em número, quem piorou depois do feedback e o resultado em palavras */
+  const pior={};E.av.filter(c=>c.veredito==="piorou").forEach(c=>{const n=c.sup||"Sem supervisor",k=_ligNorm(n);(pior[k]=pior[k]||{n,c:0}).c++;});
+  const linhas=areas.concat(Object.keys(pior).filter(k=>!areas.some(x=>_ligNorm(x.s)===k)).map(k=>({s:pior[k].n,v0:0,v1:0,d:0})));
+  const tab=a&&linhas.length?'<div class="fb-tab"><table><thead><tr><th>Área</th><th>Turno</th><th>'+fbMesCurto(a.k)+'<small>'+fbDd(a.de)+'–'+fbDd(a.fimM)+'</small></th><th>'+fbMesCurto(L1.k)+'<small>'+fbDd(L1.de)+'–'+fbDd(L1.fimM)+'</small></th><th>Diferença</th><th>Pioraram após o feedback<small>'+fbFaixaRot(D)+'</small></th><th>Resultado</th></tr></thead><tbody>'
+    +linhas.map(x=>'<tr><td><b>'+_esc(fbArea(x.s))+'</b></td><td>'+(fbTurnoDe(x.s)==="NOTURNO"?"Noturno":"Diurno")+'</td><td>'+x.v0+'</td><td>'+x.v1+'</td><td class="'+fbTomVar(x.d)+'"><b>'+fbDif(x.d)+'</b></td><td>'+((pior[_ligNorm(x.s)]||{}).c||0)+'</td><td>'+fbTagMud(x.d)+'</td></tr>').join("")
+    +'<tr class="tot"><td><b>'+(LIG_F.area!=="todas"||LIG_F.turno!=="todos"?"Total do filtro":"Empresa")+'</b></td><td></td><td><b>'+a.emp.sj+'</b></td><td><b>'+L1.emp.sj+'</b></td><td class="'+fbTomVar(dj)+'"><b>'+fbDif(dj)+'</b></td><td><b>'+E.r.pior+'</b></td><td>'+fbTagMud(dj)+'</td></tr></tbody></table></div>'
+    :'<p class="fb-gnota">'+(a?"Sem faltas sem justificativa nos dois meses.":"Sem mês anterior para comparar.")+'</p>';
+  h+=fbPainel("Qual área teve aumento?",'<span class="fb-pill-s">Faltas sem justificativa</span>',(a?'<p class="fb-resp">'+aum.length+" de "+areas.length+(areas.length===1?" área teve":" áreas tiveram")+" aumento"+(aum.length?"; "+_esc(fbArea(aum[0].s))+" o maior ("+fbDif(aum[0].d)+")":"")+".</p>":"")+tab);
   return h;
 }
 function fbDesMotivos(D){
   const F=D.faixa,L1=F[F.length-1],ant=D.todos[D.todos.indexOf(L1)-1],cv=[].concat(...F.map(l=>l.cvs)),tot=cv.length;
   const conta=lst=>{const m={};lst.forEach(c=>{m[c[1]]=(m[c[1]]||0)+1;});return m;};
   const M=conta(cv),ms=Object.keys(M).sort((a,b)=>M[b]-M[a]);
-  const m1=conta(L1.cvs),m0=ant?conta(ant.cvs):{},t1=L1.cvs.length||1,t0=(ant&&ant.cvs.length)||1;
-  const cres=Object.keys(m1).map(k=>({k,d:Math.round((m1[k]/t1-(m0[k]||0)/t0)*100)})).sort((a,b)=>b.d-a.d)[0];
+  const m1=conta(L1.cvs),m0=ant?conta(ant.cvs):{};
+  const cres=Object.keys(m1).map(k=>({k,d:m1[k]-(m0[k]||0)})).sort((a,b)=>b.d-a.d)[0];
   const cores=[FB_COR.azul,FB_COR.violeta,FB_COR.verde,FB_COR.ambar,FB_COR.coral,"#06b6d4","#64748b","#ec4899"];
-  const durs=cv.filter(c=>c[2]),med=durs.length?Math.round(durs.reduce((t,c)=>t+c[2],0)/durs.length):null;
-  let h='<div class="fb-kgs">'
-    +fbKg("g-blue","phone","Faltas tratadas",fbNum(tot),"feedbacks de "+fbMesCurto(F[0].k)+" a "+fbMesCurto(L1.k),"")
-    +fbKg("g-violet","doc","Motivo principal",ms.length?_esc(ms[0]):"—",ms.length?Math.round(M[ms[0]]/tot*100)+"% das faltas tratadas":"Sem feedbacks","")
-    +fbKg(cres&&cres.d>0?"g-coral":"g-green","up","Motivo que mais cresceu",cres&&cres.d>0?_esc(cres.k):"Nenhum",cres&&cres.d>0?"+"+cres.d+" pontos em "+fbMesCurto(L1.k)+(ant?" contra "+fbMesCurto(ant.k):""):"nenhum motivo ganhou espaço","")
-    +fbKg("g-amber","clock","Tempo médio por feedback",med===null?"—":med+" min",fbPlural(durs.length,"conversa com tempo","conversas com tempo"),"")+'</div>';
-  h+=fbMotivosCards(D,M,tot,cores)+'<div class="fb-dg h">'+fbPainel("Motivos das faltas tratadas",'<span class="fb-pill-s">'+fbPlural(tot,"feedback","feedbacks")+'</span>',ms.length?'<div class="fb-rosca-w lado">'+fbGRosca(ms.map((m,i)=>({nome:m,v:M[m],cor:cores[i%cores.length]})),ms.length?Math.round(M[ms[0]]/tot*100)+"%":"",ms[0]?ms[0].slice(0,16):"")
-      +'<ul class="fb-mot2">'+ms.map((m,i)=>'<li><i style="background:'+cores[i%cores.length]+'"></i><span class="t">'+_esc(m)+'</span><b>'+String(Math.round(M[m]/tot*1000)/10).replace(".",",")+'%</b><span class="c">'+M[m]+'</span></li>').join("")+'</ul></div>':'<p class="fb-gnota">Nenhum feedback no intervalo.</p>')
-    +fbPainel("Tempo médio por feedback, mês a mês","",fbGArea({rot:"Tempo médio por mês",rots:F.map(fbRotM),vals:F.map(l=>l.min||0),cor:FB_COR.ambar,suf:" min",rotular:true,w:520,h:300}))+'</div>';
+  const Fm=F.filter(l=>l.min!==null),durs=cv.filter(c=>c[2]),med=durs.length?Math.round(durs.reduce((t,c)=>t+c[2],0)/durs.length):null;
+  let h='<div class="fb-dcs">'
+    +fbDc("tn-br","Feedbacks registrados",fbNum(tot),fbFaixaRot(D),"")
+    +fbDc("tn-vi","Motivo principal",ms.length?_esc(ms[0]):"—",ms.length?(tot>=20?Math.round(M[ms[0]]/tot*100)+"% dos feedbacks":M[ms[0]]+" de "+fbPlural(tot,"feedback","feedbacks")):"Sem feedbacks","")
+    +fbDc("tn-am","Motivo que mais aumentou no último mês",cres&&cres.d>0?_esc(cres.k):"Nenhum",cres&&cres.d>0?fbDif(cres.d)+" feedbacks em "+fbMesCurto(L1.k)+(ant?" vs "+fbMesCurto(ant.k):""):"Nenhum motivo cresceu",cres&&cres.d>0?"tn-da":"")
+    +fbDc("tn-gr","Tempo médio por feedback",med===null?"—":med+" min",fbPlural(durs.length,"conversa com tempo","conversas com tempo"),"")+'</div>';
+  h+=fbMotivosCards(M,tot,cores,cv)+'<div class="fb-dg h">'+fbPainel("Motivos informados nos feedbacks",'<span class="fb-pill-s">'+fbPlural(tot,"feedback","feedbacks")+'</span>',ms.length?'<div class="fb-rosca-w lado"><ul class="fb-mot2">'+ms.map((m,i)=>'<li><i style="background:'+cores[i%cores.length]+'"></i><span class="t">'+_esc(m)+'</span><b>'+(tot>=20?String(Math.round(M[m]/tot*1000)/10).replace(".",",")+"%":M[m])+'</b>'+(tot>=20?'<span class="c">'+M[m]+'</span>':"")+'</li>').join("")+'</ul></div>':'<p class="fb-gnota">Nenhum feedback no intervalo.</p>')
+    +fbPainel("Tempo médio por feedback, mês a mês","",Fm.length?fbGArea({rot:"Tempo médio por mês",rots:Fm.map(fbRotM),vals:Fm.map(l=>l.min),cor:FB_COR.ambar,suf:" min",rotular:true,w:520,h:220}):'<p class="fb-gnota">Nenhum feedback com tempo registrado no intervalo.</p>')+'</div>';
   const por=i=>{const m={};cv.forEach(c=>{const k=c[i]||(i===1?"Sem motivo":"Não informado");m[k]=m[k]||{n:0,s:0,c:0};m[k].c++;if(c[2]){m[k].n++;m[k].s+=c[2];}});return Object.keys(m).map(k=>({k,v:m[k].n?Math.round(m[k].s/m[k].n):0,c:m[k].c})).sort((a,b)=>b.v-a.v);};
   const barras=(lst,cor)=>{const mx=Math.max(1,...lst.map(x=>x.v));return lst.length?'<ul class="fb-rank sm">'+lst.map(x=>'<li><span class="n"><b>'+_esc(x.k)+'</b><small>'+fbPlural(x.c,"feedback","feedbacks")+'</small></span><span class="tr"><i style="--w:'+Math.round(x.v/mx*100)+'%;background:'+cor+'"></i></span><b class="q">'+(x.v?x.v+" min":"—")+'</b></li>').join("")+'</ul>':'<p class="fb-gnota">Sem dados.</p>';};
-  h+='<div class="fb-dg h">'+fbPainel("Tempo médio por motivo","",barras(por(1),"linear-gradient(90deg,#fbbf24,#ea580c)"))+fbPainel("Tempo médio por pessoa do SAC","",barras(por(4),"linear-gradient(90deg,#60a5fa,#1e3a8a)"))+'</div>';
+  h+='<div class="fb-dg h">'+fbPainel("Tempo médio por motivo","",barras(por(1),FB_COR.ambar))+fbPainel("Tempo médio por pessoa do SAC","",barras(por(4),FB_COR.azul))+'</div>';
   return h;
 }
-function fbMotivosCards(D,M,tot,cores){
-  const F=D.faixa,de=fbMesIni(D.kI,D.modo),ate=F[F.length-1].ate;
+function fbMotivosCards(M,tot,cores,cv){
   const nomes=(LIG_MOT||[]).filter(m=>m.ativo!==false||M[m.nome]).map(m=>m.nome);Object.keys(M).forEach(n=>{if(nomes.indexOf(n)<0&&n!=="Sem motivo")nomes.push(n);});
   if(M["Sem motivo"])nomes.push("Sem motivo");
-  const cards=nomes.map((n,i)=>{const q=M[n]||0,on=LIG_DES.mot===n;return'<button type="button" class="fb-mc2'+(on?" on":"")+'" aria-pressed="'+on+'" onclick="ligDes(\'mot\',this.dataset.n)" data-n="'+_esc(n)+'"><i style="background:'+cores[i%cores.length]+'"></i><span class="t">'+_esc(n)+'</span><b>'+q+'</b><span class="p">'+(tot?String(Math.round(q/tot*1000)/10).replace(".",","):"0")+'%</span></button>';}).join("");
+  const cards=nomes.map((n,i)=>{const q=M[n]||0,on=LIG_DES.mot===n;return'<button type="button" class="fb-mc2'+(on?" on":"")+'" aria-pressed="'+on+'" onclick="ligDes(\'mot\',this.dataset.n)" data-n="'+_esc(n)+'"><i style="background:'+cores[i%cores.length]+'"></i><span class="t">'+_esc(n)+'</span><b>'+q+'</b>'+(tot>=20?'<span class="p">'+String(Math.round(q/tot*1000)/10).replace(".",",")+'%</span>':"")+'</button>';}).join("");
   let det="";
   if(LIG_DES.mot){
-    const k=_ligNorm(LIG_DES.mot),lst=LIG_C.filter(c=>{const d=ligDataContato(c);if(d<de||d>ate||!ligEfetivo(c)||!fbSupOk(c.supervisor))return false;const m=c.motivo?_ligNorm(fbMotNome(c.motivo)):"sem motivo";return m===k;}).sort((a,b)=>ligDataContato(b).localeCompare(ligDataContato(a)));
+    const ids=new Set(cv.filter(c=>c[1]===LIG_DES.mot).map(c=>c[5])),lst=LIG_C.filter(c=>ids.has(c.id)).sort((a,b)=>ligDataContato(b).localeCompare(ligDataContato(a)));
     LIG_DES_ROWS=lst.map(c=>({re:c.baixa&&c.baixa.re?c.baixa.re:"",nome:c.colaborador}));
-    det=fbPainel("Ligações com o motivo: "+_esc(LIG_DES.mot),'<span class="fb-pill-s">'+fbPlural(lst.length,"ligação","ligações")+'</span>',lst.length
-      ?'<div class="fb-cards">'+lst.slice(0,60).map((c,i)=>'<article class="fb-pc tn-ok" tabindex="0" role="button" onclick="ligDesAbrir('+i+')"><div class="fb-pc-h"><div class="fb-av2">'+_esc(fbIni(c.colaborador))+'</div><div class="fb-pc-t"><div class="fb-nm">'+_esc(c.colaborador)+'</div><div class="fb-sb">'+_esc(fbTitulo(c.posto||""))+'</div></div></div><div class="fb-pc-b">'+fbRegistro(c)+'</div></article>').join("")+'</div>':'<p class="fb-gnota">Nenhuma ligação com este motivo no intervalo.</p>');
+    det=fbPainel("Feedbacks com o motivo: "+_esc(LIG_DES.mot),'<span class="fb-pill-s">'+fbPlural(lst.length,"feedback","feedbacks")+'</span>',lst.length
+      ?'<div class="fb-cards">'+lst.slice(0,60).map((c,i)=>'<article class="fb-pc tn-ok" tabindex="0" role="button" onclick="ligDesAbrir('+i+')"><div class="fb-pc-h"><div class="fb-av2">'+_esc(fbIni(c.colaborador))+'</div><div class="fb-pc-t"><div class="fb-nm">'+_esc(c.colaborador)+'</div><div class="fb-sb">'+_esc(fbTitulo(c.posto||""))+'</div></div></div><div class="fb-pc-b">'+fbRegistro(c)+'</div></article>').join("")+'</div>':'<p class="fb-gnota">Nenhum feedback com este motivo no intervalo.</p>');
   }
-  return fbPainel("Todos os motivos",'<span class="fb-pill-s">clique para ver as ligações</span>','<div class="fb-mcs">'+cards+'</div>')+det;
+  return fbPainel("Todos os motivos",'<span class="fb-pill-s">clique para ver os feedbacks</span>','<div class="fb-mcs">'+cards+'</div>')+det;
 }
+/* Postos e reserva, no período escolhido (De / até). Responde: onde estão as faltas, cada posto ou área melhorou ou piorou
+   (último mês × primeiro mês, em faltas e em %), e quem faltou em cada mês (clique na linha).
+   Posto = cliente; reserva técnica = equipe de cobertura, agrupada por área (supervisor). Só faltas sem justificativa. */
+let LIG_DES_PA="",LIG_DES_PL=[];
+/* Postos: o quadro não some e reaparece. O conteúdo troca na hora e o movimento acontece DENTRO dele:
+   a lista de pessoas abre e fecha deslizando, as linhas entram em sequência e as células se ajustam com leve escala (nada fica invisível). */
+function fbPostosAgora(){const y=window.scrollY;window._fbQuieto=1;try{ligPanel();}finally{window._fbQuieto=0;}if(window.scrollTo)window.scrollTo(0,y);}
+function fbPostosMov(abriu){
+  if(!fbMov())return;
+  const box=document.getElementById("lig-panel");if(!box)return;
+  if(abriu){
+    const w=box.querySelector(".pd-w"),h=w?w.offsetHeight:0;if(!w)return;
+    w.style.overflow="hidden";const a=w.animate([{height:"0px",opacity:0,transform:"translate3d(0,-8px,0)"},{height:h+"px",opacity:1,transform:"none"}],{duration:420,easing:FB_EASE});
+    a.onfinish=a.oncancel=()=>{w.style.overflow="";};
+    w.querySelectorAll("tr.pp").forEach((r,i)=>{if(i<14)r.animate([{opacity:0,transform:"translate3d(0,8px,0)"},{opacity:1,transform:"none"}],{duration:380,delay:120+i*28,easing:FB_EASE,fill:"backwards"});});
+  }else{
+    box.querySelectorAll(".fb-heat td.hm,.fb-heat td.tt").forEach(c=>{const col=c.cellIndex,lin=c.parentElement.rowIndex;
+      c.animate([{opacity:.55,transform:"scale(.93)"},{opacity:1,transform:"none"}],{duration:420,delay:Math.min(260,col*28+lin*18),easing:FB_EASE,fill:"backwards"});});
+  }
+}
+function ligDesPa(i){
+  const k=LIG_DES_PL[i],abre=LIG_DES_PA!==k,w=document.querySelector("#lig-panel .pd-w");
+  const troca=()=>{LIG_DES_PA=abre?k:"";fbPostosAgora();if(abre)fbPostosMov(true);};
+  if(!abre&&w&&fbMov()){w.style.overflow="hidden";const a=w.animate([{height:w.offsetHeight+"px",opacity:1},{height:"0px",opacity:0}],{duration:260,easing:"cubic-bezier(.4,0,.2,1)",fill:"forwards"});a.onfinish=troca;return;}
+  troca();
+}
+function ligDesPr(v){LIG_DES.pr=v;LIG_DES_PA="";fbPostosAgora();fbPostosMov(false);}
+/* resultado de uma linha: último mês × primeiro mês. Devolve {k: tom, p: palavra, g: número grande, s: linha pequena} */
+function fbPostoRes(v){
+  if(v.length<2)return null;
+  const a=v[0],b=v[v.length-1],d=b-a,fl=n=>(n>0?"+":"−")+Math.abs(n)+(Math.abs(n)===1?" falta":" faltas");
+  if(d===0)return{k:"tn-gr",p:"Estável",g:"0%",s:"mesmo número de faltas"};
+  if(a===0)return{k:"tn-da",p:"Piorou",g:fl(d),s:"sem base para % (começou em 0)"};
+  return{k:d>0?"tn-da":"tn-ok",p:d>0?"Piorou":"Melhorou",g:(d>0?"+":"−")+Math.abs(Math.round(d/a*100))+"%",s:fl(d)};
+}
+function fbLinhaPostos(D){
+  const F=D.faixa,n=F.length,rot=fbFaixaRot(D),f=[];
+  if(LIG_F.area&&LIG_F.area!=="todas")f.push("Área: "+fbTitulo(LIG_F.area));
+  if(LIG_F.turno&&LIG_F.turno!=="todos")f.push("Turno: "+(LIG_F.turno==="NOTURNO"?"Noturno":"Diurno"));
+  return'<p class="fb-per">Período analisado: <b>'+rot+'</b> ('+fbPlural(n,"mês fechado","meses fechados")+')'+(n>1?' · comparação: <b>'+fbMesCurto(F[n-1].k)+'</b> contra <b>'+fbMesCurto(F[0].k)+'</b>':"")+(f.length?" · "+_esc(f.join(" · ")):"")+'</p>';
+}
+/* filtro "Quais faltas contar" da aba Postos. ab: inclui abonadas; fb: 1 só com feedback, -1 só sem feedback, 0 com ou sem.
+   d: como a falta é chamada no texto do mouse; leg: a primeira linha da legenda */
+const FB_PF={
+  sj:{t:"Todas as faltas sem justificativa (com ou sem feedback)",d:"sem justificativa",leg:"todas as faltas sem justificativa do mês, com ou sem feedback",ab:false,fb:0},
+  sj_fb:{t:"Sem justificativa, com feedback",d:"sem justificativa com feedback",leg:"faltas sem justificativa do mês que tiveram feedback",ab:false,fb:1},
+  sj_sem:{t:"Sem justificativa, sem feedback",d:"sem justificativa sem feedback",leg:"faltas sem justificativa do mês que não tiveram feedback",ab:false,fb:-1},
+  ab_fb:{t:"Sem justificativa + abonadas, com feedback",d:"sem justificativa ou abonadas, com feedback",leg:"faltas sem justificativa e abonadas do mês que tiveram feedback",ab:true,fb:1},
+  ab_sem:{t:"Sem justificativa + abonadas, sem feedback",d:"sem justificativa ou abonadas, sem feedback",leg:"faltas sem justificativa e abonadas do mês que não tiveram feedback",ab:true,fb:-1}};
+function ligDesPf(v){LIG_DES.pf=FB_PF[v]?v:"sj";LIG_DES_PA="";fbPostosAgora();fbPostosMov(false);}
+/* busca do posto pelo nome: esconde as linhas na hora, sem redesenhar (o cursor fica no campo) */
+function ligDesPq(v){
+  LIG_DES.pq=v;const q=_ligNorm(v),t=document.querySelector("#lig-panel .fb-heat");if(!t)return;let n=0;
+  t.querySelectorAll("tbody tr.pl").forEach(r=>{const ok=!q||String(r.dataset.n||"").indexOf(q)>=0;r.hidden=!ok;const d=r.nextElementSibling;if(d&&d.classList.contains("pd"))d.hidden=!ok;if(ok)n++;});
+  const tot=t.querySelector("tbody tr.tot");if(tot)tot.hidden=!!q;const z=document.getElementById("ld-pq-vazio");if(z)z.hidden=n>0;
+}
+/* Quadro único, mapa de calor (referência do Raphael): cada mês é uma célula colorida pela quantidade de faltas, com a
+   diferença para o mês anterior embaixo (▲ mais, ▼ menos). A porcentagem aparece ao passar o mouse na célula. */
 function fbDesPostos(D){
-  const pes=(LIG_IND&&LIG_IND.pessoas)||[],nomes=(LIG_IND&&LIG_IND.postos)||[],res=LIG_DES.pt==="reserva",F=D.faixa,m={};
+  const pes=(LIG_IND&&LIG_IND.pessoas)||[],nomes=(LIG_IND&&LIG_IND.postos)||[],S=(LIG_IND&&LIG_IND.supervisores)||[],CG=(LIG_IND&&LIG_IND.cargos)||[],F=D.faixa,nM=F.length;
+  const PF=FB_PF[LIG_DES.pf]||FB_PF.sj,FBD={},G={P:{},R:{}};
+  ((LIG_IND&&LIG_IND.funil&&LIG_IND.funil.feedbacks)||[]).forEach(y=>{(FBD[y[1]]=FBD[y[1]]||[]).push(y[0]);});
+  /* falta com feedback: a pessoa teve feedback registrado no dia da falta ou em até 29 dias depois (a mesma janela do "antes" do veredito) */
+  const teveFb=(i,dt)=>{const ds=FBD[i];if(!ds)return false;const lim=ligSomaDias(dt,29);return ds.some(d=>d>=dt&&d<=lim);};
   ((LIG_IND&&LIG_IND.funil&&LIG_IND.funil.faltas)||[]).forEach(x=>{
-    if(x[2]==="A"||(x[4]==="R")!==res)return;const p=pes[x[1]];if(!p||!fbSupOk(p[3]))return;
+    if(x[2]==="A"&&!PF.ab)return;const p=pes[x[1]];if(!p||!fbSupOk(S[x[5]]))return;
+    if(PF.fb&&(teveFb(x[1],x[0])?1:-1)!==PF.fb)return;
     const li=F.findIndex(l=>x[0]>=l.de&&x[0]<=l.ate);if(li<0)return;
-    const n=nomes[x[3]]||p[2]||"Sem posto";(m[n]=m[n]||{n,v:F.map(()=>0),t:0});m[n].v[li]++;m[n].t++;
+    const res=x[4]==="R",nome=res?(S[x[5]]||"Sem supervisor"):(nomes[x[3]]||p[2]||"Sem posto"),g=res?G.R:G.P;
+    const o=g[nome]=g[nome]||{n:nome,k:(res?"R|":"P|")+nome,v:F.map(()=>0),t:0,ps:{}};
+    o.v[li]++;o.t++;
+    const q=o.ps[x[1]]=o.ps[x[1]]||{re:p[0],nome:p[1],cg:"",v:F.map(()=>0),t:0};q.v[li]++;q.t++;
+    if(x[6]!==null&&x[6]!==undefined&&CG[x[6]])q.cg=CG[x[6]];
   });
-  const lst=Object.values(m).sort((a,b)=>b.t-a.t||a.n.localeCompare(b.n)),tot=F.map((_,i)=>lst.reduce((t,x)=>t+x.v[i],0));
-  const cel=(v,ant)=>{const d=ant===undefined?0:v-ant;return'<td class="'+(d===0?"":d<0?"tn-ok":"tn-da")+'"><b>'+v+'</b>'+(d===0?"":'<small>'+fbI(d<0?"up":"down")+(d>0?"+":"−")+Math.abs(d)+'</small>')+'</td>';};
-  const sel='<div class="fb-pills" role="group" aria-label="Efetivo ou reserva" data-nav="pt" data-ind="fundo"><button type="button" class="'+(!res?"on":"")+'" onclick="ligDes(\'pt\',\'efetivo\')">Postos efetivos</button><button type="button" class="'+(res?"on":"")+'" onclick="ligDes(\'pt\',\'reserva\')">Reserva técnica</button></div>';
-  const L1=F[F.length-1],pior=lst.map(x=>({n:x.n,d:x.v[F.length-1]-(x.v[F.length-2]||0)})).sort((a,b)=>b.d-a.d)[0];
-  let h='<div class="fb-kgs">'+fbKg("g-blue","pin",res?"Reserva técnica":"Postos com falta",fbNum(lst.length),"no intervalo escolhido","")
-    +fbKg("g-violet","chart","Faltas no último mês",fbNum(tot[tot.length-1]||0),fbMesRot(L1.k)+(L1.parcial?" até hoje":""),"")
-    +fbKg(pior&&pior.d>0?"g-coral":"g-green",pior&&pior.d>0?"down":"up","Maior aumento",pior&&pior.d>0?_esc(fbTitulo(pior.n)):"Nenhum",pior&&pior.d>0?"+"+pior.d+" contra o mês anterior":"nenhum posto piorou","")+'</div>';
-  h+=fbPainel(res?"Reserva técnica por supervisor, mês a mês":"Faltas por posto, mês a mês",sel,lst.length
-    ?'<div class="fb-tab ind"><table><thead><tr><th>'+(res?"Reserva":"Posto")+'</th>'+F.map(l=>'<th>'+fbRotM(l)+'</th>').join("")+'<th>Total</th></tr></thead><tbody>'
-      +lst.slice(0,300).map(x=>'<tr><td><b>'+_esc(fbTitulo(x.n))+'</b></td>'+x.v.map((v,i)=>cel(v,i?x.v[i-1]:undefined)).join("")+'<td><b>'+x.t+'</b></td></tr>').join("")
-      +'<tr class="tot"><td><b>Total</b></td>'+tot.map(v=>'<td><b>'+v+'</b></td>').join("")+'<td><b>'+tot.reduce((a,b)=>a+b,0)+'</b></td></tr></tbody></table></div><p class="fb-gnota">Cada posto é comparado com ele mesmo no mês anterior: seta para cima verde quando faltou menos, para baixo vermelha quando faltou mais. Só faltas sem justificativa.</p>'
-    :'<p class="fb-gnota">Nenhuma falta '+(res?"da reserva técnica":"em postos efetivos")+' no intervalo.</p>',"big");
-  return h;
+  const lista=g=>Object.values(g).sort((a,b)=>b.t-a.t||a.n.localeCompare(b.n));
+  const LP=lista(G.P),LR=lista(G.R),rot=fbFaixaRot(D),totR=LR.reduce((t,x)=>t+x.t,0);
+  const nm=n=>n==="Sem supervisor"?n:fbTitulo(n),fl=n=>fbPlural(n,"falta","faltas");
+  /* texto do mouse, explicado linha a linha (\n): de onde vem o número, a comparação com o mês anterior e quem faltou */
+  const pct=(d,a)=>Math.abs(Math.round(d/a*100))+"%";
+  const compara=(v,i,a)=>{
+    if(i===0)return"É o primeiro mês do período: não há mês anterior para comparar.";
+    const m0=fbMesCurto(F[i-1].k),d=v-a;
+    if(d===0)return"Em "+m0+" também foram "+fl(a)+". Resultado: estável, sem mudança.";
+    if(a===0)return"Em "+m0+" não houve falta. Resultado: piorou, "+fl(d)+" a mais. Como o mês anterior foi 0, não dá para calcular a %.";
+    return"Em "+m0+" foram "+fl(a)+". Resultado: "+(d>0?"piorou, "+fl(d)+" a mais, um aumento de "+pct(d,a)+".":"melhorou, "+fl(-d)+" a menos, uma queda de "+pct(d,a)+".");
+  };
+  const quem=(x,i)=>{const ps=Object.values(x.ps).filter(q=>q.v[i]).sort((a,b)=>b.v[i]-a.v[i]||a.nome.localeCompare(b.nome));
+    if(!ps.length)return"Nenhuma falta "+PF.d+" neste mês.";
+    return"Quem faltou: "+ps.slice(0,5).map(q=>fbTitulo(q.nome)+" ("+q.v[i]+")").join(", ")+(ps.length>5?" e mais "+(ps.length-5):"")+".";};
+  const dica=(x,i)=>{const v=x.v[i],a=i?x.v[i-1]:0;
+    return nm(x.n)+" · "+fbMesCurto(F[i].k)+"\n"+fl(v)+" "+PF.d+" neste mês.\n"+compara(v,i,a)+"\n"+quem(x,i);};
+  const dicaTot=(tv,i)=>"Todos os "+(res?"supervisores":"postos")+" · "+fbMesCurto(F[i].k)+"\n"+fl(tv[i])+" "+PF.d+" somando "+(res?"a reserva técnica":"todos os postos")+".\n"+compara(tv[i],i,i?tv[i-1]:0);
+  const dicaPer=(nome,v,nP)=>{const r=fbPostoRes(v),pico=v.indexOf(Math.max(...v)),t=v.reduce((a,b)=>a+b,0);
+    let l=nome+" · "+rot+"\n"+fl(t)+" "+PF.d+" no período"+(nP!==null?", de "+fbPlural(nP,"pessoa","pessoas"):"")+".";
+    if(nM>1){l+="\nPrimeiro mês ("+fbMesCurto(F[0].k)+"): "+fl(v[0])+". Último mês ("+fbMesCurto(F[nM-1].k)+"): "+fl(v[nM-1])+".";
+      const d=v[nM-1]-v[0];
+      l+="\nResultado do período: "+(d===0?"estável, o mesmo número do primeiro ao último mês.":v[0]===0?"piorou, "+fl(d)+" a mais. Como o primeiro mês foi 0, não dá para calcular a %.":d>0?"piorou, "+fl(d)+" a mais, um aumento de "+pct(d,v[0])+".":"melhorou, "+fl(-d)+" a menos, uma queda de "+pct(d,v[0])+".");}
+    if(t)l+="\nMês com mais faltas: "+fbMesCurto(F[pico].k)+" ("+v[pico]+").";
+    return r||!t?l:l;};
+  const cmpJ=(v,i,a)=>{if(i===0)return{k:"eq",p:"Primeiro mês",g:"",t:"Não há mês anterior no período para comparar."};
+    const m0=fbMesCurto(F[i-1].k),d=v-a;
+    if(d===0)return{k:"eq",p:"Estável",g:"0%",t:"Mesmo número de "+m0+" ("+a+")."};
+    if(a===0)return{k:"up",p:"Piorou",g:"",t:fl(d)+" a mais que em "+m0+", que não teve falta. Sem base para %."};
+    return{k:d>0?"up":"dn",p:d>0?"Piorou":"Melhorou",g:pct(d,a),t:fl(Math.abs(d))+(d>0?" a mais":" a menos")+" que em "+m0+" ("+a+")."};};
+  const unid=(n,resto)=>(n===1?"falta ":"faltas ")+PF.d+" "+resto;
+  const dicaJ=(x,i)=>{const ps=Object.values(x.ps).filter(q=>q.v[i]).sort((a,b)=>b.v[i]-a.v[i]||a.nome.localeCompare(b.nome));
+    return JSON.stringify({h:nm(x.n),s:fbMesCurto(F[i].k),n:x.v[i],u:unid(x.v[i],"neste mês"),c:cmpJ(x.v[i],i,i?x.v[i-1]:0),q:ps.slice(0,6).map(q=>[fbTitulo(q.nome),q.v[i]]),m:Math.max(0,ps.length-6)});};
+  const totJ=(tv,i)=>JSON.stringify({h:"Todos os "+(res?"supervisores":"postos"),s:fbMesCurto(F[i].k),n:tv[i],u:unid(tv[i],"somando "+(res?"a reserva técnica":"todos os postos")),c:cmpJ(tv[i],i,i?tv[i-1]:0)});
+  const perJ=(nome,v,nP)=>{const t=v.reduce((a,b)=>a+b,0),pico=v.indexOf(Math.max(...v));let c=null;
+    if(nM>1){const a=v[0],b=v[nM-1],d=b-a,de=fbMesCurto(F[0].k)+" ("+a+") → "+fbMesCurto(F[nM-1].k)+" ("+b+")";
+      c=d===0?{k:"eq",p:"Estável no período",g:"0%",t:de+"."}:a===0?{k:"up",p:"Piorou no período",g:"",t:de+": "+fl(d)+" a mais. Sem base para % (começou em 0)."}
+        :{k:d>0?"up":"dn",p:d>0?"Piorou no período":"Melhorou no período",g:pct(d,a),t:de+": "+fl(Math.abs(d))+(d>0?" a mais.":" a menos.")};}
+    return JSON.stringify({h:nome,s:rot,n:t,u:unid(t,"no período"+(nP!==null?", de "+fbPlural(nP,"pessoa","pessoas"):"")),c,x:t?"Mês com mais faltas: "+fbMesCurto(F[pico].k)+" ("+v[pico]+")":""});};
+  LIG_DES_PL=[];LIG_DES_ROWS=[];
+  const res=LIG_DES.pr==="reserva",L=res?LR:LP,mx=Math.max(1,...L.map(x=>Math.max(...x.v))),mt=Math.max(1,...L.map(x=>x.t));
+  const cel=(x,i)=>{const v=x.v[i],a=i>0?x.v[i-1]:null,d=a===null?0:v-a,lv=v?Math.min(4,Math.ceil(v/mx*4)):0;
+    return'<td class="hm h'+lv+'" data-tip="'+_esc(dica(x,i))+'" data-tipj="'+_esc(dicaJ(x,i))+'"><b>'+v+'</b>'+(d===0?"":'<small class="'+(d<0?"dn":"up")+'">'+(d>0?"▲ ":"▼ ")+Math.abs(d)+'</small>')+'</td>';};
+  const pq=_ligNorm(LIG_DES.pq||"");let vis=0;
+  const linhas=L.map((x,ix)=>{
+    const i=LIG_DES_PL.push(x.k)-1,ab=LIG_DES_PA===x.k,nn=_ligNorm(nm(x.n)),esc_=pq&&nn.indexOf(pq)<0;if(!esc_)vis++;
+    let h='<tr class="pl'+(ab?" on":"")+'" data-n="'+_esc(nn)+'"'+(esc_?" hidden":"")+' tabindex="0" role="button" aria-expanded="'+ab+'" onclick="ligDesPa('+i+')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();ligDesPa('+i+')}"><td><span class="rk'+(ix<3?" top":"")+'">'+(ix+1)+'</span><span class="nm"><b>'+_esc(nm(x.n))+'</b><small>'+fbPlural(Object.keys(x.ps).length,"pessoa","pessoas")+' com falta</small></span></td>'+x.v.map((_,k)=>cel(x,k)).join("")+'<td class="tt" data-tip="'+_esc(dicaPer(nm(x.n),x.v,Object.keys(x.ps).length))+'" data-tipj="'+_esc(perJ(nm(x.n),x.v,Object.keys(x.ps).length))+'"><b>'+x.t+'</b><i style="width:'+Math.round(x.t/mt*100)+'%"></i></td></tr>';
+    if(ab){
+      const ps=Object.values(x.ps).sort((a,b)=>b.t-a.t||a.nome.localeCompare(b.nome));
+      const pmx=Math.max(1,...ps.map(q=>Math.max(...q.v)));
+      h+='<tr class="pd"'+(esc_?" hidden":"")+'><td colspan="'+(nM+2)+'"><div class="pd-w"><div class="pd-h"><div><b>'+fbPlural(ps.length,"pessoa faltou","pessoas faltaram")+'</b> em '+_esc(nm(x.n))+'</div><span>'+rot+' · '+fl(x.t)+' · clique na pessoa para abrir o panorama</span></div><table><thead><tr><th>Colaborador</th>'+F.map(l=>'<th>'+fbMesCurto(l.k)+'</th>').join("")+'<th>Total</th></tr></thead><tbody>'
+        +ps.map(q=>{const j=LIG_DES_ROWS.push({re:q.re,nome:q.nome})-1;return'<tr class="pp" tabindex="0" role="button" aria-label="Abrir o panorama de '+_esc(fbTitulo(q.nome))+'" onclick="ligDesAbrir('+j+')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();ligDesAbrir('+j+')}"><td><span class="av">'+_esc(fbIni(q.nome))+'</span><span class="nm"><b>'+_esc(fbTitulo(q.nome))+'</b><small>'+(q.re?"RE "+_esc(q.re):"")+(q.cg?(q.re?" · ":"")+_esc(fbTitulo(q.cg)):"")+'</small></span></td>'
+          +q.v.map((v,k)=>'<td class="n"><span class="mb '+(v?"h"+Math.min(4,Math.ceil(v/pmx*4)):"z")+'" title="'+fbMesCurto(F[k].k)+': '+fl(v)+'"><b>'+(v||"")+'</b><i style="height:'+(v?8+Math.round(v/pmx*20):3)+'px"></i></span></td>').join("")+'<td class="n t"><b>'+q.t+'</b><small>'+(q.t===1?"falta":"faltas")+'</small></td></tr>';}).join("")
+        +'</tbody></table></div></td></tr>';
+    }
+    return h;}).join("");
+  const tv=F.map((_,i)=>L.reduce((t,x)=>t+x.v[i],0)),tt=tv.reduce((a,b)=>a+b,0);
+  const sel='<div class="fb-pills" role="group" aria-label="Postos efetivos ou reserva técnica" data-nav="pr" data-ind="fundo"><button type="button" class="'+(!res?"on":"")+'" onclick="ligDesPr(\'postos\')">Postos efetivos</button><button type="button" class="'+(res?"on":"")+'" onclick="ligDesPr(\'reserva\')">Reserva técnica</button></div>';
+  const tab=L.length?'<div class="fb-tab ind fb-heat"><table><thead><tr><th>'+(res?"Reserva":"Posto")+'</th>'+F.map(l=>'<th>'+fbMesCurto(l.k)+'</th>').join("")+'<th>Total</th></tr></thead><tbody>'+linhas
+      +'<tr class="tot"'+(pq?" hidden":"")+'><td><b>Total</b></td>'+tv.map((v,i)=>'<td data-tip="'+_esc(dicaTot(tv,i))+'" data-tipj="'+_esc(totJ(tv,i))+'"><b>'+v+'</b></td>').join("")+'<td class="tt" data-tip="'+_esc(dicaPer(res?"Toda a reserva técnica":"Todos os postos",tv,null))+'" data-tipj="'+_esc(perJ(res?"Toda a reserva técnica":"Todos os postos",tv,null))+'"><b>'+tt+'</b></td></tr></tbody></table></div>'
+      +'<p class="fb-gnota" id="ld-pq-vazio"'+(vis?" hidden":"")+'>Nenhum'+(res?"a área":" posto")+' com esse nome.</p>'
+      +'<div class="hm-leg"><div class="hm-esc"><span>Menos faltas</span><i class="h0"></i><i class="h1"></i><i class="h2"></i><i class="h3"></i><i class="h4"></i><span>Mais faltas</span></div>'
+      +'<div class="hm-sig"><span><em class="up">▲ 2</em>faltou mais que no mês anterior</span><span><em class="dn">▼ 2</em>faltou menos que no mês anterior</span></div>'
+      +'<ul class="hm-txt"><li>Número: '+_esc(PF.leg)+'</li>'+(PF.fb?'<li>Com feedback: a pessoa teve feedback registrado em até 30 dias depois da falta</li>':"")+'<li>Passe o mouse num número para ver a explicação e a %</li><li>Clique na linha para ver quem faltou</li></ul></div>'
+    :'<p class="fb-gnota">Nenhuma falta '+_esc(PF.d)+' '+(res?"na reserva técnica":"nos postos")+' entre '+fbMesCurto(F[0].k)+' e '+fbMesCurto(F[nM-1].k)+'.</p>';
+  const mais=LP[0],menos=LP.length>1?LP[LP.length-1]:null,fp=n=>fl(n)+" no período";
+  const bar='<div class="fb-pst-f"><label class="fb-fl" for="ld-pf">Quais faltas contar</label><span class="fb-selp wide"><select id="ld-pf" onchange="ligDesPf(this.value)">'
+    +Object.keys(FB_PF).map(k=>'<option value="'+k+'"'+(FB_PF[k]===PF?" selected":"")+'>'+FB_PF[k].t+'</option>').join("")+'</select>'+fbI("chev")+'</span>'
+    +'<label class="fb-search fb-pq">'+fbI("search")+'<span class="fb-sr">Buscar '+(res?"área":"posto")+' pelo nome</span><input id="ld-pq" class="fb-in" type="search" placeholder="Buscar '+(res?"área":"posto")+' pelo nome" autocomplete="off" value="'+_esc(LIG_DES.pq||"")+'" oninput="ligDesPq(this.value)"></label></div>';
+  return bar+'<div class="fb-dcs c3">'
+    +fbDc("tn-da","Condomínio com mais faltas · "+rot,mais?_esc(fbTitulo(mais.n)):"Nenhum",mais?fp(mais.t):"Nenhuma falta nos postos","")
+    +fbDc("tn-ok","Condomínio com menos faltas · "+rot,menos?_esc(fbTitulo(menos.n)):"—",menos?fp(menos.t)+" · entre os que tiveram falta":"Só um condomínio teve falta","")
+    +fbDc("tn-gr","Faltas da reserva técnica · "+rot,fbNum(totR),LR.length?"em "+fbPlural(LR.length,"área","áreas")+" · no período":"Nenhuma área com falta","")
+    +'</div>'+fbPainel((res?"Reserva técnica por supervisor, mês a mês":"Faltas por posto, mês a mês")+'<small>'+rot+' · '+_esc(PF.t)+'</small>',sel,tab,"big fb-hm-pn");
 }
 let LIG_DES_ROWS=[];
+/* Efeito: o card escolhe a situação; a lista dela troca na hora e as linhas entram em sequência */
+function ligDesSit(k){LIG_DES.sit=k;fbPostosAgora();
+  if(!fbMov())return;const box=document.getElementById("lig-panel");if(!box)return;
+  box.querySelectorAll(".ef-tb tbody tr").forEach((r,i)=>{if(i<16)r.animate([{opacity:.25,transform:"translate3d(0,8px,0)"},{opacity:1,transform:"none"}],{duration:380,delay:i*30,easing:FB_EASE,fill:"backwards"});});
+  const bar=box.querySelector(".ef-bar");if(bar)bar.querySelectorAll("i").forEach(x=>x.animate([{opacity:.7},{opacity:1}],{duration:300}));}
 function ligDesAbrir(i){const x=LIG_DES_ROWS[i];if(x)ligColab(x.re,x.nome);}
 
 /* ═════ envio em lote: marca as pessoas e manda uma por vez, no ritmo do serviço ═════ */
@@ -1457,6 +1591,7 @@ function fbResumo(p){
     ln.push("Antes do feedback (30 dias): "+a.antes+(a.antes===1?" falta":" faltas"));
     ln.push("Depois do feedback ("+dd(c.data)+"): "+a.depois+(a.depois===1?" falta":" faltas")+(a.faltas_depois&&a.faltas_depois.length?" em "+a.faltas_depois.map(dd).join(", "):""));
   }else{
+    if(p.fb_fim)ln.push(fbFimTxt(p.fb_fim));
     ln.push("Faltas sem justificar e sem conversa: "+p.faltas.length+" ("+p.faltas.map(dd).join(", ")+")");
   }
   const envios=(p.envios||[]).slice().sort();
@@ -1484,7 +1619,7 @@ function fbDocResumo(p){
   const contatos=LIG_C.filter(x=>fbDaPessoa(x,p)).sort((x,y)=>ligDataContato(y).localeCompare(ligDataContato(x))||(Number(y.id)||0)-(Number(x.id)||0));
   const hist=(p.hist||[]).slice().sort((x,y)=>y[0].localeCompare(x[0])),env=(p.envios||[]).slice().sort().reverse();
   const SJ=h=>h[1]==="I"||h[1]==="T",sj30=hist.filter(h=>SJ(h)&&h[0]>ligSomaDias(hj,-30)),ab30=hist.filter(h=>!SJ(h)&&h[1]!=="D"&&h[0]>ligSomaDias(hj,-30)),sj90=hist.filter(h=>SJ(h)&&h[0]>ligSomaDias(hj,-90));
-  const ult=contatos.find(ligEfetivo)||null,dest=fbDestaque(p),ve=a?(FB_VD[a.veredito]||{}):null;
+  const ult=contatos.find(ligEfetivo)||null,dest=fbDestaque(p),ve=a?(FB_VD[a.veredito]||FB_VD.comecando):null;
   const kp=(n,r,t)=>'<div class="k '+(t||"")+'"><b>'+n+'</b><span>'+r+'</span></div>';
   const sec=(t,h)=>'<section class="ds"><h4>'+t+'</h4>'+h+'</section>';
   const dts=l=>l&&l.length?l.slice().sort().map(fbDd).join(", "):"nenhuma";
@@ -1494,20 +1629,21 @@ function fbDocResumo(p){
   if(sj90.length)ponto.push("Faltou "+fbPlural(sj90.length,"vez","vezes")+" sem justificativa nos últimos 90 dias ("+sj30.length+" nos últimos 30).");
   if(topD!==undefined&&dsC[topD]>=2&&sj90.length>=3)ponto.push("As faltas se repetem às "+DS[topD]+"s ("+dsC[topD]+" de "+sj90.length+").");
   if(a)ponto.push("Desde o feedback de "+fbDd(c.data)+": "+fbPlural(a.depois,"falta","faltas")+" contra "+a.antes+" nos 30 dias anteriores ("+String(ve.t).toLowerCase()+"). Faltam "+Math.max(0,30-a.dia)+" dias de acompanhamento.");
+  if(!a&&p.fb_fim)ponto.push(fbFimTxt(p.fb_fim)+".");
   if(ult&&ult.motivo)ponto.push("Motivo informado no último feedback: "+fbMotNome(ult.motivo)+(ult.justificativa?". Disse: “"+ult.justificativa+"”.":"."));
   if(c&&c.acordo)ponto.push("Combinado: "+c.acordo+(c.acordo_prazo?" (prazo "+fbDd(c.acordo_prazo)+")":"")+(c.acordo_auto&&FB_ACOR[c.acordo_auto]?" — "+FB_ACOR[c.acordo_auto][0].toLowerCase():"")+".");
   if(p.situacao==="base")ponto.push("Não ligou depois de "+(p.tentativas||2)+" mensagens do SAC: a conversa cabe à coordenação.");
   if(!ponto.length)ponto.push("Sem pendências nos registros do SAC.");
   const reg=ult?fbRegistroCompleto(ult,c&&c.id===ult.id&&c.acordo_prazo?(FB_ACOR[c.acordo_auto]||FB_ACOR.pendente):null):"";
   const tab=(cab,lin)=>'<table class="dt"><thead><tr>'+cab.map(x=>'<th>'+x+'</th>').join("")+'</tr></thead><tbody>'+lin.map(l=>'<tr>'+l.map(x=>'<td>'+x+'</td>').join("")+'</tr>').join("")+'</tbody></table>';
-  const nomeCod=h=>h[1]==="I"?"Sem justificativa":h[1]==="T"?"Sem justificativa (tratada pelo SAC)":(FB_ABO_NOME[h[1]]||"Falta");
+  const nomeCod=h=>h[1]==="I"?"Sem justificativa":h[1]==="T"?"Sem justificativa":(FB_ABO_NOME[h[1]]||"Falta");
   const f90=hist.filter(x=>x[1]!=="D"&&x[0]>ligSomaDias(hj,-90));
   const ms=((LIG_HIST&&LIG_HIST.medidas)||[]).filter(m=>p.re&&String(m.re)===String(p.re)).sort((x,y)=>String(y.data).localeCompare(String(x.data)));
   let h='<article class="fb-doc"><header class="dh"><div><small>Grupo ServCamp · Feedback de Faltas</small><h3>Resumo para a coordenação</h3></div><span>Emitido em '+rhFmt(hj)+'</span></header>';
   h+='<div class="dp"><div class="av">'+_esc(fbIni(p.nome))+'</div><div><h2>'+_esc(p.nome)+'</h2><p>'+(p.re?"RE "+_esc(p.re):"")+(p.posto?" · "+_esc(fbTitulo(p.posto)):"")+'</p><p>'+(p.supervisor?"Supervisor: <b>"+_esc(fbTitulo(p.supervisor))+"</b>":"")+(fbFone(p.telefone)?" · "+_esc(fbFone(p.telefone)):"")+'</p></div><span class="fb-vd '+(ve?ve.tom:sit.tom)+'">'+_esc(ve?ve.t:sit.t)+'</span></div>';
   h+='<div class="dk">'+kp(sj30.length,"faltas sem justificativa<br>nos últimos 30 dias","r")+kp(ab30.length,"faltas abonadas<br>nos últimos 30 dias","b")+kp(env.length,"mensagens do SAC<br>enviadas","v")+kp(contatos.filter(ligEfetivo).length,"feedbacks<br>realizados","g")+'</div>';
   h+=sec("Situação atual",'<p class="dst '+dest[2]+'"><b>'+_esc(dest[0])+'.</b> '+_esc(dest[1])+'</p>');
-  if(a)h+=sec("Acompanhamento de 30 dias",'<div class="da"><div><small>Antes do feedback</small><b>'+fbPlural(a.antes,"falta","faltas")+'</b><span>'+fbDd(ligSomaDias(c.data,-30))+' a '+fbDd(c.data)+'<br>'+_esc(dts(a.faltas_antes))+'</span></div><div><small>Depois do feedback</small><b>'+fbPlural(a.depois,"falta","faltas")+'</b><span>'+fbDd(ligSomaDias(c.data,1))+' a '+fbDd(ligSomaDias(c.data,30))+' · dia '+Math.min(30,a.dia)+' de 30<br>'+_esc(dts(a.faltas_depois))+'</span></div><div class="'+(a.depois>a.antes?"r":a.depois<a.antes?"g":"")+'"><small>Resultado</small><b>'+(a.depois===a.antes?"Igual":(a.depois>a.antes?"+":"−")+Math.abs(a.depois-a.antes)+(Math.abs(a.depois-a.antes)===1?" falta":" faltas"))+'</b><span>'+_esc(ve.t)+'</span></div></div>');
+  if(a)h+=sec("Acompanhamento de 30 dias",'<div class="da"><div><small>Antes do feedback</small><b>'+fbPlural(a.antes,"falta","faltas")+'</b><span>'+fbDd(ligSomaDias(c.data,-29))+' a '+fbDd(c.data)+'<br>'+_esc(dts(a.faltas_antes))+'</span></div><div><small>Depois do feedback</small><b>'+fbPlural(a.depois,"falta","faltas")+'</b><span>'+fbDd(ligSomaDias(c.data,1))+' a '+fbDd(ligSomaDias(c.data,30))+' · dia '+Math.min(30,a.dia)+' de 30<br>'+_esc(dts(a.faltas_depois))+'</span></div><div class="'+({"tn-da":"r","tn-ok":"g"}[ve.tom]||"")+'"><small>Resultado</small><b>'+_esc(ve.t)+'</b><span>'+a.antes+' antes, '+a.depois+' depois</span></div></div>');
   h+=sec("Último feedback",reg||'<p class="fb-gnota">Nenhum feedback registrado.</p>');
   h+=sec("Pontos para a conversa",'<ul class="dl">'+ponto.map(x=>'<li>'+_esc(x)+'</li>').join("")+'</ul>');
   h+=sec("Faltas dos últimos 90 dias",f90.length?tab(["Data","Dia da semana","Situação"],f90.slice(0,24).map(x=>[rhFmt(x[0]),DS[new Date(x[0]+"T12:00:00Z").getUTCDay()],_esc(nomeCod(x))])):'<p class="fb-gnota">Nenhuma falta no período.</p>');
@@ -1540,12 +1676,7 @@ function ligResumoCopiar(){
 
 /* ═════ panorama da pessoa (painel lateral) ═════
    Cabeçalho com o veredito · três cartões · evolução (barras e %) · calendário de um mês por vez · linha do tempo e destaque · histórico */
-const FB_DEST={
-  piorou:["Situação em atenção","O colaborador apresentou aumento no número de faltas após o feedback.","tn-da"],
-  mesma:["Sem mudança","O número de faltas não mudou depois do feedback.","tn-am"],
-  melhorando:["Evolução positiva","O colaborador faltou menos depois do feedback.","tn-ok"],
-  comecando:["Em observação","O feedback foi recente. Ainda é cedo para avaliar.","tn-br"]
-};
+const FB_DEST={};FB_VD_ORDEM.forEach(k=>{FB_DEST[k]=[FB_VD[k].t,FB_VD[k].d,FB_VD[k].tom];});
 function fbDestaque(p){
   if(p.acomp)return FB_DEST[p.acomp.veredito]||FB_DEST.mesma;
   if(p.situacao==="mensagem")return["Aguardando mensagem","O SAC ainda não enviou mensagem."+(p.tentativas>0?" Uma mensagem anterior ficou sem resposta.":""),"tn-br"];
@@ -1555,6 +1686,8 @@ function fbDestaque(p){
   if(p.situacao==="base")return["Com a coordenação","A pessoa não ligou depois de "+p.tentativas+" mensagens do SAC. Cabe à coordenação conversar com ela.","tn-da"];
   return["Sem pendência","Nenhuma falta sem justificativa aguardando o SAC nos últimos 30 dias.","tn-gr"];
 }
+/* feedback com mais de 30 dias (vem do servidor): o mesmo resultado do Desempenho */
+function fbFimTxt(f){const v=FB_VD[f.veredito]||FB_VD.mesma;return"Resultado do feedback de "+fbDd(f.data)+": "+v.t+" ("+f.antes+" antes, "+f.depois+" depois)";}
 function fbCartao(){return'<section class="fb-card2">'+Array.prototype.join.call(arguments,"")+'</section>';}
 function fbCartaoH(ic,titulo,direita){return'<header class="fb-card2-h"><span class="ic">'+fbI(ic)+'</span><h4>'+titulo+'</h4>'+(direita||"")+'</header>';}
 /* faltas por mês da pessoa (sem justificativa e abonadas), para o "Ver detalhes" do panorama */
@@ -1566,41 +1699,39 @@ function fbMesesPessoa(p){
   return{modo,lin:ks.map(x=>({k:x,de:fbMesIni(x,modo),ate:fbMesFim(x,modo)<hj?fbMesFim(x,modo):hj,sj:(m[x]||{}).sj||0,ab:(m[x]||{}).ab||0}))};
 }
 function fbDetalhePessoa(p){
-  const r=fbMesesPessoa(p),L=r.lin,a0=L[0].sj,b0=L[L.length-1].sj,pc=fbPct(a0,b0);
-  const tot=L.reduce((t,l)=>t+l.sj,0);
-  return'<div class="fb-det-h"><span>'+(r.modo==="civil"?"Mês do calendário":"Período da folha, 26 a 25")+'</span>'+(pc===null?"":'<span class="fb-tag '+fbTomVar(pc)+'">'+fbMesRot(L[0].k)+" × "+fbMesRot(L[L.length-1].k)+": "+fbPctTxt(pc)+'</span>')+'<span class="fb-pill-s">'+fbPlural(tot,"falta sem justificativa","faltas sem justificativa")+' em 6 meses</span></div>'
-    +fbGCols({rot:"Faltas por mês",rots:L.map(l=>fbMesCurto(l.k)),empilha:true,h:230,series:[{nome:"Sem justificativa",cor:FB_COR.azul,vals:L.map(l=>l.sj)},{nome:"Abonadas",cor:FB_COR.azulc,vals:L.map(l=>l.ab)}]})
-    +fbLeg([["Sem justificativa",FB_COR.azul],["Abonadas",FB_COR.azulc]]);
+  const r=fbMesesPessoa(p),L=r.lin,hj=ligHojeISO(),kc=fbMesChave(hj,r.modo),tot=L.reduce((t,l)=>t+l.sj,0);
+  return'<div class="fb-det-h"><span>'+(r.modo==="civil"?"Mês do calendário":"Período da folha, 26 a 25")+'</span><span class="fb-pill-s">'+fbPlural(tot,"falta sem justificativa","faltas sem justificativa")+' em 6 meses</span></div>'
+    +fbGCols({rot:"Faltas por mês",rots:L.map(l=>fbMesCurto(l.k)+(l.k===kc?"*":"")),empilha:true,h:230,series:[{nome:"Sem justificativa",cor:FB_COR.azul,vals:L.map(l=>l.sj)},{nome:"Abonadas",cor:FB_COR.azulc,vals:L.map(l=>l.ab)}]})
+    +fbLeg([["Sem justificativa",FB_COR.azul],["Abonadas",FB_COR.azulc]])+'<p class="fb-gnota">* '+fbMesCurto(kc)+' em andamento, até '+fbDd(hj)+'.</p>';
 }
 /* linha do tempo do acompanhamento: uma coluna por dia (30 antes, o dia do feedback e 30 depois), cada situação com a sua cor */
-const FB_TL={f:["#f43f5e","Falta sem justificativa"],t:["#f59e0b","Falta tratada pelo SAC"],a:["#2563eb","Falta abonada"],ok:["#86d9a8","Sem falta"],fut:["#cbd5e1","Dia que ainda não chegou"],fb:["#0f2350","Dia do feedback realizado"],m:["#8b5cf6","Mensagem do SAC enviada"]};
-function fbTlLegenda(){return'<ul class="fb-tl-leg">'+["f","t","a","ok","fut","fb","m"].map(k=>'<li><i class="k-'+k+'" style="background:'+FB_TL[k][0]+'"></i>'+FB_TL[k][1]+'</li>').join("")+'</ul>';}
+const FB_TL={f:["#f43f5e","Falta sem justificativa"],a:["#2563eb","Falta abonada"],ok:["#86d9a8","Sem falta"],fut:["#cbd5e1","Dia que ainda não chegou"],fb:["#0f2350","Dia do feedback realizado"],m:["#8b5cf6","Mensagem do SAC enviada"]};
+function fbTlLegenda(){return'<ul class="fb-tl-leg">'+["f","a","ok","fut","fb","m"].map(k=>'<li><i class="k-'+k+'" style="background:'+FB_TL[k][0]+'"></i>'+FB_TL[k][1]+'</li>').join("")+'</ul>';}
 function fbGLinha(o){
-  const [cod,env]=fbMapas(o.p),hj=ligHojeISO(),W=680,H=176,pl=10,pr=10,pt=50,pb=32,base=H-pb,w=(W-pl-pr)/61,X=n=>pl+(n+30)*w,alto=58;
+  const [cod,env]=fbMapas(o.p),hj=ligHojeISO(),W=680,H=192,pl=10,pr=10,pt=70,pb=32,base=H-pb,w=(W-pl-pr)/60,X=n=>pl+(n+29)*w,alto=58;
   let s='<svg class="fb-g fb-gl" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Um dia por coluna: 30 dias antes do feedback, o feedback e os 30 dias de acompanhamento"><defs><pattern id="fgl" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="8" stroke="#d3dbe8" stroke-width="3"/></pattern></defs>';
-  s+='<rect x="'+X(-30)+'" y="'+pt+'" width="'+(X(0)-X(-30))+'" height="'+(base-pt)+'" rx="10" fill="#eef3fd"/>';
-  s+='<rect x="'+X(0)+'" y="'+pt+'" width="'+(X(31)-X(0))+'" height="'+(base-pt)+'" rx="10" fill="#f1faf4"/>';
-  s+='<text x="'+(X(-30)+8)+'" y="'+(pt-34)+'" class="gt">Antes do feedback</text><text x="'+(X(-30)+8)+'" y="'+(pt-20)+'" class="gs">'+o.fa.length+(o.fa.length===1?" falta":" faltas")+' em 30 dias</text>';
-  s+='<text x="'+(X(31)-8)+'" y="'+(pt-34)+'" class="gt" text-anchor="end">Depois do feedback</text><text x="'+(X(31)-8)+'" y="'+(pt-20)+'" class="gs" text-anchor="end">'+o.fd.length+(o.fd.length===1?" falta":" faltas")+' até hoje</text>';
-  for(let n=-30;n<=30;n++){
+  s+='<rect x="'+X(-29)+'" y="'+pt+'" width="'+(X(1)-X(-29))+'" height="'+(base-pt)+'" rx="10" fill="#eef3fd"/>';
+  s+='<rect x="'+X(1)+'" y="'+pt+'" width="'+(X(31)-X(1))+'" height="'+(base-pt)+'" rx="10" fill="#f1faf4"/>';
+  s+='<text x="'+(X(-29)+8)+'" y="18" class="gt">Antes do feedback</text><text x="'+(X(-29)+8)+'" y="38" class="gs">'+o.fa.length+(o.fa.length===1?" falta":" faltas")+' em 30 dias</text>';
+  s+='<text x="'+(X(31)-8)+'" y="18" class="gt" text-anchor="end">Depois do feedback</text><text x="'+(X(31)-8)+'" y="38" class="gs" text-anchor="end">'+o.fd.length+(o.fd.length===1?" falta":" faltas")+' até hoje</text>';
+  for(let n=-29;n<=30;n++){
     const d=ligSomaDias(o.c,n),c=cod[d],x=X(n)+w*.15,bw=w*.7;
     let k,h2,txt;
-    if(n===0){k="fb";h2=0;txt="Feedback realizado";}
-    else if(d>hj){k="fut";h2=14;txt="Ainda não chegou";}
-    else if(c==="I"){k="f";h2=alto;txt="Falta sem justificativa";}
-    else if(c==="T"){k="t";h2=alto;txt="Falta tratada pelo SAC";}
+    if(d>hj){k="fut";h2=14;txt="Ainda não chegou";}
+    else if(c==="I"||c==="T"){k="f";h2=alto;txt="Falta sem justificativa";}
     else if(["A","J","L","AF"].indexOf(c)>=0){k="a";h2=alto;txt=FB_ABO_NOME[c]||"Falta abonada";}
     else{k="ok";h2=14;txt="Sem falta";}
     const ms=env[d]?" · mensagem do SAC enviada":"",rel=n===0?"dia do feedback":n<0?Math.abs(n)+(n===-1?" dia antes":" dias antes"):"dia "+n+" de 30";
-    if(k==="fb"){const cx=X(0)+w/2;s+='<line x1="'+cx+'" x2="'+cx+'" y1="'+(pt-4)+'" y2="'+base+'" stroke="'+FB_TL.fb[0]+'" stroke-width="2" stroke-dasharray="2 3"/><path d="M'+cx+' '+(base-9)+' l9 9 l-9 9 l-9 -9 Z" fill="'+FB_TL.fb[0]+'" stroke="#fff" stroke-width="2" data-tip="'+_esc(fbDd(d)+" · Feedback realizado · dia do feedback"+(env[d]?" · mensagem do SAC enviada":""))+'"/>';continue;}
     s+='<rect x="'+x+'" y="'+(base-h2)+'" width="'+bw+'" height="'+h2+'" rx="3" fill="'+(k==="fut"?"url(#fgl)":FB_TL[k][0])+'"'+(k==="fut"?' stroke="#d3dbe8"':"")+' data-tip="'+_esc(fbDd(d)+" · "+txt+ms+" · "+rel)+'"/>';
     if(env[d])s+='<circle cx="'+(x+bw/2)+'" cy="'+(base-h2-9)+'" r="4" fill="'+FB_TL.m[0]+'"/>';
+    /* o dia do feedback é o último dia do "antes": a coluna dele mostra a situação do dia e leva a marca do feedback */
+    if(n===0){const cx=X(0)+w/2;s+='<line x1="'+cx+'" x2="'+cx+'" y1="'+(pt-4)+'" y2="'+base+'" stroke="'+FB_TL.fb[0]+'" stroke-width="2" stroke-dasharray="2 3"/><path d="M'+cx+' '+(base-9)+' l9 9 l-9 9 l-9 -9 Z" fill="'+FB_TL.fb[0]+'" stroke="#fff" stroke-width="2" data-tip="'+_esc(fbDd(d)+" · Feedback realizado · "+txt+" · dia do feedback"+(env[d]?" · mensagem do SAC enviada":""))+'"/>';}
   }
   const hh=fbDiasEntre(o.c,hj);
-  if(hh>0&&hh<=30){const x=X(hh)+w/2;s+='<rect x="'+(X(hh)-1)+'" y="'+pt+'" width="'+(w+2)+'" height="'+(base-pt)+'" fill="none" stroke="#0f2350" stroke-width="1.5" stroke-dasharray="3 3" rx="3"/><g><rect x="'+(x-26)+'" y="'+(pt-20)+'" width="52" height="20" rx="10" fill="#0f2350"/><text x="'+x+'" y="'+(pt-6)+'" class="gp2" text-anchor="middle">Hoje</text></g>';}
-  { const x=X(0)+w/2;s+='<g><rect x="'+(x-38)+'" y="'+(pt-20)+'" width="76" height="20" rx="10" fill="'+FB_TL.fb[0]+'"/><text x="'+x+'" y="'+(pt-6)+'" class="gp2" text-anchor="middle">Feedback</text></g>';}
+  if(hh>0&&hh<=30){const x=X(hh)+w/2,perto=Math.abs(x-(X(0)+w/2))<72,dy=perto?-24:0;s+='<rect x="'+(X(hh)-1)+'" y="'+pt+'" width="'+(w+2)+'" height="'+(base-pt)+'" fill="none" stroke="#0f2350" stroke-width="1.5" stroke-dasharray="3 3" rx="3"/>'+(perto?'<line x1="'+x+'" x2="'+x+'" y1="'+(pt-4+dy+20)+'" y2="'+pt+'" stroke="#0f2350" stroke-width="1.5"/>':"")+'<g><rect x="'+(x-26)+'" y="'+(pt-22+dy)+'" width="52" height="20" rx="10" fill="#0f2350"/><text x="'+x+'" y="'+(pt-8+dy)+'" class="gp2" text-anchor="middle">Hoje</text></g>';}
+  { const x=X(0)+w/2;s+='<g><rect x="'+(x-38)+'" y="'+(pt-22)+'" width="76" height="20" rx="10" fill="'+FB_TL.fb[0]+'"/><text x="'+x+'" y="'+(pt-8)+'" class="gp2" text-anchor="middle">Feedback</text></g>';}
   s+='<line x1="'+pl+'" x2="'+(W-pr)+'" y1="'+base+'" y2="'+base+'" stroke="#c9d3e3"/>';
-  [[-30,"start"],[-15,"middle"],[0,"middle"],[15,"middle"],[30,"end"]].forEach(t=>{s+='<text class="gx" text-anchor="'+t[1]+'" x="'+(X(t[0])+(t[1]==="start"?0:t[1]==="end"?w:w/2))+'" y="'+(H-14)+'">'+fbDd(ligSomaDias(o.c,t[0]))+'</text>';});
+  [[-29,"start"],[-15,"middle"],[0,"middle"],[15,"middle"],[30,"end"]].forEach(t=>{s+='<text class="gx" text-anchor="'+t[1]+'" x="'+(X(t[0])+(t[1]==="start"?0:t[1]==="end"?w:w/2))+'" y="'+(H-14)+'">'+fbDd(ligSomaDias(o.c,t[0]))+'</text>';});
   return s+'</svg>';
 }
 /* histórico completo (400 dias) para o "mês a mês": busca uma vez por pessoa */
@@ -1608,6 +1739,75 @@ function fbPanCompleto(p,feito){
   if(p._completo){feito();return;}
   ligApi("/api/ligacoes?acao=colaborador&re="+encodeURIComponent(p.re||"")+"&nome="+encodeURIComponent(p.nome||"")).then(j=>{if(j&&j.pessoa&&LIG_PAN===p){p.hist=j.pessoa.hist;p._completo=1;feito();}}).catch(()=>{});
 }
+/* Histórico disciplinar do ano (de 01/01 até hoje): faltas sem justificativa, abonadas e as medidas aplicadas.
+   As medidas vêm da mesma lista do painel Faltas x Medidas (/api/rh?modulo=faltas&t=historico); as faltas, do histórico completo da pessoa. */
+const FB_ABONADAS=["A","J","L","AF"];
+function fbMedTxt(m){const t=String(m.tipo||"").toUpperCase(),g=String(m.grau||"").toUpperCase();
+  if(t.indexOf("SUSPENS")===0)return"Suspensão"+(Number(m.dias)?" de "+Number(m.dias)+(Number(m.dias)===1?" dia":" dias"):"");
+  return"Advertência"+(g==="VERBAL"?" verbal":g==="ESCRITA"?" escrita":"");}
+function fbMedidasDe(p){
+  const pn=_ligNorm(String(p.nome||"").split(" ")[0]);
+  return((LIG_HIST&&LIG_HIST.medidas)||[]).filter(m=>p.re&&String(m.re)===String(p.re)&&(!m.nome||m.nome==="—"||!pn||_ligNorm(String(m.nome).split(" ")[0])===pn))
+    .sort((a,b)=>String(b.data).localeCompare(String(a.data)));
+}
+/* dados do ano da pessoa (01/01 até hoje) */
+function fbDiscDados(p){
+  const hj=ligHojeISO(),ano=hj.slice(0,4),ini=ano+"-01-01",fOk=!!p._completo,mOk=!!LIG_HIST,sj=[],ab=[];
+  (p.hist||[]).forEach(h=>{if(h[0]<ini||h[0]>hj)return;if(h[1]==="I"||h[1]==="T")sj.push(h[0]);else if(FB_ABONADAS.indexOf(h[1])>=0)ab.push([h[0],h[1]]);});
+  sj.sort();ab.sort((x,y)=>(x[0]<y[0]?-1:x[0]>y[0]?1:0));
+  const canc=m=>/CANCEL/i.test(m.fase||""),med=mOk?fbMedidasDe(p):[],val=med.filter(m=>!canc(m));
+  return{hj,ano,ini,fOk,mOk,sj,ab,canc,med,val,rein:val.length>=2};
+}
+/* no panorama: uma linha sóbria com os totais e o botão. O histórico completo abre numa janela à parte. */
+function fbDiscHtml(p){
+  const D=fbDiscDados(p),n=(ok,v)=>ok?String(v):'<i class="ld">…</i>';
+  return'<section class="fb-disc dcc" aria-label="Histórico disciplinar do ano"><div class="dt"><b>Histórico disciplinar · '+D.ano+'</b><span>'+rhFmt(D.ini)+' a '+rhFmt(D.hj)+'</span></div>'
+    +'<dl class="dn"><div><dd>'+n(D.fOk,D.sj.length)+'</dd><dt>Sem justificativa</dt></div><div><dd>'+n(D.fOk,D.ab.length)+'</dd><dt>'+(D.ab.length===1?"Abonada":"Abonadas")+'</dt></div><div><dd>'+n(D.mOk,D.val.length)+'</dd><dt>'+(D.val.length===1?"Medida":"Medidas")+'</dt></div></dl>'
+    +(D.rein?'<span class="rnc">Reincidente</span>':"")
+    +'<button type="button" class="fb-btn sm" onclick="ligDiscAbrir()">'+fbI("hist")+'Ver histórico</button></section>';
+}
+/* a janela do histórico: ficha com os totais, duas abas (Medidas e Faltas do ano) e tabelas */
+let LIG_DISC_ABA="med";
+function fbDiscCorpo(p){
+  const D=fbDiscDados(p),{ano,ini,fOk,mOk,sj,ab,canc,med,val}=D;
+  const dw=["dom","seg","ter","qua","qui","sex","sáb"],dia=d=>rhFmt(d)+" ("+dw[new Date(d+"T12:00:00Z").getUTCDay()]+")";
+  const n=(ok,v)=>ok?String(v):"…";
+  const linhas=!mOk?'<p class="bv">Carregando as medidas…</p>'
+    :!med.length?'<p class="bv"><b>Nenhuma medida disciplinar em '+ano+'.</b> Esta é a primeira ocorrência da pessoa no ano.</p>'
+    :'<table class="tb"><thead><tr><th>Data</th><th>Medida</th><th>Motivo</th><th>Situação</th></tr></thead><tbody>'+med.map(m=>{const c=canc(m),su=String(m.tipo||"").toUpperCase().indexOf("SUSPENS")===0;
+      return'<tr'+(c?' class="canc"':"")+'><td class="d">'+rhFmt(String(m.data).slice(0,10))+'</td><td><span class="md '+(su?"sus":"adv")+'">'+_esc(fbMedTxt(m))+'</span></td><td>'+_esc(m.motivo||"Sem motivo informado")+'</td><td class="st '+(c?"no":"ok")+'">'+(c?"Cancelada · não conta":"Válida")+'</td></tr>';}).join("")+'</tbody></table>';
+  const boxMed='<div class="bx"><div class="bh"><h5>Medidas disciplinares aplicadas</h5><span>'+(mOk?(med.length?fbPlural(val.length,"válida","válidas")+(med.length>val.length?" · "+fbPlural(med.length-val.length,"cancelada","canceladas"):""):"nenhuma"):"…")+'</span></div>'
+    +'<p class="bd">Mesma lista do painel Faltas x Medidas, da mais recente para a mais antiga. Medida cancelada não conta.</p>'+linhas+'</div>';
+  const mes=Array.from({length:12},()=>({sj:0,ab:0}));
+  sj.forEach(d=>{mes[Number(d.slice(5,7))-1].sj++;});ab.forEach(a=>{mes[Number(a[0].slice(5,7))-1].ab++;});
+  const mc=Number(D.hj.slice(5,7))-1,z=v=>v?v:"–";
+  const grade=fOk?'<table class="tb ano"><thead><tr><th></th>'+FB_MESES.map((m,i)=>'<th'+(i===mc?' class="at"':"")+'>'+m+'</th>').join("")+'<th class="tt">Total</th></tr></thead><tbody>'
+      +'<tr><td class="rt">Sem justificativa</td>'+mes.map((x,i)=>'<td class="'+(i>mc?"fut":x.sj?"v":"z")+(i===mc?" at":"")+'">'+(i>mc?"":z(x.sj))+'</td>').join("")+'<td class="tt">'+sj.length+'</td></tr>'
+      +'<tr><td class="rt">Abonadas</td>'+mes.map((x,i)=>'<td class="'+(i>mc?"fut":x.ab?"v":"z")+(i===mc?" at":"")+'">'+(i>mc?"":z(x.ab))+'</td>').join("")+'<td class="tt">'+ab.length+'</td></tr></tbody></table>'
+    :'<p class="bv">Carregando as faltas do ano…</p>';
+  const boxMes='<div class="bx"><div class="bh"><h5>Faltas mês a mês em '+ano+'</h5><span>'+(fOk?fbPlural(sj.length+ab.length,"falta no total","faltas no total"):"…")+'</span></div>'+grade+'</div>';
+  const caixa=(tit,desc,l,fmt,vazio)=>'<div class="bx"><div class="bh"><h5>'+tit+'</h5><span>'+(fOk?fbPlural(l.length,"registro","registros"):"…")+'</span></div><p class="bd">'+desc+'</p>'
+    +(!fOk?'<p class="bv">Carregando…</p>':l.length?'<ol class="dl">'+l.map(fmt).join("")+'</ol>':'<p class="bv"><b>Nenhuma</b> '+vazio+' em '+ano+'.</p>')+'</div>';
+  const datas='<div class="dg">'+caixa("Faltas sem justificativa","Datas em que a pessoa faltou sem justificar.",sj,d=>'<li>'+dia(d)+'</li>',"falta sem justificativa")
+    +caixa("Faltas abonadas","Datas das faltas com atestado, licença ou afastamento.",ab,a=>'<li>'+dia(a[0])+'<em>'+_esc(FB_ABO_NOME[a[1]]||"Abonada")+'</em></li>',"falta abonada")+'</div>';
+  const ab_=LIG_DISC_ABA==="fal"?"fal":"med";
+  const nav='<nav class="dtab" role="tablist" aria-label="Histórico disciplinar"><button type="button" role="tab" class="'+(ab_==="med"?"on":"")+'" aria-selected="'+(ab_==="med")+'" onclick="ligDiscAba(\'med\')">Medidas disciplinares<span>'+n(mOk,val.length)+'</span></button>'
+    +'<button type="button" role="tab" class="'+(ab_==="fal"?"on":"")+'" aria-selected="'+(ab_==="fal")+'" onclick="ligDiscAba(\'fal\')">Faltas do ano<span>'+n(fOk,sj.length+ab.length)+'</span></button></nav>';
+  const ficha='<div class="kp"><div><small>Faltas sem justificativa</small><b class="neg">'+n(fOk,sj.length)+'</b></div><div><small>Faltas abonadas</small><b>'+n(fOk,ab.length)+'</b></div>'
+    +'<div><small>Medidas disciplinares válidas</small><b>'+n(mOk,val.length)+'</b>'+(D.rein?'<em>Reincidente</em>':"")+'</div><div class="per"><small>Período</small><b>'+rhFmt(ini)+' a '+rhFmt(D.hj)+'</b></div></div>';
+  return'<section class="fb-disc dsc">'+ficha+nav+'<div class="dsc-s" data-k="med"'+(ab_==="med"?"":" hidden")+'>'+boxMed+'</div><div class="dsc-s" data-k="fal"'+(ab_==="fal"?"":" hidden")+'>'+boxMes+datas+'</div></section>';
+}
+function ligDiscAbrir(){
+  const p=LIG_PAN;if(!p)return;
+  fbDialog("lig-disc-modal",{titulo:"Histórico disciplinar de "+ligHojeISO().slice(0,4),sub:_esc(fbTitulo(p.nome))+(p.re?" · RE "+_esc(p.re):"")+(p.posto?" · "+_esc(fbTitulo(p.posto)):""),tam:"dsc",semFoco:true,
+    corpo:'<div id="ld-disc-corpo">'+fbDiscCorpo(p)+'</div>',rodape:'<button type="button" class="fb-btn navy sm" onclick="fbFechar(\'lig-disc-modal\')">Fechar</button>'});
+}
+function ligDiscAba(k){
+  LIG_DISC_ABA=k;const m=document.getElementById("lig-disc-modal");if(!m)return;
+  m.querySelectorAll(".dtab>button").forEach((b,i)=>{const on=(i===0)===(k==="med");b.classList.toggle("on",on);b.setAttribute("aria-selected",on);});
+  m.querySelectorAll(".dsc-s").forEach(x=>{x.hidden=x.dataset.k!==k;});
+}
+function fbDiscPintar(){const b=document.getElementById("lp-disc");if(b&&LIG_PAN)b.innerHTML=fbDiscHtml(LIG_PAN);const c=document.getElementById("ld-disc-corpo");if(c&&LIG_PAN)c.innerHTML=fbDiscCorpo(LIG_PAN);}
 function ligPanDetalhe(){ligPanAba("evo");}
 function ligPanHist(){ligPanAba("hist");}
 /* abas do panorama: uma tela por vez, sem rolar a janela inteira */
@@ -1633,33 +1833,47 @@ function fbProgresso(c,a){
   const dia=Math.min(30,Math.max(0,a.dia)),pc=Math.round(dia/30*100);
   return'<div class="fb-kg g-violet fb-prog"><span class="ic">'+fbI("clock")+'</span><small>Acompanhamento de 30 dias</small><b data-n="'+dia+'">'+dia+'<em>de 30 dias</em></b>'
     +'<div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="30" aria-valuenow="'+dia+'"><i style="width:'+pc+'%"></i></div>'
-    +'<span class="s">'+fbDd(ligSomaDias(c.data,1))+' a '+fbDd(ligSomaDias(c.data,30))+' · '+(dia>=30?"concluído":"faltam "+fbPlural(30-dia,"dia","dias"))+'</span></div>';
+    +'<span class="s">'+(dia>=30?"Concluído em ":"Termina em ")+fbDd(ligSomaDias(c.data,30))+(dia>=30?"":" · faltam "+fbPlural(30-dia,"dia","dias"))+'</span></div>';
 }
 /* calendário do acompanhamento: o dia do contato e os 30 dias seguintes, em sequência (não pelo mês do calendário) */
+/* Calendário do acompanhamento: resumo em números, um quadro por mês e a legenda. O dia do feedback e os 30 dias seguintes. */
 function fbCalJanela(p,c){
   const [cod,env]=fbMapas(p),hj=ligHojeISO(),NM=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
-  const cruza=ligSomaDias(c.data,30).slice(0,7)!==c.data.slice(0,7);
-  let h='<div class="fb-cal">'+["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"].map(x=>'<b>'+x+'</b>').join(""),mes="";
+  const fim=ligSomaDias(c.data,30),meses={},ordem=[];let sj=0,ab=0,ok=0,pass=0,msg=0;
   for(let n=0;n<=30;n++){
-    const d=ligSomaDias(c.data,n),r=fbDia(p,d,cod,env,hj,c.data);
-    if(d.slice(0,7)!==mes){
-      mes=d.slice(0,7);
-      if(cruza)h+='<div class="fb-cal-m m'+(mes===c.data.slice(0,7)?"1":"2")+'">'+NM[Number(mes.slice(5,7))-1]+' de '+mes.slice(0,4)+'</div>';
-      for(let k=0;k<(cruza||n===0?fbDow(d):0);k++)h+='<span class="v"></span>';
-    }
-    h+='<i class="'+r[0]+' mm'+(mes===c.data.slice(0,7)?"1":"2")+'" data-d="'+n+'" data-tip="'+(n?"Dia "+n+" de 30":"Dia do feedback")+' · '+fbDd(d)+' · '+_esc(r[1])+'">'+d.slice(8,10)+'</i>';
+    const d=ligSomaDias(c.data,n),r=fbDia(p,d,cod,env,hj,c.data),k=d.slice(0,7);
+    if(!meses[k]){meses[k]={k,dias:[],sj:0,ab:0};ordem.push(k);}
+    const cls=r[0].split(" ")[0];
+    if(d<=hj&&n>0){pass++;if(cls==="f")sj++;else if(cls==="a")ab++;else ok++;}
+    if(d<=hj&&n>0&&cls==="f")meses[k].sj++;
+    if(d<=hj&&n>0&&cls==="a")meses[k].ab++;
+    if(env[d]&&n>0&&d<=hj)msg++;
+    meses[k].dias.push({n,d,r,cls});
   }
-  return h+'</div>';
+  const nDia=Math.min(30,Math.max(0,fbDiasEntre(c.data,hj)));
+  const rot={f:"Falta",a:"Abono",ok:"",fut:""},cap=(x)=>x.r[0].indexOf(" c")>=0||x.r[0].split(" ").indexOf("c")>=0?"Feedback":x.d===hj?"Hoje":rot[x.cls]||"";
+  const quadro=m=>{
+    const ini=m.dias[0].d,off=fbDow(ini);let h='<div class="mb"><div class="mh"><b>'+NM[Number(m.k.slice(5,7))-1]+' de '+m.k.slice(0,4)+'</b><span>'+(m.sj||m.ab?(m.sj?fbPlural(m.sj,"falta","faltas")+" sem justificativa":"")+(m.sj&&m.ab?" · ":"")+(m.ab?fbPlural(m.ab,"abonada","abonadas"):""):"nenhuma falta no mês")+'</span></div>'
+      +'<div class="cj">'+["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"].map(x=>'<small>'+x+'</small>').join("");
+    for(let k=0;k<off;k++)h+='<span class="v"></span>';
+    m.dias.forEach(x=>{const cp=cap(x);
+      h+='<i class="'+x.r[0]+'" data-d="'+x.n+'" data-tip="'+(x.n?"Dia "+x.n+" de 30":"Dia do feedback")+' · '+fbDd(x.d)+' · '+_esc(x.r[1])+'"><b>'+x.d.slice(8,10)+'</b>'+(cp?'<em>'+cp+'</em>':"")+'</i>';});
+    return h+'</div></div>';
+  };
+  const kp=(rt,v,sub)=>'<div><small>'+rt+'</small><b>'+v+'</b>'+(sub?'<span>'+sub+'</span>':"")+'</div>';
+  const resumo='<div class="ck">'+kp("Acompanhamento",nDia>=30?"Concluído":"Dia "+nDia+" de 30",nDia>=30?"terminou em "+fbDd(fim):"termina em "+fbDd(fim))
+    +kp("Faltas sem justificativa","<i class=\"neg\">"+sj+"</i>","depois do feedback")+kp("Faltas abonadas",String(ab),"depois do feedback")+kp("Dias sem falta",String(ok),"de "+pass+(pass===1?" dia":" dias")+" já passados")+kp("Mensagens do SAC",String(msg),"enviadas no período")+'</div>';
+  const leg='<ul class="cl"><li><i class="ok"></i>Sem falta registrada</li><li><i class="f"></i>Falta sem justificar</li><li><i class="a"></i>Abonada</li><li><i class="c"></i>Dia do feedback</li><li><i class="h"></i>Hoje</li><li><i class="fut"></i>Ainda não chegou</li><li><i class="m"></i>Mensagem do SAC enviada</li></ul>';
+  return'<section class="fb-card2 fb-calc fb-cj"><header class="ch"><div class="t">'+fbI("cal")+'<b>Calendário do acompanhamento</b></div><span>Feedback '+fbDd(c.data)+' · termina '+fbDd(fim)+'</span></header>'+resumo+'<div class="cm">'+ordem.map(k=>quadro(meses[k])).join("")+'</div>'+leg+'</section>';
 }
 function ligPanorama(p){
   LIG_PAN=p;LIG_PAN_ABA="resumo";
   const hj=ligHojeISO(),sit=FB_SIT.find(s=>s.k===p.situacao)||{t:"Sem pendência",tom:"tn-gr"};
   const contatos=LIG_C.filter(c=>fbDaPessoa(c,p));
   const a=p.acomp,c=p.contato;
-  const v=a?(FB_VD[a.veredito]||{}):{t:sit.t,tom:sit.tom};
-  const icV=a?(FB_VD[a.veredito]||FB_VD.mesma).ic:({mensagem:"chat",aguardando:"clock",base:"alert"}[p.situacao]||"info");
+  const v=a?(FB_VD[a.veredito]||FB_VD.comecando):{t:sit.t,tom:sit.tom};
+  const icV=a?v.ic:({mensagem:"chat",aguardando:"clock",base:"alert"}[p.situacao]||"info");
   const plF=n=>n+" "+(n===1?"falta":"faltas");
-  const cmp=a?(a.depois>a.antes?"pior":(a.depois<a.antes?"bom":"igual")):"";
   const fimAc=c?ligSomaDias(c.data,30):"";
   const reg=(c&&c.id?(LIG_C.find(x=>x.id===c.id)||null):fbUltRegistro(p))||(c?{id:c.id,data_contato:c.data,criado_por:c.por,canal:c.canal,motivo:c.motivo,justificativa:c.justificativa,acordo:c.acordo,acordo_prazo:c.acordo_prazo,baixa:c.baixa,colaborador:p.nome,posto:p.posto,supervisor:p.supervisor}:null);
   /* pessoa: avatar, nome, RE • posto, supervisor e o resultado */
@@ -1671,24 +1885,22 @@ function ligPanorama(p){
     ?'<div class="fb-pan-ct">'+fbI("phone")+'<div><small>Feedback realizado</small><b>'+rhFmt(c.data)+'</b><span>'+(a.dia>0?fbDias(c.data)+" · ":"")+_esc((c.por||"—").split(" ")[0])+' · '+fbCanal(c)+'</span></div>'
       +'<div><small>Acompanhamento</small><b>até '+fbDd(fimAc)+'</b><span>'+(a.dia>=30?"concluído":"faltam "+fbPlural(30-a.dia,"dia","dias"))+'</span></div></div>'
     :(reg?'<div class="fb-pan-ct">'+fbI("phone")+'<div><small>Último feedback realizado</small><b>'+rhFmt(ligDataContato(reg))+'</b><span>'+_esc((reg.criado_por||"—").split(" ")[0])+' · '+fbCanal(reg)+'</span></div></div>':"");
-  const st=(cls,ic,rot,num,sub,datas,tom)=>'<div class="'+cls+'"><small>'+fbI(ic)+rot+'</small><b>'+num+'</b><em>'+sub+'</em>'+(datas!==undefined?fbChipsDatas(datas,tom):"")+'</div>';
+  const st=(cls,ic,rot,num,sub,datas,tom)=>'<div class="'+cls+'"><small>'+fbI(ic)+rot+'</small><b>'+num+'</b><em>'+sub+'</em>'+(datas!==undefined?(datas.length?'<span class="fb-dts-r">Faltou em</span>':"")+fbChipsDatas(datas,tom):"")+'</div>';
   let res;
   if(a){
-    const fa=a.faltas_antes||(p.hist||[]).filter(h=>(h[1]==="I"||h[1]==="T")&&h[0]>=ligSomaDias(c.data,-30)&&h[0]<=c.data).map(h=>h[0]);
-    /* conta simples: faltas depois menos faltas antes (o mesmo que o veredito usa) */
-    const dif=a.depois-a.antes,pct=a.antes>0?Math.round(dif/a.antes*100):null;
-    const pctTxt=dif===0?"Igual":(dif>0?"+":"−")+Math.abs(dif)+(Math.abs(dif)===1?" falta":" faltas");
-    const subR=a.antes+" antes, "+a.depois+" depois"+(pct!==null&&dif!==0?" ("+fbPctTxt(pct)+")":"");
-    res='<div class="fb-st3">'+st("t-b","cal","Antes do feedback",plF(a.antes),fbDd(ligSomaDias(c.data,-30))+" a "+fbDd(c.data),fa,"f")
-      +st("t-g","cal","Depois do feedback",plF(a.depois),a.dia>0?fbDd(ligSomaDias(c.data,1))+" a "+fbDd(hj):"feedback hoje",a.faltas_depois||[],"f")
-      +'<div class="t-r '+(cmp==="pior"?"tn-da":cmp==="bom"?"tn-ok":"tn-gr")+'"><small>'+fbI(cmp==="pior"?"down":cmp==="bom"?"up":"eq")+'Resultado</small><b>'+pctTxt+'</b><em>'+_esc(v.t)+' · '+subR+'</em></div></div>';
+    /* o resultado é o veredito do servidor; aqui só o que ele contou: faltas antes, faltas depois, em que dia do acompanhamento está */
+    const dia=Math.min(30,Math.max(0,a.dia));
+    res='<section class="fb-res '+v.tom+'"><div class="fb-res-n"><div><b>'+a.antes+'</b><span>'+(a.antes===1?"falta":"faltas")+' antes</span></div><i aria-hidden="true">→</i><div class="d"><b>'+a.depois+'</b><span>'+(a.depois===1?"falta":"faltas")+' depois</span></div><div class="r"><b>'+fbI(v.ic)+_esc(v.t)+'</b><span>'+(dia>=30?"Acompanhamento concluído":dia>0?"Dia "+dia+" de 30 · termina em "+fbDd(ligSomaDias(c.data,30)):"Feedback hoje")+'</span></div></div>'
+      +'<div class="fb-pm-prog" role="progressbar" aria-valuemin="0" aria-valuemax="30" aria-valuenow="'+dia+'"><i style="width:'+Math.round(dia/30*100)+'%"></i></div>'
+      +'<dl class="fb-res-d"><div><dt>Faltou antes em</dt><dd>'+fbChipsDatas(a.faltas_antes||[],"f")+'</dd></div><div><dt>Faltou depois em</dt><dd>'+fbChipsDatas(a.faltas_depois||[],"f")+'</dd></div></dl></section>';
   }else{
     const sj30=(p.hist||[]).filter(h=>(h[1]==="I"||h[1]==="T")&&h[0]>ligSomaDias(hj,-30)&&h[0]<=hj).map(h=>h[0]);
     const env=(p.envios||[]).slice().sort();
     res='<div class="fb-st3">'+(p.situacao==="sem"
       ?st("t-b","cal","Sem justificativa",plF(sj30.length),"nos últimos 30 dias",sj30,"f")+st("t-g","chat","Mensagens do SAC",String(env.length),"nos últimos meses",env,"m")+st("t-vi","phone","Feedbacks",String(contatos.filter(ligEfetivo).length),contatos.length?"último em "+fbDd(ligDataContato(contatos[0])):"nenhum até hoje")
       :st("t-b","cal","Faltas sem conversa",plF(p.faltas.length),"nos últimos 30 dias",p.faltas,"f")+st("t-g","chat","Mensagens do SAC",String(p.mensagens||env.length||0),"desde a primeira falta",env,"m")+st("t-vi","alert","Sem resposta",String(p.tentativas||0),"2 levam à coordenação"))+'</div>'
-      +'<p class="fb-tl-nota '+fbDestaque(p)[2]+'"><b>'+_esc(fbDestaque(p)[0])+'.</b> '+_esc(fbDestaque(p)[1])+'</p>';
+      +'<p class="fb-tl-nota '+fbDestaque(p)[2]+'"><b>'+_esc(fbDestaque(p)[0])+'.</b> '+_esc(fbDestaque(p)[1])+'</p>'
+      +(p.fb_fim?'<p class="fb-tl-nota '+(FB_VD[p.fb_fim.veredito]||FB_VD.mesma).tom+'"><b>'+_esc(fbFimTxt(p.fb_fim))+'.</b></p>':"");
   }
   /* combinado */
   let acordo="";
@@ -1697,25 +1909,22 @@ function ligPanorama(p){
     acordo='<div class="fb-ac2 '+au[1]+'"><div><b>Combinado: '+_esc(c.acordo||"registrado")+'</b><span>Prazo: '+fbDd(c.acordo_prazo)+'</span></div>'+fbTag(au[0],au[1])+'</div>';
   }
   const auReg=c&&c.acordo_prazo?(c.acordo_auto&&FB_ACOR[c.acordo_auto]?FB_ACOR[c.acordo_auto]:FB_ACOR.pendente):null;
-  const resumo=(a?fbProgresso(c,a):"")+fbRegistroCompleto(reg,auReg)+res+fbFunilPessoa(p,contatos,a?ligSomaDias(c.data,-30):"");
+  const disc='<div id="lp-disc">'+fbDiscHtml(p)+'</div>';
+  const resumo=a?res+disc+fbFicha(reg,auReg):disc+fbFicha(reg,auReg)+res+fbFunilPessoa(p,contatos,"");
   /* calendário de um mês por vez */
-  const ini=a?ligSomaDias(c.data,-30):ligSomaDias(hj,p.situacao==="sem"?-89:-30),fim=a?ligSomaDias(c.data,30):fbFimCal(hj,hj);
+  const ini=a?ligSomaDias(c.data,-29):ligSomaDias(hj,p.situacao==="sem"?-89:-30),fim=a?ligSomaDias(c.data,30):fbFimCal(hj,hj);
   const meses=fbMesesLista(ini,fim);
   LIG_MESES=meses.map(m=>m.nome);LIG_MES=Math.max(0,meses.findIndex(m=>m.k===hj.slice(0,7)));if(LIG_MES<0||meses.every(m=>m.k!==hj.slice(0,7)))LIG_MES=meses.length-1;
-  const leg='<ul class="fb-leg fb-leg2"><li><i class="ok"></i>Sem falta registrada</li><li><i class="f"></i>Falta sem justificar</li><li><i class="a"></i>Abonada</li><li><i class="c"></i>Dia do feedback</li><li><i class="m"></i>Mensagem do SAC</li></ul>';
+  const leg='<ul class="fb-leg fb-leg2"><li><i class="ok"></i>Sem falta registrada</li><li><i class="f"></i>Falta sem justificar</li><li><i class="a"></i>Abonada</li><li><i class="c"></i>Dia do feedback</li><li><i class="h"></i>Hoje</li><li><i class="m"></i>Mensagem do SAC</li></ul>';
   const pager='<div class="fb-pager"><button type="button" class="fb-ib" id="lp-mes-a" onclick="ligMes(-1)" aria-label="Mês anterior"'+(LIG_MES===0?" disabled":"")+'>'+fbI("left")+'</button><span id="lp-mes">'+_esc(LIG_MESES[LIG_MES]||"")+'</span><button type="button" class="fb-ib" id="lp-mes-b" onclick="ligMes(1)" aria-label="Próximo mês"'+(LIG_MES===meses.length-1?" disabled":"")+'>'+fbI("go")+'</button></div>';
-  const cal=a?'<section class="fb-card2 fb-calc">'+fbCartaoH("cal","Calendário do acompanhamento",'<span class="fb-pill-s">'+fbDd(c.data)+' (contato) a '+fbDd(ligSomaDias(c.data,30))+'</span>')+'<div class="fb-calwrap">'+fbCalJanela(p,c)+leg+'</div></section>'
+  const cal=a?fbCalJanela(p,c)
     :'<section class="fb-card2 fb-calc">'+fbCartaoH("cal","Calendário de Faltas",pager)+'<div class="fb-calwrap">'+fbCelulas(p,ini,fim,null,LIG_MES)+leg+'</div></section>';
   /* evolução: antes × depois (quem está em acompanhamento) e o mês a mês */
   let evo="";
   if(a){
-    const fa2=a.faltas_antes||(p.hist||[]).filter(h=>(h[1]==="I"||h[1]==="T")&&h[0]>=ligSomaDias(c.data,-30)&&h[0]<=c.data).map(h=>h[0]),fd2=a.faltas_depois||[];
-    const dif=a.depois-a.antes,tomR=cmp==="pior"?"g-coral":cmp==="bom"?"g-green":"g-amber";
-    evo='<div class="fb-evoc"><div class="fb-kgs pan3">'
-      +fbKg("g-blue","cal","Antes do feedback",a.antes+(a.antes===1?" falta":" faltas"),fbDd(ligSomaDias(c.data,-30))+" a "+fbDd(c.data),"")
-      +fbKg(a.depois>a.antes?"g-coral":"g-green","cal","Depois do feedback",a.depois+(a.depois===1?" falta":" faltas"),a.dia>0?fbDd(ligSomaDias(c.data,1))+" a "+fbDd(hj):"feedback hoje","")
-      +fbKg(tomR,cmp==="pior"?"down":cmp==="bom"?"up":"eq","Resultado",dif===0?"Igual":(dif>0?"+":"−")+Math.abs(dif),(a.dia<30?"faltam "+(30-Math.max(a.dia,0))+" dias de acompanhamento":"acompanhamento concluído"),"")+'</div>'
-      +fbPainel("Faltas antes e depois do feedback","",fbGLinha({c:c.data,p,fa:fa2,fd:fd2})+'<p class="fb-gnota">Uma coluna por dia: à esquerda os 30 dias antes do feedback, à direita os 30 dias de acompanhamento. Passe o mouse num dia para ver a data e a situação.</p>'+fbTlLegenda())+'</div>';
+    const fa2=a.faltas_antes||[],fd2=a.faltas_depois||[];
+    evo='<div class="fb-evoc">'
+      +fbPainel("Faltas antes e depois do feedback","",fbGLinha({c:c.data,p,fa:fa2,fd:fd2})+'<p class="fb-gnota">Uma coluna por dia. Passe o mouse para ver a data.</p>'+fbTlLegenda())+'</div>';
   }
   evo+=fbPainel("Faltas mês a mês","",'<div id="lp-det"></div>');
   const hist='<div id="lp-tl" class="fb-pan-tl"></div>';
@@ -1730,7 +1939,7 @@ function ligPanorama(p){
     }
     if(c.acordo_prazo&&c.acordo_auto!=="cumpriu")acoes.push('<button type="button" class="fb-btn sm" onclick="ligAcordo('+Number(c.id)+',\'cumprido\')">Marcar como cumprido</button>');
   }
-  const ov=fbDialog("lig-perfil-modal",{titulo:"Panorama do colaborador",lateral:true,semFoco:true,tom:v.tom,banner:true,
+  const ov=fbDialog("lig-perfil-modal",{titulo:"Panorama do colaborador",tam:"pan",semFoco:true,tom:v.tom,banner:true,
     corpo:'<div class="fb-pf fb-pan">'+topo+faixa+nav+'<div class="fb-pan-b">'+sec("resumo",resumo)+sec("cal",cal)+sec("evo",evo)+sec("hist",hist)+'</div></div>',
     rodape:'<div class="fb-pf-foot">'+acoes.join("")+'</div><button type="button" class="fb-btn navy sm" onclick="fbFechar(\'lig-perfil-modal\')">Fechar</button>'});
   fbIndicaTudo(ov);
@@ -1740,8 +1949,9 @@ function ligPanorama(p){
     box.innerHTML=fbLinha(eventos.concat((ms||[]).filter(m=>p.re&&String(m.re)===String(p.re)).map(m=>({d:String(m.data).slice(0,10),o:2,k:"tn-am",h:"Medida: "+_esc(m.tipo||"")+(m.grau&&m.grau!==m.tipo?" "+_esc(m.grau):"")+(Number(m.dias)?" · "+fbPlural(Number(m.dias),"dia","dias"):""),corpo:m.motivo?'<p>'+_esc(m.motivo)+'</p>':"",m:""}))));
   };
   pinta(null);
+  fbPanCompleto(p,fbDiscPintar);
   if(LIG_HIST)pinta(LIG_HIST.medidas);
-  else fetch("/api/rh?modulo=faltas&t=historico").then(x=>x.ok?x.json():null).then(j=>{LIG_HIST=j||{medidas:[]};pinta(LIG_HIST.medidas);}).catch(()=>{});
+  else fetch("/api/rh?modulo=faltas&t=historico").then(x=>x.ok?x.json():null).then(j=>{LIG_HIST=j||{medidas:[]};pinta(LIG_HIST.medidas);fbDiscPintar();}).catch(()=>{LIG_HIST=LIG_HIST||{medidas:[]};fbDiscPintar();});
 }
 /* o funil da pessoa: faltas sem justificativa, mensagens recebidas, ligações com feedback e mensagens sem resposta */
 function fbFunilPessoa(p,contatos,ini){
@@ -1759,7 +1969,7 @@ function fbEventos(p,contatos){
   const ev=[];
   (p.hist||[]).forEach(h=>{
     if(h[0]<ligSomaDias(ligHojeISO(),-75))return;
-    ev.push({d:h[0],o:0,k:h[1]==="I"?"tn-da":h[1]==="T"?"tn-vi":"tn-gr",h:h[1]==="I"?"Faltou sem justificar":h[1]==="T"?"Faltou (já tratada pelo SAC)":(FB_ABO_NOME[h[1]]||"Falta"),corpo:"",m:""});
+    ev.push({d:h[0],o:0,k:h[1]==="I"||h[1]==="T"?"tn-da":"tn-gr",h:h[1]==="I"||h[1]==="T"?"Faltou sem justificar":(FB_ABO_NOME[h[1]]||"Falta"),corpo:"",m:""});
   });
   (p.envios||[]).forEach(d=>ev.push({d,o:0.5,k:"tn-br",h:"Mensagem do SAC enviada",corpo:"",m:""}));
   contatos.forEach(c=>{
@@ -1781,6 +1991,24 @@ function fbRegCampos(c){
   return h?'<dl class="fb-reg-l">'+h+'</dl>':"";
 }
 /* registro completo do feedback (panorama): tudo o que foi anotado na hora, cada campo com o seu rótulo */
+/* Ficha do atendimento (panorama): o que importa primeiro (motivo, o que a pessoa disse, o combinado), os dados do atendimento numa faixa e o resto no rodapé */
+function fbFicha(c,au){
+  if(!c)return'<section class="fb-fic vazio"><header><div class="t">'+fbI("phone")+'<b>Registro do feedback</b></div></header><p class="vz">Nenhum feedback registrado para esta pessoa.</p></section>';
+  const ef=ligEfetivo(c),vz='<span class="fnd">não informado</span>',campo=(r,v)=>'<div><small>'+r+'</small><b>'+v+'</b></div>';
+  let hora="";try{if(c.criado_em)hora=new Date(c.criado_em).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit",timeZone:"America/Sao_Paulo"});}catch(e){}
+  const canal=c.canal==="PESSOAL"?"Pessoalmente":c.canal==="WHATSAPP"?"WhatsApp":"Ligação",acStat=au&&au[0]?fbTag(au[0],au[1]):"";
+  const faixa='<div class="mt">'+campo("Canal",canal+(ef?"":' <span class="fnd">· não conseguiu falar</span>'))+campo("Duração",c.duracao_min?Number(c.duracao_min)+" min":vz)+campo("Registrado por",_esc(c.criado_por||"—"))+campo("Falta de referência",c.data_falta?rhFmt(String(c.data_falta).slice(0,10)):vz)+'</div>';
+  let corpo="";
+  if(ef)corpo+='<div class="bl"><small>Motivo da falta</small>'+(c.motivo?'<span class="mot">'+_esc(fbMotNome(c.motivo))+'</span>':vz)+'</div>';
+  corpo+='<div class="bl q"><small>'+(ef?"O que a pessoa disse":"Observação")+'</small>'+(c.justificativa?'<blockquote>'+(ef?"“"+_esc(c.justificativa)+"”":_esc(c.justificativa))+'</blockquote>':vz)+'</div>';
+  if(ef)corpo+='<div class="bl"><small>Combinado</small>'+(c.acordo?'<p>'+_esc(c.acordo)+'</p><div class="cb">'+(c.acordo_prazo?'<span>Prazo: <b>'+rhFmt(String(c.acordo_prazo).slice(0,10))+'</b></span>':"")+acStat+'</div>':'<span class="fnd">Nenhum combinado</span>')+'</div>';
+  if(c.impressao)corpo+='<div class="bl"><small>Impressão de quem atendeu</small><p>'+_esc(c.impressao)+'</p></div>';
+  if(c.abono)corpo+='<div class="bl"><small>Abono</small><p>'+_esc(typeof c.abono==="string"?c.abono:JSON.stringify(c.abono))+'</p></div>';
+  const baixa=ef?(c.baixa?fbTag("Fora da cobrança","tn-ok")+'<span class="fnd">por '+_esc(String(c.baixa.por||"—").split(" ")[0])+(c.baixa.em?' em '+fbDd(String(c.baixa.em).slice(0,10)):"")+(c.baixa.de?' · de '+fbDd(c.baixa.de)+' a '+fbDd(c.baixa.ate):"")+'</span>':fbTag("Na cobrança","tn-gr")):"";
+  const rod='<footer>'+(ef?'<div><small>Cobrança</small><span class="cob">'+baixa+'</span></div>':"")+'<div><small>Colaborador</small><b>'+_esc(c.colaborador||"—")+'</b>'+(c.posto?'<span class="fnd">'+_esc(fbTitulo(c.posto))+'</span>':"")+'</div>'
+    +(c.supervisor?'<div><small>Supervisor</small><b>'+_esc(fbTitulo(c.supervisor))+'</b></div>':"")+(c.telefone?'<div><small>Telefone</small><b>'+_esc(c.telefone)+'</b></div>':"")+'</footer>';
+  return'<section class="fb-fic"><header><div class="t">'+fbI(c.canal==="WHATSAPP"?"chat":c.canal==="PESSOAL"?"user":"phone")+'<b>Registro do feedback</b></div><span>'+rhFmt(ligDataContato(c))+(hora?" às "+hora:"")+'</span></header>'+faixa+'<div class="bd">'+corpo+'</div>'+rod+'</section>';
+}
 function fbRegistroCompleto(c,au){
   if(!c)return'<section class="fb-regc vazio"><div class="fb-regc-h">'+fbI("phone")+'<b>Registro do feedback</b></div><p class="fb-gnota">Nenhum feedback registrado para esta pessoa.</p></section>';
   const ef=ligEfetivo(c),it=(r,v,larga)=>'<div class="'+(larga?"w":"")+'"><dt>'+r+'</dt><dd>'+v+'</dd></div>',vazio='<span class="fb-mut">não informado</span>';
@@ -1796,7 +2024,7 @@ function fbRegistroCompleto(c,au){
   if(c.data_falta)g+=it("Falta de referência",rhFmt(String(c.data_falta).slice(0,10)));
   if(ef)g+=it("Motivo da falta",c.motivo?'<span class="fb-mot">'+_esc(fbMotNome(c.motivo))+'</span>':vazio);
   g+=it("Colaborador",_esc(c.colaborador||"")+(c.posto?' <span class="fb-mut">· '+_esc(fbTitulo(c.posto))+'</span>':""));
-  if(c.supervisor)g+=it("Supervisor",_esc(fbTitulo(c.supervisor)));
+  if(c.supervisor)g+=it("Supervisor",_esc(fbTitulo(c.supervisor)),true);
   g+=it(ef?"O que a pessoa disse":"Observação",c.justificativa?(ef?"“"+_esc(c.justificativa)+"”":_esc(c.justificativa)):vazio,true);
   if(ef)g+=it("Combinado",c.acordo?_esc(c.acordo)+(c.acordo_prazo?' <span class="fb-mut">· prazo '+fbDd(c.acordo_prazo)+'</span>':"")+acStat:'<span class="fb-mut">nenhum combinado</span>',true);
   if(c.impressao)g+=it("Impressão de quem atendeu",_esc(c.impressao),true);
@@ -1809,11 +2037,11 @@ function fbUltRegistro(p){
   const cs=LIG_C.filter(c=>fbDaPessoa(c,p)).sort((a,b)=>ligDataContato(b).localeCompare(ligDataContato(a))||(Number(b.id)||0)-(Number(a.id)||0));
   return cs.find(ligEfetivo)||cs[0]||null;
 }
-/* bloco "Registro da ligação" dentro de cada situação tratada */
+/* bloco "Registro do feedback" dentro de cada situação tratada */
 function fbRegistro(c){
   if(!c)return"";
   const ef=ligEfetivo(c);
-  return'<div class="fb-reg"><div class="fb-reg-h">'+fbI(c.canal==="WHATSAPP"?"chat":c.canal==="PESSOAL"?"user":"phone")+'<b>'+(ef?"Registro da ligação":"Tentativa registrada")+'</b><span>'+fbDd(ligDataContato(c))+' · '+_esc((c.criado_por||"—").split(" ")[0])+(c.duracao_min?' · '+Number(c.duracao_min)+' min':"")+'</span></div>'+fbRegCampos(c)+'</div>';
+  return'<div class="fb-reg"><div class="fb-reg-h">'+fbI(c.canal==="WHATSAPP"?"chat":c.canal==="PESSOAL"?"user":"phone")+'<b>'+(ef?"Registro do feedback":"Tentativa registrada")+'</b><span>'+fbDd(ligDataContato(c))+' · '+_esc((c.criado_por||"—").split(" ")[0])+(c.duracao_min?' · '+Number(c.duracao_min)+' min':"")+'</span></div>'+fbRegCampos(c)+'</div>';
 }
 function fbLinha(lista){
   const L=lista.slice().sort((a,b)=>b.d.localeCompare(a.d)||b.o-a.o);
@@ -1832,7 +2060,8 @@ function fbContatosFiltrados(){
   const pe=fbHistPer();
   return LIG_C.filter(c=>{const d=ligDataContato(c);return d>=pe.de&&d<=pe.ate&&fbSupOk(c.supervisor);});
 }
-function ligHistF(k,v){LIG_H[k]=LIG_H[k]===v?"":v;ligPanel();}
+/* um filtro por vez: escolher resultado ou motivo limpa o outro; "Todos" limpa os dois */
+function ligHistF(k,v){const novo=LIG_H[k]===v?"":v;LIG_H.r="";LIG_H.m="";LIG_H[k]=novo;ligPanel();}
 function fbPnlHist(){
   const base=fbContatosFiltrados(),pe=fbHistPer(),hj=ligHojeISO();
   const fr=LIG_H.r||"",fm=LIG_H.m||"";
@@ -1840,7 +2069,7 @@ function fbPnlHist(){
   const mots=[...new Set(base.filter(ligEfetivo).map(c=>c.motivo?fbMotNome(c.motivo):"Sem motivo"))].sort();
   const rows=base.filter(c=>(!fr||(fr==="ef")===ligEfetivo(c))&&(!fm||(c.motivo?fbMotNome(c.motivo):"Sem motivo")===fm)).sort((x,y)=>ligDataContato(y).localeCompare(ligDataContato(x))||(Number(y.id)||0)-(Number(x.id)||0));
   let h='<div class="fb-sub"><div class="fb-sub-t" data-sync="hsubt"><b>Contatos registrados</b><span>'+_esc(pe.rot)+' · '+fbPlural(rows.length,"registro","registros")+'</span></div><div class="fb-sub-a"><span class="fb-datas" data-sync="hdatas"><input class="fb-in" type="date" aria-label="De" value="'+pe.de+'" max="'+hj+'" onchange="ligHist(\'de\',this.value)"><span>a</span><input class="fb-in" type="date" aria-label="Até" value="'+pe.ate+'" max="'+hj+'" onchange="ligHist(\'ate\',this.value)"></span>'+fbBusca()+'</div></div>';
-  h+='<div class="fb-hf" data-sync="hf"><button type="button" class="fb-chipb'+(!fr?" on":"")+'" onclick="ligHistF(\'r\',\'\')">Todos '+base.length+'</button><button type="button" class="fb-chipb'+(fr==="ef"?" on":"")+'" onclick="ligHistF(\'r\',\'ef\')">Falou com a pessoa '+nEf+'</button><button type="button" class="fb-chipb'+(fr==="nao"?" on":"")+'" onclick="ligHistF(\'r\',\'nao\')">Não conseguiu falar '+nNao+'</button><span class="sep"></span>'
+  h+='<div class="fb-hf" data-sync="hf"><button type="button" class="fb-chipb'+(!fr&&!fm?" on":"")+'" onclick="ligHistF(\'r\',\'\')">Todos '+base.length+'</button><button type="button" class="fb-chipb'+(fr==="ef"?" on":"")+'" onclick="ligHistF(\'r\',\'ef\')">Falou com a pessoa '+nEf+'</button><button type="button" class="fb-chipb'+(fr==="nao"?" on":"")+'" onclick="ligHistF(\'r\',\'nao\')">Não conseguiu falar '+nNao+'</button><span class="sep"></span>'
     +mots.map((m,i)=>'<button type="button" class="fb-chipb'+(fm===m?" on":"")+'" data-n="'+_esc(m)+'" onclick="ligHistF(\'m\',this.dataset.n)">'+_esc(m)+'</button>').join("")+'</div>';
   h+='<div id="lig-lista"><div id="lig-vazio-busca" style="display:none">'+fbVazio()+'</div>';
   if(!rows.length)return h+fbVazio()+'</div>';

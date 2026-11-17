@@ -16,8 +16,7 @@ const L = require("./_lig_regras");
 
 const PRAZO_RESPOSTA_DIAS = 1;   // a pessoa tem até o fim do dia seguinte ao envio para ligar
 const TENTATIVAS_PARA_BASE = 2;  // 2 tentativas sem retorno → "Chamar na base"
-const DIAS_ACOMPANHAMENTO = L.JANELA_DIAS;
-const COMECANDO_ATE_DIAS = 6;    // antes do 7º dia sem falta ainda é cedo para chamar de melhora
+const DIAS_ACOMPANHAMENTO = L.JANELA_DIAS; // 30: antes = dc−29..dc, depois = dc+1..dc+30
 
 const iso = v => (v == null ? "" : String(v).slice(0, 10));
 // carimbo UTC do banco → data de Brasília (UTC-3)
@@ -41,12 +40,24 @@ function tentativasSemRetorno(pend, marcas, hoje) {
   return { n, ultima };
 }
 
-// antes (30 dias até o contato) x depois (do contato até hoje). Só falta injustificada ou tratada pesa.
+// Veredito (regra do Raphael), nesta ordem. Ex.: 3 antes; 1 ou 2 depois → Em observação; 3 → Igual a antes;
+// 4 → Piorou na hora; fechou os 30 dias com 0, 1 ou 2 → Melhorou.
 function veredito(antes, depois, dias) {
-  if (depois === 0 && dias <= COMECANDO_ATE_DIAS) return "comecando";
-  if (depois === 0 || depois < antes) return "melhorando";
-  if (depois === antes) return "mesma";
-  return "piorou";
+  if (depois > antes) return "piorou";                         // vale na hora, mesmo antes dos 30 dias
+  if (antes > 0 && depois === antes) return "mesma";          // vale na hora
+  if (dias < DIAS_ACOMPANHAMENTO) return "comecando";          // dentro dos 30 dias e abaixo do número de antes
+  return antes === 0 ? "sem_faltas" : "melhorando";
+}
+
+// A regra única do antes x depois (painel, Desempenho e tela). datas: faltas que contam (I e T); dc: dia do feedback.
+// antes = dc−29..dc (a falta do próprio dia conta como antes); depois = dc+1..min(hoje, dc+30).
+function antesDepois(datas, dc, hoje) {
+  dc = iso(dc); hoje = iso(hoje);
+  const ini = L.somaDias(dc, -(DIAS_ACOMPANHAMENTO - 1)), fim = L.somaDias(dc, DIAS_ACOMPANHAMENTO), ate = hoje < fim ? hoje : fim;
+  const ds = (datas || []).map(iso).sort();
+  const faltas_antes = ds.filter(d => d >= ini && d <= dc), faltas_depois = ds.filter(d => d > dc && d <= ate);
+  const dias = Math.min(DIAS_ACOMPANHAMENTO, Math.max(0, diasEntre(dc, hoje)));
+  return { antes: faltas_antes.length, depois: faltas_depois.length, dias, faltas_antes, faltas_depois, veredito: veredito(faltas_antes.length, faltas_depois.length, dias) };
 }
 
 // Acordo com prazo: o sistema confere sozinho quando a planilha sobe. A falta combinada virou abonada (atestado no
@@ -108,18 +119,16 @@ function montarPainel({ hoje, faltas, contatos, envios, telefones, diasHist }) {
 
     // 1) ligou e foi registrado há até 30 dias: acompanhamento
     if (ult && diasEntre(dcUlt, hoje) <= DIAS_ACOMPANHAMENTO) {
-      if (p.hist.some(h => h[1] === "D")) return; // desligado: acabou o acompanhamento
-      const dias = Math.max(0, diasEntre(dcUlt, hoje));
-      const ini = L.somaDias(dcUlt, -DIAS_ACOMPANHAMENTO);
-      const antesL = p.hist.filter(h => conta(h[1]) && h[0] >= ini && h[0] <= dcUlt).map(h => h[0]), antes = antesL.length;
-      const depoisL = p.hist.filter(h => conta(h[1]) && h[0] > dcUlt && h[0] <= hoje).map(h => h[0]);
+      if (p.hist.some(h => h[1] === "D" && h[0] >= dcUlt)) return; // desligado depois do feedback: acabou o acompanhamento
+      const ad = antesDepois(p.hist.filter(h => conta(h[1])).map(h => h[0]), dcUlt, hoje);
       const aboDepois = p.hist.filter(h => !conta(h[1]) && h[1] !== "D" && h[0] > dcUlt && h[0] <= hoje).length;
-      const cobrando = p.hist.some(h => h[1] === "I" && h[0] >= ini && h[0] <= L.somaDias(dcUlt, DIAS_ACOMPANHAMENTO));
+      // janela da baixa (dc−30..dc+30), não a do veredito
+      const cobrando = p.hist.some(h => h[1] === "I" && h[0] >= L.somaDias(dcUlt, -DIAS_ACOMPANHAMENTO) && h[0] <= L.somaDias(dcUlt, DIAS_ACOMPANHAMENTO));
       saida.push({ ...base, situacao: "acomp",
         contato: { id: ult.id, data: dcUlt, por: ult.criado_por || "", canal: ult.canal || "", motivo: ult.motivo || "", justificativa: ult.justificativa || "", acordo: ult.acordo || "",
-          acordo_prazo: ult.acordo_prazo || null, acordo_status: ult.acordo_status || null, acordo_auto: acordoAuto(ult, p.hist, hoje), baixa: ult.baixa || null },
-        acomp: { dia: Math.min(dias, DIAS_ACOMPANHAMENTO), antes, depois: depoisL.length, abonadas_depois: aboDepois, ultima_falta_depois: depoisL.length ? depoisL[depoisL.length - 1] : null, faltas_depois: depoisL, faltas_antes: antesL,
-          veredito: veredito(antes, depoisL.length, dias), sem_baixa: !ult.baixa && cobrando } });
+          acordo_prazo: ult.acordo_prazo || null, acordo_status: ult.acordo_status || null, acordo_auto: acordoAuto(ult, p.hist, hoje), baixa: ult.baixa || null, supervisor: ult.supervisor || "" },
+        acomp: { dia: ad.dias, antes: ad.antes, depois: ad.depois, abonadas_depois: aboDepois, ultima_falta_depois: ad.depois ? ad.faltas_depois[ad.depois - 1] : null, faltas_depois: ad.faltas_depois, faltas_antes: ad.faltas_antes,
+          veredito: ad.veredito, sem_baixa: !ult.baixa && cobrando } });
       return;
     }
 
@@ -144,16 +153,16 @@ function montarPainel({ hoje, faltas, contatos, envios, telefones, diasHist }) {
       mensagens: p.envios.filter(d => d >= pend[0]).length });
   });
 
-  const ordem = { piorou: 0, mesma: 1, comecando: 2, melhorando: 3 };
+  const ordem = { piorou: 0, mesma: 1, comecando: 2, melhorando: 3, sem_faltas: 4 }; // cards: quem piorou primeiro
   saida.sort((a, b) => {
     if (a.situacao === "acomp" && b.situacao === "acomp") return ordem[a.acomp.veredito] - ordem[b.acomp.veredito] || a.acomp.dia - b.acomp.dia || a.nome.localeCompare(b.nome);
     if (a.situacao === "base" && b.situacao === "base") return b.faltas.length - a.faltas.length || a.nome.localeCompare(b.nome);
     if (a.situacao === "aguardando" && b.situacao === "aguardando") return String(a.ultima_marca).localeCompare(String(b.ultima_marca)) || a.nome.localeCompare(b.nome);
     return String(a.faltas && a.faltas[0] || "").localeCompare(String(b.faltas && b.faltas[0] || "")) || a.nome.localeCompare(b.nome);
   });
-  const resumo = { mensagem: 0, aguardando: 0, base: 0, acomp: 0, vereditos: { melhorando: 0, mesma: 0, piorou: 0, comecando: 0 } };
+  const resumo = { mensagem: 0, aguardando: 0, base: 0, acomp: 0, vereditos: { melhorando: 0, mesma: 0, sem_faltas: 0, piorou: 0, comecando: 0 } };
   saida.forEach(p => { resumo[p.situacao]++; if (p.acomp) resumo.vereditos[p.acomp.veredito]++; });
   return { pessoas: saida, resumo };
 }
 
-module.exports = { PRAZO_RESPOSTA_DIAS, TENTATIVAS_PARA_BASE, DIAS_ACOMPANHAMENTO, venceu, tentativasSemRetorno, veredito, acordoAuto, montarPainel, dataSP, dataDoContato, diasEntre };
+module.exports = { PRAZO_RESPOSTA_DIAS, TENTATIVAS_PARA_BASE, DIAS_ACOMPANHAMENTO, venceu, tentativasSemRetorno, veredito, antesDepois, conta, acordoAuto, montarPainel, dataSP, dataDoContato, diasEntre };

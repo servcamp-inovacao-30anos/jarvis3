@@ -36,7 +36,7 @@ function ambiente({ pessoas, contatos, podeBaixar, faltas, codigos, ind } = {}) 
   };
   vm.createContext(ctx);
   vm.runInContext("var _LIG_RE_MAP=null;\n" + JS, ctx, { filename: "ligacoes.js" });
-  const resumo = { mensagem: 0, aguardando: 0, base: 0, acomp: 0, vereditos: { melhorando: 0, mesma: 0, piorou: 0, comecando: 0 } };
+  const resumo = { mensagem: 0, aguardando: 0, base: 0, acomp: 0, vereditos: { melhorando: 0, mesma: 0, sem_faltas: 0, piorou: 0, comecando: 0 } };
   (pessoas || []).forEach(p => { resumo[p.situacao]++; if (p.acomp) resumo.vereditos[p.acomp.veredito]++; });
   vm.runInContext(`LIG_C=${JSON.stringify(contatos || [])};LIG_P=${JSON.stringify(pessoas || [])};LIG_RESUMO=${JSON.stringify(resumo)};LIG_COD=${JSON.stringify(codigos || {})};LIG_PODE_BAIXAR=${!!podeBaixar};LIG_HOJE=${JSON.stringify(hoje)};LIG_RES={};LIG_IND=${JSON.stringify(ind || null)};`, ctx);
   const aba = tab => tab === "acomp" ? "monit" : tab === "hist" ? "hist" : tab === "desemp" ? "desemp" : tab === "visao" ? "visao" : "fila";
@@ -66,7 +66,7 @@ test("cinco abas num bloco único com turno e área; o período não fica no top
   const pos = ["Visão geral", "Fila do SAC", "Monitoramento 30 dias", "Desempenho", "Histórico"].map(x => nav.indexOf(x));
   pos.forEach(p => assert.ok(p > 0));
   assert.deepEqual([...pos].sort((x, y) => x - y), pos, "ordem das abas");
-  assert.match(h, /<section class="fb-topo"><header class="fb-band">[\s\S]*<h1>Feedback de Faltas<\/h1><p>Grupo ServCamp - Hoje - \d\d\/\d\d\/\d{4}<\/p>[\s\S]*<\/header><div class="fb-filtros">[\s\S]*Turno[\s\S]*Área[\s\S]*fb-abas[\s\S]*<\/section><div id="lig-panel">/, "faixa, filtros e abas num bloco só (referência 1)");
+  assert.match(h, /<section class="fb-topo"><header class="fb-band">[\s\S]*<h1>Feedback de Faltas<\/h1><p>Grupo ServCamp - Hoje - \d\d\/\d\d\/\d{4}<\/p>[\s\S]*<div class="fb-filtros">[\s\S]*Turno[\s\S]*Área[\s\S]*<\/header>[\s\S]*fb-abas[\s\S]*<\/section><div id="lig-panel">/, "faixa, filtros e abas num bloco só (referência 1)");
   const topo = h.slice(0, h.indexOf('<div id="lig-panel">'));
   assert.ok(!/Período|fb-kpi|fb-funil/.test(topo), "período e números saíram do topo: ficam só na Visão geral");
   assert.match(h, /<span class="fb-selp"><select id="lig-turno"/, "turno e área em pílula com seta, como na referência");
@@ -77,7 +77,7 @@ test("cinco abas num bloco único com turno e área; o período não fica no top
   assert.match(h, /Com a coordenação<span class="n">1<\/span>/);
   assert.ok(!/Piorou<span|Melhorou<span/.test(h), "Piorou, Melhorou e cia. não ficam na fila");
   const m = e.html("acomp");
-  assert.match(m, /Todos<span class="n">1<\/span>[\s\S]*Piorou<span class="n">0<\/span>[\s\S]*Igual a antes<span class="n">0<\/span>[\s\S]*Em observação<span class="n">0<\/span>[\s\S]*Melhorou<span class="n">1<\/span>/);
+  assert.match(m, /Todos<span class="n">1<\/span>[\s\S]*Melhorou<span class="n">1<\/span>[\s\S]*Igual a antes<span class="n">0<\/span>[\s\S]*Continuou sem faltas<span class="n">0<\/span>[\s\S]*Piorou<span class="n">0<\/span>[\s\S]*Em observação<span class="n">0<\/span>/, "ordem: Melhorou · Igual a antes · Continuou sem faltas · Piorou · Em observação");
   assert.ok(h.includes("Enviar WhatsApp") && h.includes("Registrar feedback"), "as duas ações ficam sempre na linha das abas");
   assert.ok(m.includes("ligZapAbrir('','','',[],null)") && m.includes('onclick="ligForm()"'), "também no Monitoramento");
   assert.match(h, /Enviar WhatsApp<span id="lig-zap-chip" class="fb-zp"><i class="fb-dot off"/, "o estado do WhatsApp é um ponto no botão");
@@ -88,8 +88,8 @@ test("cinco abas num bloco único com turno e área; o período não fica no top
 const funilInd = () => ({ hoje, desde: dia(-120), prazo_resposta_dias: 1,
   dias: [[dia(-5), "FRANK", 3, 1], [dia(-5), "PAULO SOUZA", 1, 0]],
   pessoas: [["1", "ANA SOUZA", "POSTO A", "FRANK"], ["2", "BIA LIMA", "POSTO B", "FRANK"], ["3", "CAIO DIAS", "POSTO C", "FRANK"], ["9", "ZECA REIS", "POSTO Z", "PAULO SOUZA"]],
-  funil: { faltas: [[dia(-5), 0, "I"], [dia(-5), 0, "A"], [dia(-5), 1, "I"], [dia(-5), 2, "T"], [dia(-5), 3, "I"]], envios: [[dia(-4), 1], [dia(-4), 2]], feedbacks: [[dia(-3), 2]] },
-  com_feedback: [], conversas: [[dia(-3), "Saúde", 10, "FRANK", "Ingridy"], [dia(-3), "Familiar", 20, "FRANK", "Joyce"], [dia(-3), "Saúde", null, "FRANK", "Joyce"]],
+  funil: { faltas: [[dia(-5), 0, "I", null, "E", 0], [dia(-5), 0, "A", null, "E", 0], [dia(-5), 1, "I", null, "E", 0], [dia(-5), 2, "T", null, "E", 0], [dia(-5), 3, "I", null, "E", 1]], envios: [[dia(-4), 1], [dia(-4), 2]], feedbacks: [[dia(-3), 2]] },
+  avaliacoes: [], conversas: [[dia(-3), "Saúde", 10, "FRANK", "Ingridy"], [dia(-3), "Familiar", 20, "FRANK", "Joyce"], [dia(-3), "Saúde", null, "FRANK", "Joyce"]],
   supervisores: ["FRANK", "PAULO SOUZA"], turnos: { FRANK: "DIURNO", "PAULO SOUZA": "NOTURNO" } });
 
 test("Visão geral: o funil faltaram → mensagem → ligaram (feedback) / não responderam, com avatares e a lista que troca", () => {
@@ -99,11 +99,13 @@ test("Visão geral: o funil faltaram → mensagem → ligaram (feedback) / não 
   assert.match(h, /Hoje<\/button><button[^>]*>Semana<\/button><button[^>]*>Folha<\/button><button[^>]*>Período/, "o período fica acima dos cards");
   assert.match(h, /1 · Faltaram<\/small><\/span><span class="mid"><b data-n="\d+">4<\/b>/);
   assert.match(h, /2 · Mensagem enviada<\/small><\/span><span class="mid"><b data-n="\d+">2<\/b>/);
-  assert.match(h, /50% de quem faltou/);
-  assert.match(h, /3 · Ligaram · feedback registrado<\/small><\/span><span class="mid"><b data-n="\d+">1<\/b>/);
+  assert.match(h, /2 de 4 que faltaram/, "base menor que 20: número, não %");
+  assert.doesNotMatch(h, /% de quem faltou/);
+  assert.match(h, /3 · Ligaram<\/small><\/span><span class="mid"><b data-n="\d+">1<\/b>/);
   assert.match(h, /4 · Não responderam<\/small><\/span><span class="mid"><b data-n="\d+">1<\/b>/);
   assert.match(h, /2 sem mensagem/);
-  assert.match(h, /<span class="fb-avs"><i title="ANA SOUZA">AS<\/i>/, "avatares de quem está na etapa");
+  assert.ok(!/fb-avs/.test(h), "sem iniciais nos cards do funil");
+  assert.match(h, /<small>Taxa de feedback<\/small><\/span><span class="mid"><b>25<em>%<\/em><\/b><\/span><span class="sub">1 de 4 que faltaram/, "taxa = quem ligou e teve feedback registrado sobre quem faltou");
   assert.match(h, /Tempo médio por feedback<\/small><\/span><span class="mid"><b data-n="\d+">15<em>min<\/em><\/b>/, "média só de quem informou o tempo");
   assert.ok(!/class="fb-fc g-amber info"[^>]*onclick/.test(h), "o tempo médio não é clicável");
   assert.match(h, /1 falta abonada no período não entram no funil/);
@@ -117,6 +119,10 @@ test("Visão geral: o funil faltaram → mensagem → ligaram (feedback) / não 
   e.run('LIG_F.turno="NOTURNO"');
   h = e.html("visao");
   assert.match(h, /1 · Faltaram<\/small><\/span><span class="mid"><b data-n="\d+">1<\/b>/, "turno e área valem para o funil");
+  /* área = supervisor da falta: ZECA hoje é do FRANK, mas a falta foi registrada com PAULO SOUZA */
+  const e2 = ambiente({ pessoas: [msg()], ind: Object.assign(funilInd(), { pessoas: funilInd().pessoas.map(p => p[1] === "ZECA REIS" ? ["9", "ZECA REIS", "POSTO Z", "FRANK"] : p) }) });
+  e2.run(`LIG_F.per="periodo";LIG_F.de=${JSON.stringify(dia(-10))};LIG_F.ate=${JSON.stringify(hoje)};LIG_F.area="PAULO SOUZA"`);
+  assert.match(e2.html("visao"), /1 · Faltaram<\/small><\/span><span class="mid"><b data-n="\d+">1<\/b>[\s\S]*ZECA REIS/, "a falta conta na área de quem era o supervisor no dia");
   assert.equal(e.run('LIG_F.turno="todos";LIG_F.per="periodo";LIG_F.de="2026-11-20";LIG_F.ate="2026-11-01";JSON.stringify(fbPeriodo())'), JSON.stringify({ de: "2026-11-01", ate: "2026-11-20", rot: "01/11 a 20/11" }), "datas trocadas se acertam");
   assert.match(e.run('LIG_F.per="folha";fbPeriodo().rot'), /^Folha até \d\d\/\d\d$/);
 });
@@ -130,58 +136,67 @@ test("folha de 26 a 25 e mês do calendário", () => {
   assert.equal(e.run('fbMesFim("2026-11","folha")'), "2026-11-25");
   assert.equal(e.run('fbMesIni("2026-11","civil")'), "2026-11-01");
   assert.equal(e.run('fbMesFim("2026-02","civil")'), "2026-02-28");
-  assert.equal(e.run("fbPct(10,7)"), -30);
-  assert.equal(e.run("fbPct(0,3)"), null);
-  assert.equal(e.run("fbPctTxt(-30)"), "−30%");
 });
 
-test("Desempenho: painel com 4 sub-abas, indicadores precisos, colunas e projeção", () => {
+test("Desempenho: cards compactos, meses fechados, diferença em número, as cinco situações e a estimativa à parte", () => {
   const e = ambiente();
   const kHoje = e.run(`fbMesChave(${JSON.stringify(hoje)},"civil")`);
   const mes = (k, n) => { let a = Number(k.slice(0, 4)), m = Number(k.slice(5, 7)) + n; while (m < 1) { m += 12; a--; } while (m > 12) { m -= 12; a++; } return a + "-" + String(m).padStart(2, "0"); };
   const kI = mes(kHoje, -3), kF = mes(kHoje, -1), d1 = kI + "-05", d2 = kI + "-06", d3 = kI + "-07", dF = kF + "-10";
-  const ind = { hoje, desde: mes(kHoje, -5) + "-01", dias: [[d1, "FRANK", 10, 2], [dF, "FRANK", 5, 1]], pessoas: [["1", "ANA SOUZA", "POSTO A", "FRANK"]],
-    funil: { faltas: [[d1, 0, "I"], [d2, 0, "I"], [dF, 0, "I"]], envios: [[d3, 0]], feedbacks: [[d3, 0]] },
-    com_feedback: [{ key: "1|ANA", re: "1", nome: "ANA SOUZA", posto: "", supervisor: "FRANK", contatos: [d3], faltas: [[d1, "S"], [d2, "S"], [dF, "S"]] }],
-    conversas: [[dF, "Saúde", 10, "FRANK", "Ingridy"], [dF, "Transporte", 6, "FRANK", "Joyce"]], supervisores: ["FRANK"], turnos: { FRANK: "DIURNO" } };
+  const av = (nome, i, d, antes, depois, veredito, extra) => ({ i, nome, re: String(i + 1), sup: "FRANK", d, antes, depois, dias: 30, veredito, faltas_antes: [], faltas_depois: [], desligado: false, ...extra });
+  const ind = { hoje, desde: mes(kHoje, -5) + "-01", dias: [[d1, "FRANK", 10, 2], [dF, "FRANK", 5, 1]], pessoas: [["1", "ANA SOUZA", "POSTO A", "FRANK"], ["2", "BIA", "POSTO A", "FRANK"], ["3", "CAIO", "POSTO A", "FRANK"]],
+    funil: { faltas: [[d1, 0, "I", 0, "E", 0], [d2, 0, "I", 0, "E", 0], [dF, 0, "I", 0, "E", 0]], envios: [[d3, 0]], feedbacks: [[d3, 0]] },
+    /* o servidor manda o veredito pronto: a tela não recalcula. BIA sem faltas e CAIO desligado ficam fora da taxa */
+    avaliacoes: [av("ANA SOUZA", 0, d3, 2, 0, "melhorando", { faltas_antes: [d1, d2] }), av("BIA", 1, d3, 0, 0, "sem_faltas"), av("CAIO", 2, d3, 0, 5, "piorou", { desligado: true })],
+    postos: ["POSTO A"], conversas: [[dF, "Saúde", 10, "FRANK", "Ingridy"], [dF, "Transporte", 6, "FRANK", "Joyce"]], supervisores: ["FRANK"], turnos: { FRANK: "DIURNO" } };
   const e2 = ambiente({ ind });
-  e2.run(`LIG_DES={modo:"civil",ini:${JSON.stringify(kI)},fim:${JSON.stringify(kF)},ord:"var",dir:1};LIG_DSUB="resumo"`);
+  e2.run(`this._uploadInfo=()=>({ts:Date.parse(${JSON.stringify(hoje + "T15:00:00Z")})});LIG_DES={modo:"civil",ini:${JSON.stringify(kI)},fim:${JSON.stringify(kF)},ord:"var",dir:1};LIG_DSUB="resumo"`);
+  assert.equal(JSON.parse(e2.run('JSON.stringify(fbMesesDisp("civil"))')).slice(-1)[0], kF, "o mês em andamento não aparece; o último é o anterior (já fechado pela planilha de hoje)");
   let h = e2.html("desemp");
-  assert.match(h, /Resumo executivo[\s\S]*Efeito do feedback[\s\S]*Empresa e áreas[\s\S]*Motivos e atendimento/, "as 4 sub-abas");
+  assert.match(h, /Resumo executivo[\s\S]*Efeito do feedback[\s\S]*Empresa e áreas[\s\S]*Motivos e atendimento/, "as 5 sub-abas");
   assert.match(h, /Folha 26 a 25/); assert.match(h, /Mês do calendário/);
-  assert.match(h, /class="fb-kg g-green"><span class="ic">[\s\S]*?Faltas da empresa<\/small><b>−50%<\/b>/, "10 → 5: queda, em verde");
-  assert.match(h, /Efeito do feedback<\/small><b>−100%<\/b>/, "2 faltas antes do feedback, nenhuma depois");
-  assert.match(h, /Taxa de melhora<\/small><b>100%<\/b>/);
-  assert.match(h, /Tempo médio por feedback<\/small><b>8 min<\/b>/);
-  assert.match(h, /<svg class="fb-g"[\s\S]*class="gln"/, "curva mês a mês");
-  assert.match(h, /data-tip="[^"]*: 10"/, "valor exato ao passar o mouse");
-  assert.match(h, /Fechamento do mês/);
-  assert.match(h, /Mensagens enviadas[\s\S]*Feedbacks registrados[\s\S]*Retorno das mensagens/);
+  assert.match(h, /Comparação: <b>[^<]+<\/b> × [^·]+· meses fechados · hoje/, "linha de período: dois meses fechados e a data de hoje");
+  assert.match(h, /<small>Faltas sem justificativa em [^<]+<\/small><b class="tn-da">5<\/b><span>Aumentou \+5 vs /, "5 faltas, 5 a mais que o mês anterior: diz o que conta, o sentido e o mês de comparação");
+  assert.match(h, /Pessoas que melhoraram depois do feedback<\/small><b>1 de 1<\/b>/);
+  assert.match(h, /Pessoas que pioraram depois do feedback<\/small><b>0 de 1<\/b>/);
+  assert.match(h, /Áreas com mais faltas que no mês anterior<\/small><b class="tn-da">1 de 1<\/b><span>Maior: Frank \+5/);
+  assert.ok(!/\d%/.test(h), "base abaixo de 20: só diferença em número, nunca porcentagem");
+  assert.ok(!/projeção|Retorno das mensagens|Mensagens enviadas|Tempo médio por feedback|>S1</i.test(h), "sem projeção, retorno, mensagens, tempo médio nem S1 a S5 no Resumo");
+  assert.equal((h.match(/class="fb-dc tn-/g) || []).length, 4, "quatro cards, todos do mesmo tipo, cada um na cor do que mede");
   e2.run('ligDes("sub","efeito")');
   h = e2.els["lig-panel"].innerHTML;
-  assert.match(h, /Pessoas avaliadas<\/small><b>1<\/b>/);
-  assert.match(h, /Melhoraram<\/small><b>100%<\/b>/);
-  assert.match(h, /class="fb-rosca"/);
-  assert.match(h, /Faltas antes × depois do feedback, por mês do contato/);
-  assert.match(h, /Maiores melhoras[\s\S]*ANA SOUZA[\s\S]*2 → 0/);
-  assert.match(h, /Cada colaborador[\s\S]*ANA SOUZA[\s\S]*−50%[\s\S]*Melhorou/);
+  assert.match(h, /Como ficaram as 2 pessoas\?[\s\S]*1 de 1 melhoraram; 0 pioraram\./);
+  ["Melhorou", "Igual a antes", "Continuou sem faltas", "Piorou", "Em observação"].forEach(r => assert.ok(h.includes(">" + r + "<"), "situação " + r));
+  assert.ok(!/ef-leg|Como ler|Fora das contas/.test(h), "sem a legenda descritiva embaixo dos cards");
+  assert.ok(!/ef-bar|ef-key/.test(h), "sem a barra proporcional nem a legenda: os cards já mostram os números");
+  e2.run('ligDesSit("melhorando")'); h = e2.els["lig-panel"].innerHTML;
+  assert.match(h, /<button type="button" class="tn-ok on" aria-pressed="true" onclick="ligDesSit\('melhorando'\)">/, "o card escolhido fica marcado");
+  assert.match(h, /class="fb-pn ef-lista tn-ok"[\s\S]*<span class="fb-tag tn-ok">Melhorou<\/span><b>1 pessoa<\/b>[\s\S]*<th>Colaborador<\/th><th>Feedback em<\/th><th>Acompanhamento<\/th><th class="n">Antes<\/th><th class="n">Depois<\/th><th class="n">Diferença<\/th>[\s\S]*<span class="av">AS<\/span>[\s\S]*ANA SOUZA[\s\S]*Concluído \(30 dias\)[\s\S]*<td class="n">2<\/td><td class="n">0<\/td><td class="n"><span class="df tn-ok">−2<\/span>/, "tabela da situação escolhida: avatar, nome, progresso, antes, depois e selo de diferença");
+  assert.ok(!/CAIO/.test(h), "desligado depois do feedback fica fora das contas");
+  assert.ok(!/\d%/.test(h.replace(/style="[^"]*"/g, "")), "sem porcentagem por pessoa nem com base pequena (a largura da barra de progresso não conta)");
   assert.ok(h.includes('onclick="ligDesAbrir(0)"'), "a linha abre o panorama");
   e2.run('ligDes("sub","areas")');
   h = e2.els["lig-panel"].innerHTML;
-  assert.match(h, /Faltas da empresa por mês e projeção/);
-  assert.match(h, /class="gc"/, "colunas");
-  assert.match(h, /Cada supervisor: melhorou ou piorou[\s\S]*Frank/);
+  assert.match(h, /Sem justificativa em [^<]+<\/small><b class="tn-da">5<\/b>/);
+  assert.match(h, /Abonadas em [^<]+<\/small><b class="tn-da">1<\/b>/);
+  assert.match(h, /As duas juntas em [^<]+<\/small><b class="tn-da">6<\/b>/, "sem justificativa + abonadas, separadas e juntas");
+  assert.match(h, /As faltas aumentaram ou diminuíram\?[\s\S]*class="gc"/, "pergunta no título e colunas");
+  assert.match(h, /Número sobre a coluna: sem justificativa \+ abonadas/);
+  assert.match(h, /em andamento[\s\S]*Estimativa[\s\S]*Não entra nas comparações/);
+  assert.match(h, /Qual área teve aumento\?[\s\S]*Frank[\s\S]*<b>\+5<\/b>[\s\S]*Aumentou[\s\S]*Empresa/);
+  assert.ok(!/\d%/.test(h), "tabela por área sem porcentagem");
   e2.run('ligDes("sub","motivos")');
   h = e2.els["lig-panel"].innerHTML;
-  assert.match(h, /Faltas tratadas<\/small><b>2<\/b>/);
-  assert.match(h, /Motivos das faltas tratadas[\s\S]*Saúde[\s\S]*50%/);
-  assert.match(h, /Tempo médio por pessoa do SAC[\s\S]*Ingridy[\s\S]*10 min/);
+  assert.match(h, /Feedbacks registrados<\/small><b>2<\/b>/);
+  assert.match(h, /Motivo principal<\/small><b>Saúde<\/b><span>1 de 2 feedbacks/);
+  assert.match(h, /Motivos informados nos feedbacks[\s\S]*Saúde[\s\S]*Tempo médio por pessoa do SAC[\s\S]*Ingridy[\s\S]*10 min/);
   assert.match(ambiente().html("desemp"), /Acompanhe o comportamento/, "sem números, a tela vazia");
 });
 
 test("projeção: fechamento do mês pelo ritmo e tendência pelos meses fechados", () => {
   const e = ambiente();
-  assert.equal(e.run("fbTeto(37)"), 50);
+  assert.equal(e.run("fbTeto(37)"), 40);
+  assert.equal(e.run("fbTeto(6.5)"), 8, "o eixo sempre tem 4 intervalos de número inteiro");
   assert.equal(e.run("fbTeto(3)"), 4);
   const svg = e.run('fbGArea({rots:["Jan/26","Fev/26","Mar/26"],vals:[10,8,3],parcial:true,fech:9,tend:{meses:["2026-04","2026-05","2026-06"],vals:[7,6,5],banda:1},cor:"#2563eb"})');
   assert.match(svg, /fechamento projetado de 9/);
@@ -236,7 +251,7 @@ test("Com a coordenação: só a coordenação registra a conversa; todos veem o
   assert.ok(sac.includes("ligResumoI(0)") && sac.includes("ligEnviarI(0)"));
 });
 
-test("Monitoramento 30 dias (referência 4): fundo na cor do resultado, faltas antes × depois com as datas e o ícone de tendência", () => {
+test("Monitoramento 30 dias: selo do resultado, antes → depois em número grande, barra dos 30 dias, motivo e combinado", () => {
   const e = ambiente({ pessoas: [
     acomp(), acomp({ nome: "PIOR", key: "2|P", re: "2", acomp: { dia: 9, antes: 2, depois: 4, abonadas_depois: 0, ultima_falta_depois: dia(-1), faltas_depois: [dia(-6), dia(-4), dia(-2), dia(-1)], veredito: "piorou", sem_baixa: true } }),
     acomp({ nome: "COMBINADO", key: "3|C", re: "3", contato: { id: 8, data: dia(-5), por: "Raphael Victor", acordo_prazo: dia(-1), acordo_auto: "nao_cumpriu", baixa: null } })] });
@@ -245,15 +260,14 @@ test("Monitoramento 30 dias (referência 4): fundo na cor do resultado, faltas a
   assert.match(h, /class="fb-pc fb-pm tn-da"/, "piorou: fundo vermelho claro");
   assert.match(h, /class="fb-pc fb-pm tn-ok"/, "melhorou: fundo verde claro");
   assert.match(h, /<span class="fb-vp"><svg[^>]*>.*?<\/svg>Piorou<\/span>/);
-  assert.match(h, /title="Antes do feedback"><div><b>2<\/b><span>Faltas<\/span><\/div><em>em 30 dias<\/em><em>\(\d\d\/\d\d a \d\d\/\d\d\)<\/em>/);
-  assert.match(h, /title="Depois do feedback"><div><b>4<\/b><span>Faltas<\/span><\/div><em>em 9 dias<\/em><em>\(\d\d\/\d\d a \d\d\/\d\d\)<\/em>/);
-  assert.match(h, /class="fb-pm-ic">/); assert.match(h, /class="fb-pm-go">/);
+  assert.match(h, /<div class="fb-pm-n"[^>]*><b>2<\/b><i aria-hidden="true">→<\/i><b class="d">4<\/b><span>faltas antes → depois<\/span>/, "antes → depois em um número só");
+  assert.match(h, /role="progressbar" aria-valuemin="0" aria-valuemax="30" aria-valuenow="9"/); assert.match(h, /Dia 9 de 30/);
+  assert.ok(!/fb-pm-ic|fb-pm-go|class="fb-mc"/.test(h), "sem ícone de relógio, seta nem datas no card");
   assert.match(h, /RE 1 • Posto A/);
   assert.match(h, /Aguardando baixa da coordenação/);
   assert.match(h, /Combinado não cumprido/);
   assert.ok(!/fb-cal|fb-mini/.test(h), "o calendário fica só no panorama");
-  assert.ok(!/Dia \d+ de 30/.test(h));
-  assert.match(h, /title="Faltou mais vezes do que antes."/);
+  assert.match(h, /title="Passou do número de faltas dos 30 dias antes do feedback."/);
   const f = e.html("acomp", "piorou");
   assert.equal((f.match(/class="fb-pc fb-pm /g) || []).length, 1);
   assert.match(f, /PIOR/);
@@ -263,13 +277,21 @@ test("Monitoramento 30 dias (referência 4): fundo na cor do resultado, faltas a
 test("o rótulo dos vereditos é o mesmo no filtro, no card e no texto de ajuda", () => {
   const e = ambiente({ pessoas: [acomp()] });
   const h = e.html("acomp");
-  ["Melhorou", "Igual a antes", "Piorou", "Em observação"].forEach(r => assert.ok(h.includes(r), r));
+  ["Melhorou", "Igual a antes", "Continuou sem faltas", "Piorou", "Em observação"].forEach(r => assert.ok(h.includes(r), r));
   assert.ok(!/Na mesma|Começando|Faltou de novo/.test(h), "palavras antigas fora");
-  assert.deepEqual(JSON.parse(e.run("JSON.stringify(Object.values(FB_VD).map(v=>v.t))")).sort(), ["Em observação", "Igual a antes", "Melhorou", "Piorou"]);
+  assert.deepEqual(JSON.parse(e.run("JSON.stringify(Object.keys(FB_VD).map(k=>[k,FB_VD[k].t,FB_VD[k].tom]))")),
+    [["melhorando", "Melhorou", "tn-ok"], ["mesma", "Igual a antes", "tn-am"], ["sem_faltas", "Continuou sem faltas", "tn-gr"], ["piorou", "Piorou", "tn-da"], ["comecando", "Em observação", "tn-br"]], "as 5 situações, nesta ordem");
+  assert.deepEqual(JSON.parse(e.run("JSON.stringify(Object.keys(FB_DEST).map(k=>FB_DEST[k][0]))")), ["Melhorou", "Igual a antes", "Continuou sem faltas", "Piorou", "Em observação"], "o destaque do panorama usa o mesmo rótulo");
+  const P = require("../api/_lig_painel");
+  const doServidor = Object.keys(P.montarPainel({ hoje, faltas: [], contatos: [], envios: [], telefones: {} }).resumo.vereditos).sort();
+  assert.deepEqual(JSON.parse(e.run("JSON.stringify(Object.keys(FB_VD))")).sort(), doServidor, "as mesmas chaves do servidor");
 });
 
 test("a faixa e o calendário marcam falta, abonada, dia futuro, hoje e mensagem do SAC", () => {
   const e = ambiente({ pessoas: [acomp()] });
+  /* "hoje" fixo em 05/11: a janela de 11 dias atrás a 2 à frente cruza outubro e novembro, em qualquer dia em que o teste rode */
+  const H = "2026-11-05", dia = n => L.somaDias(H, n);
+  e.run(`LIG_HOJE=${JSON.stringify(H)}`);
   const p = JSON.stringify(acomp({ hist: [[dia(-10), "I"], [dia(-9), "T"], [dia(-8), "A"], [dia(-7), "J"]], envios: [dia(-6)] }));
   const cel = JSON.parse(e.run(`JSON.stringify(fbCelulas(${p},${JSON.stringify(dia(-11))},${JSON.stringify(dia(2))},${JSON.stringify(dia(-6))}))`));
   assert.equal((cel.match(/class="f"/g) || []).length, 2, "I e T são falta");
@@ -310,14 +332,14 @@ test("panorama: cabeçalho com veredito, três cartões, evolução, calendário
   assert.match(h, /data-k="cal"/); assert.match(h, /data-k="hist"/);
   assert.match(h, /onclick="ligPanEnviar\(\)">[\s\S]*Enviar WhatsApp/); assert.match(h, /Registrar feedback/);
   // três cartões, cada um dizendo o que é o número
-  assert.match(h, /Antes do feedback<\/small><b>2 faltas<\/b><em>\d\d\/\d\d a \d\d\/\d\d<\/em>/);
-  assert.match(h, /Depois do feedback<\/small><b>0 faltas<\/b><em>/);
+  assert.match(h, /class="fb-res [^"]*"><div class="fb-res-n"><div><b>2<\/b><span>faltas antes<\/span><\/div><i aria-hidden="true">→<\/i><div class="d"><b>0<\/b><span>faltas depois<\/span>/, "o resultado primeiro: antes → depois");
+  assert.match(h, /Faltou antes em[\s\S]*Faltou depois em/);
   assert.match(h, /Acompanhamento<\/small><b>até \d\d\/\d\d<\/b><span>faltam 18 dias<\/span>/);
-  assert.match(h, /fb-prog/); assert.match(h, /role="progressbar"/);
+  assert.match(h, /fb-pm-prog/); assert.match(h, /role="progressbar"/);
   // evolução: barras com o número em cima e a variação
   assert.match(h, /fb-evoc/);
   assert.match(h, /Faltas antes e depois do feedback/); assert.match(h, /<svg class="fb-g fb-gl"/);
-  assert.match(h, /Resultado/);
+  assert.ok(!/fb-kgs pan3/.test(h), "a Evolução não repete os números do Resumo");
   // calendário: um mês por vez, com setas, os dias de todos os meses presentes
   const calH = h.slice(h.indexOf('fb-card2 fb-calc'));
   assert.equal((calH.match(/data-d="[0-9]+"/g) || []).length, 31, "o calendário mostra o dia do contato e os 30 dias seguintes, em sequência");
@@ -330,7 +352,7 @@ test("panorama: cabeçalho com veredito, três cartões, evolução, calendário
   // histórico
   assert.match(linha, /Motivo da falta/); assert.match(linha, /Consulta médica/);
   assert.match(linha, /Feedback registrado por ligação/); assert.match(linha, /Saúde/);
-  assert.match(linha, /Faltou \(já tratada pelo SAC\)/);
+  assert.match(linha, /Faltou sem justificar/);
   assert.match(linha, /Registrado por Ingridy/);
   // ações no rodapé, Fechar à direita
   assert.match(h, /Resumo para a coordenação/);
@@ -545,6 +567,176 @@ test("tela cheia e trocas suaves: sem margens, funil em 5 colunas iguais, só o 
   assert.match(h, /data-nav="per" data-ind="fundo"/); assert.match(h, /data-cards="funil"/); assert.match(h, /<div id="lig-lista">/);
   assert.equal((h.match(/class="fb-con"/g) || []).length, 4, "conector entre os cards, fora do texto");
   assert.ok(!/fb-seta/.test(h));
-  assert.match(e.html("mensagem"), /data-nav="sub" data-ind="linha"[\s\S]*<div id="lig-lista">/);
+  assert.match(e.html("mensagem"), /data-nav="sub" data-ind="fundo"[\s\S]*<div id="lig-lista">/);
   assert.match(e.html("desemp"), /data-nav="dsub"/);
+});
+
+test("mês fechado: só depois de chegar planilha com data posterior ao fim do período (reserva: 1º dia útil depois)", () => {
+  const e = ambiente();
+  e.run('LIG_HOJE="2026-11-16";LIG_IND={desde:"2026-01-10"}');
+  // sem a data da planilha: 31/10 é sábado, então outubro fecha na segunda 02/11
+  e.run('LIG_HOJE="2026-11-01"'); assert.equal(e.run('fbMesFechado("2026-10-31")'), false);
+  e.run('LIG_HOJE="2026-11-02"'); assert.equal(e.run('fbMesFechado("2026-10-31")'), true);
+  e.run('LIG_HOJE="2026-10-31"'); assert.equal(e.run('fbMesFechado("2026-10-30")'), false, "sexta 30/10: o sábado não tem planilha");
+  // com a data da última planilha (a mesma do "Última planilha" do painel geral), ela decide
+  e.run('LIG_HOJE="2026-11-16";this._uploadInfo=()=>({ts:Date.parse("2026-10-26T15:00:00Z")})');
+  assert.equal(e.run('fbMesFechado("2026-10-25")'), true, "planilha de 26/10 fecha a folha de outubro (até 25/10)");
+  assert.equal(e.run('fbMesFechado("2026-10-31")'), false, "mas não o mês do calendário: a planilha de novembro ainda não chegou");
+  assert.deepEqual(JSON.parse(e.run('JSON.stringify(fbMesesDisp("folha"))')), ["2026-02", "2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09", "2026-10"], "sai a folha de janeiro (dados desde 10/01) e a de novembro");
+  assert.deepEqual(JSON.parse(e.run('JSON.stringify(fbMesesDisp("civil"))')).slice(-1), ["2026-09"]);
+  e.run("delete this._uploadInfo");
+  assert.deepEqual(JSON.parse(e.run('JSON.stringify(fbMesesDisp("civil"))')).slice(0, 1).concat(JSON.parse(e.run('JSON.stringify(fbMesesDisp("civil"))')).slice(-1)), ["2026-02", "2026-10"]);
+  e.run('LIG_IND={desde:"2026-01-01"}');
+  assert.equal(JSON.parse(e.run('JSON.stringify(fbMesesDisp("civil"))'))[0], "2026-01", "dados desde o dia 1º: o mês está completo");
+});
+
+test("Monitoramento: Continuou sem faltas tem filtro próprio e a área é o supervisor gravado no feedback", () => {
+  const sem = acomp({ nome: "SEM FALTA", key: "2|S", re: "2", supervisor: "PAULO", contato: { id: 9, data: dia(-30), por: "Joyce", supervisor: "FRANK", baixa: null },
+    acomp: { dia: 30, antes: 0, depois: 0, abonadas_depois: 0, ultima_falta_depois: null, faltas_antes: [], faltas_depois: [], veredito: "sem_faltas", sem_baixa: false } });
+  const e = ambiente({ pessoas: [acomp(), sem] });
+  const h = e.html("acomp", "sem_faltas");
+  assert.equal((h.match(/class="fb-pc fb-pm /g) || []).length, 1);
+  assert.match(h, /class="fb-pc fb-pm tn-gr"[\s\S]*SEM FALTA[\s\S]*Continuou sem faltas/);
+  e.run('LIG_F.area="FRANK"');
+  assert.match(e.html("acomp", "sem_faltas"), /SEM FALTA/, "conta na área do supervisor do feedback (FRANK), não na de hoje (PAULO)");
+  e.run('LIG_F.area="PAULO"');
+  assert.match(e.html("acomp", "todos"), /Todos<span class="n">0<\/span>/);
+});
+
+test("panorama e resumo: tom, selo e Resultado vêm só do veredito do servidor; antes = dc−29 a dc", () => {
+  const c = { id: 7, data: dia(-10), por: "Ingridy Campana", baixa: null };
+  // 3 antes e 1 depois no dia 10: pela conta simples seria "melhorou"; pela regra do servidor ainda é Em observação
+  const p = acomp({ contato: c, hist: [[dia(-20), "I"], [dia(-15), "I"], [dia(-10), "I"], [dia(-4), "I"]],
+    acomp: { dia: 10, antes: 3, depois: 1, abonadas_depois: 0, ultima_falta_depois: dia(-4), faltas_antes: [dia(-20), dia(-15), dia(-10)], faltas_depois: [dia(-4)], veredito: "comecando", sem_baixa: false } });
+  const e = ambiente({ pessoas: [p] });
+  e.html("acomp"); e.run("ligAbrir(0)");
+  const h = e.painel("lig-perfil-modal");
+  assert.match(h, /class="fb-vd tn-br">[\s\S]*?Em observação/);
+  assert.match(h, /class="fb-res tn-br"><div class="fb-res-n"><div><b>3<\/b><span>faltas antes<\/span><\/div><i aria-hidden="true">→<\/i><div class="d"><b>1<\/b><span>falta depois<\/span>[\s\S]*?Em observação/);
+  assert.ok(!/Melhorou|−67%|−2 faltas/.test(h), "nada recalculado na tela, sem porcentagem por pessoa");
+  const ini = e.run(`fbDd(ligSomaDias(${JSON.stringify(c.data)},-29))`);
+  assert.ok(h.includes('<div class="fb-res-d"') || h.includes('<dl class="fb-res-d">'), "datas das faltas antes e depois");
+  assert.ok(ini < c.data, "o antes começa em dc−29 (regra do servidor; a tela só mostra as faltas dele)");
+  // a linha do tempo tem 60 colunas: dc−29 até dc+30 (o dia do feedback é o último do antes)
+  const g = e.run(`fbGLinha({c:${JSON.stringify(c.data)},p:${JSON.stringify(p)},fa:[],fd:[]})`);
+  assert.equal((g.match(/<rect x="[\d.]+" y="[\d.]+" width="[\d.]+" height="[\d.]+" rx="3"/g) || []).length, 60);
+  assert.match(g, new RegExp('text-anchor="start"[^>]*>' + ini + "<"));
+  const d = e.run(`fbDocResumo(${JSON.stringify(p)})`);
+  assert.match(d, /<small>Resultado<\/small><b>Em observação<\/b><span>3 antes, 1 depois<\/span>/);
+  assert.ok(d.includes(ini + " a "), "o resumo impresso usa a mesma janela");
+});
+
+test("Desempenho, achados da revisão: Postos com 1 mês, soma por área = total, detalhe de motivo = card, panorama sem % e modo escuro", () => {
+  const e = ambiente();
+  const kHoje = e.run(`fbMesChave(${JSON.stringify(hoje)},"civil")`);
+  const mes = (k, n) => { let a = Number(k.slice(0, 4)), m = Number(k.slice(5, 7)) + n; while (m < 1) { m += 12; a--; } while (m > 12) { m -= 12; a++; } return a + "-" + String(m).padStart(2, "0"); };
+  const kA = mes(kHoje, -2), kF = mes(kHoje, -1), dA = kA + "-10", dF = kF + "-10";
+  const av = (nome, i, sup) => ({ i, nome, re: String(i + 1), sup, d: dF, antes: 0, depois: 2, dias: 30, veredito: "piorou", faltas_antes: [], faltas_depois: [], desligado: false });
+  const ind = { hoje, desde: mes(kHoje, -5) + "-01", dias: [[dA, "FRANK", 3, 0], [dF, "FRANK", 1, 0], [dF, "PAULO", 0, 2]], pessoas: [["1", "ANA", "POSTO A", "FRANK"], ["2", "BIA", "POSTO A", "PAULO"]],
+    funil: { faltas: [[dA, 0, "I", 0, "E", 0], [dA, 0, "I", 0, "E", 0], [dA, 0, "I", 0, "E", 0], [dF, 0, "I", 0, "E", 0]], envios: [], feedbacks: [] },
+    avaliacoes: [av("ANA", 0, ""), av("BIA", 1, "PAULO")], postos: ["POSTO A"],
+    conversas: [[dF, "Saúde", null, "FRANK", "Ingridy", 7]], supervisores: ["FRANK", "PAULO"], turnos: { FRANK: "DIURNO", PAULO: "DIURNO" } };
+  const contatos = [{ id: 7, colaborador: "ANA", data_contato: dF, motivo: "Saúde", resultado: "EXPLICOU" }];
+  const e2 = ambiente({ ind, contatos });
+  e2.run(`this._uploadInfo=()=>({ts:Date.parse(${JSON.stringify(hoje + "T15:00:00Z")})});LIG_DES={modo:"civil",ini:${JSON.stringify(kF)},fim:${JSON.stringify(kF)},mot:"",pt:"efetivo"};LIG_DSUB="postos"`);
+  let h = e2.html("desemp");
+  assert.match(h, /Condomínio com mais faltas · [^<]+<\/small><b>Posto A<\/b><span>1 falta no período/, "cards pelo período escolhido, com a unidade");
+  assert.match(h, /Faltas da reserva técnica · [^<]+<\/small><b>0<\/b>/);
+  assert.match(h, /Período analisado: <b>[^<]+<\/b> \(1 mês fechado\)/);
+  assert.equal((h.match(/class="fb-tab ind fb-heat"/g) || []).length, 1, "um quadro só, mapa de calor");
+  assert.match(h, /Faltas por posto, mês a mês[\s\S]*?onclick="ligDesPr\('postos'\)">Postos efetivos<\/button><button type="button" class="" onclick="ligDesPr\('reserva'\)">Reserva técnica/, "botão troca postos e reserva, como na referência");
+  // período de 2 meses: célula colorida, diferença para o mês anterior embaixo; a % só no texto do mouse
+  e2.run(`LIG_DES.ini=${JSON.stringify(kA)};ligDes("sub","postos")`);
+  h = e2.els["lig-panel"].innerHTML;
+  assert.match(h, /Período analisado: <b>[^<]+<\/b> \(2 meses fechados\) · comparação: <b>[^<]+<\/b> contra <b>[^<]+<\/b>/);
+  assert.match(h, /<b>Posto A<\/b><small>[^<]*<\/small><\/span><\/td><td class="hm h4" data-tip="Posto A · [^\n"]+\n3 faltas sem justificativa neste mês\.\nÉ o primeiro mês do período: não há mês anterior para comparar\.\nQuem faltou: Ana \(3\)\." data-tipj="[^"]+"><b>3<\/b><\/td>/, "mouse no 1º mês: o número, que não há comparação e quem faltou");
+  assert.match(h, /<td class="hm h2" data-tip="Posto A · [^\n"]+\n1 falta sem justificativa neste mês\.\nEm [^\n"]+ foram 3 faltas\. Resultado: melhorou, 2 faltas a menos, uma queda de 67%\.\nQuem faltou: Ana \(1\)\." data-tipj="[^"]+"><b>1<\/b><small class="dn">▼ 2<\/small><\/td>/, "mouse no mês: a comparação explicada em palavras, com a %");
+  assert.match(h, /<td class="tt" data-tip="Posto A · [^\n"]+\n4 faltas sem justificativa no período, de 1 pessoa\.\nPrimeiro mês \([^)]+\): 3 faltas\. Último mês \([^)]+\): 1 falta\.\nResultado do período: melhorou, 2 faltas a menos, uma queda de 67%\.\nMês com mais faltas: [^"]+\(3\)\." data-tipj="[^"]+"><b>4<\/b>/, "mouse no total: o período inteiro explicado");
+  assert.ok(!/<td[^>]*>[^<]*%/.test(h.replace(/data-tipj?="[^"]*"/g, "")), "nenhuma % escrita na tabela, só no mouse");
+  assert.match(h, /Passe o mouse num número para ver a explicação e a %/);
+  assert.ok(!/Aumentou|Diminuiu|variação/i.test(h), "verbos fixos: Piorou, Melhorou, Estável");
+  e2.run("ligDesPa(0)");
+  h = e2.els["lig-panel"].innerHTML;
+  const pessoas = h.slice(h.indexOf('class="pd-w"'));
+  assert.match(pessoas, /1 pessoa faltou<\/b> em Posto A[\s\S]*?<span class="av">A<\/span><span class="nm"><b>Ana<\/b><small>RE 1<\/small><\/span><\/td><td class="n"><span class="mb h4"[^>]*><b>3<\/b><i style="height:28px"><\/i><\/span><\/td><td class="n"><span class="mb h2"[^>]*><b>1<\/b><i style="height:15px"><\/i><\/span><\/td><td class="n t"><b>4<\/b><small>faltas<\/small><\/td>/, "clicar no posto mostra quem faltou; a soma da pessoa fecha com a linha");
+  // regra do resultado
+  assert.deepEqual(JSON.parse(e2.run("JSON.stringify([fbPostoRes([0,3]),fbPostoRes([2,4]),fbPostoRes([5,5]),fbPostoRes([4])])")), [
+    { k: "tn-da", p: "Piorou", g: "+3 faltas", s: "sem base para % (começou em 0)" },
+    { k: "tn-da", p: "Piorou", g: "+100%", s: "+2 faltas" },
+    { k: "tn-gr", p: "Estável", g: "0%", s: "mesmo número de faltas" }, null]);
+  // etiqueta desenhada: as mesmas informações em partes (título, número, selo do resultado, quem faltou)
+  const cel2 = h.match(/<td class="hm h2"[^>]*data-tipj="([^"]+)"/);
+  const o = JSON.parse(cel2[1].replace(/&quot;/g, '"').replace(/&amp;/g, "&"));
+  assert.deepEqual([o.h, o.n, o.c.k, o.c.p, o.c.g, o.q], ["Posto A", 1, "dn", "Melhorou", "67%", [["Ana", 1]]], "selo verde: melhorou 67% (só a %, sem sinal), com quem faltou");
+  assert.match(e2.run("fbTipRico(" + JSON.stringify(o) + ",String)"), /<div class="tx-c dn"><em>Melhorou <b>67%<\/b><\/em><span>2 faltas a menos que em [^<]+ \(3\)\.<\/span><\/div><div class="tx-q"><small>Quem faltou<\/small><ul><li><span>Ana<\/span><b>1<\/b><\/li><\/ul>/);
+  // filtro "Quais faltas contar": feedback em até 30 dias depois da falta; abonadas só quando o filtro pede
+  e2.run("LIG_IND.funil.feedbacks=[[" + JSON.stringify(dA) + ",0]];LIG_IND.funil.faltas.push([" + JSON.stringify(dF) + ',0,"A",0,"E",0])');
+  const linhaA = pf => { e2.run('ligDesPf("' + pf + '")'); const m = e2.els["lig-panel"].innerHTML.match(/<b>Posto A<\/b><small>[^<]*<\/small><\/span><\/td><td class="hm[^"]*"[^>]*><b>(\d+)<\/b>[\s\S]*?<\/td><td class="hm[^"]*"[^>]*><b>(\d+)<\/b>/); return m ? [Number(m[1]), Number(m[2])] : null; };
+  assert.deepEqual(linhaA("sj"), [3, 1], "como hoje: todas sem justificativa");
+  assert.deepEqual(linhaA("sj_fb"), [3, 0], "com feedback: as 3 de antes do feedback");
+  assert.deepEqual(linhaA("sj_sem"), [0, 1], "sem feedback: a falta depois do feedback");
+  assert.deepEqual(linhaA("ab_sem"), [0, 2], "sem feedback + abonadas: entra a abonada");
+  assert.deepEqual(linhaA("ab_fb"), [3, 0]);
+  assert.match(e2.els["lig-panel"].innerHTML, /<select id="ld-pf"[\s\S]*?<option value="ab_fb" selected>Sem justificativa \+ abonadas, com feedback<\/option>/, "o filtro mostra o que está contando");
+  assert.match(e2.els["lig-panel"].innerHTML, /Com feedback: a pessoa teve feedback registrado em até 30 dias depois da falta/);
+  e2.run('ligDesPf("sj");LIG_DES.pq="mirante";ligPanel()');
+  assert.match(e2.els["lig-panel"].innerHTML, /<tr class="pl" data-n="POSTO A" hidden/, "busca pelo nome esconde o que não bate");
+  assert.match(e2.els["lig-panel"].innerHTML, /id="ld-pq-vazio">Nenhum posto com esse nome\./);
+  e2.run('LIG_DES.pq="";LIG_IND.funil.feedbacks=[];LIG_IND.funil.faltas.pop()');
+  e2.run(`LIG_DES.ini=${JSON.stringify(kF)};LIG_DES_PA=""`);
+  const rotF = e2.run(`fbMesCurto(${JSON.stringify(kF)})`);
+  assert.ok(!h.includes(rotF + " a " + rotF),"faixa de 1 mês: um nome só, não 'Out/26 a Out/26'");
+  e2.run('ligDes("sub","areas")');
+  h = e2.els["lig-panel"].innerHTML;
+  const col = [...h.matchAll(/<tr><td><b>[^<]+<\/b><\/td><td>[^<]+<\/td><td>\d+<\/td><td>\d+<\/td><td[^>]*><b>[^<]+<\/b><\/td><td>(\d+)<\/td>/g)].reduce((t, m) => t + Number(m[1]), 0);
+  const tot = Number((h.match(/<tr class="tot"><td><b>[^<]+<\/b><\/td><td><\/td><td><b>\d+<\/b><\/td><td><b>\d+<\/b><\/td><td[^>]*><b>[^<]+<\/b><\/td><td><b>(\d+)<\/b>/) || [])[1]);
+  assert.equal(tot, 2); assert.equal(col, tot, "a coluna Pioraram por área soma o total (Sem supervisor e área só com feedback entram)");
+  assert.match(h, /<b>Sem supervisor<\/b>/, "Sem supervisor com s minúsculo");
+  assert.match(h, /Áreas com mais faltas que no mês anterior<\/small><b>0 de 1<\/b>/, "área só com abonadas não entra na contagem de áreas");
+  e2.run('LIG_F.area="FRANK";ligDes("sub","motivos")');
+  h = e2.els["lig-panel"].innerHTML;
+  assert.match(h, /data-n="Saúde"><i[^>]*><\/i><span class="t">Saúde<\/span><b>1<\/b>/, "card: contato sem supervisor conta pela área da pessoa");
+  assert.match(h, /Nenhum feedback com tempo registrado/, "mês sem tempo registrado não vira 0 min");
+  e2.run('ligDes("mot","Saúde")');
+  assert.match(e2.els["lig-panel"].innerHTML, /Feedbacks com o motivo: Saúde<\/h4><span class="fb-pill-s">1 feedback</, "o detalhe mostra os mesmos feedbacks do card");
+  const det = e2.run(`fbDetalhePessoa({hist:[[${JSON.stringify(dA)},"I"],[${JSON.stringify(hoje)},"I"]]})`);
+  assert.ok(!/%/.test(det), "panorama, Evolução: sem % por pessoa"); assert.match(det, /\* [^<]+ em andamento/, "o mês em andamento vem marcado");
+  e2.run(`ligPanorama({key:"1|ANA",re:"1",nome:"ANA",posto:"POSTO A",supervisor:"FRANK",situacao:"sem",faltas:[],hist:[],envios:[],fb_fim:{data:${JSON.stringify(dF)},antes:0,depois:2,dias:30,veredito:"piorou"}})`);
+  assert.match(e2.painel("lig-perfil-modal"), /Resultado do feedback de [^:]+: Piorou \(0 antes, 2 depois\)/, "Ver de quem piorou: o panorama mostra o mesmo resultado do Efeito");
+  assert.ok(!/\.fb-abas \.fb-dsub button\{[^}]*#475569/.test(CSS) && /\.fb-tab tbody tr\.tot td\{background:var\(--fb-th\)/.test(CSS) && /html\[data-theme="dark"\] :is\(#pg-ligacoes,\.fb-ov\)\{--fb-th:/.test(CSS), "modo escuro: menus e linha de total pelas cores do tema");
+});
+
+test("panorama: histórico disciplinar do ano (faltas sem justificativa, abonadas e medidas, como no painel disciplinar)", () => {
+  const e = ambiente();
+  const ini = hoje.slice(0, 4) + "-01-01", ant = (Number(hoje.slice(0, 4)) - 1) + "-12-20";
+  const pes = { key: "9|CARLA", re: "9", nome: "CARLA MENDES", posto: "POSTO A", supervisor: "FRANK", situacao: "sem", faltas: [], envios: [], _completo: 1,
+    hist: [[ant, "I"], [ini, "I"], [hoje, "T"], [ini, "A"], [hoje, "L"], [hoje, "D"]] };
+  e.run(`LIG_HIST={desde:${JSON.stringify(ini)},medidas:[
+    {re:"9",nome:"CARLA MENDES",data:${JSON.stringify(ini)},tipo:"ADVERTÊNCIA",grau:"VERBAL",dias:0,fase:"CONCLUÍDA",motivo:"Falta sem justificativa"},
+    {re:"9",nome:"CARLA MENDES",data:${JSON.stringify(hoje)},tipo:"SUSPENSÃO",grau:"",dias:2,fase:"CONCLUÍDA",motivo:"Reincidência"},
+    {re:"9",nome:"CARLA MENDES",data:${JSON.stringify(hoje)},tipo:"ADVERTÊNCIA",grau:"ESCRITA",dias:0,fase:"CANCELADA",motivo:"x"},
+    {re:"9",nome:"OUTRA PESSOA",data:${JSON.stringify(hoje)},tipo:"ADVERTÊNCIA",grau:"VERBAL",dias:0,fase:"CONCLUÍDA",motivo:"mesmo RE, outra empresa"}]}`);
+  e.run("ligPanorama(" + JSON.stringify(pes) + ")");
+  // no panorama: só uma linha com os totais, o selo de reincidência e o botão
+  const h0 = e.painel("lig-perfil-modal"), cp = h0.slice(h0.indexOf('class="fb-disc dcc"'));
+  assert.match(cp, /Histórico disciplinar · \d{4}<\/b><span>01\/01\/\d{4} a \d\d\/\d\d\/\d{4}<\/span>/);
+  assert.match(cp, /<dd>2<\/dd><dt>Sem justificativa<\/dt>[\s\S]*<dd>2<\/dd><dt>Abonadas<\/dt>[\s\S]*<dd>2<\/dd><dt>Medidas<\/dt>[\s\S]*<span class="rnc">Reincidente<\/span>[\s\S]*onclick="ligDiscAbrir\(\)">[\s\S]*Ver histórico<\/button>/, "I e T do ano (a do ano passado não entra); A e L; desligamento não é falta; cancelada e de outra pessoa não contam");
+  assert.ok(!/<table|class="bx"/.test(cp), "as tabelas ficam fora do panorama");
+  // a janela: ficha, duas abas e tabelas
+  e.run("ligDiscAbrir()");
+  const h = e.painel("lig-disc-modal"), d = h.slice(h.indexOf('class="fb-disc dsc"'));
+  assert.match(h, /Histórico disciplinar de \d{4}/);
+  assert.match(d, /<small>Faltas sem justificativa<\/small><b class="neg">2<\/b>[\s\S]*<small>Faltas abonadas<\/small><b>2<\/b>[\s\S]*<small>Medidas disciplinares válidas<\/small><b>2<\/b><em>Reincidente<\/em>[\s\S]*<small>Período<\/small><b>01\/01\/\d{4} a /);
+  assert.match(d, /Medidas disciplinares<span>2<\/span>[\s\S]*Faltas do ano<span>4<\/span>/, "duas abas com contagem");
+  assert.match(d, /<th>Data<\/th><th>Medida<\/th><th>Motivo<\/th><th>Situação<\/th>[\s\S]*Suspensão de 2 dias<\/span>[\s\S]*Advertência verbal<\/span>/, "tabela; mesmo texto do painel disciplinar, da mais recente para a mais antiga");
+  assert.match(d, /<tr class="canc">[\s\S]*Cancelada · não conta/, "cancelada aparece riscada e marcada");
+  assert.match(d, /<td class="st ok">Válida<\/td>/);
+  assert.match(d, /Faltas mês a mês em \d{4}/); assert.match(d, /<td class="rt">Sem justificativa<\/td>[\s\S]*<td class="tt">2<\/td>/, "o ano mês a mês, com total");
+  assert.match(d, /<h5>Faltas abonadas<\/h5><span>2 registros<\/span>[\s\S]*<em>Licença<\/em>/, "o tipo de cada abonada");
+  assert.ok(!/mesmo RE, outra empresa/.test(d), "RE repetido em outra empresa não vaza");
+  // sem medida: mensagem de primeira ocorrência
+  e.run('LIG_HIST={medidas:[]};ligPanorama(' + JSON.stringify(pes) + ")");
+  e.run("ligDiscAbrir()");
+  assert.match(e.painel("lig-disc-modal"), /<b>Nenhuma medida disciplinar em \d{4}\.<\/b> Esta é a primeira ocorrência da pessoa no ano\./);
+  assert.match(e.painel("lig-disc-modal"), /Medidas disciplinares válidas<\/small><b>0<\/b>/);
 });
