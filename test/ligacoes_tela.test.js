@@ -92,42 +92,62 @@ const funilInd = () => ({ hoje, desde: dia(-120), prazo_resposta_dias: 1,
   avaliacoes: [], conversas: [[dia(-3), "Saúde", 10, "FRANK", "Ingridy"], [dia(-3), "Familiar", 20, "FRANK", "Joyce"], [dia(-3), "Saúde", null, "FRANK", "Joyce"]],
   supervisores: ["FRANK", "PAULO SOUZA"], turnos: { FRANK: "DIURNO", "PAULO SOUZA": "NOTURNO" } });
 
-test("Visão geral: o funil faltaram → mensagem → ligaram (feedback) / não responderam, com avatares e a lista que troca", () => {
+test("Visão geral: Todas as faltas + quatro etapas sem repetir ninguém (sem mensagem → mensagem → feedback / não responderam)", () => {
   const ind = funilInd();
-  ind.pessoas.push(["5", "DORA MELO", "POSTO D", "FRANK"]); ind.funil.faltas.push([dia(-5), 4, "A", null, "E", 0]); // só falta abonada
+  ind.pessoas.push(["5", "DORA MELO", "POSTO D", "FRANK"], ["6", "EVA ROCHA", "POSTO E", "FRANK"]);
+  ind.funil.faltas.push([dia(-5), 4, "A", null, "E", 0]);                              // DORA: só falta abonada
+  ind.funil.faltas.push([dia(-9), 5, "I", null, "E", 0], [dia(-2), 5, "I", null, "E", 0]); // EVA: feedback e faltou de novo
+  ind.funil.feedbacks.push([dia(-8), 5]);
+  ind.funil.envios.push([hoje, 3]);                                                     // ZECA: mensagem hoje, no prazo
   const e = ambiente({ pessoas: [msg()], ind });
   e.run(`LIG_F.per="periodo";LIG_F.de=${JSON.stringify(dia(-10))};LIG_F.ate=${JSON.stringify(hoje)}`);
   let h = e.html("visao");
   assert.match(h, /Hoje<\/button><button[^>]*>Semana<\/button><button[^>]*>Folha<\/button><button[^>]*>Período/, "o período fica acima dos cards");
-  assert.match(h, /1 · Faltaram<\/small><\/span><span class="mid"><b data-n="\d+">5<\/b><\/span><span class="sub">4 sem justificativa · 1 só abonada<\/span>/, "o card Faltaram conta todas as faltas: sem justificativa e abonadas");
-  assert.match(h, /2 · Mensagem enviada<\/small><\/span><span class="mid"><b data-n="\d+">2<\/b>/);
-  assert.match(h, /2 de 4 sem justificativa/, "base menor que 20: número, não %");
-  assert.doesNotMatch(h, /% de quem faltou/);
-  assert.match(h, /3 · Ligaram<\/small><\/span><span class="mid"><b data-n="\d+">1<\/b>/);
-  assert.match(h, /4 · Não responderam<\/small><\/span><span class="mid"><b data-n="\d+">1<\/b>/);
+  const card = (rot, n, sub) => assert.match(h, new RegExp(rot + "<\\/small><\\/span><span class=\"mid\"><b data-n=\"\\d+\">" + n + "<\\/b><\\/span><span class=\"sub\">" + sub), rot);
+  card("Todas as faltas", 6, "6 faltas · 2 abonadas");
+  card("1 · Sem mensagem", 1, "1 falta<");
+  card("2 · Mensagem enviada", 1, "1 falta · no prazo para ligar");
+  card("3 · Feedback registrado", 1, "1 falta<");
+  card("4 · Não responderam", 2, "3 faltas · 1 após feedback");
   assert.ok(!/fb-avs/.test(h), "sem iniciais nos cards do funil");
-  assert.match(h, /<small>Taxa de feedback<\/small><\/span><span class="mid"><b>25<em>%<\/em><\/b><\/span><span class="sub">1 de 4 sem justificativa/, "taxa = quem ligou e teve feedback registrado sobre quem faltou");
+  assert.match(h, /<small>Taxa de feedback<\/small><\/span><span class="mid"><b>20<em>%<\/em><\/b><\/span><span class="sub">1 de 5 pessoas/, "taxa = quem teve feedback registrado sobre quem faltou sem justificativa");
   assert.match(h, /Tempo médio por feedback<\/small><\/span><span class="mid"><b data-n="\d+">15<em>min<\/em><\/b>/, "média só de quem informou o tempo");
   assert.ok(!/class="fb-fc g-amber info"[^>]*onclick/.test(h), "o tempo médio não é clicável");
-  assert.ok(!/não entram no funil/.test(h), "as abonadas estão no card, sem nota à parte");
-  assert.match(h, /<b>Faltaram<\/b><span>5 pessoas/, "a lista abaixo começa com quem faltou");
-  assert.match(h, /DORA MELO[\s\S]*Falta abonada[\s\S]*<b>Abonada<\/b> em \d\d\/\d\d/, "quem só teve falta abonada aparece separado, sem envio");
-  assert.match(h, /ANA SOUZA[\s\S]*?<span title="Abonada em \d\d\/\d\d" class="fb-tag tn-gr"[^>]*>[\s\S]*?1 abonada[\s\S]*?<b>Faltou<\/b> em \d\d\/\d\d/, "quem teve as duas: etiqueta cinza da abonada (datas no título), card do mesmo tamanho");
+  assert.match(h, /<b>Todas as faltas<\/b><span>6 pessoas/, "a lista abaixo começa com todas");
+  assert.match(h, /DORA MELO[\s\S]*Falta abonada[\s\S]*<b>1 abonada<\/b> em \d\d\/\d\d/, "quem só teve falta abonada aparece separado, sem envio");
+  e.run('ligVG("semmsg")');
+  h = e.els["lig-panel"].innerHTML;
+  assert.ok(h.includes("ANA SOUZA") && !h.includes("CAIO DIAS") && !h.includes("ZECA REIS"), "feedback registrado e mensagem enviada nunca aparecem no azul");
+  assert.match(h, /ANA SOUZA[\s\S]*?1 abonada[\s\S]*?<b>1 falta<\/b> em \d\d\/\d\d/, "a pessoa com a quantidade de faltas dela");
+  e.run('ligVG("ligaram")');
+  h = e.els["lig-panel"].innerHTML;
+  assert.match(h, /CAIO DIAS[\s\S]*Feedback em \d\d\/\d\d<\/span>[\s\S]*<b>1 falta<\/b> em \d\d\/\d\d<\/p><\/div>/, "card verde no mesmo padrão dos outros: etiqueta com a data e uma linha");
+  assert.ok(!/fb-reg/.test(h), "sem o bloco grande do registro");
   e.run('ligVG("naoresp")');
   h = e.els["lig-panel"].innerHTML;
-  assert.match(h, /<b>Não responderam<\/b><span>1 pessoa/);
-  assert.match(h, /BIA LIMA[\s\S]*Não respondeu[\s\S]*ligVGEnviar\(0\)[\s\S]*ligVGRegistrar\(0\)/, "a lista troca e traz as ações");
-  e.run('ligVG("ligaram")');
-  assert.match(e.els["lig-panel"].innerHTML, /CAIO DIAS[\s\S]*Feedback registrado[\s\S]*Ligou e o feedback foi registrado em \d\d\/\d\d/);
+  assert.match(h, /<b>Não responderam<\/b><span>2 pessoas/);
+  assert.match(h, /BIA LIMA[\s\S]*Não respondeu[\s\S]*ligVGEnviar\(\d\)/, "quem não respondeu pode receber nova mensagem");
+  assert.match(h, /EVA ROCHA[\s\S]*Faltou após feedback de \d\d\/\d\d[\s\S]*Ver panorama/, "falta nova no acompanhamento vai para a coordenação, sem cobrança nova");
   e.run('LIG_F.turno="NOTURNO"');
   h = e.html("visao");
-  assert.match(h, /1 · Faltaram<\/small><\/span><span class="mid"><b data-n="\d+">1<\/b>/, "turno e área valem para o funil");
+  assert.match(h, /Todas as faltas<\/small><\/span><span class="mid"><b data-n="\d+">1<\/b>/, "turno e área valem para o funil");
   /* área = supervisor da falta: ZECA hoje é do FRANK, mas a falta foi registrada com PAULO SOUZA */
   const e2 = ambiente({ pessoas: [msg()], ind: Object.assign(funilInd(), { pessoas: funilInd().pessoas.map(p => p[1] === "ZECA REIS" ? ["9", "ZECA REIS", "POSTO Z", "FRANK"] : p) }) });
   e2.run(`LIG_F.per="periodo";LIG_F.de=${JSON.stringify(dia(-10))};LIG_F.ate=${JSON.stringify(hoje)};LIG_F.area="PAULO SOUZA"`);
-  assert.match(e2.html("visao"), /1 · Faltaram<\/small><\/span><span class="mid"><b data-n="\d+">1<\/b>[\s\S]*ZECA REIS/, "a falta conta na área de quem era o supervisor no dia");
+  assert.match(e2.html("visao"), /Todas as faltas<\/small><\/span><span class="mid"><b data-n="\d+">1<\/b>[\s\S]*ZECA REIS/, "a falta conta na área de quem era o supervisor no dia");
   assert.equal(e.run('LIG_F.turno="todos";LIG_F.per="periodo";LIG_F.de="2026-11-20";LIG_F.ate="2026-11-01";JSON.stringify(fbPeriodo())'), JSON.stringify({ de: "2026-11-01", ate: "2026-11-20", rot: "01/11 a 20/11" }), "datas trocadas se acertam");
   assert.match(e.run('LIG_F.per="folha";fbPeriodo().rot'), /^Folha até \d\d\/\d\d$/);
+});
+
+test("Fila: falta nova nos 30 dias depois do feedback vai para Com a coordenação (e continua no Monitoramento)", () => {
+  const reinc = pessoa("acomp", { nome: "RE INCIDENTE", key: "7|R", re: "7", contato: { id: 1, data: dia(-10) }, acomp: { dia: 10, antes: 1, depois: 1, faltas_depois: [dia(-2)], faltas_antes: [dia(-12)], veredito: "mesma" } });
+  const e = ambiente({ pessoas: [msg(), reinc], podeBaixar: true });
+  let h = e.html("base");
+  assert.match(h, /Com a coordenação<span class="n">1<\/span>/);
+  assert.match(h, /RE INCIDENTE[\s\S]*Faltou de novo após feedback[\s\S]*<b>Faltou<\/b> em \d\d\/\d\d[\s\S]*Cabe à coordenação decidir/);
+  assert.ok(!/undefined/.test(h));
+  h = e.html("acomp");
+  assert.ok(h.includes("RE INCIDENTE"), "o Monitoramento continua mostrando a pessoa");
 });
 
 test("folha de 26 a 25 e mês do calendário", () => {
@@ -575,7 +595,7 @@ test("tela cheia e trocas suaves: sem margens, funil em 5 colunas iguais, só o 
   const e = ambiente({ pessoas: [msg()], ind: funilInd() });
   const h = e.html("visao");
   assert.match(h, /data-nav="per" data-ind="fundo"/); assert.match(h, /data-cards="funil"/); assert.match(h, /<div id="lig-lista">/);
-  assert.equal((h.match(/class="fb-con"/g) || []).length, 4, "conector entre os cards, fora do texto");
+  assert.equal((h.match(/class="fb-con"/g) || []).length, 5, "conector entre os cards, fora do texto");
   assert.ok(!/fb-seta/.test(h));
   assert.match(e.html("mensagem"), /data-nav="sub" data-ind="fundo"[\s\S]*<div id="lig-lista">/);
   assert.match(e.html("desemp"), /data-nav="dsub"/);

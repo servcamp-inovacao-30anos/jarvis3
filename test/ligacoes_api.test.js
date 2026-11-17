@@ -447,3 +447,22 @@ test("pasta: a pessoa sai dos números e listas dos indicadores (Visão geral, D
   const nomes = r.body.pessoas.map(p => p[1]);
   assert.ok(!nomes.includes("PESSOA 1") && nomes.includes("PESSOA 2"), "só quem não está em pasta entra nos indicadores");
 });
+
+
+test("pastas automáticas no painel: demitido, abandono e INSS da última planilha saem da fila sozinhos", async () => {
+  const t = tabelas();
+  t.fm_faltas.push(falta(1, dia(-3)), falta(1, dia(-1), { codigo: "D" }), falta(2, dia(-2), { posto: "ABANDONO" }), falta(3, dia(-2)), falta(4, dia(-2)));
+  t.dashboard_snapshots.push({ id: 1, created_at: new Date().toISOString(), data: { presenca: [{ RE: "3", NOME: "PESSOA 3", DESCSITUACAO: "INSS" }, { RE: "4", NOME: "PESSOA 4", DESCSITUACAO: "TRABALHO" }] } });
+  let p = await painel(t);
+  assert.equal(pessoaDe(p, "PESSOA 1").pasta, "demitido");
+  assert.equal(pessoaDe(p, "PESSOA 2").pasta, "abandono");
+  assert.equal(pessoaDe(p, "PESSOA 3").pasta, "inss");
+  assert.ok(pessoaDe(p, "PESSOA 3").pasta_auto);
+  assert.equal(pessoaDe(p, "PESSOA 4").situacao, "mensagem");
+  const ind = await pedir(t, "ingridycampana", { query: { acao: "indicadores" } });
+  assert.deepEqual(ind.body.pessoas.map(x => x[1]), ["PESSOA 4"], "fora dos números da Visão geral e do Desempenho");
+  // a coordenação devolve: a identificação automática não volta a puxar
+  await pedir(t, "raphaelvictor", { method: "POST", query: { acao: "pasta" }, body: { pessoas: [{ key: "3|PESSOA", re: "3", nome: "PESSOA 3" }], pasta: null } });
+  p = await painel(t);
+  assert.equal(pessoaDe(p, "PESSOA 3").situacao, "mensagem");
+});

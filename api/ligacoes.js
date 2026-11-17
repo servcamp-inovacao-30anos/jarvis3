@@ -41,6 +41,20 @@ const MAX_ENVIOS_DIA_POR_PESSOA = 3, MIN_SEGUNDOS_ENTRE_ENVIOS = 60;
 const evento = (ator, acao, chave, antes, depois) => ({ ator, acao, entidade: L.ENTIDADE, chave: String(chave), antes: antes || null, depois: depois || null });
 const eventosDe = (db, acoes, extra) => db.listar(`fm_auditoria?select=id,ator,acao,chave,antes,depois,criado_em&entidade=eq.${L.ENTIDADE}&acao=in.(${acoes.join(",")})${extra || ""}&order=id.asc`);
 
+// INSS: quem está com a situação INSS na última planilha (aba de presença), como o card "Funcionários no INSS" do Dashboard
+async function inssDaUltimaPlanilha(db) {
+  try {
+    const r = await db.obter("dashboard_snapshots?select=presenca:data->presenca,created_at&order=created_at.desc&limit=1");
+    const lista = (Array.isArray(r) && r[0] && Array.isArray(r[0].presenca)) ? r[0].presenca : [], em = r[0] ? P.dataSP(r[0].created_at) : "";
+    return lista.filter(p => L.norm(p.DESCSITUACAO) === "INSS").map(p => ({ re: p.RE, nome: p.NOME, em }));
+  } catch (e) { console.error("[ligacoes] situação INSS da planilha:", e && e.message); return []; }
+}
+// pastas em vigor: as automáticas (Demitido, Abandono, INSS) com as escolhas da coordenação por cima
+async function pastasDe(db, faltasRecentes) {
+  const [ev, inss] = await Promise.all([eventosDe(db, [L.ACAO_PASTA]), inssDaUltimaPlanilha(db)]);
+  return L.pastasEmVigor(L.pastasAtuais(ev), L.pastasAutomaticas(faltasRecentes, inss));
+}
+
 async function contatoPorId(db, id) {
   const [row] = await db.obter(`lig_contatos?select=*&id=eq.${id}&limit=1`);
   return row || null;
@@ -124,13 +138,12 @@ async function listar({ res, db, ator }) {
 // ── painel: cada pessoa em uma situação (mensagem, aguardando, base, acompanhando) ──
 async function painel({ res, db, ator }) {
   const hoje = hojeSP(), desde = L.somaDias(hoje, -105), desdeEnvios = L.somaDias(hoje, -45);
-  const [lista, faltas, envEv, pastaEv] = await Promise.all([
+  const [lista, faltas, envEv] = await Promise.all([
     contatosCompletos(db),
     db.listar(`fm_faltas?select=re,data,nome,posto,supervisor,codigo,tipo&data=gte.${desde}&order=re.asc,data.asc`),
-    eventosDe(db, [L.ACAO_ZAP_ENVIO], `&criado_em=gte.${desdeEnvios}T00:00:00Z`),
-    eventosDe(db, [L.ACAO_PASTA])
+    eventosDe(db, [L.ACAO_ZAP_ENVIO], `&criado_em=gte.${desdeEnvios}T00:00:00Z`)
   ]);
-  const pastas = L.pastasAtuais(pastaEv);
+  const pastas = await pastasDe(db, faltas);
   const contatos = lista.map(c => ({ ...c, efetivo: L.efetivo(c.resultado) }));
   const envios = envEv.filter(e => e.depois && e.depois.ok === true).map(e => ({ chave: e.chave, data: P.dataSP(e.criado_em) }));
   // telefones que o sistema já tem (base de contatos do ponto): só de quem faltou há pouco ou tem contato
@@ -317,15 +330,16 @@ async function motivo({ res, db, ator, body }) {
 // ── indicadores: topo da tela e aba Desempenho ─────────────────────────────
 async function indicadores({ res, db }) {
   const hoje = hojeSP(), desde = L.somaDias(hoje, -IND.DIAS_INDICADORES);
-  const [todas, lista, mot, envEv, pastaEv] = await Promise.all([
+  const [todas, lista, mot, envEv] = await Promise.all([
     db.listar(`fm_faltas?select=re,data,nome,posto,supervisor,codigo,tipo,cargo&data=gte.${desde}&order=data.asc,re.asc`),
     contatosCompletos(db),
     lerMotivos(db),
-    eventosDe(db, [L.ACAO_ZAP_ENVIO], `&criado_em=gte.${desde}T00:00:00Z`),
-    eventosDe(db, [L.ACAO_PASTA])
+    eventosDe(db, [L.ACAO_ZAP_ENVIO], `&criado_em=gte.${desde}T00:00:00Z`)
   ]);
-  // quem está numa pasta (INSS, Abandono, Demitido) fica fora dos números e das listas
-  const pastas = L.pastasAtuais(pastaEv), naPasta = Object.values(pastas);
+  // quem está numa pasta (INSS, Abandono, Demitido) fica fora dos números e das listas; a identificação automática
+  // olha a mesma janela do painel (105 dias), para não apagar dos números do ano quem saiu há muito tempo
+  const corte = L.somaDias(hoje, -105);
+  const pastas = await pastasDe(db, todas.filter(f => String(f.data).slice(0, 10) >= corte)), naPasta = Object.values(pastas);
   const faltas = todas.filter(f => !pastas[L.reDe(f.re) + "|" + L.primeiroNome(f.nome)]);
   const contatos = lista.filter(c => !naPasta.some(x => L.norm(x.nome) === L.norm(c.colaborador) || (c.baixa && c.baixa.re && x.re && L.reDe(c.baixa.re) === L.reDe(x.re))))
     .map(c => ({ ...c, efetivo: L.efetivo(c.resultado) }));

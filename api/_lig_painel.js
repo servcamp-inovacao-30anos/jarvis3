@@ -123,7 +123,7 @@ function montarPainel({ hoje, faltas, contatos, envios, telefones, diasHist, pas
     const pasta = pastas && pastas[p.key];
     if (pasta) {
       const pendP = p.hist.filter(h => h[1] === "I" && !h[2] && h[0] >= desde30 && h[0] <= hoje).map(h => h[0]);
-      saida.push({ ...base, situacao: "pasta", pasta: pasta.pasta, pasta_por: pasta.por, pasta_em: pasta.em, faltas: pendP });
+      saida.push({ ...base, situacao: "pasta", pasta: pasta.pasta, pasta_por: pasta.por, pasta_em: pasta.em, pasta_auto: !!pasta.auto, pasta_motivo: pasta.motivo || "", faltas: pendP });
       return;
     }
 

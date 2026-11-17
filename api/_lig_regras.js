@@ -211,14 +211,41 @@ function tratadasParaApuracao(baixas) {
   return m;
 }
 
-// Pastas em vigor: { "RE|PRIMEIRONOME" → { pasta, re, nome, por, em } } (o último evento de cada pessoa vale)
+// Pastas escolhidas pela coordenação: { "RE|PRIMEIRONOME" → { pasta, re, nome, por, em } } (o último evento de cada pessoa vale;
+// pasta null = devolvida à fila, o que também desfaz a identificação automática)
 const PASTAS = { inss: "INSS", abandono: "Abandono", demitido: "Demitido" };
 function pastasAtuais(eventos) {
   const out = {};
   ultimoPorChave(eventos, [ACAO_PASTA]).forEach((e, chave) => {
     const d = e.depois || {};
-    if (PASTAS[d.pasta]) out[chave] = { pasta: d.pasta, re: String(d.re || ""), nome: d.nome || "", por: e.ator || "", em: e.criado_em || null };
+    out[chave] = { pasta: PASTAS[d.pasta] ? d.pasta : null, re: String(d.re || ""), nome: d.nome || "", por: e.ator || "", em: e.criado_em || null };
   });
+  return out;
+}
+// Identificação automática, com as mesmas regras do Dashboard: Demitido = falta com código D; Abandono = posto trocado
+// por ABANDONO no SAR2G; INSS = situação INSS na última planilha. Só de quem tem falta no período (quem seria cobrado).
+const MOTIVO_AUTO = { demitido: "Demitido na planilha (código D)", abandono: "Abandono marcado no SAR2G", inss: "Situação INSS na última planilha" };
+function pastasAutomaticas(faltas, inss) {
+  const out = {}, com = new Set(), ordem = { demitido: 0, abandono: 1, inss: 2 };
+  const marca = (k, pasta, re, nome, em) => {
+    const x = out[k];
+    if (x && (ordem[x.pasta] < ordem[pasta] || (x.pasta === pasta && x.em <= em))) return;
+    out[k] = { pasta, re: reDe(re), nome: nome || "", por: "", em, auto: true, motivo: MOTIVO_AUTO[pasta] };
+  };
+  (faltas || []).forEach(f => {
+    const k = reDe(f.re) + "|" + primeiroNome(f.nome), d = iso(f.data);
+    com.add(k);
+    if (String(f.codigo || "").toUpperCase() === "D") marca(k, "demitido", f.re, f.nome, d);
+    else if (/ABANDONO/i.test(String(f.posto || ""))) marca(k, "abandono", f.re, f.nome, d);
+  });
+  (inss || []).forEach(p => { const k = reDe(p.re) + "|" + primeiroNome(p.nome); if (com.has(k)) marca(k, "inss", p.re, p.nome, iso(p.em)); });
+  return out;
+}
+// O que vale: a escolha da coordenação (inclusive "devolver à fila") passa na frente da identificação automática.
+function pastasEmVigor(manuais, automaticas) {
+  const out = {};
+  Object.keys(automaticas || {}).forEach(k => { if (!(manuais || {})[k]) out[k] = automaticas[k]; });
+  Object.keys(manuais || {}).forEach(k => { if (manuais[k].pasta) out[k] = manuais[k]; });
   return out;
 }
 
@@ -282,5 +309,5 @@ module.exports = {
   ENTIDADE, ACAO_BAIXA, ACAO_BAIXA_FIM, ACAO_EDITADO, ACAO_EXCLUIDO, ACAO_ACORDO, ACAO_ZAP_ENVIO, ACAO_ZAP_CONFIG, ACAO_ZAP_MODELO, ACAO_ZAP_CONEXAO, ACAO_RESULTADO, ACAO_ATIVIDADE, ACAO_PASTA, PASTAS, RESULTADOS, PROXIMAS,
   JANELA_DIAS, MIN_FALTAS_SEM_RETORNO, NOMES, USUARIOS, MOTIVOS, CANAIS, ABONOS, MODELO_PADRAO,
   celular, podeBaixar, podeUsar, norm, primeiroNome, ehData, somaDias, reDe, limpa, janela,
-  sanitizarContato, baixasAtivas, tratadasParaApuracao, acordosAtuais, pastasAtuais, semPosicionamento, efetivo, sanitizarResultado, atividadesAtuais
+  sanitizarContato, baixasAtivas, tratadasParaApuracao, acordosAtuais, pastasAtuais, pastasAutomaticas, pastasEmVigor, semPosicionamento, efetivo, sanitizarResultado, atividadesAtuais
 };

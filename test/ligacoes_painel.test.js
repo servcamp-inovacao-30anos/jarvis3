@@ -199,3 +199,21 @@ test("pasta vale também para quem estava em acompanhamento: só aparece na past
   assert.equal(de(r, 1).situacao, "pasta");
   assert.equal(r.resumo.acomp, 0);
 });
+
+
+test("pastas automáticas: D = Demitido, posto ABANDONO = Abandono, INSS da planilha = INSS; a coordenação manda", () => {
+  const faltas = [f(1, d(-5)), f(1, d(-2), "D"), f(2, d(-3), "I", { posto: "ABANDONO" }), f(3, d(-4)), f(4, d(-1))];
+  const auto = L.pastasAutomaticas(faltas, [{ re: 3, nome: "PESSOA 3", em: d(0) }, { re: 9, nome: "SEM FALTA", em: d(0) }]);
+  assert.equal(auto["1|PESSOA"].pasta, "demitido");
+  assert.equal(auto["1|PESSOA"].em, d(-2));
+  assert.equal(auto["2|PESSOA"].pasta, "abandono");
+  assert.equal(auto["3|PESSOA"].pasta, "inss");
+  assert.ok(auto["3|PESSOA"].auto && /INSS/.test(auto["3|PESSOA"].motivo));
+  assert.ok(!auto["4|PESSOA"], "falta comum continua na fila");
+  assert.ok(!auto["9|SEM"], "INSS sem falta no período não entra (não seria cobrado)");
+  const manuais = { "1|PESSOA": { pasta: null }, "4|PESSOA": { pasta: "abandono", por: "raphaelvictor" } };
+  const vale = L.pastasEmVigor(manuais, auto);
+  assert.ok(!vale["1|PESSOA"], "devolvida pela coordenação: volta à fila mesmo com o código D");
+  assert.equal(vale["4|PESSOA"].pasta, "abandono");
+  assert.equal(vale["2|PESSOA"].pasta, "abandono");
+});

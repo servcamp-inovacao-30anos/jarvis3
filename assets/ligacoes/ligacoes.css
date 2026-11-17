@@ -2198,3 +2198,9 @@ html[data-theme="dark"] .fb-pasta-res button:hover,html[data-theme="dark"] .fb-p
 html[data-theme="dark"] .fb-pasta-res b{color:#f1f5f9}html[data-theme="dark"] .fb-pasta-res span,html[data-theme="dark"] .fb-pasta-res .vz{color:#a9b8cd}
 @media (max-width:480px){.fb-pasta-ops{grid-template-columns:1fr}}
 #pg-ligacoes .fb-pc:not(.fb-pm) .fb-pc-b .fb-pc-c{flex:0 1 auto;min-width:0;max-width:100%}
+
+/* Visão geral: card "Todas as faltas" (total) antes das quatro etapas do fluxo */
+.g-slate{--gr:linear-gradient(135deg,#64748b 0%,#334155 55%,#0f172a 100%);--gs:rgba(15,23,42,.45)}
+#pg-ligacoes .fb-funil{grid-template-columns:repeat(7,minmax(0,1fr));gap:10px}
+@media (max-width:1180px){#pg-ligacoes .fb-funil{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media (max-width:640px){#pg-ligacoes .fb-funil{grid-template-columns:repeat(2,minmax(0,1fr))}}
