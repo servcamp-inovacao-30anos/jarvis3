@@ -79,7 +79,7 @@ function acordoAuto(c, hist, hoje) {
 // envios: [{ chave:"RE|PRIMEIRONOME", data }] (WhatsApp enviado com sucesso)
 // telefones: { RE: "+5519..." } só os enviáveis (pt_contatos)
 // diasHist: quantos dias de histórico vão para a tela (o painel usa 105; o histórico geral de uma pessoa, mais)
-function montarPainel({ hoje, faltas, contatos, envios, telefones, diasHist }) {
+function montarPainel({ hoje, faltas, contatos, envios, telefones, diasHist, pastas }) {
   hoje = iso(hoje);
   const desde30 = L.somaDias(hoje, -DIAS_ACOMPANHAMENTO);
   const pessoas = new Map(), porNome = new Map(), porRE = new Map();
@@ -106,6 +106,8 @@ function montarPainel({ hoje, faltas, contatos, envios, telefones, diasHist }) {
   });
 
   (envios || []).forEach(e => { const p = pessoas.get(String(e.chave)); if (p) p.envios.push(iso(e.data)); });
+  // pasta sem falta recente: a pessoa continua aparecendo na pasta (dá para devolver)
+  Object.keys(pastas || {}).forEach(k => { if (!pessoas.has(k)) { const p = nova(pastas[k].re || k.split("|")[0], pastas[k].nome, "", ""); p.key = k; indexa(p); } });
 
   const saida = [];
   pessoas.forEach(p => {
@@ -116,6 +118,14 @@ function montarPainel({ hoje, faltas, contatos, envios, telefones, diasHist }) {
     const dcUlt = ult ? dataDoContato(ult) : "";
     const telefone = (p.re && telefones && telefones[p.re]) || "";
     const base = { key: p.key, re: p.re, nome: p.nome, posto: p.posto, supervisor: p.supervisor, telefone, hist: p.hist.filter(h => h[0] >= L.somaDias(hoje, -(diasHist || 105))).map(h => [h[0], h[1]]), envios: p.envios };
+
+    // 0) numa pasta (INSS, Abandono, Demitido): só aparece lá
+    const pasta = pastas && pastas[p.key];
+    if (pasta) {
+      const pendP = p.hist.filter(h => h[1] === "I" && !h[2] && h[0] >= desde30 && h[0] <= hoje).map(h => h[0]);
+      saida.push({ ...base, situacao: "pasta", pasta: pasta.pasta, pasta_por: pasta.por, pasta_em: pasta.em, faltas: pendP });
+      return;
+    }
 
     // 1) ligou e foi registrado há até 30 dias: acompanhamento
     if (ult && diasEntre(dcUlt, hoje) <= DIAS_ACOMPANHAMENTO) {
@@ -156,11 +166,12 @@ function montarPainel({ hoje, faltas, contatos, envios, telefones, diasHist }) {
   const ordem = { piorou: 0, mesma: 1, comecando: 2, melhorando: 3, sem_faltas: 4 }; // cards: quem piorou primeiro
   saida.sort((a, b) => {
     if (a.situacao === "acomp" && b.situacao === "acomp") return ordem[a.acomp.veredito] - ordem[b.acomp.veredito] || a.acomp.dia - b.acomp.dia || a.nome.localeCompare(b.nome);
+    if (a.situacao === "pasta" && b.situacao === "pasta") return String(b.pasta_em || "").localeCompare(String(a.pasta_em || "")) || a.nome.localeCompare(b.nome);
     if (a.situacao === "base" && b.situacao === "base") return b.faltas.length - a.faltas.length || a.nome.localeCompare(b.nome);
     if (a.situacao === "aguardando" && b.situacao === "aguardando") return String(a.ultima_marca).localeCompare(String(b.ultima_marca)) || a.nome.localeCompare(b.nome);
     return String(a.faltas && a.faltas[0] || "").localeCompare(String(b.faltas && b.faltas[0] || "")) || a.nome.localeCompare(b.nome);
   });
-  const resumo = { mensagem: 0, aguardando: 0, base: 0, acomp: 0, vereditos: { melhorando: 0, mesma: 0, sem_faltas: 0, piorou: 0, comecando: 0 } };
+  const resumo = { mensagem: 0, aguardando: 0, base: 0, acomp: 0, pasta: 0, vereditos: { melhorando: 0, mesma: 0, sem_faltas: 0, piorou: 0, comecando: 0 } };
   saida.forEach(p => { resumo[p.situacao]++; if (p.acomp) resumo.vereditos[p.acomp.veredito]++; });
   return { pessoas: saida, resumo };
 }

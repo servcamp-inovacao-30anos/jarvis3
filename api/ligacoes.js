@@ -6,6 +6,7 @@
 //   PATCH                  edita contato (guarda o antes e o depois)
 //   DELETE ?id=            exclui (só coordenação; o contato inteiro fica no registro)
 //   POST   ?acao=baixa     { id, baixar:true|false, re? } só coordenação
+//   POST   ?acao=pasta     { key, re, nome, pasta:"inss"|"abandono"|"demitido"|null } só coordenação (null devolve à fila)
 //   POST   ?acao=acordo    { id, status:"cumprido"|"descumprido" } (descumprido só coordenação: desfaz a baixa)
 //   POST   ?acao=atividade { id, op:"concluir"|"cancelar"|"reagendar", data? }  próxima ação do contato
 //   (POST e PATCH aceitam { resultado, proxima, retorno }: tentativa sem conversa não permite retirar da cobrança)
@@ -123,11 +124,13 @@ async function listar({ res, db, ator }) {
 // ── painel: cada pessoa em uma situação (mensagem, aguardando, base, acompanhando) ──
 async function painel({ res, db, ator }) {
   const hoje = hojeSP(), desde = L.somaDias(hoje, -105), desdeEnvios = L.somaDias(hoje, -45);
-  const [lista, faltas, envEv] = await Promise.all([
+  const [lista, faltas, envEv, pastaEv] = await Promise.all([
     contatosCompletos(db),
     db.listar(`fm_faltas?select=re,data,nome,posto,supervisor,codigo,tipo&data=gte.${desde}&order=re.asc,data.asc`),
-    eventosDe(db, [L.ACAO_ZAP_ENVIO], `&criado_em=gte.${desdeEnvios}T00:00:00Z`)
+    eventosDe(db, [L.ACAO_ZAP_ENVIO], `&criado_em=gte.${desdeEnvios}T00:00:00Z`),
+    eventosDe(db, [L.ACAO_PASTA])
   ]);
+  const pastas = L.pastasAtuais(pastaEv);
   const contatos = lista.map(c => ({ ...c, efetivo: L.efetivo(c.resultado) }));
   const envios = envEv.filter(e => e.depois && e.depois.ok === true).map(e => ({ chave: e.chave, data: P.dataSP(e.criado_em) }));
   // telefones que o sistema já tem (base de contatos do ponto): só de quem faltou há pouco ou tem contato
@@ -142,7 +145,7 @@ async function painel({ res, db, ator }) {
       linhas.forEach(l => { const n = l.enviavel ? L.celular(l.telefone_e164) : null; if (n) telefones[L.reDe(l.re)] = n; });
     }
   } catch (e) { console.error("[ligacoes] telefones do cadastro:", e && e.message); }
-  const r = P.montarPainel({ hoje, faltas, contatos, envios, telefones });
+  const r = P.montarPainel({ hoje, faltas, contatos, envios, telefones, pastas });
   return res.status(200).json({ ok: true, hoje, pode_baixar: L.podeBaixar(ator), prazo_resposta_dias: P.PRAZO_RESPOSTA_DIAS, tentativas_para_base: P.TENTATIVAS_PARA_BASE, ...r });
 }
 
@@ -217,6 +220,18 @@ async function excluir({ req, res, db, ator, body }) {
   const b = await desfazerBaixa(db, ator, antes);
   if (b.desfeita) out.baixa = b;
   return res.status(200).json(out);
+}
+
+// pasta INSS / Abandono / Demitido: a pessoa sai da fila do SAC (não recebe mais cobrança); pasta null devolve
+async function pasta({ res, db, ator, body }) {
+  if (!L.podeBaixar(ator)) return erro(res, 403, "Só a coordenação move pessoas para as pastas.", "NAO_AUTORIZADO");
+  const lista = Array.isArray(body.pessoas) ? body.pessoas.slice(0, 200) : [];
+  const destino = body.pasta == null ? null : String(body.pasta);
+  if (destino !== null && !L.PASTAS[destino]) return erro(res, 400, "Pasta inválida.", "PASTA");
+  const ok = lista.filter(p => p && /^\d{0,15}\|[^|]{1,60}$/.test(String(p.key || "")));
+  if (!ok.length) return erro(res, 400, "Escolha ao menos uma pessoa.", "SEM_PESSOA");
+  await db.inserir("fm_auditoria", ok.map(p => evento(ator, L.ACAO_PASTA, p.key, null, { pasta: destino, re: L.reDe(p.re || String(p.key).split("|")[0]), nome: String(p.nome || "").slice(0, 120) })));
+  return res.status(200).json({ ok: true, movidas: ok.length, pasta: destino });
 }
 
 async function baixa({ res, db, ator, body }) {
@@ -302,13 +317,18 @@ async function motivo({ res, db, ator, body }) {
 // ── indicadores: topo da tela e aba Desempenho ─────────────────────────────
 async function indicadores({ res, db }) {
   const hoje = hojeSP(), desde = L.somaDias(hoje, -IND.DIAS_INDICADORES);
-  const [faltas, lista, mot, envEv] = await Promise.all([
+  const [todas, lista, mot, envEv, pastaEv] = await Promise.all([
     db.listar(`fm_faltas?select=re,data,nome,posto,supervisor,codigo,tipo,cargo&data=gte.${desde}&order=data.asc,re.asc`),
     contatosCompletos(db),
     lerMotivos(db),
-    eventosDe(db, [L.ACAO_ZAP_ENVIO], `&criado_em=gte.${desde}T00:00:00Z`)
+    eventosDe(db, [L.ACAO_ZAP_ENVIO], `&criado_em=gte.${desde}T00:00:00Z`),
+    eventosDe(db, [L.ACAO_PASTA])
   ]);
-  const contatos = lista.map(c => ({ ...c, efetivo: L.efetivo(c.resultado) }));
+  // quem está numa pasta (INSS, Abandono, Demitido) fica fora dos números e das listas
+  const pastas = L.pastasAtuais(pastaEv), naPasta = Object.values(pastas);
+  const faltas = todas.filter(f => !pastas[L.reDe(f.re) + "|" + L.primeiroNome(f.nome)]);
+  const contatos = lista.filter(c => !naPasta.some(x => L.norm(x.nome) === L.norm(c.colaborador) || (c.baixa && c.baixa.re && x.re && L.reDe(c.baixa.re) === L.reDe(x.re))))
+    .map(c => ({ ...c, efetivo: L.efetivo(c.resultado) }));
   const envios = envEv.filter(e => e.depois && e.depois.ok === true).map(e => ({ chave: e.chave, data: P.dataSP(e.criado_em) }));
   return res.status(200).json({ ok: true, prazo_resposta_dias: P.PRAZO_RESPOSTA_DIAS, ...IND.montarIndicadores({ hoje, faltas, contatos, motivos: mot, turnoDe: FR.turnoDoSupervisor, envios }) });
 }
@@ -401,7 +421,7 @@ async function zapRegistrar({ res, db, ator, body }) {
 // ── roteamento ──────────────────────────────────────────────────────────────
 const ROTAS = {
   "GET ": listar, "POST ": criar, "PATCH ": editar, "DELETE ": excluir,
-  "GET painel": painel, "GET indicadores": indicadores, "GET colaborador": colaborador, "GET motivos": motivos, "POST motivo": motivo, "POST baixa": baixa, "POST acordo": acordo, "POST atividade": atividade, "GET sem_retorno": semRetorno,
+  "GET painel": painel, "GET indicadores": indicadores, "GET colaborador": colaborador, "GET motivos": motivos, "POST motivo": motivo, "POST baixa": baixa, "POST pasta": pasta, "POST acordo": acordo, "POST atividade": atividade, "GET sem_retorno": semRetorno,
   "POST zap_autorizar": zapAutorizar, "POST zap_registrar": zapRegistrar,
   "GET zap_modelo": zapModelo, "POST zap_modelo": zapModelo
 };
@@ -417,7 +437,7 @@ module.exports = async function handler(req, res) {
   const acao = String((req.query && req.query.acao) || "");
   const rota = ROTAS[`${req.method} ${acao}`];
   if (!rota) {
-    if (acao === "" || ["baixa", "acordo", "atividade", "sem_retorno", "painel", "indicadores", "colaborador", "motivos", "motivo"].includes(acao) || acao.startsWith("zap_")) { res.setHeader("Allow", "GET, POST, PATCH, DELETE"); return erro(res, 405, "Método não permitido.", "METODO"); }
+    if (acao === "" || ["baixa", "pasta", "acordo", "atividade", "sem_retorno", "painel", "indicadores", "colaborador", "motivos", "motivo"].includes(acao) || acao.startsWith("zap_")) { res.setHeader("Allow", "GET, POST, PATCH, DELETE"); return erro(res, 405, "Método não permitido.", "METODO"); }
     return erro(res, 404, "Ação desconhecida.", "ROTA_DESCONHECIDA");
   }
   try {

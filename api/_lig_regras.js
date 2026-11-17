@@ -26,7 +26,8 @@ const ACAO_ZAP_CONFIG = "LIG_ZAP_CONFIG";          // endereço e chave do servi
 const ACAO_ZAP_MODELO = "LIG_ZAP_MODELO";          // mensagem padrão editável
 const ACAO_ZAP_CONEXAO = "LIG_ZAP_CONEXAO";        // número do SAC desconectado
 const ACAO_RESULTADO = "LIG_RESULTADO";            // resultado do contato e próxima ação (o último de cada contato vale)
-const ACAO_ATIVIDADE = "LIG_ATIVIDADE";            // próxima ação concluída, cancelada ou reagendada
+const ACAO_ATIVIDADE = "LIG_ATIVIDADE";
+const ACAO_PASTA = "LIG_PASTA";                    // pessoa movida para uma pasta (INSS, Abandono, Demitido): sai da fila do SAC; pasta null devolve            // próxima ação concluída, cancelada ou reagendada
 
 const JANELA_DIAS = 30;      // acompanhamento depois do contato (e antes: faltas que originaram o feedback)
 const MIN_FALTAS_SEM_RETORNO = 2;
@@ -210,6 +211,17 @@ function tratadasParaApuracao(baixas) {
   return m;
 }
 
+// Pastas em vigor: { "RE|PRIMEIRONOME" → { pasta, re, nome, por, em } } (o último evento de cada pessoa vale)
+const PASTAS = { inss: "INSS", abandono: "Abandono", demitido: "Demitido" };
+function pastasAtuais(eventos) {
+  const out = {};
+  ultimoPorChave(eventos, [ACAO_PASTA]).forEach((e, chave) => {
+    const d = e.depois || {};
+    if (PASTAS[d.pasta]) out[chave] = { pasta: d.pasta, re: String(d.re || ""), nome: d.nome || "", por: e.ator || "", em: e.criado_em || null };
+  });
+  return out;
+}
+
 // Prazo dos acordos: { contatoId → { prazo, status, por } }
 function acordosAtuais(eventos) {
   const out = {};
@@ -267,8 +279,8 @@ function celular(tel) {
 const MODELO_PADRAO = "Olá, {nome}. Aqui é o SAC do Grupo ServCamp. Registramos a sua ausência no trabalho{data} e precisamos entender o que aconteceu. Por favor, ligue para este número assim que puder, para conversarmos sobre o motivo da falta. Contamos com você.";
 
 module.exports = {
-  ENTIDADE, ACAO_BAIXA, ACAO_BAIXA_FIM, ACAO_EDITADO, ACAO_EXCLUIDO, ACAO_ACORDO, ACAO_ZAP_ENVIO, ACAO_ZAP_CONFIG, ACAO_ZAP_MODELO, ACAO_ZAP_CONEXAO, ACAO_RESULTADO, ACAO_ATIVIDADE, RESULTADOS, PROXIMAS,
+  ENTIDADE, ACAO_BAIXA, ACAO_BAIXA_FIM, ACAO_EDITADO, ACAO_EXCLUIDO, ACAO_ACORDO, ACAO_ZAP_ENVIO, ACAO_ZAP_CONFIG, ACAO_ZAP_MODELO, ACAO_ZAP_CONEXAO, ACAO_RESULTADO, ACAO_ATIVIDADE, ACAO_PASTA, PASTAS, RESULTADOS, PROXIMAS,
   JANELA_DIAS, MIN_FALTAS_SEM_RETORNO, NOMES, USUARIOS, MOTIVOS, CANAIS, ABONOS, MODELO_PADRAO,
   celular, podeBaixar, podeUsar, norm, primeiroNome, ehData, somaDias, reDe, limpa, janela,
-  sanitizarContato, baixasAtivas, tratadasParaApuracao, acordosAtuais, semPosicionamento, efetivo, sanitizarResultado, atividadesAtuais
+  sanitizarContato, baixasAtivas, tratadasParaApuracao, acordosAtuais, pastasAtuais, semPosicionamento, efetivo, sanitizarResultado, atividadesAtuais
 };

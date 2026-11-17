@@ -417,3 +417,33 @@ test("histórico do colaborador: feedback com mais de 30 dias traz o mesmo resul
   const r2 = await pedir(t, "ingridycampana", { query: { acao: "colaborador", re: "9" } });
   assert.equal(r2.body.pessoa.fb_fim, null, "desligado depois do feedback: fora, como no Desempenho");
 });
+
+test("pasta: só a coordenação move; a pessoa sai da fila e volta quando é devolvida", async () => {
+  const t = tabelas();
+  t.fm_faltas.push(falta(1, dia(-1)), falta(2, dia(-1)));
+  const mover = (u, corpo) => pedir(t, u, { method: "POST", query: { acao: "pasta" }, body: corpo });
+  const um = { key: "1|PESSOA", re: "1", nome: "PESSOA 1" };
+  assert.equal((await mover("ingridycampana", { pessoas: [um], pasta: "inss" })).statusCode, 403, "SAC não move");
+  assert.equal((await mover("raphaelvictor", { pessoas: [um], pasta: "ferias" })).statusCode, 400, "pasta fora da lista");
+  assert.equal((await mover("raphaelvictor", { pessoas: [{ key: "x" }], pasta: "inss" })).statusCode, 400, "pessoa sem chave válida");
+  const r = await mover("raphaelvictor", { pessoas: [um], pasta: "abandono" });
+  assert.equal(r.statusCode, 200);
+  let p = await painel(t);
+  assert.equal(pessoaDe(p, "PESSOA 1").situacao, "pasta");
+  assert.equal(pessoaDe(p, "PESSOA 1").pasta, "abandono");
+  assert.equal(pessoaDe(p, "PESSOA 2").situacao, "mensagem");
+  await mover("raphaelvictor", { pessoas: [um], pasta: null });
+  p = await painel(t);
+  assert.equal(pessoaDe(p, "PESSOA 1").situacao, "mensagem", "devolvida: volta para a fila");
+});
+
+
+test("pasta: a pessoa sai dos números e listas dos indicadores (Visão geral, Desempenho)", async () => {
+  const t = tabelas();
+  t.fm_faltas.push(falta(1, dia(-1)), falta(2, dia(-1)));
+  await pedir(t, "raphaelvictor", { method: "POST", query: { acao: "pasta" }, body: { pessoas: [{ key: "1|PESSOA", re: "1", nome: "PESSOA 1" }], pasta: "demitido" } });
+  const r = await pedir(t, "ingridycampana", { query: { acao: "indicadores" } });
+  assert.equal(r.statusCode, 200);
+  const nomes = r.body.pessoas.map(p => p[1]);
+  assert.ok(!nomes.includes("PESSOA 1") && nomes.includes("PESSOA 2"), "só quem não está em pasta entra nos indicadores");
+});

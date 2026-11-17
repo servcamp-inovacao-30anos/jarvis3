@@ -70,7 +70,7 @@ test("cinco abas num bloco único com turno e área; o período não fica no top
   const topo = h.slice(0, h.indexOf('<div id="lig-panel">'));
   assert.ok(!/Período|fb-kpi|fb-funil/.test(topo), "período e números saíram do topo: ficam só na Visão geral");
   assert.match(h, /<span class="fb-selp"><select id="lig-turno"/, "turno e área em pílula com seta, como na referência");
-  assert.match(h, /Fila do SAC<span class="n">4<\/span>/);
+  assert.match(h, /Fila do SAC<\/button>/, "a aba Fila do SAC não tem número");
   assert.match(h, /Monitoramento 30 dias<span class="n">1<\/span>/);
   assert.match(h, /Enviar mensagem<span class="n">2<\/span>/);
   assert.match(h, /Aguardando ligação<span class="n">1<\/span>/);
@@ -93,23 +93,26 @@ const funilInd = () => ({ hoje, desde: dia(-120), prazo_resposta_dias: 1,
   supervisores: ["FRANK", "PAULO SOUZA"], turnos: { FRANK: "DIURNO", "PAULO SOUZA": "NOTURNO" } });
 
 test("Visão geral: o funil faltaram → mensagem → ligaram (feedback) / não responderam, com avatares e a lista que troca", () => {
-  const e = ambiente({ pessoas: [msg()], ind: funilInd() });
+  const ind = funilInd();
+  ind.pessoas.push(["5", "DORA MELO", "POSTO D", "FRANK"]); ind.funil.faltas.push([dia(-5), 4, "A", null, "E", 0]); // só falta abonada
+  const e = ambiente({ pessoas: [msg()], ind });
   e.run(`LIG_F.per="periodo";LIG_F.de=${JSON.stringify(dia(-10))};LIG_F.ate=${JSON.stringify(hoje)}`);
   let h = e.html("visao");
   assert.match(h, /Hoje<\/button><button[^>]*>Semana<\/button><button[^>]*>Folha<\/button><button[^>]*>Período/, "o período fica acima dos cards");
-  assert.match(h, /1 · Faltaram<\/small><\/span><span class="mid"><b data-n="\d+">4<\/b>/);
+  assert.match(h, /1 · Faltaram<\/small><\/span><span class="mid"><b data-n="\d+">5<\/b><\/span><span class="sub">4 sem justificativa · 1 só abonada<\/span>/, "o card Faltaram conta todas as faltas: sem justificativa e abonadas");
   assert.match(h, /2 · Mensagem enviada<\/small><\/span><span class="mid"><b data-n="\d+">2<\/b>/);
-  assert.match(h, /2 de 4 que faltaram/, "base menor que 20: número, não %");
+  assert.match(h, /2 de 4 sem justificativa/, "base menor que 20: número, não %");
   assert.doesNotMatch(h, /% de quem faltou/);
   assert.match(h, /3 · Ligaram<\/small><\/span><span class="mid"><b data-n="\d+">1<\/b>/);
   assert.match(h, /4 · Não responderam<\/small><\/span><span class="mid"><b data-n="\d+">1<\/b>/);
-  assert.match(h, /2 sem mensagem/);
   assert.ok(!/fb-avs/.test(h), "sem iniciais nos cards do funil");
-  assert.match(h, /<small>Taxa de feedback<\/small><\/span><span class="mid"><b>25<em>%<\/em><\/b><\/span><span class="sub">1 de 4 que faltaram/, "taxa = quem ligou e teve feedback registrado sobre quem faltou");
+  assert.match(h, /<small>Taxa de feedback<\/small><\/span><span class="mid"><b>25<em>%<\/em><\/b><\/span><span class="sub">1 de 4 sem justificativa/, "taxa = quem ligou e teve feedback registrado sobre quem faltou");
   assert.match(h, /Tempo médio por feedback<\/small><\/span><span class="mid"><b data-n="\d+">15<em>min<\/em><\/b>/, "média só de quem informou o tempo");
   assert.ok(!/class="fb-fc g-amber info"[^>]*onclick/.test(h), "o tempo médio não é clicável");
-  assert.match(h, /1 falta abonada no período não entram no funil/);
-  assert.match(h, /<b>Faltaram<\/b><span>4 pessoas/, "a lista abaixo começa com quem faltou");
+  assert.ok(!/não entram no funil/.test(h), "as abonadas estão no card, sem nota à parte");
+  assert.match(h, /<b>Faltaram<\/b><span>5 pessoas/, "a lista abaixo começa com quem faltou");
+  assert.match(h, /DORA MELO[\s\S]*Falta abonada[\s\S]*<b>Abonada<\/b> em \d\d\/\d\d/, "quem só teve falta abonada aparece separado, sem envio");
+  assert.match(h, /ANA SOUZA[\s\S]*?<span title="Abonada em \d\d\/\d\d" class="fb-tag tn-gr"[^>]*>[\s\S]*?1 abonada[\s\S]*?<b>Faltou<\/b> em \d\d\/\d\d/, "quem teve as duas: etiqueta cinza da abonada (datas no título), card do mesmo tamanho");
   e.run('ligVG("naoresp")');
   h = e.els["lig-panel"].innerHTML;
   assert.match(h, /<b>Não responderam<\/b><span>1 pessoa/);
@@ -228,6 +231,8 @@ test("Enviar mensagem: a ação principal é enviar; quem já recebeu uma mensag
   assert.ok(h.includes('onclick="ligEnviarI(0)"') && h.includes("Enviar WhatsApp"));
   assert.ok(h.includes('onclick="ligRegistrarI(0)"'));
   assert.match(h, /2 faltas/);
+  assert.match(h, /<b>Faltou<\/b> em \d\d\/\d\d e \d\d\/\d\d/);
+  assert.ok(!/sem justificativa/i.test(h.replace(/<div class="fb-dcs[\s\S]*?<\/div><\/div>/, "")), "o card não repete \"sem justificativa\"");
   assert.match(h, /1 mensagem sem resposta/);
   assert.match(h, /Última mensagem em \d\d\/\d\d\. A pessoa não ligou/);
 });
@@ -409,11 +414,16 @@ test("envio em lote: seleciona até 15, mostra quem tem celular e monta a mensag
   e.run("ligSelTodos()");
   assert.equal(e.run("LIG_SEL.size"), 15, "o lote tem limite");
   const barra = e.els["lig-lote"] ? e.els["lig-lote"].innerHTML : e.els["lig-panel"].innerHTML;
-  assert.match(barra, /15<\/b> pessoas selecionadas · limite de 15 por vez/);
-  assert.match(barra, /Enviar mensagem para 15/);
-  // o 16º não entra
-  const cx = { checked: true, closest: () => null };
+  assert.match(barra, /15<\/b> pessoas selecionadas<\/span>/);
+  assert.match(barra, /onclick="ligLote\(\)">[\s\S]*Enviar mensagem para 15/);
+  // a coordenação pode marcar mais de 15 (para mover para uma pasta), mas o envio de WhatsApp fica travado acima de 15
   e.run("ligSel(15,{checked:true,closest:()=>null})");
+  assert.equal(e.run("LIG_SEL.size"), 16);
+  const b16 = e.els["lig-lote"].innerHTML;
+  assert.match(b16, /o WhatsApp vai até 15 por vez/);
+  assert.match(b16, /onclick="ligLote\(\)" disabled/);
+  assert.match(b16, /Mover para pasta…<\/option><option value="inss">INSS<\/option><option value="abandono">Abandono<\/option><option value="demitido">Demitido<\/option>/);
+  e.run("ligSel(15,{checked:false,closest:()=>null})");
   assert.equal(e.run("LIG_SEL.size"), 15);
   e.run("LIG_ZAP={configurado:true,ok:true,state:'open'};LIG_MODELO={texto:'Olá, {nome}. Faltou{data}. Ligue para o SAC.'};ligLote()");
   const j = e.painel("lig-lote-modal");
@@ -739,4 +749,49 @@ test("panorama: histórico disciplinar do ano (faltas sem justificativa, abonada
   e.run("ligDiscAbrir()");
   assert.match(e.painel("lig-disc-modal"), /<b>Nenhuma medida disciplinar em \d{4}\.<\/b> Esta é a primeira ocorrência da pessoa no ano\./);
   assert.match(e.painel("lig-disc-modal"), /Medidas disciplinares válidas<\/small><b>0<\/b>/);
+});
+
+
+test("fila do SAC: período das faltas com cards de contagem; aba Pastas tira a pessoa da cobrança", () => {
+  const pessoas = [
+    msg({ nome: "FALTOU HOJE", key: "1|F", re: "1", faltas: [hoje], hist: [[hoje, "I"], [dia(-3), "A"]] }),
+    msg({ nome: "FALTOU ANTES", key: "2|F", re: "2", faltas: [dia(-10)] }),
+    pessoa("pasta", { nome: "NO INSS", key: "3|N", re: "3", pasta: "inss", pasta_por: "raphaelvictor", pasta_em: dia(-1) + "T12:00:00Z", faltas: [dia(-2)] })
+  ];
+  const e = ambiente({ pessoas, podeBaixar: true, ind: funilInd() });
+  let h = e.html("mensagem");
+  assert.match(h, /aria-pressed="true" onclick="ligFilaPer\('todas'\)">Últimos 30 dias<\/button>[\s\S]*>Hoje<\/button>[\s\S]*>Semana<\/button>[\s\S]*>Período<\/button>/);
+  assert.match(h, /<small>Faltas no período<\/small><b>5<\/b>[\s\S]*<small>Sem justificativa<\/small><b>4<\/b>[\s\S]*<small>Abonadas<\/small><b>1<\/b>/, "cards com o número de faltas do período");
+  assert.match(h, /Enviar mensagem<span class="n">2<\/span>[\s\S]*Pastas<span class="n">1<\/span>/);
+  assert.ok(h.includes("FALTOU HOJE") && h.includes("FALTOU ANTES") && !h.includes("NO INSS"), "quem está em pasta não aparece na cobrança");
+  assert.match(h, /FALTOU HOJE[\s\S]*?1 falta[\s\S]*?title="Abonada em \d\d\/\d\d"[^>]*>[\s\S]*?1 abonada[\s\S]*?<b>Faltou<\/b> em /, "abonada separada da falta numa etiqueta cinza");
+  e.run('ligFilaPer("hoje")');
+  h = e.els["lig-panel"].innerHTML;
+  assert.ok(h.includes("FALTOU HOJE") && !h.includes("FALTOU ANTES"), "Hoje: só quem faltou hoje");
+  assert.match(h, /Enviar mensagem<span class="n">1<\/span>/);
+  e.run('ligTab("pasta")');
+  h = e.els["lig-panel"].innerHTML;
+  assert.match(h, /ligPastaVer\('todas'\)">Todas<span class="n">1<\/span>[\s\S]*>INSS<span class="n">1<\/span>[\s\S]*>Abandono<span class="n">0<\/span>[\s\S]*>Demitido<span class="n">0<\/span>/);
+  assert.match(h, /NO INSS[\s\S]*Pasta INSS[\s\S]*Fora da cobrança<\/b> desde \d\d\/\d\d · por raphaelvictor[\s\S]*ligPastaDevolver\(0\)/);
+  e.run('ligPastaVer("demitido")');
+  assert.ok(!e.els["lig-panel"].innerHTML.includes("NO INSS"), "a pasta escolhida filtra a lista");
+});
+
+
+test("pasta: botão no card escolhe a pasta; na aba Pastas dá para procurar a pessoa pelo nome ou RE", () => {
+  const e = ambiente({ pessoas: [msg({ nome: "HUGO PRADO", key: "108|HUGO", re: "108" })], podeBaixar: true, ind: funilInd() });
+  let h = e.html("mensagem");
+  assert.match(h, /class="fb-pasta-b"[^>]*aria-label="Mover HUGO PRADO para uma pasta" onclick="event.stopPropagation\(\);ligPastaEscolher\(0\)"/);
+  e.run("ligPastaEscolher(0)");
+  const j = e.painel("lig-pasta-modal");
+  assert.match(j, /HUGO PRADO[\s\S]*ligPastaFazer\('inss'\)">[\s\S]*INSS[\s\S]*ligPastaFazer\('abandono'\)[\s\S]*ligPastaFazer\('demitido'\)/);
+  assert.equal(e.run("LIG_PASTA_ALVO[0].key"), "108|HUGO");
+  // procurar alguém (inclusive quem não está na fila) pelo RE
+  e.run('ligTab("pasta")');
+  assert.match(e.els["lig-panel"].innerHTML, /ligPastaNova\(\)/);
+  e.run("ligPastaNova()");
+  e.run('LIG_PASTA_RES=fbPastaCands().filter(c=>c.re==="2")');
+  assert.equal(e.run("LIG_PASTA_RES[0].nome"), "BIA LIMA", "acha pelo RE entre quem tem falta no sistema");
+  const semPermissao = ambiente({ pessoas: [msg()], podeBaixar: false });
+  assert.ok(!/fb-pasta-b/.test(semPermissao.html("mensagem")), "só a coordenação vê o botão de pasta");
 });

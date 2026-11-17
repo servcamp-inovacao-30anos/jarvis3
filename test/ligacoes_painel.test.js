@@ -179,3 +179,23 @@ test("contato registrado sem falta na planilha ainda entra no acompanhamento", (
   assert.equal(p.situacao, "acomp");
   assert.equal(p.re, "77");
 });
+
+test("pasta (INSS, Abandono, Demitido): sai da fila, aparece na pasta mesmo sem falta recente", () => {
+  const pastas = { "1|PESSOA": { pasta: "inss", re: "1", nome: "PESSOA 1", por: "raphaelvictor", em: "2026-11-09T12:00:00Z" }, "7|SUMIDO": { pasta: "demitido", re: "7", nome: "SUMIDO DA SILVA", por: "raphaelvictor", em: null } };
+  const r = painel({ faltas: [f(1, d(-1)), f(2, d(-1))], pastas });
+  assert.equal(de(r, 1).situacao, "pasta");
+  assert.equal(de(r, 1).pasta, "inss");
+  assert.deepEqual(de(r, 1).faltas, [d(-1)], "as faltas continuam visíveis na pasta");
+  assert.equal(de(r, 2).situacao, "mensagem", "quem não está em pasta segue na fila");
+  assert.equal(de(r, 7).situacao, "pasta", "a pasta guarda a pessoa mesmo sem falta nos últimos dias");
+  assert.equal(r.resumo.pasta, 2);
+  assert.equal(r.resumo.mensagem, 1);
+});
+
+
+test("pasta vale também para quem estava em acompanhamento: só aparece na pasta", () => {
+  const pastas = { "1|PESSOA": { pasta: "abandono", re: "1", nome: "PESSOA 1", por: "raphaelvictor", em: null } };
+  const r = painel({ faltas: [f(1, d(-20)), f(1, d(-2))], contatos: [conversa(5, "PESSOA 1", d(-10))], pastas });
+  assert.equal(de(r, 1).situacao, "pasta");
+  assert.equal(r.resumo.acomp, 0);
+});
