@@ -1721,3 +1721,9 @@
 #ftv .ftv-hj{margin-right:1.2em}
 #ftv .ftv-hj.on{color:#ffc928}
 #ftv[data-tema="claro"] .ftv-hj.on{color:#b45f00}
+
+/* excluir cobrança incorreta (só aparece para a conta do responsável) */
+#ftv .ftv-exc{display:inline-block;margin-top:.35em;padding:.25em .7em;border-radius:999px;border:1px solid rgba(240,68,56,.55);background:transparent;color:#f97066;font:600 .62em/1.4 var(--fv);cursor:pointer;white-space:nowrap}
+#ftv .ftv-exc:hover{background:rgba(240,68,56,.12)}
+#ftv .ftv-exc.conf{background:#d92d20;border-color:#d92d20;color:#fff}
+#ftv .ftv-exc:disabled{opacity:.6;cursor:default}

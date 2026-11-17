@@ -290,9 +290,15 @@ test("envio manual: exige confirmar, só a semana anterior, cópias escolhidas d
   assert.equal(enviados.length, 1);
   assert.deepEqual(enviados[0].cc, ["copia1@exemplo.com.br"]);
   assert.match(enviados[0].html, /Envio automatizado/);
-  const r2 = await api("enviar", { method: "POST", usuario: RESP, body: { areas: ["JEAN KLEBER"], copias: [], confirmar: true } });
-  assert.equal(r2.body.jaEnviados, 1, "já enviada nesta semana: não sai de novo");
-  assert.equal(enviados.length, 1);
+  // à mão pode repetir quantas vezes quiser (pedido do Raphael); com o e-mail de um supervisor em cópia
+  const r2 = await api("enviar", { method: "POST", usuario: RESP, body: { areas: ["JEAN KLEBER"], copias: ["frank@exemplo.com.br"], confirmar: true } });
+  assert.equal(r2.body.enviados, 1, "envio manual repetido sai de novo: " + JSON.stringify(r2.body));
+  assert.equal(enviados.length, 2);
+  assert.deepEqual(enviados[1].cc, ["frank@exemplo.com.br"]);
+  // o automático continua não repetindo a área que já recebeu na semana
+  const auto = await FE.enviarSemana(require("../api/_ponto").conectar(), { semana: { inicio: "2026-10-19", fim: "2026-10-25" }, escolhidas: ["JEAN KLEBER"], copias: [], origem: "auto", ator: "sistema" });
+  assert.equal(auto.jaEnviados, 1);
+  assert.equal(enviados.length, 2);
   const p = await api("painel", { usuario: RESP });
   assert.equal(p.body.areas.find(a => a.area === "JEAN KLEBER").status, "ENVIADO");
   assert.equal((await api("enviar", { method: "POST", usuario: "joaoygor", body: { areas: ["JEAN KLEBER"], confirmar: true } })).statusCode, 403);
@@ -343,6 +349,16 @@ test("teste de áreas: devolve quem o servidor recusou", async () => {
   const r = await api("teste_areas", { method: "POST", usuario: RESP, body: { para: ["@eu", "fulano@exemplo.com.br"], areas: ["JEAN KLEBER"] } });
   assert.equal(r.statusCode, 200, JSON.stringify(r.body));
   assert.deepEqual(r.body.recusados, ["fulano@exemplo.com.br"]);
+});
+test("cobrança excluída no modo TV também sai do aviso por e-mail e do histórico", async () => {
+  const t = base();
+  t.fm_auditoria.push({ id: 9001, ator: "raphaelvictor", acao: "COBRANCA_EXCLUIDA", chave: "101|2026-10-20", depois: { re: 101, data: "2026-10-20" }, criado_em: "2026-10-26T10:00:00Z" });
+  const l = await FE.faltasDoPeriodo(require("../api/_ponto").conectar(), "2026-10-19", "2026-10-25", FE.fimDoDiaSP("2026-10-25"));
+  assert.ok(!l.some(f => f.re === 101 && f.data === "2026-10-20"), "a excluída não entra");
+  assert.ok(l.some(f => f.re === 101 && f.data === "2026-10-22"), "a outra falta da pessoa continua");
+  const r = await api("previa", { usuario: RESP, query: { area: "JEAN KLEBER" } });
+  const txt = r.body.html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+  assert.match(txt, /Histórico: 1 falta injustificada/);
 });
 test("prévia: e-mail pronto com a logo embutida, sem enviar nada", async () => {
   base();
