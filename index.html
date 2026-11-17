@@ -3282,7 +3282,7 @@ aside.sb#sidebar.sb-mini #navRoot .ni{margin:2px 8px;padding:9px 0;}
       #pg-faltassup .fs-top{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;margin:0 0 14px}
       #pg-faltassup .fs-top h4{font-size:1.3rem;font-weight:700;letter-spacing:-.01em;color:var(--fm-text);margin:0}
       #pg-faltassup .fs-top p{font-size:.8rem;color:var(--fm-muted);margin:4px 0 0;max-width:660px}
-      #pg-faltassup .fs-top p b{color:var(--fm-text2)}
+      #pg-faltassup .fs-top p b{color:var(--fm-text2);display:inline-block;padding:1px 8px;border:1.5px solid var(--fm-brand);border-radius:6px;line-height:1.4}
       #pg-faltassup .fs-esc{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
       #pg-faltassup .fs-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 12px}
       #pg-faltassup .fs-calw{position:relative}
@@ -10905,7 +10905,7 @@ function cfgGuias(k){
   div.style.cssText="position:fixed;inset:0;background:rgba(13,31,53,.75);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px";
   div.innerHTML='<div style="background:#fff;border-radius:16px;padding:22px 24px;max-width:640px;width:100%;max-height:88vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.35)">'+
     '<div style="font-size:.72rem;font-weight:900;letter-spacing:.6px;text-transform:uppercase;color:#1e4d8c">👁️ Guias que '+_esc(u.nome)+' vê</div>'+
-    '<div style="font-size:.7rem;color:#64748b;margin:4px 0 14px">Marque para mostrar, desmarque para esconder. Vale a partir do próximo login. <span style="color:#b45309">●</span> = diferente do padrão do perfil.</div>'+
+    '<div style="font-size:.7rem;color:#64748b;margin:4px 0 14px">Marque para mostrar, desmarque para esconder. Vale em até 3 minutos, sem a pessoa precisar sair e entrar (ou na hora, se ela recarregar a página). <span style="color:#b45309">●</span> = diferente do padrão do perfil.</div>'+
     cats.map(c=>'<div style="margin-bottom:12px"><div style="font-size:.66rem;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:6px">'+_esc(c.t)+'</div>'+
       '<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 14px">'+c.itens.map(i=>{
         const pad=cfgPadraoGuia(u,i.perm),tem=Object.prototype.hasOwnProperty.call(g,i.pg),ver=tem?!!g[i.pg]:pad;
@@ -10957,6 +10957,20 @@ function cfgAlternarAcesso(k,liberar){
     .then(()=>{if(typeof hqToast==="function")hqToast(liberar?"✅ Acesso de "+nome+" liberado":"🚫 Acesso de "+nome+" bloqueado");cfgLoad();})
     .catch(e=>{alert("Não foi possível "+(liberar?"liberar":"bloquear")+" o acesso: "+((e&&e.message)||e));});
 }
+/* Excluir usuário: some da lista, não entra mais e o painel aberto dele volta ao login.
+   Quem foi criado pela tela é apagado do banco; quem está no código fica bloqueado e marcado. */
+function cfgBotaoExcluir(k){
+  if(k===sessionStorage.getItem("userKey")||CFG_ADMINS_FIXOS.indexOf(k)>=0)return "";
+  return'<button type="button" class="rh-btn" title="Excluir usuário" aria-label="Excluir '+_esc((USERS[k]||{}).nome||k)+'" style="padding:5px 10px;font-size:.64rem;white-space:nowrap;margin-left:6px;background:linear-gradient(135deg,#dc2626,#b91c1c)" onclick="cfgExcluirUsuario(\''+k+'\')">🗑 Excluir</button>';
+}
+function cfgExcluirUsuario(k){
+  const nome=(USERS[k]||{}).nome||k;
+  if(!confirm("Excluir o usuário "+nome+"?\n\n"+nome+" não consegue mais entrar no painel e, se estiver com ele aberto, volta para a tela de login em alguns segundos.\n\nIsso não pode ser desfeito pela tela."))return;
+  fetch("/api/users",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"delete_user",userKey:k})})
+    .then(r=>r.json().catch(()=>({})).then(j=>{if(!r.ok||!j.ok)throw new Error(j.error||("HTTP "+r.status));return j;}))
+    .then(j=>{if(j.apagado)delete USERS[k];if(typeof hqToast==="function")hqToast("🗑 Usuário "+nome+" excluído");cfgLoad();})
+    .catch(e=>{alert("Não foi possível excluir o usuário: "+((e&&e.message)||e));});
+}
 function cfgRedefinirSenha(k){
   const nome=(USERS[k]||{}).nome||k;
   if(!confirm("Redefinir a senha de "+nome+"?\n\nA senha atual deixa de valer. O sistema gera uma senha temporária e "+nome+" cria a própria no próximo acesso."))return;
@@ -10986,7 +11000,7 @@ function cfgMostrarSenha(nome,k,senha,titulo){
 }
 function cfgRender(){
   const el=document.getElementById("cfg-content");if(!el)return;
-  const keys=Object.keys(USERS);
+  const keys=Object.keys(USERS).filter(k=>!(CFG_AUDIT[k]&&CFG_AUDIT[k].excluido)); // excluído (fixo do código) some da lista
   const total=keys.length;
   let comSenha=0,jaAcessou=0,online=0;
   keys.forEach(k=>{const a=CFG_AUDIT[k];if(a&&a.has_custom)comSenha++;if(a&&a.last_login){jaAcessou++;if(Date.now()-new Date(a.last_login).getTime()<8*60000)online++;}});
@@ -11027,7 +11041,7 @@ function cfgRender(){
       ${CFG_PANEIS.map(p=>`<td style="padding:8px 8px;text-align:center;font-size:.9rem">${p.has(u)?'<span style="color:#16a34a;font-weight:900">✓</span>':'<span style="color:#e2e8f0">·</span>'}</td>`).join("")}
       <td style="padding:8px 10px"><div style="color:${ac.cor};font-weight:${ac.peso};font-size:.7rem">${ac.desde||""}</div><div style="font-size:.6rem;color:#94a3b8">${ac.desde?ac.txt:""}</div></td>
       <td style="padding:8px 10px;text-align:center">${a.has_custom?'<span title="Senha própria" style="color:#16a34a">🔒</span>':'<span title="Ainda na senha padrão" style="color:#f97316">🔓</span>'}</td>
-      <td style="padding:8px 10px;text-align:center;white-space:nowrap"><button type="button" class="rh-btn" style="padding:5px 10px;font-size:.64rem;white-space:nowrap" onclick="cfgRedefinirSenha('${k}')">🔑 Redefinir senha</button><button type="button" class="rh-btn" style="padding:5px 10px;font-size:.64rem;white-space:nowrap;margin-left:6px" onclick="cfgGuias('${k}')">👁️ Guias</button>${cfgBotaoAcesso(k,bloq)}</td>
+      <td style="padding:8px 10px;text-align:center;white-space:nowrap"><button type="button" class="rh-btn" style="padding:5px 10px;font-size:.64rem;white-space:nowrap" onclick="cfgRedefinirSenha('${k}')">🔑 Redefinir senha</button><button type="button" class="rh-btn" style="padding:5px 10px;font-size:.64rem;white-space:nowrap;margin-left:6px" onclick="cfgGuias('${k}')">👁️ Guias</button>${cfgBotaoAcesso(k,bloq)}${cfgBotaoExcluir(k)}</td>
     </tr>`;
   });
   h+=`</tbody></table></div>`;
@@ -18563,6 +18577,8 @@ function comDashRender(){
     <div style="font-size:.6rem;color:#94a3b8;margin-top:9px">A chance vem da etapa do funil, mais resposta do cliente e visita realizada, menos os dias parado. É um indicador de prioridade, não uma previsão.</div>`
     :`<div style="font-size:.72rem;color:#64748b;margin-top:8px">Nenhuma proposta atinge 70% agora. A chance sobe quando o cliente responde, quando há visita e quando a negociação avança de etapa.</div>`}
   </div>`;
+  /* ── AGENDA COMERCIAL: os números das reuniões do mês (assets/agenda/agenda.js preenche; quem não pode ver, não vê) ── */
+  h+='<div id="cd-agenda"></div>';
   /* ── GRÁFICOS: receita mensal + meta×realizado ── */
   h+=`<div style="display:grid;grid-template-columns:${COM_VALORES?"1fr 1fr":"1fr"};gap:14px;margin-bottom:14px">`;
   if(COM_VALORES)h+=`<div style="background:#fff;border:1px solid #e5e9f0;border-radius:14px;padding:18px 22px"><div style="font-size:.8rem;font-weight:800;color:#0d1f35;margin-bottom:10px">📈 Receita Fechada — últimos 6 meses</div><div style="height:190px"><canvas id="cdRev"></canvas></div></div>`;
@@ -18608,6 +18624,7 @@ function comDashRender(){
     <div style="font-size:.7rem">${tlGeral.length?tlGeral.map(l=>{const p=P.find(x=>x.id===l.proposta_id);const ic=l.etapa>0?(l.canal==="WHATSAPP"?"📱":"✉️"):({VISITA:"🏠",WHATSAPP:"📱",EMAIL:"✉️"}[l.canal]||"⚙️");return`<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid #f1f5f9;align-items:baseline"><span>${ic}</span><div style="flex:1"><b style="color:#0d1f35">${p?p.nome:"#"+l.proposta_id}</b> — ${l.etapa>0?(COM_ETAPA_LBL[l.etapa]||"")+(l.status==="falhou"?" ⚠️":""):l.detalhe||"evento"}</div><span style="color:#94a3b8;white-space:nowrap;font-size:.62rem">${new Date(l.enviado_em).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})}</span></div>`;}).join(""):'<div style="color:#94a3b8">Sem atividades registradas ainda.</div>'}</div></div>`;
   h+=`</div>`;
   el.innerHTML=h;
+  if(typeof agPainelComercial==="function")agPainelComercial(document.getElementById("cd-agenda"),mesKey.slice(0,7));
   /* gráficos Chart.js */
   try{
     if(COM_VALORES){dc2("cdRev");CH["cdRev"]=new Chart(document.getElementById("cdRev"),{type:"line",data:{labels:mesesLbl,datasets:[{label:"Receita fechada",data:sFecR,borderColor:"#16a34a",backgroundColor:"rgba(22,163,74,.10)",borderWidth:2.5,pointRadius:4,pointBackgroundColor:"#16a34a",fill:true,tension:.35}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmtBRL0(c.parsed.y)}}},scales:{y:{ticks:{callback:v=>"R$ "+(v>=1000?(v/1000)+"k":v),font:{size:10}}},x:{ticks:{font:{size:10}}}}}});}
@@ -19013,7 +19030,7 @@ document.addEventListener("DOMContentLoaded",init);
 <link rel="stylesheet" href="/assets/celulares/celulares.css"><script src="/assets/celulares/celulares.js"></script>
 <link rel="stylesheet" href="/assets/ligacoes/ligacoes.css"><script src="/assets/ligacoes/ligacoes.js"></script>
 <link rel="stylesheet" href="/assets/ofensiva/ofensiva.css"><script src="/assets/ofensiva/ofensiva.js"></script>
-<link rel="stylesheet" href="/assets/agenda/agenda.css"><script src="/assets/agenda/agenda.js"></script>
+<link rel="stylesheet" href="/assets/agenda/agenda.css"><script src="/assets/agenda/agenda.js"></script><script src="/assets/sessao/guias.js"></script>
 <link rel="stylesheet" href="/assets/medida/assinatura.css"><script src="/assets/vendor/qrcode-generator.js"></script><script src="/assets/medida/assinatura.js"></script>
 </body>
 </html>

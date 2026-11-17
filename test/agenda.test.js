@@ -272,21 +272,28 @@ test("API pública: o mesmo telefone (ou e-mail) não segura mais que 2 reuniõe
 
 // ── tela: calendário ────────────────────────────────────────────────────────
 const vm = require("vm");
-function telaAgenda(dados) {
-  const pagina = { innerHTML: "", addEventListener() {}, __ag: false };
+function telaAgenda(dados, opcoes) {
+  const o = opcoes || {}, ouvintes = {}, pedidos = [], janelas = [];
+  const pagina = { innerHTML: "", addEventListener(n, f) { ouvintes[n] = f; }, contains: () => true, __ag: false };
+  // clicar num botão com data-ag (o painel usa delegação de eventos no #ag-content)
+  pagina.clicar = dataset => ouvintes.click({ target: { closest: s => (s === "[data-ag]" ? { dataset, disabled: false } : null) } });
   const store = new Map([["userKey", "joaoygor"], ["logged", "1"]]);
   const ctx = {
     console, Promise, setTimeout, clearTimeout, Date, JSON, Map, Set, encodeURIComponent, location: { origin: "https://painel.exemplo" },
     sessionStorage: { getItem: k => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, String(v)) },
-    localStorage: { getItem: () => null, setItem() {} },
-    document: { readyState: "complete", addEventListener() {}, querySelector: () => null, getElementById: id => (id === "ag-content" ? pagina : null) },
-    fetch: async () => ({ ok: true, status: 200, json: async () => dados }),
+    localStorage: { getItem: k => (k === "agd_vista" ? o.vista || null : null), setItem() {} },
+    document: { readyState: "complete", addEventListener() {}, querySelector: () => null,
+      getElementById: id => (id === "ag-content" ? pagina : id === "agd-ov" ? janelas[janelas.length - 1] || null : null),
+      // janelas (abrirKpi, abrirReuniao…): guarda o HTML e os ouvintes de clique
+      createElement: () => { const j = { innerHTML: "", ouv: [], addEventListener(n, f) { if (n === "click") j.ouv.push(f); }, remove() { janelas.splice(janelas.indexOf(j), 1); }, querySelector: () => null }; return j; },
+      body: { appendChild: j => janelas.push(j) } },
+    fetch: async url => { pedidos.push(String(url)); const r = o.rotas && o.rotas(String(url)); return r || { ok: true, status: 200, json: async () => dados }; },
     ST: { pg: "agenda" }
   };
   ctx.window = ctx;
   vm.createContext(ctx);
   vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "assets", "agenda", "agenda.js"), "utf8"), ctx, { filename: "agenda.js" });
-  return { ctx, pagina };
+  return { ctx, pagina, pedidos, janelas };
 }
 test("tela: semana como o iPhone (seg a sex), reunião no horário e na altura da duração, bloqueio e nome escapado", async () => {
   const real = Date.now;
@@ -301,7 +308,7 @@ test("tela: semana como o iPhone (seg a sex), reunião no horário e na altura d
         { id: 6, tipo_id: 1, tipo_nome: "Captação", inicio: new Date(R.paraUtc("2026-11-06", "15:00")).toISOString(), fim: new Date(R.paraUtc("2026-11-06", "15:30")).toISOString(), nome: "Cancelada", origem: "link", status: "cancelada" }
       ]
     };
-    const { ctx, pagina } = telaAgenda(dados);
+    const { ctx, pagina } = telaAgenda(dados, { vista: "semana" });
     ctx.agLoad();
     await new Promise(r => setTimeout(r, 15));
     const h = pagina.innerHTML;
@@ -484,7 +491,7 @@ test("tela: horários do diretor aparecem em cinza no calendário e o botão avi
       diretores: [{ id: 7, nome: "Paulo <b>", ativo: true, valido: false, erro: "rede caiu", link: "icloud.com/…23456", compromissos: 0, lido_em: null }],
       ocupados: [{ dir: 7, nome: "Paulo <b>", inicio: new Date(R.paraUtc("2026-11-06", "10:00")).toISOString(), fim: new Date(R.paraUtc("2026-11-06", "11:30")).toISOString() }]
     };
-    const { ctx, pagina } = telaAgenda(dados);
+    const { ctx, pagina } = telaAgenda(dados, { vista: "semana" });
     ctx.agLoad();
     await new Promise(r => setTimeout(r, 15));
     const h = pagina.innerHTML;
@@ -988,4 +995,527 @@ test("whatsapp: sem a Evolution configurada nada sai pela rede; com ela, só env
 test("agendar.html avisa que a confirmação vai por WhatsApp e e-mail", () => {
   const PUB = fs.readFileSync(path.join(__dirname, "..", "agendar.html"), "utf8");
   assert.ok(PUB.includes("confirmação por <b>WhatsApp</b>"));
+});
+
+// ── 🎨 sua página, resultado e números do Painel Comercial ─────────────────
+const FOTO = "data:image/jpeg;base64," + Buffer.from("foto-de-teste").toString("base64");
+
+test("marca: quem atende aparece na página do cliente, com foto servida à parte; validação recusa o que não é imagem", async () => {
+  await comRelogio(AGORA, async () => {
+    const { tabelas, slug60 } = await preparar();
+    assert.ok(R.validarMarca({ nome: "Gabi", foto: "data:text/html;base64,PGI+" }).erro, "só imagem");
+    assert.ok(R.validarMarca({ nome: "Gabi", foto: "data:image/jpeg;base64," + "A".repeat(R.FOTO_MAX) }).erro, "nem grande demais");
+    assert.equal((await adm("marca", { method: "POST", usuario: "carlos", body: { nome: "X" } })).statusCode, 403, "só quem administra");
+    const r = await adm("marca", { method: "POST", body: { nome: "  Gabriela Alvarenga ", cargo: "Consultora Comercial", boas_vindas: "Olá!\nEscolha o horário.", foto: FOTO } });
+    assert.equal(r.statusCode, 200, JSON.stringify(r.body));
+    const h = await pub("horarios", { query: { s: slug60 } });
+    assert.equal(h.body.marca.nome, "Gabriela Alvarenga");
+    assert.equal(h.body.marca.cargo, "Consultora Comercial");
+    assert.match(h.body.marca.foto, /^\/api\/rh\?modulo=agendapub&t=foto&v=[0-9a-f]{10}$/);
+    assert.ok(!JSON.stringify(h.body).includes("base64"), "a foto não vai dentro da página");
+    const f = await pub("foto");
+    assert.equal(f.statusCode, 200);
+    assert.equal(f.cab["Content-Type"], "image/jpeg");
+    assert.equal(Buffer.from(f.body).toString(), "foto-de-teste");
+    // salvar sem mandar a foto mantém a foto; mandar "" tira
+    await adm("marca", { method: "POST", body: { nome: "Gabriela", cargo: "Comercial" } });
+    assert.equal(tabelas.ag_config[0].anfitriao_foto, FOTO);
+    await adm("marca", { method: "POST", body: { nome: "Gabriela", foto: "" } });
+    assert.equal(tabelas.ag_config[0].anfitriao_foto, null);
+    assert.equal((await pub("foto")).statusCode, 404);
+    assert.equal((await pub("horarios", { query: { s: slug60 } })).body.marca.foto, null);
+  });
+});
+
+test("marca: e-mail com logo e assinatura de quem atende; WhatsApp assinado", async () => {
+  process.env.MAIL_USER = "comercial@exemplo.com";
+  const c = correioFalso(), z = zapFalso();
+  try {
+    await comRelogio(AGORA, async () => {
+      const { slug60 } = await preparar();
+      await adm("marca", { method: "POST", body: { nome: "Gabriela Alvarenga", cargo: "Consultora Comercial", foto: FOTO } });
+      const r = await marcar(slug60, "10:00", pessoa(1, { email: "ana@exemplo.com" }));
+      assert.equal(r.statusCode, 201);
+      const cli = c.enviados.find(m => m.para === "ana@exemplo.com");
+      assert.ok(cli.html.includes("https://painel.exemplo/logo-servcamp-120.png"), "logo");
+      assert.ok(cli.html.includes("Gabriela Alvarenga") && cli.html.includes("Consultora Comercial"), "assinatura");
+      assert.ok(/https:\/\/painel\.exemplo\/api\/rh\?modulo=agendapub&amp;t=foto&amp;v=[0-9a-f]{10}/.test(cli.html), "foto com endereço completo");
+      assert.ok(cli.texto.endsWith("Gabriela Alvarenga · Consultora Comercial\nGrupo ServCamp"));
+      assert.ok(!aviso(c.enviados).html.includes("Consultora Comercial"), "o aviso interno não leva assinatura");
+      assert.ok(z.enviados[0].texto.endsWith("— Gabriela Alvarenga · Consultora Comercial\n*Grupo ServCamp*"));
+    });
+  } finally { c.solta(); z.solta(); }
+});
+
+test("resultado: só depois que a reunião começa; realizada/faltou, próximo passo, anotação e desfazer", async () => {
+  const c = correioFalso(), z = zapFalso();
+  try {
+    const { tabelas } = await comRelogio(AGORA, async () => {
+      const p = await preparar();
+      assert.equal((await marcar(p.slug60, "10:00", pessoa(1))).statusCode, 201);
+      return p;
+    });
+    const id = String(tabelas.ag_reunioes[0].id);
+    await comRelogio(AGORA, async () => {
+      assert.equal((await adm("resultado", { method: "POST", query: { id }, body: { resultado: "realizada" } })).statusCode, 409, "ainda não começou");
+    });
+    await comRelogio(R.paraUtc(QUI, "11:30"), async () => {
+      assert.equal((await adm("resultado", { method: "POST", query: { id }, body: { resultado: "talvez" } })).statusCode, 400);
+      assert.equal((await adm("resultado", { method: "POST", query: { id }, body: { resultado: "realizada", proximo: "voar" } })).statusCode, 400);
+      assert.equal((await adm("resultado", { method: "POST", usuario: "carlos", query: { id }, body: { resultado: "realizada" } })).statusCode, 403);
+      const ok = await adm("resultado", { method: "POST", query: { id }, body: { resultado: "realizada", proximo: "proposta", anotacao: "quer portaria 24h" } });
+      assert.equal(ok.statusCode, 200, JSON.stringify(ok.body));
+      const r = tabelas.ag_reunioes[0];
+      assert.equal(r.resultado, "realizada"); assert.equal(r.proximo_passo, "proposta"); assert.equal(r.resultado_obs, "quer portaria 24h"); assert.equal(r.resultado_por, "joaoygor");
+      assert.equal((await adm("")).body.reunioes[0].resultado, "realizada");
+      await adm("resultado", { method: "POST", query: { id }, body: { resultado: null } });
+      assert.equal(tabelas.ag_reunioes[0].resultado, null, "desfaz");
+      assert.equal(tabelas.ag_reunioes[0].resultado_em, null);
+    });
+  } finally { c.solta(); z.solta(); }
+});
+
+test("números: contas do mês (comparecimento, link, proposta, canceladas, horários e dias mais procurados)", () => {
+  const r = (dia, hora, extra) => Object.assign({ inicio: new Date(R.paraUtc(dia, hora)).toISOString(), tipo_nome: "Captação", origem: "link", status: "ativa", resultado: null, proximo_passo: null }, extra || {});
+  const rs = [
+    r("2026-11-03", "10:00", { resultado: "realizada", proximo_passo: "proposta" }),
+    r("2026-11-03", "14:00", { resultado: "realizada", proximo_passo: "fechou", origem: "manual", tipo_nome: "Reunião com cliente" }),
+    r("2026-11-04", "10:00", { resultado: "faltou" }),
+    r("2026-11-04", "11:00"),                                   // já passou, sem resultado
+    r("2026-11-20", "10:00"),                                   // futura
+    r("2026-11-05", "09:00", { status: "cancelada", cancelado_por: "cliente" }),
+    r("2026-10-15", "10:00", { resultado: "realizada" }),        // mês anterior
+    r("2026-10-16", "10:00", { resultado: "faltou" })
+  ];
+  const n = R.numeros(rs, "2026-11", AGORA);
+  assert.deepEqual(n.atual, { marcadas: 5, realizadas: 2, faltas: 1, pendentes: 1, futuras: 1, canceladas: 1, canceladas_cliente: 1, pelo_link: 4, comparecimento: 67, viraram_proposta: 2, fecharam: 1 });
+  assert.equal(n.anterior.comparecimento, 50);
+  assert.deepEqual(n.por_tipo, [["Captação", 4], ["Reunião com cliente", 1]]);
+  assert.deepEqual(n.por_hora, [["09h", 1], ["10h", 5], ["11h", 1], ["14h", 1]], "a procura conta também o que foi cancelado depois");
+  assert.deepEqual(n.por_dia.map(x => x[0]), ["Ter", "Qua", "Qui", "Sex"]);
+  assert.deepEqual(n.serie.map(s => s.mes), ["2026-06", "2026-07", "2026-08", "2026-09", "2026-10", "2026-11"]);
+  assert.deepEqual(n.serie[5], { mes: "2026-11", marcadas: 5, realizadas: 2, faltas: 1 });
+  assert.deepEqual(n.proximos_passos, [["Enviar proposta", 1], ["Fechou negócio", 1]]);
+  assert.equal(R.mesAntes("2026-01", 1), "2025-12");
+});
+
+test("números: API só para quem administra a agenda (por enquanto) e sem dados de ninguém", async () => {
+  await comRelogio(AGORA, async () => {
+    const { tabelas, slug60 } = await preparar();
+    tabelas.app_users.push({ user_key: "diretor", nome: "Diretor", ativo: true, perms: { comDash: true } });
+    assert.equal((await marcar(slug60, "10:00", pessoa(1))).statusCode, 201);
+    const ok = await adm("numeros", { query: { mes: "2026-11" } });
+    assert.equal(ok.statusCode, 200, JSON.stringify(ok.body));
+    assert.equal(ok.body.mes, "2026-11");
+    assert.equal(ok.body.atual.marcadas, 1);
+    assert.ok(!/Pessoa 1|1999999|exemplo\.com/.test(JSON.stringify(ok.body)), "só contagens");
+    assert.equal(agendaMod.NUMEROS_NO_PAINEL, false);
+    assert.equal((await adm("numeros", { usuario: "diretor" })).statusCode, 403, "Painel Comercial só vê quando a agenda for liberada");
+    assert.equal((await adm("numeros", { query: { mes: "lixo" } })).body.mes, "2026-11", "mês inválido vira o atual");
+  });
+});
+
+test("tela: reunião que já aconteceu sem resultado aparece para registrar; painel comercial desenha os números", async () => {
+  const real = Date.now;
+  Date.now = () => AGORA;
+  try {
+    const ontem = { id: 7, tipo_id: 1, tipo_nome: "Captação", inicio: new Date(R.paraUtc("2026-11-04", "10:00")).toISOString(), fim: new Date(R.paraUtc("2026-11-04", "10:30")).toISOString(), nome: "Bruno", origem: "link", status: "ativa" };
+    const dados = { config: R.CONFIG_PADRAO, ics_chave: "k", marca: {}, tipos: [{ id: 1, nome: "Captação", duracao_min: 30, cor: "#ea580c", slug: "abc", ativo: true }], bloqueios: [], reunioes: [ontem] };
+    const { ctx, pagina } = telaAgenda(dados);
+    ctx.agLoad();
+    await new Promise(r => setTimeout(r, 15));
+    assert.ok(pagina.innerHTML.includes("Como foram estas reuniões?") && pagina.innerHTML.includes('data-ag="res" data-r="realizada" data-id="7"'));
+    assert.ok(pagina.innerHTML.includes("🎨 Sua página"));
+    const n = R.numeros([{ inicio: ontem.inicio, tipo_nome: "Captação", origem: "link", status: "ativa", resultado: "realizada", proximo_passo: "proposta" }], "2026-11", AGORA);
+    const el = { innerHTML: "", isConnected: true };
+    const t2 = telaAgenda(Object.assign({ ok: true }, n));
+    t2.ctx.agPainelComercial(el, "2026-11");
+    await new Promise(r => setTimeout(r, 15));
+    assert.ok(el.innerHTML.includes("Agenda Comercial") && el.innerHTML.includes("novembro de 2026"));
+    assert.ok(el.innerHTML.includes("Comparecimento") && el.innerHTML.includes("100%"));
+    assert.ok(el.innerHTML.includes("Enviar proposta"));
+  } finally { Date.now = real; }
+});
+
+test("agendar.html: marca do Grupo ServCamp, etapas e cartão de quem atende", () => {
+  const PUB = fs.readFileSync(path.join(__dirname, "..", "agendar.html"), "utf8");
+  assert.ok(PUB.includes('src="/logo-servcamp-120.png"') && PUB.includes('id="agHost"') && PUB.includes('id="agSteps"') && PUB.includes('id="agBoas"'));
+  assert.ok(fs.existsSync(path.join(__dirname, "..", "logo-servcamp-120.png")));
+});
+
+// ── online ou presencial ──────────────────────────────────────────────────
+test("modalidade: o dia específico vence o padrão da semana; sem nada, os dois", () => {
+  const c = { modalidade_semana: { "4": "online" }, modalidade_dias: { "2026-11-19": "presencial" } };
+  assert.equal(R.modalidadeDoDia(c, QUI), "online", "quinta: padrão da semana");
+  assert.equal(R.modalidadeDoDia(c, "2026-11-19"), "presencial", "quinta 19: o dia específico");
+  assert.equal(R.modalidadeDoDia(c, "2026-11-13"), "ambos");
+  assert.equal(R.modalidadeDoDia({}, QUI), "ambos");
+  assert.ok(R.aceita("ambos", "online") && R.aceita("ambos", "presencial") && !R.aceita("ambos", "x"));
+  assert.ok(R.aceita("online", "online") && !R.aceita("online", "presencial"));
+  const v = R.validarConfig(Object.assign(cfg(), { modalidade_semana: { "1": "online", "2": "ambos", "3": "lixo", "9": "online" } }));
+  assert.deepEqual(v.config.modalidade_semana, { "1": "online" }, "só guarda o que limita, e só dias válidos");
+  assert.ok(R.validarModalidadeDia({ dia: "12/11", modalidade: "online" }).erro);
+  assert.ok(R.validarModalidadeDia({ dia: QUI, modalidade: "remoto" }).erro);
+  assert.deepEqual(R.validarModalidadeDia({ dia: QUI, modalidade: "padrao" }), { dia: QUI, modalidade: null });
+});
+
+test("modalidade: o link mostra o jeito de cada dia, marca com o local certo e recusa o jeito que o dia não atende", async () => {
+  const c = correioFalso(), z = zapFalso();
+  try {
+    await comRelogio(AGORA, async () => {
+      const { tabelas, slug60 } = await preparar();
+      const t = tabelas.ag_tipos.find(x => x.slug === slug60);
+      assert.equal((await adm("tipo", { method: "POST", body: { id: t.id, nome: t.nome, duracao_min: 60, cor: t.cor, local: "Rua das Flores, 100 — Campinas", local_online: "Google Meet: meet.google.com/abc-defg-hij" } })).statusCode, 200);
+      // quinta só online (padrão da semana); sexta 13 só presencial (dia específico)
+      assert.equal((await adm("config", { method: "POST", body: Object.assign(cfg(), { modalidade_semana: { "4": "online" } }) })).statusCode, 200);
+      assert.equal((await adm("modalidade", { method: "POST", usuario: "carlos", body: { dia: "2026-11-13", modalidade: "presencial" } })).statusCode, 403);
+      const md = await adm("modalidade", { method: "POST", body: { dia: "2026-11-13", modalidade: "presencial" } });
+      assert.equal(md.statusCode, 200, JSON.stringify(md.body));
+      const h = await pub("horarios", { query: { s: slug60 } });
+      assert.equal(h.body.modalidades[QUI], "online");
+      assert.equal(h.body.modalidades["2026-11-13"], "presencial");
+      assert.equal(h.body.modalidades["2026-11-10"], "ambos");
+      assert.equal(h.body.tipo.local_online, "Google Meet: meet.google.com/abc-defg-hij");
+      // presencial na quinta (só online): recusado
+      const nao = await marcar(slug60, "10:00", pessoa(1), { modalidade: "presencial" });
+      assert.equal(nao.statusCode, 409); assert.equal(nao.body.codigo, "MODALIDADE");
+      // quinta sem dizer: vira online, com o link
+      const ok = await marcar(slug60, "10:00", pessoa(1));
+      assert.equal(ok.statusCode, 201, JSON.stringify(ok.body));
+      assert.equal(ok.body.modalidade, "online");
+      const r = tabelas.ag_reunioes[0];
+      assert.equal(r.modalidade, "online"); assert.equal(r.local, "Google Meet: meet.google.com/abc-defg-hij");
+      // terça (os dois): presencial, com o endereço
+      const ter = await pub("agendar", { method: "POST", headers: HOST, body: Object.assign({ s: slug60, dia: "2026-11-10", hora: "10:00", modalidade: "presencial" }, pessoa(2)) });
+      assert.equal(ter.statusCode, 201, JSON.stringify(ter.body));
+      assert.equal(tabelas.ag_reunioes[1].local, "Rua das Flores, 100 — Campinas");
+      assert.equal((await pub("agendar", { method: "POST", headers: HOST, body: Object.assign({ s: slug60, dia: "2026-11-10", hora: "14:00", modalidade: "voando" }, pessoa(3)) })).statusCode, 400);
+      // mensagens dizem como é
+      const cli = c.enviados.find(m => m.para === "p1@exemplo.com");
+      assert.ok(cli.html.includes("💻 Online: Google Meet: meet.google.com/abc-defg-hij") && cli.texto.includes("💻 Online: Google Meet"));
+      assert.ok(z.enviados[0].texto.includes("💻 Online: Google Meet"));
+      assert.ok(z.enviados[1].texto.includes("📍 Presencial — Rua das Flores, 100 — Campinas"));
+      assert.ok(aviso(c.enviados).html.includes("💻 Online"), "o aviso da Comercial também diz");
+      // remarcando pelo link: só os dias que aceitam online
+      const h2 = await pub("horarios", { query: { s: slug60, r: ok.body.gerenciar } });
+      assert.equal(h2.body.modalidade, "online");
+      assert.ok(!h2.body.dias["2026-11-13"], "sexta 13 é só presencial: fica fora");
+      assert.ok(h2.body.dias["2026-11-10"]);
+      const rem = await pub("remarcar-minha", { method: "POST", headers: HOST, body: { r: ok.body.gerenciar, dia: "2026-11-13", hora: "10:00" } });
+      assert.equal(rem.statusCode, 409); assert.equal(rem.body.codigo, "MODALIDADE");
+      // voltar ao padrão tira o dia específico; dia que passou some da lista
+      tabelas.ag_config[0].modalidade_dias = Object.assign({}, tabelas.ag_config[0].modalidade_dias, { "2026-10-01": "online" });
+      await adm("modalidade", { method: "POST", body: { dia: "2026-11-13", modalidade: null } });
+      assert.deepEqual(tabelas.ag_config[0].modalidade_dias, {});
+      // a tela da Comercial recebe tudo
+      const tudo = (await adm("")).body;
+      assert.deepEqual(tudo.config.modalidade_semana, { "4": "online" });
+      assert.equal(tudo.reunioes.find(x => x.nome === "Pessoa 1").modalidade, "online");
+      assert.equal(tudo.reunioes.find(x => x.nome === "Pessoa 2").modalidade, "presencial");
+    });
+  } finally { c.solta(); z.solta(); }
+});
+
+test("modalidade: reunião cadastrada à mão escolhe o jeito em qualquer dia; números contam online × presencial", async () => {
+  const c = correioFalso(), z = zapFalso();
+  try {
+    await comRelogio(AGORA, async () => {
+      const { tabelas } = await preparar();
+      const t = tabelas.ag_tipos[0];
+      await adm("tipo", { method: "POST", body: { id: t.id, nome: t.nome, duracao_min: t.duracao_min, cor: t.cor, local: "Sede", local_online: "Teams" } });
+      await adm("config", { method: "POST", body: Object.assign(cfg(), { modalidade_semana: { "4": "online" } }) });
+      const r = await adm("reuniao", { method: "POST", headers: HOST, body: { tipo_id: t.id, dia: QUI, hora: "10:00", nome: "Ana", telefone: "19999998888", modalidade: "presencial", avisar: false } });
+      assert.equal(r.statusCode, 201, JSON.stringify(r.body));
+      assert.equal(tabelas.ag_reunioes[0].modalidade, "presencial", "a Comercial decide, mesmo em dia só online");
+      assert.equal(tabelas.ag_reunioes[0].local, "Sede");
+      const n = await adm("numeros", { query: { mes: "2026-11" } });
+      assert.deepEqual(n.body.por_modalidade, [["Presencial", 1]]);
+    });
+  } finally { c.solta(); z.solta(); }
+});
+
+test("agendar.html: pergunta se a reunião é online ou presencial", () => {
+  const PUB = fs.readFileSync(path.join(__dirname, "..", "agendar.html"), "utf8");
+  assert.ok(PUB.includes("Como prefere a reunião?") && PUB.includes('data-m="online"') && PUB.includes('data-m="presencial"'));
+});
+
+test("bloqueio parcial: a Comercial diz como o cliente marca no resto do dia; bloqueio do dia inteiro não mexe no jeito", async () => {
+  await comRelogio(AGORA, async () => {
+    const { tabelas, slug60 } = await preparar();
+    const SEX = "2026-11-13";
+    // sexta: reunião gerencial das 14h às 16h, e o resto do dia só online
+    const b = await adm("bloqueio", { method: "POST", body: { dia: SEX, ateDia: SEX, de: "14:00", ate: "16:00", motivo: "Reunião gerencial", modalidade: "online" } });
+    assert.equal(b.statusCode, 200, JSON.stringify(b.body));
+    assert.equal(b.body.modalidade, "online");
+    assert.equal(tabelas.ag_config[0].modalidade_dias[SEX], "online");
+    const h = await pub("horarios", { query: { s: slug60 } });
+    assert.equal(h.body.modalidades[SEX], "online");
+    assert.ok(h.body.dias[SEX].includes("13:00") && !h.body.dias[SEX].includes("14:00") && !h.body.dias[SEX].includes("15:30") && h.body.dias[SEX].includes("16:00"), "14h–16h bloqueado; reunião de 1h cabe às 13h e volta às 16h");
+    assert.equal((await pub("agendar", { method: "POST", headers: HOST, body: Object.assign({ s: slug60, dia: SEX, hora: "09:00", modalidade: "presencial" }, pessoa(1)) })).statusCode, 409, "presencial na sexta: recusado");
+    // modalidade inválida
+    assert.equal((await adm("bloqueio", { method: "POST", body: { dia: SEX, de: "10:00", ate: "11:00", modalidade: "remoto" } })).statusCode, 400);
+    // dia inteiro: a modalidade é ignorada
+    const QUA = "2026-11-11";
+    assert.equal((await adm("bloqueio", { method: "POST", body: { dia: QUA, ateDia: QUA, modalidade: "presencial" } })).statusCode, 200);
+    assert.equal(tabelas.ag_config[0].modalidade_dias[QUA], undefined);
+  });
+});
+
+test("tela: bloqueio parcial pergunta online ou presencial para o resto do dia", () => {
+  const JS = fs.readFileSync(path.join(__dirname, "..", "assets", "agenda", "agenda.js"), "utf8");
+  assert.ok(JS.includes("No resto do dia, o cliente pode marcar") && JS.includes("modalidade:inteiro?null:(q(\"#agb-mod\").value===\"dividir\"?lerDivisao(q(\"#agb-div\")):q(\"#agb-mod\").value)"));
+});
+
+test("excluir: apaga de vez reunião cancelada ou que já terminou; ativa e futura não; e todas as canceladas de uma vez", async () => {
+  const c = correioFalso(), z = zapFalso();
+  try {
+    const { tabelas } = await comRelogio(AGORA, async () => {
+      const p = await preparar();
+      for (const [h, n] of [["09:00", 1], ["11:00", 2], ["14:00", 3]]) assert.equal((await marcar(p.slug60, h, pessoa(n))).statusCode, 201);
+      return p;
+    });
+    const [a, b2, c3] = tabelas.ag_reunioes.map(r => String(r.id));
+    await comRelogio(AGORA, async () => {
+      const ativa = await adm("reuniao", { method: "DELETE", query: { id: a } });
+      assert.equal(ativa.statusCode, 409, "ainda vai acontecer: cancela antes");
+      assert.equal((await adm("reuniao", { method: "DELETE", usuario: "carlos", query: { id: a } })).statusCode, 403);
+      await adm("cancelar", { method: "POST", query: { id: b2 }, body: { avisar: false } });
+      await adm("cancelar", { method: "POST", query: { id: c3 }, body: { avisar: false } });
+      assert.equal((await adm("reuniao", { method: "DELETE", query: { id: b2 } })).statusCode, 200);
+      assert.deepEqual(tabelas.ag_reunioes.map(r => String(r.id)), [a, c3]);
+      const todas = await adm("canceladas", { method: "DELETE" });
+      assert.equal(todas.statusCode, 200);
+      assert.equal(todas.body.excluidas, 1);
+      assert.deepEqual(tabelas.ag_reunioes.map(r => String(r.id)), [a], "a ativa fica");
+      assert.ok(tabelas.fm_auditoria.some(x => x.acao === "AGENDA_REUNIAO_EXCLUIDA") && tabelas.fm_auditoria.some(x => x.acao === "AGENDA_CANCELADAS_EXCLUIDAS"), "fica registrado quem apagou");
+    });
+    // depois que terminou, pode apagar mesmo ativa
+    await comRelogio(R.paraUtc(QUI, "12:00"), async () => {
+      assert.equal((await adm("reuniao", { method: "DELETE", query: { id: a } })).statusCode, 200);
+      assert.equal(tabelas.ag_reunioes.length, 0);
+    });
+  } finally { c.solta(); z.solta(); }
+});
+
+
+// ── mês com o painel do dia (layout novo) ──────────────────────────────────
+function dadosMes() {
+  const iso = (d, hh) => new Date(R.paraUtc(d, hh)).toISOString();
+  return {
+    config: R.CONFIG_PADRAO, ics_chave: "k", marca: {},
+    tipos: [{ id: 1, nome: "Reunião Comercial", duracao_min: 60, cor: "#1e4d8c", slug: "rc1", ativo: true }, { id: 2, nome: "Lead", duracao_min: 30, cor: "#ea580c", slug: "ld2", ativo: true }],
+    bloqueios: [{ id: 9, inicio: iso("2026-11-05", "12:00"), fim: iso("2026-11-05", "13:00"), motivo: "Almoço" }, { id: 10, inicio: iso("2026-11-20", "00:00"), fim: iso("2026-11-21", "00:00"), motivo: "Feriado" }],
+    ocupados: [{ dir: 1, nome: "Paulo", inicio: iso("2026-11-05", "15:00"), fim: iso("2026-11-05", "16:00") }],
+    reunioes: [
+      { id: 5, tipo_id: 1, tipo_nome: "Reunião Comercial", inicio: iso("2026-11-05", "14:00"), fim: iso("2026-11-05", "15:00"), nome: "<b>Ana</b>", origem: "link", status: "ativa", modalidade: "online" },
+      { id: 6, tipo_id: 2, tipo_nome: "Lead", inicio: iso("2026-11-05", "09:00"), fim: iso("2026-11-05", "09:30"), nome: "Bruno", origem: "manual", status: "ativa", resultado: "realizada" },
+      { id: 7, tipo_id: 2, tipo_nome: "Lead", inicio: iso("2026-11-12", "10:00"), fim: iso("2026-11-12", "10:30"), nome: "Carla", origem: "link", status: "ativa" },
+      { id: 8, tipo_id: 2, tipo_nome: "Lead", inicio: iso("2026-11-12", "16:00"), fim: iso("2026-11-12", "16:30"), nome: "Cancelada", origem: "link", status: "cancelada" }
+    ]
+  };
+}
+const livresFalsos = url => {
+  if (!url.includes("modulo=agendapub&t=horarios")) return null;
+  const dias = url.includes("s=rc1") ? { "2026-11-05": ["16:00"], "2026-11-12": ["09:00", "11:00", "14:00"] } : { "2026-11-12": ["09:00", "09:30"] };
+  return { ok: true, status: 200, json: async () => ({ dias, modalidades: {} }) };
+};
+
+test("tela: mês é a visão padrão, com o dia de hoje escolhido e o painel do dia ao lado", async () => {
+  const real = Date.now; Date.now = () => AGORA;
+  try {
+    const { ctx, pagina, pedidos } = telaAgenda(dadosMes(), { rotas: livresFalsos });
+    ctx.agLoad();
+    await new Promise(r => setTimeout(r, 20));
+    const h = pagina.innerHTML;
+    assert.ok(h.includes('class="agd-tela"'), "tudo dentro da tela com vidro");
+    assert.ok(h.includes("Novembro de 2026") && h.includes('class="agc-2col"'), "mês com o painel ao lado");
+    assert.ok(/class="agc-dm hoje sel[^"]*" data-ag="sel" data-dia="2026-11-05" aria-pressed="true"/.test(h), "hoje escolhido");
+    assert.ok(h.includes("Quinta, 5 de novembro") && h.includes("Hoje · 2 reuniões · atendimento 9h–17h"));
+    assert.ok(h.indexOf("Bruno") < h.indexOf("&lt;b&gt;Ana&lt;/b&gt;"), "reuniões do dia na ordem do horário");
+    assert.ok(!h.includes("<b>Ana</b>"), "nada do banco vira HTML");
+    assert.ok(h.includes("💻 Online") && h.includes("✅ realizada"), "modalidade e resultado no painel");
+    assert.ok(h.includes("⛔ 12:00–13:00 · Almoço") && h.includes("👔 Paulo ocupado 15:00–16:00"), "bloqueio e diretor do dia");
+    assert.ok(h.includes('data-ag-mod="2026-11-05"'), "online/presencial do dia no painel");
+    assert.ok(h.includes('data-ag="marcar" data-dia="2026-11-05"') && h.includes('data-ag="bloquear" data-dia="2026-11-05"'));
+    // horários livres: o mesmo que o link mostra, pedido uma vez por tipo
+    assert.equal(pedidos.filter(u => u.includes("t=horarios")).length, 2);
+    assert.ok(/Reunião Comercial<\/b><span>16:00<\/span>/.test(h), "horários livres de cada tipo");
+    assert.ok(/Lead<\/b><span><span class="agc-dp-cz">nenhum<\/span>/.test(h));
+    // faixa da semana (dom 1 a sáb 7) com a quantidade
+    assert.ok(/data-ag="sel" data-dia="2026-11-05" aria-pressed="true" aria-label="Quinta, 5 de nov, hoje, 2 reuniões"><span>qui<\/span><b>5<\/b><em>2<\/em>/.test(h));
+    // mês: bolinhas, dia bloqueado, cancelada fora
+    assert.ok(/data-dia="2026-11-12"[^>]*>.*?<span class="agc-n">1 reunião<\/span>/.test(h), "cancelada não conta");
+    assert.ok(/class="agc-dm bloq[^"]*" data-ag="sel" data-dia="2026-11-20"/.test(h), "feriado bloqueado");
+    // renderizar de novo não pede os horários de novo (guarda por 1 minuto)
+    ctx.agLoad(); await new Promise(r => setTimeout(r, 20));
+    assert.equal(pedidos.filter(u => u.includes("t=horarios")).length, 4, "recarregar a agenda apaga e pede de novo");
+  } finally { Date.now = real; }
+});
+
+test("tela: tocar num dia do mês troca o painel; dia de outro mês leva ao mês dele; dia passado não oferece marcar", async () => {
+  const real = Date.now; Date.now = () => AGORA;
+  try {
+    const { ctx, pagina } = telaAgenda(dadosMes(), { rotas: livresFalsos });
+    ctx.agLoad(); await new Promise(r => setTimeout(r, 20));
+    pagina.clicar({ ag: "sel", dia: "2026-11-12" });
+    let h = pagina.innerHTML;
+    assert.ok(h.includes("Quinta, 12 de novembro") && h.includes("1 reunião") && h.includes("Carla") && !h.includes(">Cancelada<"));
+    assert.ok(/Reunião Comercial<\/b><span>09:00 · 11:00 · 14:00<\/span>/.test(h));
+    assert.ok(h.includes("Novembro de 2026"), "continua no mês");
+    // dia passado: sem marcar nem bloquear, sem online/presencial
+    pagina.clicar({ ag: "sel", dia: "2026-11-03" });
+    h = pagina.innerHTML;
+    assert.ok(h.includes("Terça, 3 de novembro") && !h.includes('data-ag="marcar" data-dia="2026-11-03"') && !h.includes('data-ag-mod="2026-11-03"') && !h.includes("Horários livres no link"));
+    // dia de dezembro na última linha: vai para dezembro
+    pagina.clicar({ ag: "sel", dia: "2026-12-02" });
+    h = pagina.innerHTML;
+    assert.ok(h.includes("Dezembro de 2026") && h.includes("Quarta, 2 de dezembro"));
+    // ‹ volta para novembro e escolhe o dia de hoje
+    pagina.clicar({ ag: "nav", d: "-1" });
+    h = pagina.innerHTML;
+    assert.ok(h.includes("Novembro de 2026") && h.includes("Quinta, 5 de novembro"));
+    // ver as horas: abre o Dia
+    pagina.clicar({ ag: "dia", dia: "2026-11-12" });
+    assert.ok(pagina.innerHTML.includes("Quinta, 12 de nov") && pagina.innerHTML.includes('class="agc-col'), "visão Dia com a grade de horas");
+  } finally { Date.now = real; }
+});
+
+test("tela: sem conseguir ler os horários do link, o painel avisa e não fica pedindo sem parar", async () => {
+  const real = Date.now; Date.now = () => AGORA;
+  try {
+    const { ctx, pagina, pedidos } = telaAgenda(dadosMes(), { rotas: url => (url.includes("t=horarios") ? { ok: false, status: 503, json: async () => ({}) } : null) });
+    ctx.agLoad(); await new Promise(r => setTimeout(r, 30));
+    assert.ok(pagina.innerHTML.includes("não consegui ver agora"));
+    assert.equal(pedidos.filter(u => u.includes("t=horarios")).length, 2, "uma vez por tipo");
+  } finally { Date.now = real; }
+});
+
+test("tela: Semana e Dia abrem no dia escolhido no Mês, e o Mês volta no dia que estava na tela", async () => {
+  const real = Date.now; Date.now = () => AGORA;
+  try {
+    const { ctx, pagina } = telaAgenda(dadosMes(), { rotas: livresFalsos });
+    ctx.agLoad(); await new Promise(r => setTimeout(r, 20));
+    pagina.clicar({ ag: "sel", dia: "2026-11-24" });
+    pagina.clicar({ ag: "vista", v: "semana" });
+    assert.ok(pagina.innerHTML.includes("23 a 29 de novembro"), "semana do dia escolhido");
+    pagina.clicar({ ag: "vista", v: "dia" });
+    assert.ok(pagina.innerHTML.includes("Terça, 24 de nov"), "o dia escolhido");
+    pagina.clicar({ ag: "nav", d: "1" });
+    pagina.clicar({ ag: "vista", v: "mes" });
+    assert.ok(pagina.innerHTML.includes("Quarta, 25 de novembro"), "o Mês volta no dia que estava na tela");
+    // sábado escolhido: o leitor de tela ouve que não tem atendimento
+    pagina.clicar({ ag: "sel", dia: "2026-11-28" });
+    assert.ok(pagina.innerHTML.includes('aria-label="Sábado, 28 de nov, sem atendimento"'));
+  } finally { Date.now = real; }
+});
+
+test("tela: resposta de horários livres pedida antes de uma mudança na agenda não fica no painel", async () => {
+  const real = Date.now; Date.now = () => AGORA;
+  try {
+    let liberar, rodada = 0;
+    const lento = new Promise(r => { liberar = r; });
+    const rotas = url => {
+      if (!url.includes("t=horarios")) return null;
+      rodada++;
+      const velho = rodada <= 2; // os 2 primeiros pedidos (um por tipo) demoram e trazem o horário de antes
+      const corpo = { dias: { "2026-11-05": [velho ? "16:00" : "16:30"] }, modalidades: {} };
+      return velho ? lento.then(() => ({ ok: true, status: 200, json: async () => corpo })) : { ok: true, status: 200, json: async () => corpo };
+    };
+    const { ctx, pagina } = telaAgenda(dadosMes(), { rotas });
+    ctx.agLoad(); await new Promise(r => setTimeout(r, 20));
+    ctx.agLoad(); await new Promise(r => setTimeout(r, 20)); // a agenda mudou e foi recarregada com os pedidos antigos a caminho
+    liberar(); await new Promise(r => setTimeout(r, 30));
+    assert.ok(pagina.innerHTML.includes("16:30") && !pagina.innerHTML.includes(">16:00<"), "fica o horário de depois da mudança");
+  } finally { Date.now = real; }
+});
+
+test("tela: os números do topo são botões e mostram a lista que formou cada um", async () => {
+  const real = Date.now; Date.now = () => AGORA;
+  try {
+    const { ctx, pagina, janelas } = telaAgenda(dadosMes(), { rotas: livresFalsos });
+    ctx.agLoad(); await new Promise(r => setTimeout(r, 20));
+    const h = pagina.innerHTML;
+    // agora são 10h do dia 05/11: a das 9h (Bruno) já acabou, a das 14h (Ana) ainda vai; 12/11 (Carla) está nos 7 dias
+    assert.ok(/data-ag="kpi" data-k="hoje"[^>]*><b>1<\/b>/.test(h), "hoje: só a que ainda vai acontecer");
+    assert.ok(/data-k="semana"[^>]*><b>1<\/b>/.test(h) && /data-k="total"[^>]*><b>2<\/b>/.test(h) && /data-k="link"[^>]*><b>2<\/b>/.test(h));
+    assert.ok(/data-k="pend"[^>]*><b>0<\/b>/.test(h) && !h.includes("agd-kpi agd-kpi-alerta"), "Bruno já tem resultado");
+    pagina.clicar({ ag: "kpi", k: "total" });
+    assert.equal(janelas.length, 1);
+    const j = janelas[0].innerHTML;
+    assert.ok(j.includes("Todas as reuniões marcadas · 2") && j.includes("Hoje · Quinta, 5 de nov") && j.includes("Quinta, 12 de nov"));
+    assert.ok(j.indexOf("&lt;b&gt;Ana&lt;/b&gt;") < j.indexOf("Carla") && !j.includes("<b>Ana</b>"), "em ordem e escapado");
+    assert.ok(j.includes("💻 Online") && j.includes('data-r="5"'));
+    pagina.clicar({ ag: "kpi", k: "pend" });
+    assert.ok(janelas[janelas.length - 1].innerHTML.includes("Aguardando resultado · 0") && janelas[janelas.length - 1].innerHTML.includes("Nenhuma reunião esperando resultado"));
+  } finally { Date.now = real; }
+});
+
+// ── dia dividido: manhã de um jeito, tarde de outro ─────────────────────────
+const DIV = { corte: "12:00", antes: "online", depois: "presencial" };
+
+test("dia dividido: regras — vale o período do horário em que a reunião começa", () => {
+  const c = { modalidade_dias: { [QUI]: DIV }, modalidade_semana: { "5": { corte: "13:00", antes: "presencial", depois: "ambos" } } };
+  assert.deepEqual(R.modalidadeDoDia(c, QUI), DIV);
+  assert.equal(R.modalidadeDoHorario(c, QUI, "11:30"), "online");
+  assert.equal(R.modalidadeDoHorario(c, QUI, "12:00"), "presencial", "o corte já é o segundo período");
+  assert.equal(R.modalidadeDoHorario(c, "2026-11-13", "10:00"), "presencial", "padrão da sexta dividido");
+  assert.equal(R.modalidadeDoHorario(c, "2026-11-13", "15:00"), "ambos");
+  assert.equal(R.normMod({ corte: "12:00", antes: "online", depois: "online" }), "online", "dois lados iguais viram o jeito simples");
+  for (const ruim of [{ corte: "12h", antes: "online", depois: "presencial" }, { corte: "00:00", antes: "online", depois: "presencial" }, { corte: "12:00", antes: "remoto", depois: "presencial" }, ["online"]])
+    assert.equal(R.normMod(ruim), null, JSON.stringify(ruim));
+  assert.ok(R.validarModalidadeDia({ dia: QUI, modalidade: { corte: "25:00", antes: "online", depois: "presencial" } }).erro);
+  assert.deepEqual(R.validarModalidadeDia({ dia: QUI, modalidade: DIV }), { dia: QUI, modalidade: DIV });
+  const v = R.validarConfig(Object.assign(cfg(), { modalidade_semana: { "5": DIV, "1": { corte: "x" } } }));
+  assert.deepEqual(v.config.modalidade_semana, { "5": DIV }, "a semana também aceita dividir; o inválido sai");
+});
+
+test("dia dividido: o link mostra o dia, aceita online de manhã e presencial à tarde e recusa o contrário", async () => {
+  const c = correioFalso(), z = zapFalso();
+  try {
+    await comRelogio(AGORA, async () => {
+      const { tabelas, slug30 } = await preparar();
+      const m = await adm("modalidade", { method: "POST", body: { dia: QUI, modalidade: DIV } });
+      assert.equal(m.statusCode, 200, JSON.stringify(m.body));
+      assert.deepEqual(tabelas.ag_config[0].modalidade_dias[QUI], DIV);
+      const h = await pub("horarios", { query: { s: slug30 } });
+      assert.deepEqual(h.body.modalidades[QUI], DIV, "a página do cliente recebe a divisão");
+      const ag = (hora, modalidade, n) => pub("agendar", { method: "POST", headers: HOST, body: Object.assign({ s: slug30, dia: QUI, hora, modalidade }, pessoa(n)) });
+      assert.equal((await ag("10:00", "presencial", 1)).statusCode, 409, "presencial de manhã: não");
+      assert.equal((await ag("14:00", "online", 2)).statusCode, 409, "online à tarde: não");
+      const manha = await ag("10:00", "online", 3);
+      assert.equal(manha.statusCode, 201, JSON.stringify(manha.body));
+      assert.equal(manha.body.modalidade, "online");
+      const tarde = await ag("14:00", undefined, 4);
+      assert.equal(tarde.statusCode, 201, JSON.stringify(tarde.body));
+      assert.equal(tarde.body.modalidade, "presencial", "sem dizer, à tarde vira presencial");
+      // remarcando a reunião online pelo link: só os horários da manhã desse dia
+      const h2 = await pub("horarios", { query: { s: slug30, r: manha.body.gerenciar } });
+      assert.ok(h2.body.dias[QUI].every(x => x < "12:00") && h2.body.dias[QUI].length > 0);
+      const rem = await pub("remarcar-minha", { method: "POST", headers: HOST, body: { r: manha.body.gerenciar, dia: QUI, hora: "15:00" } });
+      assert.equal(rem.statusCode, 409); assert.equal(rem.body.codigo, "MODALIDADE");
+      // bloqueio parcial também pode dividir o resto do dia
+      const b = await adm("bloqueio", { method: "POST", body: { dia: "2026-11-13", ateDia: "2026-11-13", de: "14:00", ate: "16:00", motivo: "Reunião gerencial", modalidade: { corte: "13:00", antes: "online", depois: "presencial" } } });
+      assert.equal(b.statusCode, 200, JSON.stringify(b.body));
+      assert.deepEqual(tabelas.ag_config[0].modalidade_dias["2026-11-13"], { corte: "13:00", antes: "online", depois: "presencial" });
+      assert.equal((await adm("bloqueio", { method: "POST", body: { dia: "2026-11-16", de: "14:00", ate: "15:00", modalidade: { corte: "x" } } })).statusCode, 400);
+      // voltar ao padrão tira a divisão
+      await adm("modalidade", { method: "POST", body: { dia: QUI, modalidade: null } });
+      assert.equal(tabelas.ag_config[0].modalidade_dias[QUI], undefined);
+    });
+  } finally { c.solta(); z.solta(); }
+});
+
+test("tela: dia dividido aparece no mês (💻|📍) e o seletor do dia já vem com a divisão preenchida", async () => {
+  const real = Date.now; Date.now = () => AGORA;
+  try {
+    const d = dadosMes();
+    d.config = Object.assign({}, R.CONFIG_PADRAO, { modalidade_dias: { "2026-11-05": DIV } });
+    const { ctx, pagina } = telaAgenda(d, { rotas: livresFalsos });
+    ctx.agLoad(); await new Promise(r => setTimeout(r, 20));
+    const h = pagina.innerHTML;
+    assert.ok(h.includes('title="Até 12h só online · depois só presencial">💻|📍</small>'), "ícone dividido no cartão do dia");
+    assert.ok(h.includes("até 12h só online · depois só presencial\">"), "o leitor de tela também ouve");
+    assert.ok(h.includes('<option value="dividir" selected>') && /class="agc-moddiv">/.test(h), "seletor do painel com a divisão aberta");
+    assert.ok(h.includes('class="dv-corte" step="300" value="12:00"') && h.includes('data-ag="moddiv" data-dia="2026-11-05"'));
+  } finally { Date.now = real; }
 });

@@ -46,6 +46,9 @@ function senhaTemporaria() {
 }
 // Usuário criado pela tela: existe só no banco (tem nome lá).
 function criadoPelaTela(row) { return !!(row && row.nome); }
+// Excluído pela tela de Configurações. Quem foi criado pela tela some do banco; quem é fixo (está no código,
+// USUARIOS e o USERS do index.html) não dá para apagar do código, então fica marcado e bloqueado.
+function excluido(row) { return !!(row && row.perms && row.perms.excluido === true); }
 // Bloqueado pela tela de Configurações (vale para fixos e para criados pela tela).
 function bloqueado(row) { return !!(row && row.ativo === false); }
 const MSG_BLOQUEADO = "Seu acesso está bloqueado. Fale com o administrador.";
@@ -182,7 +185,8 @@ module.exports = async function handler(req, res) {
         updated_at: r.updated_at || null,
         // criados pela tela de Configurações: o perfil mora no banco
         ...(r.nome ? { nome: r.nome, cargo: r.cargo || null, perms: r.perms || {}, ativo: r.ativo !== false } : (r.ativo === false ? { ativo: false } : {})),
-        ...(r.perms && r.perms.guias ? { guias: r.perms.guias } : {})
+        ...(r.perms && r.perms.guias ? { guias: r.perms.guias } : {}),
+        ...(excluido(r) ? { excluido: true } : {})
       }));
       return res.status(200).json({ users: safe });
     }
@@ -293,6 +297,17 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true, userKey: chave, nome, senha });
     }
 
+    // As guias liberadas/escondidas para quem está logado. O painel pergunta ao abrir e de tempos em
+    // tempos: assim o que o administrador muda em Configurações › 👁️ Guias vale sem a pessoa sair e
+    // entrar (quem usa "Manter conectado" quase nunca faz login de novo).
+    if (body.action === "minhas_guias") {
+      const a = _auth.requireAuth(req);
+      if (!a.ok || !a.enforced || !a.user || !a.user.u || a.user.s) return res.status(401).json({ ok: false, error: "Sessão vencida. Entre de novo." });
+      let row;
+      try { row = await lerUsuario(String(a.user.u)); } catch (e) { return res.status(502).json({ ok: false, error: "Erro ao consultar Supabase." }); }
+      return res.status(200).json({ ok: true, guias: (row && row.perms && row.perms.guias) || {} });
+    }
+
     // Guias que a pessoa vê (só administrador): { pagina: true|false } por cima da regra
     // do perfil. Só o que difere do padrão é guardado; {} volta tudo ao padrão.
     // Configurações fica de fora: nenhum administrador pode perder a tela que libera os outros.
@@ -351,6 +366,38 @@ module.exports = async function handler(req, res) {
       _auth.esquecerBloqueio(userKey);
       console.log("users:", body.ativo ? "acesso liberado" : "acesso bloqueado", userKey, "por", admin);
       return res.status(200).json({ ok: true, userKey, ativo: body.ativo });
+    }
+
+    // Excluir usuário (só administrador). Ninguém exclui a si mesmo nem os administradores fixos.
+    // • Criado pela tela: a linha sai do banco (não entra mais e o nome fica livre para criar de novo).
+    // • Fixo (no código): fica bloqueado e marcado como excluído; some da lista e do ranking.
+    // Nos dois casos as sessões abertas caem (o painel aberto volta ao login) e fica registrado quem excluiu.
+    if (body.action === "delete_user") {
+      const admin = await adminDoToken();
+      if (!admin) return res.status(403).json({ error: "Só administradores podem excluir usuários." });
+      if (!userKey) return res.status(400).json({ error: "userKey é obrigatório." });
+      if (userKey === admin) return res.status(400).json({ error: "Você não pode excluir o seu próprio usuário." });
+      if (ADMINS.indexOf(userKey) >= 0) return res.status(400).json({ error: "Este administrador não pode ser excluído." });
+      let row;
+      try { row = await lerUsuario(userKey); } catch (e) { return res.status(502).json({ error: "Erro ao consultar Supabase." }); }
+      const fixo = USUARIOS.indexOf(userKey) >= 0;
+      if (!fixo && !criadoPelaTela(row)) return res.status(404).json({ error: "Usuário não encontrado." });
+      const enc = encodeURIComponent(userKey);
+      const resp = fixo
+        ? await fetch(TABELA, {
+            method: "POST",
+            headers: { ...headers, Prefer: "resolution=merge-duplicates,return=minimal" },
+            body: JSON.stringify({ user_key: userKey, ativo: false, perms: { ...((row && row.perms) || {}), excluido: true }, updated_at: new Date().toISOString() })
+          })
+        : await fetch(`${TABELA}?user_key=eq.${enc}`, { method: "DELETE", headers: { ...headers, Prefer: "return=minimal" } });
+      if (!resp.ok) {
+        console.error("users: erro ao excluir", resp.status, (await resp.text()).slice(0, 200));
+        return res.status(502).json({ error: "Erro ao excluir." });
+      }
+      _auth.esquecerBloqueio(userKey);
+      try { await _auth.revogarSessoes(userKey, admin); } catch (e) { console.error("users: encerrar sessões do excluído falhou", e.message); }
+      console.log("users: usuário excluído", userKey, fixo ? "(fixo: bloqueado e marcado)" : "(apagado do banco)", "por", admin);
+      return res.status(200).json({ ok: true, userKey, apagado: !fixo });
     }
 
     // Renovar a sessão salva no aparelho: quem usa o painel continua conectado, quem some por 30 dias volta ao login.
@@ -414,7 +461,7 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true, token: secret ? emitirSessao(userKey, secret, body.manter === true) : null });
     }
 
-    return res.status(400).json({ error: "action inválida (use authenticate, renew, logout_all, change_password, admin_reset, create_user, set_active ou set_guias)." });
+    return res.status(400).json({ error: "action inválida (use authenticate, renew, logout_all, change_password, admin_reset, create_user, set_active, set_guias, minhas_guias ou delete_user)." });
   }
 
   res.setHeader("Allow", "GET, POST");

@@ -21,6 +21,7 @@
   ],
   "functions": {
     "api/rh.js": { "maxDuration": 60 },
+    "api/import.js": { "maxDuration": 60 },
     "api/ligacoes.js": { "maxDuration": 30 }
   },
   "headers": [

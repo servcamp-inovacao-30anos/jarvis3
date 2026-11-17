@@ -535,3 +535,50 @@ test("administrador redefine a senha de alguém: as sessões salvas dessa pessoa
   assert.equal(r.status, 200);
   assert.equal((await rotaProtegida(dele)).status, 401);
 });
+
+test("minhas_guias: quem está logado lê as próprias guias na hora (sem sair e entrar); sem login, nada", async () => {
+  sb.semear("raphaelvictor", { custom_password: await _senha.hash("senha-dele-1"), must_change: false });
+  assert.equal((await acao({ action: "minhas_guias" })).status, 401, "sem token");
+  assert.deepEqual((await acao({ action: "minhas_guias" }, comoComum())).dados, { ok: true, guias: {} });
+  assert.equal((await acao({ action: "set_guias", userKey: "raphaelvictor", guias: { agenda: true } }, comoAdmin())).status, 200);
+  const r = await acao({ action: "minhas_guias" }, comoComum());
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.dados.guias, { agenda: true }, "liberou agora, já vê");
+});
+
+test("delete_user: só admin; criado pela tela some do banco (e o nome fica livre); fixo fica bloqueado e marcado; ninguém exclui a si nem o admin fixo", async () => {
+  const novo = { action: "create_user", nome: "Bruna Teste", cargo: "Comercial", perms: { com: true } };
+  const c = await acao(novo, comoAdmin());
+  assert.equal(c.status, 200);
+  const del = k => acao({ action: "delete_user", userKey: k }, comoAdmin());
+  assert.equal((await acao({ action: "delete_user", userKey: "brunateste" })).status, 403, "sem token");
+  assert.equal((await acao({ action: "delete_user", userKey: "brunateste" }, comoComum())).status, 403, "não admin");
+  assert.equal((await del("joaoygor")).status, 400, "nem a si mesmo nem o admin fixo");
+  assert.equal((await del("naoexiste")).status, 404);
+  // criado pela tela: apagado, não entra mais, e as sessões abertas caem
+  const r = await del("brunateste");
+  assert.equal(r.status, 200);
+  assert.equal(r.dados.apagado, true);
+  assert.equal(sb.linhas.has("brunateste"), false);
+  assert.equal((await entrar("brunateste", c.dados.senha)).status, 401);
+  assert.ok(sb.auditoria.some(a => a.chave === "brunateste" && a.ator === "joaoygor"), "sessões encerradas, com quem excluiu");
+  assert.equal((await acao(novo, comoAdmin())).status, 200, "o nome fica livre para criar de novo");
+  // fixo: bloqueado e marcado; some da lista (a tela esconde) e não entra
+  sb.semear("raphaelvictor", { custom_password: await _senha.hash("senha-dele-1"), must_change: false, perms: { guias: { agenda: true } } });
+  const f = await del("raphaelvictor");
+  assert.equal(f.status, 200);
+  assert.equal(f.dados.apagado, false);
+  const linha = sb.linhas.get("raphaelvictor");
+  assert.equal(linha.ativo, false);
+  assert.deepEqual(linha.perms, { guias: { agenda: true }, excluido: true }, "guarda o resto das permissões");
+  assert.equal((await entrar("raphaelvictor", "senha-dele-1")).status, 403, "não entra mais");
+  const l = await chamar("GET", { query: { all: "1" }, token: comoAdmin() });
+  assert.equal(l.dados.users.find(u => u.user_key === "raphaelvictor").excluido, true);
+});
+
+test("tela de Configurações: botão Excluir em cada usuário (menos você e o admin fixo) e a lista esconde os excluídos", () => {
+  const H = require("fs").readFileSync(require("path").join(__dirname, "..", "index.html"), "utf8");
+  assert.ok(H.includes("${cfgBotaoExcluir(k)}</td>") && H.includes('action:"delete_user"'));
+  assert.ok(H.includes("const keys=Object.keys(USERS).filter(k=>!(CFG_AUDIT[k]&&CFG_AUDIT[k].excluido));"));
+  assert.ok(/function cfgBotaoExcluir\(k\)\{\s*if\(k===sessionStorage\.getItem\("userKey"\)\|\|CFG_ADMINS_FIXOS\.indexOf\(k\)>=0\)return "";/.test(H));
+});

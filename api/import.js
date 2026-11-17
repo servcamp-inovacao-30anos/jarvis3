@@ -177,7 +177,9 @@ module.exports = async function handler(req, res) {
 
   let supabaseResp;
   try {
-    supabaseResp = await fetch(`${SUPABASE_URL}/rest/v1/dashboard_snapshots`, {
+    // select=...: o banco devolve só as colunas leves. Sem isso ele monta de volta o snapshot inteiro (~600 kB)
+    // dentro da mesma consulta, o que dobra o trabalho e estourava o limite de 8 s do Supabase.
+    supabaseResp = await fetch(`${SUPABASE_URL}/rest/v1/dashboard_snapshots?select=id,created_at,source_filename,row_count,fingerprint,origem`, {
       method: "POST",
       headers: { ...headers, Prefer: "return=representation" },
       body: JSON.stringify({
@@ -202,12 +204,14 @@ module.exports = async function handler(req, res) {
 
   const inserted = await supabaseResp.json();
 
-  // ── Série histórica do quadro de pessoal ──────────────────────────────────
-  // Guarda só a CONTAGEM do dia numa tabela pequena. O snapshot inteiro é um
-  // JSON grande: reconstruir a série a partir dele a cada consulta ficaria caro
-  // e mais lento a cada planilha nova. Uma linha por dia resolve para sempre.
-  // Falha aqui nunca derruba o upload — o snapshot já está salvo.
-  try {
+  // ── Depois do snapshot: quatro etapas independentes, AO MESMO TEMPO ──────
+  // Cada uma grava na própria tabela e só lê a planilha. Antes rodavam uma depois da outra e, com o banco
+  // lento (17/11/2026), a soma passava dos 60 s da Vercel: o envio voltava HTTP 504 com o snapshot já salvo
+  // e as Faltas x Medidas sem atualizar. Juntas, o tempo é o da mais lenta. Nenhuma derruba o envio.
+
+  // Série histórica do quadro de pessoal: só a CONTAGEM do dia numa tabela pequena (reconstruir a série a
+  // partir dos snapshots a cada consulta ficaria caro e mais lento a cada planilha nova).
+  const historico = (async () => {
     const dist = (arr, campo, filtro) => {
       const s = new Set();
       (arr || []).forEach(r => {
@@ -231,39 +235,30 @@ module.exports = async function handler(req, res) {
         atualizado_em: new Date().toISOString()
       })
     });
-  } catch (e) { /* histórico é acessório: não pode impedir o envio da planilha */ }
+  })();
 
-  // ── Insumos diários da Saúde do Cliente ───────────────────────────────────
-  // A agregação vive numa função do banco, não aqui: se a mesma regra existisse
-  // em JavaScript e em SQL, um dia as duas divergiriam e o histórico deixaria
-  // de bater com a tela sem ninguém perceber.
-  // Como o histórico, falha aqui nunca derruba o envio — o snapshot já está
-  // salvo, e a próxima importação refaz o cálculo dos mesmos dias.
-  try {
-    await fetch(`${SUPABASE_URL}/rest/v1/rpc/atualizar_hist_cliente`, {
-      method: "POST", headers, body: "{}"
-    });
-    await fetch(`${SUPABASE_URL}/rest/v1/rpc/atualizar_hist_supervisor`, {
-      method: "POST", headers, body: "{}"
-    });
-  } catch (e) { /* idem */ }
+  // Insumos diários da Saúde do Cliente: a agregação vive em funções do banco (a mesma regra em JS e em SQL
+  // um dia divergiria). A próxima importação refaz os mesmos dias se falhar.
+  const saude = Promise.all([
+    fetch(`${SUPABASE_URL}/rest/v1/rpc/atualizar_hist_cliente`, { method: "POST", headers, body: "{}" }),
+    fetch(`${SUPABASE_URL}/rest/v1/rpc/atualizar_hist_supervisor`, { method: "POST", headers, body: "{}" })
+  ]);
 
-  // ── Monitoramento de ponto ────────────────────────────────────────────────
-  // As ocorrências de marcação vão para tabela própria já aqui (ver
-  // api/_ponto.js). Como o histórico, falha aqui nunca derruba o envio.
-  try {
+  // Monitoramento de ponto: as ocorrências de marcação vão para tabela própria (api/_ponto.js).
+  const pontoP = (async () => {
     const ponto = require("./_ponto");
     await ponto.materializar(data, { ator: origem === "robo" ? "robo" : ponto.usuarioDoToken(req) });
-  } catch (e) { /* idem */ }
+  })();
 
-  // ── Faltas x Medidas ──────────────────────────────────────────────────────
-  // Guarda faltas, dias trabalhados e medidas em tabela própria (api/_faltas.js).
-  // Falha aqui também não derruba o envio, mas fica no log da Vercel: calada,
-  // ninguém descobriria que o módulo parou de receber dados.
-  let faltasMedidas = null; // vai na resposta: a tela mostra o que o módulo recebeu, ou o erro
-  try {
-    faltasMedidas = await require("./_faltas").materializar(data);
-  } catch (e) {
+  // Faltas x Medidas: faltas, dias trabalhados e medidas em tabela própria (api/_faltas.js). A falha vai
+  // para o log da Vercel e para a resposta: calada, ninguém descobriria que o módulo parou de receber dados.
+  const faltasP = (async () => require("./_faltas").materializar(data))();
+
+  const [, , , fm] = await Promise.allSettled([historico, saude, pontoP, faltasP]);
+  let faltasMedidas; // vai na resposta: a tela mostra o que o módulo recebeu, ou o erro
+  if (fm.status === "fulfilled") faltasMedidas = fm.value;
+  else {
+    const e = fm.reason;
     console.error("[faltas] materializar falhou: " + (e && e.message ? e.message : e));
     faltasMedidas = { ok: false, erro: String(e && e.message ? e.message : e).slice(0, 200) };
   }

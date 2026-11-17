@@ -49,6 +49,10 @@ class SupabaseFalso {
       });
       return resposta(200, rows);
     }
+    if (metodo === "DELETE") {
+      for (const [k, l] of [...this.linhas]) if (casa(l)) this.linhas.delete(k);
+      return resposta(204, null);
+    }
     const corpo = JSON.parse(opt.body || "{}");
     if (metodo === "POST") {
       const prefer = String(new Headers(opt.headers || {}).get("Prefer") || "");

@@ -2,11 +2,17 @@
    Fica fora do index.html porque ele já está perto do limite de tamanho (test/auth_exigencia).
    O servidor é o api/_agenda.js (/api/rh?modulo=agenda); quem decide quem administra é ele.
    • Links para enviar: um por tipo de reunião (agendar.html?s=…), para copiar ou mandar por WhatsApp.
-   • Calendário como o do iPhone: Semana (padrão), Dia, Mês e Lista. Tocar num horário vazio marca uma
-     reunião ali; tocar numa reunião abre os detalhes (remarcar, cancelar, ligar, WhatsApp).
+   • Calendário: Mês (padrão), Semana, Dia e Lista. No Mês, tocar num dia abre o painel do dia ao lado
+     (reuniões, bloqueios, diretores ocupados, horários livres no link, online/presencial, marcar ou
+     bloquear) e a faixa da semana embaixo. Na Semana e no Dia, tocar num horário vazio marca uma reunião
+     ali; tocar numa reunião abre os detalhes (remarcar, cancelar, ligar, WhatsApp).
+   • Visual com efeito de vidro leve só nos cartões (.agd-tela em agenda.css), no claro e no escuro.
    • Bloqueios, horário de atendimento, tipos e a assinatura do iPhone (.ics).
    • Diretores: o calendário público do iCloud de cada diretor (iPhone) é lido pelo servidor; os horários em que
      ele está ocupado saem do link dos tipos de reunião que exigem esse diretor, e aparecem em cinza no calendário.
+   • 🎨 Sua página: quem atende (nome, cargo, foto) e a mensagem de boas-vindas, na página do cliente e nos e-mails.
+   • Resultado: depois que a reunião começa, registrar se aconteceu ou se a pessoa não veio e o próximo passo.
+     Isso alimenta os números da agenda no Painel Comercial (agPainelComercial, chamado pelo index.html).
    Reunião em cima de reunião nunca: o banco recusa, e a tela mostra a mensagem do servidor. */
 (function(raiz){
 "use strict";
@@ -16,17 +22,48 @@ const toast=t=>{if(typeof hqToast==="function")hqToast(t);};
 const SEM=["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
 const SEMC=["dom","seg","ter","qua","qui","sex","sáb"];
 const MES=["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
-const AG={dados:null,erro:null,carregando:false,dono:null,verPassadas:false,vista:null,ref:null};
+const AG={dados:null,erro:null,carregando:false,dono:null,verPassadas:false,vista:null,ref:null,sel:null,livres:{},pedindo:{},gerLivres:0,modPendente:false,tPinta:null};
+// Horários livres: apaga o que foi guardado e invalida o que ainda está a caminho (a resposta velha não grava).
+function limparLivres(){AG.livres={};AG.pedindo={};AG.gerLivres++;}
 const MESL=["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
 
 // horário de Brasília (UTC-3) a partir do ISO do banco
 const br=iso=>{const d=new Date(+new Date(iso)-3*3600000).toISOString();return{dia:d.slice(0,10),hora:d.slice(11,16)};};
-const hojeBR=()=>br(new Date().toISOString()).dia;
+const hojeBR=()=>br(new Date(Date.now()).toISOString()).dia;
 const diaLongo=d=>{const x=new Date(d+"T12:00:00Z");return SEM[x.getUTCDay()]+", "+x.getUTCDate()+" de "+MES[x.getUTCMonth()];};
 const durTxt=m=>m<60?m+" min":(m%60?Math.floor(m/60)+"h"+String(m%60).padStart(2,"0"):m/60+"h");
 const telTxt=t=>{const d=String(t||"").replace(/\D/g,"");return d.length===11?"("+d.slice(0,2)+") "+d.slice(2,7)+"-"+d.slice(7):d.length===10?"("+d.slice(0,2)+") "+d.slice(2,6)+"-"+d.slice(6):d;};
 const zap=t=>{let d=String(t||"").replace(/\D/g,"");if(d.length<=11)d="55"+d;return"https://wa.me/"+d;};
 const linkDe=t=>location.origin+"/agendar.html?s="+encodeURIComponent(t.slug);
+const RESULTADOS={realizada:"Realizada",faltou:"Não compareceu"};
+const PROXIMOS={proposta:"Enviar proposta",visita:"Agendar visita",nova_reuniao:"Nova reunião",fechou:"Fechou negócio",sem_interesse:"Sem interesse",remarcar:"Remarcar",outro:"Outro"};
+const comecou=r=>+new Date(r.inicio)<=Date.now();
+// online ou presencial: cada dia aceita os dois, só online, só presencial, ou é DIVIDIDO em dois períodos
+// ({corte:"12:00", antes:"online", depois:"presencial"}). O dia específico vence o padrão da semana.
+// A mesma regra do servidor (api/_agenda_regras.js: normMod, modalidadeDoDia, modalidadeDoHorario).
+const MODS={ambos:"Online e presencial",online:"Só online",presencial:"Só presencial"};
+const normMod=v=>{if(MODS[v])return v;if(v&&typeof v==="object"&&/^\d{2}:\d{2}$/.test(v.corte||"")&&MODS[v.antes]&&MODS[v.depois])return v.antes===v.depois?v.antes:v;return null;};
+const modDia=d=>{const c=(AG.dados&&AG.dados.config)||{};return normMod((c.modalidade_dias||{})[d])||normMod((c.modalidade_semana||{})[String(new Date(d+"T12:00:00Z").getUTCDay())])||"ambos";};
+const dividido=m=>!!m&&typeof m==="object";
+const restrito=m=>dividido(m)||(!!m&&m!=="ambos");
+const modHoraAdm=(d,h)=>{const m=modDia(d);return dividido(m)?(String(h)<m.corte?m.antes:m.depois):m;};
+const curtoMod=m=>m==="online"?"só online":m==="presencial"?"só presencial":"online e presencial";
+const hCorte=x=>{const[a,b]=String(x).split(":");return Number(a)+"h"+(b&&b!=="00"?b:"");};
+const txtModDia=m=>dividido(m)?"Até "+hCorte(m.corte)+" "+curtoMod(m.antes)+" · depois "+curtoMod(m.depois):MODS[m]||MODS.ambos;
+const icMod=m=>m==="online"?"💻":m==="presencial"?"📍":"";
+const icModDia=m=>dividido(m)?(icMod(m.antes)||"💻📍")+"|"+(icMod(m.depois)||"💻📍"):icMod(m);
+// Campos da divisão do dia (horário do corte + o jeito antes e depois), usados no dia, no bloqueio e na semana.
+function camposDivisao(m){
+  const v=dividido(m)?m:{corte:"12:00",antes:"online",depois:"presencial"};
+  const op=s=>["ambos","online","presencial"].map(k=>'<option value="'+k+'"'+(s===k?" selected":"")+'>'+MODS[k]+'</option>').join("");
+  return'<span class="agc-div"><span>Divide às</span><input type="time" class="dv-corte" step="300" value="'+esc(v.corte)+'" aria-label="Horário que divide o dia">'+
+    '<span>Antes</span><select class="dv-antes" aria-label="Antes do horário">'+op(v.antes)+'</select>'+
+    '<span>A partir daí</span><select class="dv-depois" aria-label="A partir do horário">'+op(v.depois)+'</select></span>';
+}
+const lerDivisao=box=>{const q=s=>box.querySelector(s);return{corte:q(".dv-corte").value,antes:q(".dv-antes").value,depois:q(".dv-depois").value};};
+const txtMod=m=>m==="online"?"💻 Online":m==="presencial"?"📍 Presencial":"";
+// reuniões que já começaram e ainda não têm resultado (as dos últimos 30 dias)
+const semResultado=D=>D.reunioes.filter(r=>r.status==="ativa"&&!r.resultado&&comecou(r)&&Date.now()-+new Date(r.inicio)<30*86400000).sort((a,b)=>+new Date(b.inicio)-+new Date(a.inicio));
 
 async function api(t,metodo,corpo,qs){
   const r=await fetch("/api/rh?modulo=agenda"+(t?"&t="+t:"")+(qs||""),{method:metodo||"GET",headers:corpo?{"Content-Type":"application/json"}:{},body:corpo?JSON.stringify(corpo):undefined});
@@ -40,12 +77,12 @@ const conteudo=()=>document.getElementById("ag-content");
 raiz.agLoad=function(){
   const fb=document.querySelector(".fb");if(fb)fb.style.display="none"; // período/turno/área não valem aqui
   const sub=document.getElementById("pgSub");if(sub)sub.textContent="Reuniões com clientes e captação";
-  if(AG.dono!==uk()){AG.dados=null;AG.erro=null;AG.dono=uk();}
+  if(AG.dono!==uk()){AG.dados=null;AG.erro=null;AG.dono=uk();limparLivres();AG.sel=null;}
   render();recarregar();
 };
 function recarregar(){
   if(AG.carregando)return;AG.carregando=true;const dono=uk();
-  api("").then(j=>{if(dono===uk()){AG.dados=j;AG.erro=null;}}).catch(e=>{if(dono===uk()){AG.erro=e;if(e.status!==403&&AG.dados)toast("⚠️ "+e.message);}})
+  api("").then(j=>{if(dono===uk()){AG.dados=j;AG.erro=null;limparLivres();}}).catch(e=>{if(dono===uk()){AG.erro=e;if(e.status!==403&&AG.dados)toast("⚠️ "+e.message);}})
     .then(()=>{AG.carregando=false;if(typeof ST==="undefined"||ST.pg==="agenda")render();});
 }
 
@@ -67,9 +104,24 @@ function render(){
     '<button type="button" class="rh-btn" data-ag="marcar">➕ Marcar reunião</button>'+
     '<button type="button" class="rh-btn rh-btn-sec" data-ag="bloquear">⛔ Bloquear horário</button>'+
     '<button type="button" class="rh-btn rh-btn-sec" data-ag="config">⚙️ Horários e tipos</button>'+
+    '<button type="button" class="rh-btn rh-btn-sec" data-ag="marca">🎨 Sua página</button>'+
     '<button type="button" class="rh-btn rh-btn-sec" data-ag="diretores">👔 Diretores'+(semLeitura(D)?' ⚠️':'')+'</button>'+
     '<button type="button" class="rh-btn rh-btn-sec" data-ag="iphone">📱 Ver no iPhone</button></div>';
-  h+='<div class="agd-kpis"><div><b>'+ativas.filter(r=>br(r.inicio).dia===hoje).length+'</b><span>hoje</span></div><div><b>'+semana+'</b><span>nos próximos 7 dias</span></div><div><b>'+ativas.length+'</b><span>marcadas no total</span></div><div><b>'+ativas.filter(r=>r.origem==="link").length+'</b><span>marcadas pelo link</span></div></div>';
+  // Cada número guarda a lista que o formou: o clique mostra ESSA lista (nada de recalcular no clique).
+  AG.kpis={
+    hoje:{t:"📅 Reuniões de hoje",l:ativas.filter(r=>br(r.inicio).dia===hoje)},
+    semana:{t:"🗓️ Próximos 7 dias",l:ativas.filter(r=>br(r.inicio).dia<=somaDias(hoje,6))},
+    total:{t:"📋 Todas as reuniões marcadas",l:ativas},
+    link:{t:"🔗 Marcadas pelo link",l:ativas.filter(r=>r.origem==="link")},
+    pend:{t:"📝 Aguardando resultado",l:semResultado(D),pend:true}
+  };
+  {const k=(id,rot,cls)=>{const n=AG.kpis[id].l.length;return'<button type="button" class="agd-kpi'+(cls||"")+'" data-ag="kpi" data-k="'+id+'" aria-label="'+esc(rot+": "+n+". Ver a lista")+'"><b>'+n+'</b><span>'+rot+'</span><i aria-hidden="true">ver ›</i></button>';};
+  h+='<div class="agd-kpis">'+k("hoje","hoje")+k("semana","nos próximos 7 dias")+k("total","marcadas no total")+k("link","marcadas pelo link")+k("pend","aguardando resultado",AG.kpis.pend.l.length?" agd-kpi-alerta":"")+'</div>';}
+  // reuniões que já aconteceram e esperam o resultado
+  {const pend=semResultado(D);
+  if(pend.length)h+='<div class="agd-card agd-pend"><div class="agd-h">📝 Como foram estas reuniões? <small>(registre o resultado: ele vai para os números do Painel Comercial)</small></div>'+
+    pend.map(r=>{const a=br(r.inicio);return'<div class="agd-pr"><span class="agd-cor" style="background:'+esc(corTipo(r))+'"></span><div class="agd-pr-n"><b>'+esc(r.nome)+'</b><span>'+esc(r.tipo_nome||"Reunião")+' · '+esc(diaLongo(a.dia))+' às '+a.hora+'</span></div>'+
+      '<button type="button" class="rh-btn agd-ok" data-ag="res" data-r="realizada" data-id="'+r.id+'">✅ Aconteceu</button><button type="button" class="rh-btn rh-btn-sec" data-ag="res" data-r="faltou" data-id="'+r.id+'">🚫 Não veio</button></div>';}).join("")+'</div>';}
   // links
   h+='<div class="agd-card"><div class="agd-h">🔗 Links para enviar ao cliente</div>'+
     (tipos.length?tipos.map(t=>'<div class="agd-link"><span class="agd-cor" style="background:'+esc(t.cor||"#1e4d8c")+'"></span><div class="agd-link-n"><b>'+esc(t.nome)+'</b><span>'+esc(durTxt(t.duracao_min))+(t.local?' · '+esc(t.local):'')+'</span></div>'+
@@ -77,16 +129,38 @@ function render(){
       '<button type="button" class="rh-btn" data-ag="copiar" data-id="'+t.id+'">Copiar</button>'+
       '<a class="rh-btn rh-btn-sec" href="https://wa.me/?text='+encodeURIComponent("Olá! Escolha o melhor dia e horário para a nossa reunião: "+linkDe(t))+'" target="_blank" rel="noopener">WhatsApp</a>'+
       '<a class="agd-lk" href="'+esc(linkDe(t))+'" target="_blank" rel="noopener">abrir</a></div>').join(""):'<div class="agd-vazio">Nenhum tipo de reunião ativo. Crie um em ⚙️ Horários e tipos.</div>')+'</div>';
-  // calendário (semana, dia, mês) ou a lista das próximas
-  h+='<div class="agd-card agc">'+calendario(D.reunioes.filter(r=>r.status==="ativa"))+'</div>';
+  // calendário (mês com o painel do dia, semana, dia) ou a lista das próximas
+  if(!AG.vista)AG.vista=lerVista();
+  {const cal=D.reunioes.filter(r=>r.status==="ativa");
+  h+=AG.vista==="mes"?'<div class="agc-2col"><div class="agd-card agc">'+calendario(cal)+'</div>'+painelDia(cal)+'</div>':'<div class="agd-card agc">'+calendario(cal)+'</div>';}
   // bloqueios
   const bls=D.bloqueios.filter(b=>+new Date(b.fim)>=agora);
   h+='<div class="agd-card"><div class="agd-h">⛔ Bloqueios <small>(horários que não aparecem no link)</small></div>'+
     (bls.length?bls.map(b=>'<div class="agd-bl"><span>'+esc(txtFaixa(b.inicio,b.fim))+(b.motivo?' · <i>'+esc(b.motivo)+'</i>':'')+'</span><button type="button" class="agd-lk" data-ag="tirarbl" data-id="'+b.id+'">tirar</button></div>').join(""):'<div class="agd-vazio">Nenhum bloqueio. Use ⛔ para férias, feriados ou um compromisso fora do painel.</div>')+'</div>';
   // passadas e canceladas
-  h+='<div class="agd-card"><button type="button" class="agd-toggle" data-ag="passadas">'+(AG.verPassadas?"▾":"▸")+' Passadas e canceladas (últimos 30 dias) · '+outras.length+'</button>'+
+  const nCanc=D.reunioes.filter(r=>r.status!=="ativa").length;
+  h+='<div class="agd-card"><div class="agd-pass-h"><button type="button" class="agd-toggle" data-ag="passadas">'+(AG.verPassadas?"▾":"▸")+' Passadas e canceladas (últimos 30 dias) · '+outras.length+'</button>'+
+    (AG.verPassadas&&nCanc?'<button type="button" class="agd-lk agd-lk-v" data-ag="excluircanc">🗑 excluir todas as canceladas ('+nCanc+')</button>':'')+'</div>'+
     (AG.verPassadas?(outras.length?outras.map(linhaReuniao).join(""):'<div class="agd-vazio">Nada por aqui.</div>'):"")+'</div>';
-  el.innerHTML=h;
+  const foco=focoAtual(el);
+  el.innerHTML='<div class="agd-tela">'+h+'</div>';
+  devolverFoco(el,foco);
+  if(AG.vista==="mes")garantirLivres();
+}
+// O que tinha foco dentro da guia (pelos data-*), para focar o mesmo controle depois de redesenhar.
+function focoAtual(el){
+  const a=typeof document!=="undefined"?document.activeElement:null;
+  if(!a||a===el||!el.contains||!el.contains(a)||!a.dataset)return null;
+  return{ag:a.dataset.ag||"",dia:a.dataset.dia||"",id:a.dataset.id||"",mod:a.dataset.agMod||"",painel:!!(a.closest&&a.closest(".agc-dp"))};
+}
+function devolverFoco(el,f){
+  if(!f||!el.querySelectorAll)return;
+  const ok=v=>/^[\w-]*$/.test(v); // só datas, ids e nomes de ação: nada de aspas no seletor
+  if(![f.ag,f.dia,f.id,f.mod].every(ok))return;
+  const sel=f.mod?'[data-ag-mod="'+f.mod+'"]':f.ag?'[data-ag="'+f.ag+'"]'+(f.dia?'[data-dia="'+f.dia+'"]':'')+(f.id?'[data-id="'+f.id+'"]':''):"";
+  if(!sel)return;
+  const n=[...el.querySelectorAll(sel)].find(x=>!!(x.closest&&x.closest(".agc-dp"))===f.painel);
+  if(n&&n.focus)try{n.focus({preventScroll:true});}catch(e){n.focus();}
 }
 function somaDias(dia,n){const d=new Date(dia+"T12:00:00Z");d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);}
 function txtFaixa(ini,fim){
@@ -100,12 +174,19 @@ function linhaReuniao(r){
   const tipo=AG.dados.tipos.find(t=>String(t.id)===String(r.tipo_id));
   return'<div class="agd-r'+(canc?" canc":"")+'" style="border-left-color:'+esc((tipo&&tipo.cor)||"#1e4d8c")+'">'+
     '<div class="agd-r-h"><b>'+a.hora+'–'+b.hora+'</b>'+(passou||canc?'<span class="agd-r-d">'+esc(diaLongo(a.dia))+'</span>':'')+'</div>'+
-    '<div class="agd-r-c"><div class="agd-r-t"><b>'+esc(r.nome)+'</b> · '+esc(r.tipo_nome||"Reunião")+
-      (canc?' <span class="agd-tag agd-tag-c">cancelada</span>':'')+(r.origem==="link"?' <span class="agd-tag">pelo link</span>':' <span class="agd-tag agd-tag-m">cadastrada aqui</span>')+'</div>'+
+    '<div class="agd-r-c"><div class="agd-r-t"><b>'+esc(r.nome)+'</b> · '+esc(r.tipo_nome||"Reunião")+(r.modalidade?' · '+txtMod(r.modalidade):'')+
+      (canc?' <span class="agd-tag agd-tag-c">cancelada</span>':'')+(r.origem==="link"?' <span class="agd-tag">pelo link</span>':' <span class="agd-tag agd-tag-m">cadastrada aqui</span>')+tagResultado(r)+'</div>'+
       '<div class="agd-r-x">'+(r.telefone?'<a href="tel:'+esc(r.telefone)+'">'+esc(telTxt(r.telefone))+'</a> · <a href="'+esc(zap(r.telefone))+'" target="_blank" rel="noopener">WhatsApp</a>':'')+
       (r.email?(r.telefone?' · ':'')+'<a href="mailto:'+esc(r.email)+'">'+esc(r.email)+'</a>':'')+'</div>'+
       (r.obs?'<div class="agd-r-o">“'+esc(r.obs)+'”</div>':'')+'</div>'+
+    (!canc&&comecou(r)?'<div class="agd-r-a"><button type="button" class="agd-lk" data-ag="res" data-id="'+r.id+'">'+(r.resultado?"mudar resultado":"registrar resultado")+'</button></div>':'')+
+    (canc||passou?'<div class="agd-r-a"><button type="button" class="agd-lk agd-lk-v" data-ag="excluir" data-id="'+r.id+'" title="Apagar de vez">🗑 excluir</button></div>':'')+
     (canc||passou?'':'<div class="agd-r-a"><button type="button" class="agd-lk" data-ag="remarcar" data-id="'+r.id+'">remarcar</button><button type="button" class="agd-lk agd-lk-v" data-ag="cancelar" data-id="'+r.id+'">cancelar</button></div>')+'</div>';
+}
+
+function tagResultado(r){
+  if(r.status!=="ativa"||!r.resultado)return"";
+  return' <span class="agd-tag '+(r.resultado==="realizada"?"agd-tag-ok":"agd-tag-c")+'">'+(r.resultado==="realizada"?"✅ realizada":"🚫 não compareceu")+'</span>'+(r.proximo_passo?' <span class="agd-tag">→ '+esc(PROXIMOS[r.proximo_passo]||r.proximo_passo)+'</span>':'');
 }
 
 /* ── calendário ────────────────────────────────────────────────────────── */
@@ -119,13 +200,14 @@ const dur=r=>Math.round((+new Date(r.fim)-+new Date(r.inicio))/60000);
 const temAtend=w=>!!(((AG.dados.config||{}).semana||{})[String(w)]||[]).length;
 const corTipo=r=>{const t=AG.dados.tipos.find(x=>String(x.id)===String(r.tipo_id));return(t&&t.cor)||"#1e4d8c";};
 const rgba=(hex,a)=>{const n=parseInt(String(/^#[0-9a-f]{6}$/i.test(hex)?hex:"#1e4d8c").slice(1),16);return"rgba("+(n>>16&255)+","+(n>>8&255)+","+(n&255)+","+a+")";};
-function lerVista(){try{const v=localStorage.getItem("agd_vista");return VISTAS.some(x=>x[0]===v)?v:"semana";}catch(e){return"semana";}}
+function lerVista(){try{const v=localStorage.getItem("agd_vista");return VISTAS.some(x=>x[0]===v)?v:"mes";}catch(e){return"mes";}}
 function guardarVista(v){try{localStorage.setItem("agd_vista",v);}catch(e){}}
 
 function calendario(ativas){
   if(!AG.vista)AG.vista=lerVista();
   if(!AG.ref)AG.ref=hojeBR();
   const v=AG.vista,ref=AG.ref;
+  if(v==="mes")selDoMes();
   let titulo;
   if(v==="mes"){const x=new Date(ref+"T12:00:00Z");titulo=MESL[x.getUTCMonth()].charAt(0).toUpperCase()+MESL[x.getUTCMonth()].slice(1)+" de "+x.getUTCFullYear();}
   else if(v==="semana"){
@@ -144,9 +226,23 @@ function calendario(ativas){
     const dias=[0,1,2,3,4,5,6].map(i=>somaDias(s,i)).filter(d=>{const w=dowDe(d);return(w>=1&&w<=5)||temAtend(w)||ativas.some(r=>br(r.inicio).dia===d);});
     h+=vistaGrade(dias,ativas);
   }
-  else if(v==="dia")h+=vistaGrade([ref],ativas);
+  else if(v==="dia"){
+    h+='<div class="agc-modbar">'+seletorModalidade(ref)+(ref<hojeBR()?'<small>dia que já passou</small>':'<small>vale para quem abrir o link; reuniões já marcadas não mudam</small>')+'</div>';
+    h+=vistaGrade([ref],ativas);
+  }
   else h+=vistaLista(ativas);
   return h;
+}
+
+// "Neste dia, o link oferece [padrão / os dois / só online / só presencial]" (a mudança vai pelo "change" em ligar)
+function seletorModalidade(d){
+  const c=(AG.dados.config||{}),proprio=normMod((c.modalidade_dias||{})[d]);
+  const padrao=normMod((c.modalidade_semana||{})[String(dowDe(d))])||"ambos",div=dividido(proprio);
+  return'<div class="agc-modsel" data-mod-box="'+d+'"><label class="agc-modsel-l">Neste dia, o link oferece <select data-ag-mod="'+d+'" aria-label="Online ou presencial neste dia">'+
+    '<option value=""'+(proprio?"":" selected")+'>Padrão da '+esc(SEM[dowDe(d)].toLowerCase())+' ('+esc(txtModDia(padrao).toLowerCase())+')</option>'+
+    ["ambos","online","presencial"].map(k=>'<option value="'+k+'"'+(proprio===k?" selected":"")+'>'+MODS[k]+'</option>').join("")+
+    '<option value="dividir"'+(div?" selected":"")+'>Dividir o dia (manhã / tarde)…</option></select></label>'+
+    '<div class="agc-moddiv"'+(div?"":" hidden")+'>'+camposDivisao(proprio)+'<button type="button" class="rh-btn agc-moddiv-ok" data-ag="moddiv" data-dia="'+d+'">Salvar divisão</button></div></div>';
 }
 
 // Semana e Dia: colunas com as horas, como o calendário do iPhone. Faixa clara = horário de atendimento;
@@ -162,7 +258,7 @@ function vistaGrade(dias,ativas){
   const alt=(fim-ini)/60*H,y=m=>(m-ini)/60*H;
   let h='<div class="agc-rola"><div class="agc-grade" style="--cols:'+dias.length+'"><div class="agc-cab"><div></div>'+dias.map(d=>{
     const x=new Date(d+"T12:00:00Z");
-    return'<button type="button" class="agc-cd'+(d===hoje?" hoje":"")+'" data-ag="dia" data-dia="'+d+'" title="Ver o dia"><span>'+SEMC[x.getUTCDay()]+'</span><b>'+x.getUTCDate()+'</b></button>';
+    return'<button type="button" class="agc-cd'+(d===hoje?" hoje":"")+'" data-ag="dia" data-dia="'+d+'" title="Ver o dia'+(restrito(modDia(d))?" · "+esc(txtModDia(modDia(d))):"")+'"><span>'+SEMC[x.getUTCDay()]+(restrito(modDia(d))?" "+icModDia(modDia(d)):"")+'</span><b>'+x.getUTCDate()+'</b></button>';
   }).join("")+'</div><div class="agc-corpo"><div class="agc-horas" style="height:'+alt+'px">';
   for(let m=ini+60;m<fim;m+=60)h+='<span style="top:'+y(m)+'px">'+hhmm(m)+'</span>';
   h+='</div>';
@@ -183,32 +279,112 @@ function vistaGrade(dias,ativas){
     });
     doDia(d).forEach(r=>{
       const a=minDe(br(r.inicio).hora),dd=dur(r),c=corTipo(r);
-      h+='<button type="button" class="agc-ev'+(dd<=30?" curto":"")+'" data-ag="ver" data-id="'+r.id+'" style="top:'+y(a)+'px;height:'+Math.max(18,dd/60*H-2)+'px;background:'+rgba(c,.16)+';border-left-color:'+esc(c)+'" title="'+esc(br(r.inicio).hora+"–"+br(r.fim).hora+" · "+r.nome+" · "+(r.tipo_nome||""))+'">'+
-        '<b>'+br(r.inicio).hora+' · '+esc(r.nome)+'</b><span>'+esc(r.tipo_nome||"")+'</span></button>';
+      h+='<button type="button" class="agc-ev'+(dd<=30?" curto":"")+(r.resultado==="faltou"?" faltou":r.resultado==="realizada"?" feita":"")+'" data-ag="ver" data-id="'+r.id+'" style="top:'+y(a)+'px;height:'+Math.max(18,dd/60*H-2)+'px;background:'+rgba(c,.16)+';border-left-color:'+esc(c)+'" title="'+esc(br(r.inicio).hora+"–"+br(r.fim).hora+" · "+r.nome+" · "+(r.tipo_nome||""))+'">'+
+        '<b>'+(r.resultado==="realizada"?"✅ ":r.resultado==="faltou"?"🚫 ":"")+(icMod(r.modalidade)?icMod(r.modalidade)+" ":"")+br(r.inicio).hora+' · '+esc(r.nome)+'</b><span>'+esc(r.tipo_nome||"")+'</span></button>';
     });
-    if(d===hoje){const n=minDe(br(new Date().toISOString()).hora);if(n>=ini&&n<=fim)h+='<div class="agc-agora" style="top:'+y(n)+'px"></div>';}
+    if(d===hoje){const n=minDe(br(new Date(Date.now()).toISOString()).hora);if(n>=ini&&n<=fim)h+='<div class="agc-agora" style="top:'+y(n)+'px"></div>';}
     h+='</div>';
   });
   h+='</div></div></div><p class="agc-dica">Toque num horário vazio para marcar uma reunião ali · toque numa reunião para ver os detalhes.</p>';
   return h;
 }
 
-// Mês: a grade do mês com bolinhas na cor do tipo de reunião. Tocar no dia abre o Dia.
+// Mês: cada dia é um cartão com bolinhas na cor do tipo de reunião e quantas são. Tocar no dia escolhe o dia
+// (o painel ao lado mostra o que tem nele); dia de outro mês leva para aquele mês.
+// O dia escolhido fica no mês que está na tela: hoje, se for o mês de hoje; senão o dia 1.
+function selDoMes(){
+  const mes=AG.ref.slice(0,7),hoje=hojeBR();
+  if(AG.sel&&AG.sel.slice(0,7)===mes)return;
+  AG.sel=hoje.slice(0,7)===mes?hoje:mes+"-01";
+}
+const doDiaAtivas=(ativas,d)=>ativas.filter(r=>br(r.inicio).dia===d).sort((a,b)=>+new Date(a.inicio)-+new Date(b.inicio));
+const diaBloqueado=d=>{const d0=Date.parse(d+"T00:00:00-03:00");return AG.dados.bloqueios.some(b=>+new Date(b.inicio)<=d0&&+new Date(b.fim)>=d0+86400000);};
 function vistaMes(ativas){
-  const D=AG.dados,ref=AG.ref,hoje=hojeBR(),mes=ref.slice(0,7);
+  const ref=AG.ref,hoje=hojeBR(),mes=ref.slice(0,7);
   const p1=mes+"-01",ini=somaDias(p1,-dowDe(p1)); // começa no domingo, como o iPhone
   let h='<div class="agc-mes"><div class="agc-mes-cab">'+SEMC.map(s=>'<span>'+s+'</span>').join("")+'</div><div class="agc-mes-g">';
   for(let i=0;i<42;i++){
     const d=somaDias(ini,i);
     if(i===35&&d.slice(0,7)!==mes)break; // 6ª linha só quando o mês precisa
-    const rs=ativas.filter(r=>br(r.inicio).dia===d);
-    const d0=Date.parse(d+"T00:00:00-03:00");
-    const bloq=D.bloqueios.some(b=>+new Date(b.inicio)<=d0&&+new Date(b.fim)>=d0+86400000);
-    h+='<button type="button" class="agc-dm'+(d.slice(0,7)!==mes?" fora":"")+(d===hoje?" hoje":"")+(bloq?" bloq":"")+(!temAtend(dowDe(d))?" fds":"")+'" data-ag="dia" data-dia="'+d+'"><b>'+Number(d.slice(8))+'</b>'+
-      (rs.length?'<span class="agc-pts">'+rs.slice(0,4).map(r=>'<i style="background:'+esc(corTipo(r))+'"></i>').join("")+(rs.length>4?'<em>+'+(rs.length-4)+'</em>':'')+'</span><span class="agc-n">'+rs.length+' reuni'+(rs.length===1?"ão":"ões")+'</span>':(bloq?'<span class="agc-n">bloqueado</span>':''))+'</button>';
+    const rs=doDiaAtivas(ativas,d),bloq=diaBloqueado(d),md=modDia(d),atende=temAtend(dowDe(d));
+    h+='<button type="button" class="agc-dm'+(d.slice(0,7)!==mes?" fora":"")+(d===hoje?" hoje":"")+(d===AG.sel?" sel":"")+(bloq?" bloq":"")+(!atende?" fds":"")+(d<hoje?" passado":"")+'" data-ag="sel" data-dia="'+d+'" aria-pressed="'+(d===AG.sel)+'" aria-label="'+esc(diaLongo(d)+(d===hoje?", hoje":"")+(rs.length?", "+rs.length+" reuni"+(rs.length===1?"ão":"ões"):"")+(bloq?", bloqueado":"")+(!atende?", sem atendimento":restrito(md)?", "+txtModDia(md).toLowerCase():""))+'">'+
+      '<span class="agc-dm-n"><b>'+Number(d.slice(8))+'</b>'+(restrito(md)&&atende?'<small class="agc-mod" title="'+esc(txtModDia(md))+'">'+icModDia(md)+'</small>':'')+'</span>'+
+      (rs.length?'<span class="agc-pts">'+rs.slice(0,5).map(r=>'<i style="background:'+esc(corTipo(r))+'"></i>').join("")+(rs.length>5?'<em>+'+(rs.length-5)+'</em>':'')+'</span><span class="agc-n">'+rs.length+' reuni'+(rs.length===1?"ão":"ões")+'</span>':(bloq?'<span class="agc-n agc-n-bl">bloqueado</span>':''))+'</button>';
   }
   h+='</div></div>';
   return h;
+}
+
+// "09:00" → "9h", "13:30" → "13h30"
+const hTxt=x=>{const[a,b]=String(x).split(":");return Number(a)+"h"+(b&&b!=="00"?b:"");};
+// Painel do dia escolhido no Mês: tudo o que importa daquele dia, sem sair do mês.
+function painelDia(ativas){
+  const D=AG.dados,d=AG.sel,hoje=hojeBR(),x=new Date(d+"T12:00:00Z"),w=x.getUTCDay(),passou=d<hoje;
+  const rs=doDiaAtivas(ativas,d);
+  const faixas=((D.config||{}).semana||{})[String(w)]||[];
+  const d0=Date.parse(d+"T00:00:00-03:00"),d1=d0+86400000;
+  const corte=(ini,fim)=>{const a=Math.max(+new Date(ini),d0),z=Math.min(+new Date(fim),d1);return z>a?{a,z,inteiro:a<=d0&&z>=d1}:null;};
+  const hm=ms=>br(new Date(ms).toISOString()).hora;
+  const rel=d===hoje?"Hoje":d===somaDias(hoje,1)?"Amanhã":d===somaDias(hoje,-1)?"Ontem":"";
+  let h='<aside class="agd-card agc-dp" aria-label="'+esc(diaLongo(d))+'">';
+  h+='<div class="agc-dp-cab"><div class="agc-dp-num'+(d===hoje?" hoje":"")+'"><span>'+SEMC[w]+'</span><b>'+x.getUTCDate()+'</b></div>'+
+    '<div class="agc-dp-t"><b>'+esc(SEM[w]+", "+x.getUTCDate()+" de "+MESL[x.getUTCMonth()])+'</b><span>'+esc((rel?rel+" · ":"")+(rs.length?rs.length+" reuni"+(rs.length===1?"ão":"ões"):"nenhuma reunião")+" · "+(faixas.length?"atendimento "+faixas.map(f=>hTxt(f[0])+"–"+hTxt(f[1])).join(" e "):"sem atendimento"))+'</span></div></div>';
+  if(!passou&&faixas.length)h+=seletorModalidade(d);
+  // reuniões
+  h+=rs.length?rs.map(r=>{const a=br(r.inicio),b=br(r.fim),c=corTipo(r);
+    return'<button type="button" class="agc-pev'+(+new Date(r.fim)<Date.now()?" foi":"")+'" data-ag="ver" data-id="'+r.id+'" style="border-left-color:'+esc(c)+'">'+
+      '<span class="agc-pev-h">'+a.hora+'</span><span class="agc-pev-t"><b>'+esc(r.nome)+'</b><span>'+esc((r.tipo_nome||"Reunião")+" · "+a.hora+"–"+b.hora)+'</span>'+
+      '<span class="agc-pev-tags">'+(r.modalidade?'<i class="agd-tag">'+txtMod(r.modalidade)+'</i>':'')+(r.resultado==="realizada"?'<i class="agd-tag agd-tag-ok">✅ realizada</i>':r.resultado==="faltou"?'<i class="agd-tag agd-tag-c">🚫 não veio</i>':'')+(r.origem==="link"?'<i class="agd-tag">pelo link</i>':'')+'</span></span></button>';}).join("")
+    :'<div class="agc-dp-vazio">'+(passou?"Nenhuma reunião neste dia.":faixas.length?"Nenhuma reunião marcada ainda.":"Dia sem atendimento no link.")+'</div>';
+  // bloqueios e diretores ocupados
+  D.bloqueios.forEach(b=>{const c=corte(b.inicio,b.fim);if(c)h+='<div class="agc-dp-bl">⛔ '+(c.inteiro?"Dia inteiro bloqueado":hm(c.a)+"–"+(c.z>=d1?"24:00":hm(c.z)))+(b.motivo?' · '+esc(b.motivo):'')+'</div>';});
+  (D.ocupados||[]).forEach(o=>{const c=corte(o.inicio,o.fim);if(c)h+='<div class="agc-dp-dir">👔 '+esc(o.nome)+' ocupado '+(c.inteiro?"o dia inteiro":hm(c.a)+"–"+(c.z>=d1?"24:00":hm(c.z)))+'</div>';});
+  // horários livres: os mesmos que o cliente vê no link de cada tipo
+  const tipos=D.tipos.filter(t=>t.ativo&&t.slug);
+  if(!passou&&tipos.length){
+    h+='<div class="agc-dp-sub">Horários livres no link</div>';
+    h+=tipos.map(t=>{const e=AG.livres[t.slug];
+      let v;
+      if(!e)v='<span class="agc-dp-cz">carregando…</span>';
+      else if(e.erro)v='<span class="agc-dp-cz">não consegui ver agora</span>';
+      else{const hs=(e.dias||{})[d]||[];v=hs.length?esc(hs.slice(0,8).join(" · "))+(hs.length>8?' <span class="agc-dp-cz">+'+(hs.length-8)+'</span>':''):'<span class="agc-dp-cz">nenhum</span>';}
+      return'<div class="agc-dp-livre"><span class="agd-cor" style="background:'+esc(t.cor||"#1e4d8c")+'"></span><b>'+esc(t.nome)+'</b><span>'+v+'</span></div>';}).join("");
+  }
+  // ações
+  h+='<div class="agc-dp-ac">'+(passou?'':'<button type="button" class="rh-btn" data-ag="marcar" data-dia="'+d+'">➕ Marcar neste dia</button>')+
+    '<div class="agc-dp-lks">'+(passou?'':'<button type="button" class="agd-lk" data-ag="bloquear" data-dia="'+d+'">⛔ bloquear</button>')+'<button type="button" class="agd-lk" data-ag="dia" data-dia="'+d+'">🕒 ver as horas</button></div></div>';
+  // faixa da semana (dom a sáb)
+  const s0=somaDias(d,-w);
+  h+='<div class="agc-dp-sem" role="group" aria-label="Semana">'+[0,1,2,3,4,5,6].map(i=>{const dd=somaDias(s0,i),n=doDiaAtivas(ativas,dd).length;
+    return'<button type="button" class="'+(dd===d?"on":"")+(dd===hoje?" hoje":"")+'" data-ag="sel" data-dia="'+dd+'" aria-pressed="'+(dd===d)+'" aria-label="'+esc(diaLongo(dd)+(dd===hoje?", hoje":"")+", "+(n?n+" reuni"+(n===1?"ão":"ões"):"nenhuma reunião"))+'"><span>'+SEMC[i]+'</span><b>'+Number(dd.slice(8))+'</b><em>'+(n||"")+'</em></button>';}).join("")+'</div>';
+  return h+'</aside>';
+}
+// Pede ao link público os horários livres de cada tipo (o que o cliente vê de verdade: horário de atendimento,
+// antecedência, intervalo, bloqueios e diretores). Guarda por 1 minuto; qualquer mudança na agenda apaga.
+function garantirLivres(){
+  const D=AG.dados;if(!D)return;
+  D.tipos.filter(t=>t.ativo&&t.slug).forEach(t=>{
+    const e=AG.livres[t.slug];
+    if((e&&Date.now()-e.em<60000)||AG.pedindo[t.slug])return;
+    AG.pedindo[t.slug]=true;const dono=uk(),g=AG.gerLivres,vale=()=>g===AG.gerLivres&&dono===uk();
+    fetch("/api/rh?modulo=agendapub&t=horarios&s="+encodeURIComponent(t.slug))
+      .then(r=>r.ok?r.json():Promise.reject(new Error(String(r.status))))
+      .then(j=>{if(vale())AG.livres[t.slug]={em:Date.now(),dias:(j&&j.dias)||{},mods:(j&&j.modalidades)||{}};})
+      .catch(()=>{if(vale())AG.livres[t.slug]={em:Date.now(),erro:true};})
+      .then(()=>{
+        if(g!==AG.gerLivres){pintarDepois();return;} // limpou no meio: o próximo desenho pede de novo
+        AG.pedindo[t.slug]=false;
+        if(!Object.keys(AG.pedindo).some(k=>AG.pedindo[k]))pintarDepois(); // espera todos os tipos
+      });
+  });
+}
+// Redesenha o painel quando chegam os horários livres, mas não no meio de um select aberto ou de online/presencial salvando.
+function pintarDepois(){
+  if(AG.tPinta){clearTimeout(AG.tPinta);AG.tPinta=null;}
+  if(!(AG.vista==="mes"&&AG.dados&&(typeof ST==="undefined"||ST.pg==="agenda")))return;
+  const a=typeof document!=="undefined"?document.activeElement:null,el=conteudo();
+  if(AG.modPendente||(a&&a.tagName==="SELECT"&&el&&el.contains&&el.contains(a))){AG.tPinta=setTimeout(pintarDepois,1500);return;}
+  render();
 }
 
 function vistaLista(ativas){
@@ -221,9 +397,27 @@ function vistaLista(ativas){
 
 function navegar(passo){
   const v=AG.vista,ref=AG.ref;
-  if(v==="mes"){const x=new Date(ref.slice(0,7)+"-15T12:00:00Z");x.setUTCMonth(x.getUTCMonth()+passo);AG.ref=x.toISOString().slice(0,10);}
+  if(v==="mes"){const x=new Date(ref.slice(0,7)+"-15T12:00:00Z");x.setUTCMonth(x.getUTCMonth()+passo);AG.ref=x.toISOString().slice(0,10);AG.sel=null;}
   else AG.ref=somaDias(ref,(v==="semana"?7:1)*passo);
   render();
+}
+
+// Lista que formou um número do topo. Tocar numa reunião abre os detalhes (ou o resultado, nas que aguardam).
+function abrirKpi(id){
+  const K=AG.kpis&&AG.kpis[id];if(!K)return;
+  const hoje=hojeBR(),porDia={};
+  K.l.slice().sort((a,b)=>K.pend?+new Date(b.inicio)-+new Date(a.inicio):+new Date(a.inicio)-+new Date(b.inicio)).forEach(r=>{const d=br(r.inicio).dia;(porDia[d]=porDia[d]||[]).push(r);});
+  const dias=Object.keys(porDia).sort(),ord=K.pend?dias.reverse():dias;
+  const linha=r=>{const a=br(r.inicio),b=br(r.fim);
+    return'<button type="button" class="agk-r" data-r="'+r.id+'" style="border-left-color:'+esc(corTipo(r))+'"><span class="agk-h">'+a.hora+'–'+b.hora+'</span>'+
+      '<span class="agk-t"><b>'+esc(r.nome)+'</b><span>'+esc(r.tipo_nome||"Reunião")+(r.modalidade?' · '+txtMod(r.modalidade):'')+(r.telefone?' · '+esc(telTxt(r.telefone)):'')+'</span></span>'+
+      '<span class="agk-tags">'+(r.origem==="link"?'<i class="agd-tag">pelo link</i>':'<i class="agd-tag agd-tag-m">cadastrada aqui</i>')+tagResultado(r)+'</span><span class="agk-ir" aria-hidden="true">›</span></button>';};
+  const ov=janela(K.t+" · "+K.l.length,
+    (K.l.length?ord.map(d=>'<div class="agk-dia">'+(d===hoje?"Hoje · ":d===somaDias(hoje,1)?"Amanhã · ":d===somaDias(hoje,-1)?"Ontem · ":"")+esc(diaLongo(d))+'</div>'+porDia[d].map(linha).join("")).join(""):
+      '<div class="agd-vazio">'+(K.pend?"Nenhuma reunião esperando resultado. 👍":"Nenhuma reunião aqui.")+'</div>')+
+    '<p class="agd-dica" style="margin-top:10px">'+(K.pend?"Toque numa reunião para dizer se ela aconteceu.":"Toque numa reunião para ver os detalhes, remarcar ou cancelar.")+'</p>'+
+    '<div class="agd-acoes"><button type="button" class="rh-btn" data-fechar="1">Fechar</button></div>',true);
+  ov.addEventListener("click",e=>{const b=e.target.closest("[data-r]");if(!b)return;const r=AG.dados.reunioes.find(x=>String(x.id)===b.dataset.r);if(!r)return;if(K.pend)abrirResultado(r);else abrirReuniao(r);});
 }
 
 // Detalhes de uma reunião (tocar no bloco do calendário)
@@ -232,15 +426,17 @@ function abrirReuniao(r){
   const a=br(r.inicio),b=br(r.fim),passou=+new Date(r.fim)<Date.now(),c=corTipo(r);
   const ov=janela(r.tipo_nome||"Reunião",
     '<div class="agc-det" style="border-left-color:'+esc(c)+'"><b>'+esc(r.nome)+'</b><span>'+esc(diaLongo(a.dia))+' · '+a.hora+'–'+b.hora+'</span>'+
-      (r.local?'<span>📍 '+esc(r.local)+'</span>':'')+
+      (r.modalidade?'<span>'+txtMod(r.modalidade)+(r.local?(r.modalidade==="online"?": ":" — ")+esc(r.local):"")+'</span>':(r.local?'<span>📍 '+esc(r.local)+'</span>':''))+
       '<span>'+(r.origem==="link"?"Marcada pelo link":"Cadastrada aqui")+(r.cancelado_por==="cliente"?" · cancelada pelo cliente":"")+(r.remarcacoes?" · remarcada "+r.remarcacoes+"x pelo cliente":"")+'</span>'+
       (r.email_status?'<span>✉️ Confirmação: '+(/^enviado/.test(r.email_status)?"enviada":/^falhou/.test(r.email_status)?"não saiu ("+esc(r.email_status.split(" · ")[0].replace(/^falhou:\s*/,""))+")":esc(r.email_status.split(" · ")[0]))+'</span>'+(/aviso à Comercial falhou/.test(r.email_status)?'<span>⚠️ O aviso para a Comercial não saiu: confira esta reunião na agenda</span>':''):'')+
+      (r.resultado?'<span>'+(r.resultado==="realizada"?"✅ Realizada":"🚫 Não compareceu")+(r.proximo_passo?" · próximo passo: "+esc(PROXIMOS[r.proximo_passo]||r.proximo_passo):"")+'</span>'+(r.resultado_obs?'<span>📝 '+esc(r.resultado_obs)+'</span>':''):'')+
       (r.whatsapp_status?'<span>💬 WhatsApp: '+(/^enviado/.test(r.whatsapp_status)?"enviado":/^falhou/.test(r.whatsapp_status)?"não saiu ("+esc(r.whatsapp_status.replace(/^falhou:\s*/,""))+")":esc(r.whatsapp_status))+'</span>':'')+'</div>'+
     (r.telefone?'<div class="agc-det-l">📞 <a href="tel:'+esc(r.telefone)+'">'+esc(telTxt(r.telefone))+'</a> · <a href="'+esc(zap(r.telefone))+'" target="_blank" rel="noopener">WhatsApp</a></div>':'')+
     (r.email?'<div class="agc-det-l">✉️ <a href="mailto:'+esc(r.email)+'">'+esc(r.email)+'</a></div>':'')+
     (r.obs?'<div class="agc-det-o">“'+esc(r.obs)+'”</div>':'')+
-    '<div class="agd-acoes">'+(passou?'':'<button type="button" class="rh-btn rh-btn-sec agd-lk-v" id="agv-cancelar">Cancelar reunião</button><button type="button" class="rh-btn rh-btn-sec" id="agv-remarcar">Remarcar</button>')+'<button type="button" class="rh-btn" data-fechar="1">Fechar</button></div>');
-  const bc=ov.querySelector("#agv-cancelar"),bm=ov.querySelector("#agv-remarcar");
+    '<div class="agd-acoes">'+(passou?'':'<button type="button" class="rh-btn rh-btn-sec agd-lk-v" id="agv-cancelar">Cancelar reunião</button><button type="button" class="rh-btn rh-btn-sec" id="agv-remarcar">Remarcar</button>')+(comecou(r)?'<button type="button" class="rh-btn rh-btn-sec" id="agv-res">📝 '+(r.resultado?"Mudar resultado":"Registrar resultado")+'</button>':'')+'<button type="button" class="rh-btn" data-fechar="1">Fechar</button></div>');
+  const bc=ov.querySelector("#agv-cancelar"),bm=ov.querySelector("#agv-remarcar"),br2=ov.querySelector("#agv-res");
+  if(br2)br2.addEventListener("click",()=>abrirResultado(r));
   if(bc)bc.addEventListener("click",()=>{fechar();cancelar(r,null);});
   if(bm)bm.addEventListener("click",()=>abrirRemarcar(r));
 }
@@ -248,6 +444,13 @@ function abrirReuniao(r){
 /* ── eventos ───────────────────────────────────────────────────────────── */
 function ligar(el){
   if(el.__ag)return;el.__ag=true;
+  el.addEventListener("change",e=>{
+    const s=e.target.closest("[data-ag-mod]");if(!s)return;
+    const box=s.closest("[data-mod-box]"),dv=box&&box.querySelector(".agc-moddiv");
+    if(s.value==="dividir"){if(dv){dv.hidden=false;const c=dv.querySelector(".dv-corte");if(c)c.focus();}return;} // só salva no "Salvar divisão"
+    if(dv)dv.hidden=true;
+    salvarModDia(s.dataset.agMod,s.value||null,s);
+  });
   el.addEventListener("click",e=>{
     // horário vazio na grade (Semana/Dia): marcar uma reunião ali, no passo de horários da configuração
     const col=e.target.closest(".agc-col");
@@ -260,22 +463,53 @@ function ligar(el){
     const b=e.target.closest("[data-ag]");if(!b||!el.contains(b))return;
     const a=b.dataset.ag,id=b.dataset.id;
     if(a==="recarregar")recarregar();
-    else if(a==="marcar")abrirMarcar();
-    else if(a==="bloquear")abrirBloqueio();
+    else if(a==="marcar")abrirMarcar(b.dataset.dia?{dia:b.dataset.dia,hora:primeiraHora(b.dataset.dia)}:undefined);
+    else if(a==="bloquear")abrirBloqueio(b.dataset.dia);
+    else if(a==="sel"){
+      const d=b.dataset.dia,doMes=!!(b.classList&&b.classList.contains("agc-dm"));AG.sel=d;if(d.slice(0,7)!==AG.ref.slice(0,7))AG.ref=d;render();
+      // celular/tela estreita: o painel do dia fica embaixo do mês; tocar no dia leva até ele
+      if(doMes&&typeof innerWidth==="number"&&innerWidth<1100){const p=document.querySelector(".agc-dp");if(p&&p.scrollIntoView)p.scrollIntoView({block:"start"});}
+    }
     else if(a==="config")abrirConfig();
+    else if(a==="marca")abrirMarca();
+    else if(a==="res")abrirResultado(AG.dados.reunioes.find(r=>String(r.id)===id),b.dataset.r);
     else if(a==="diretores")abrirDiretores();
     else if(a==="iphone")abrirIphone();
     else if(a==="passadas"){AG.verPassadas=!AG.verPassadas;render();}
-    else if(a==="vista"){AG.vista=b.dataset.v;guardarVista(AG.vista);render();}
+    else if(a==="vista"){
+      const nova=b.dataset.v;
+      if(AG.vista==="mes"&&AG.sel)AG.ref=AG.sel;   // Semana/Dia abrem no dia escolhido no Mês
+      if(nova==="mes"&&AG.ref)AG.sel=AG.ref;       // e o Mês volta no dia que estava na tela
+      AG.vista=nova;guardarVista(nova);render();
+    }
     else if(a==="nav")navegar(Number(b.dataset.d)||0);
-    else if(a==="hoje"){AG.ref=hojeBR();render();}
+    else if(a==="hoje"){AG.ref=hojeBR();AG.sel=hojeBR();render();}
     else if(a==="dia"){AG.ref=b.dataset.dia;AG.vista="dia";render();}
+    else if(a==="kpi")abrirKpi(b.dataset.k);
+    else if(a==="moddiv"){const box=b.closest&&b.closest("[data-mod-box]");if(box)salvarModDia(b.dataset.dia,lerDivisao(box),b);}
     else if(a==="ver")abrirReuniao(AG.dados.reunioes.find(r=>String(r.id)===id));
     else if(a==="copiar"){const t=AG.dados.tipos.find(x=>String(x.id)===id);if(t)copiar(linkDe(t),"🔗 Link copiado: é só colar para o cliente");}
     else if(a==="remarcar")abrirRemarcar(AG.dados.reunioes.find(r=>String(r.id)===id));
     else if(a==="cancelar")cancelar(AG.dados.reunioes.find(r=>String(r.id)===id),b);
+    else if(a==="excluir"){
+      const r=AG.dados.reunioes.find(x=>String(x.id)===id);if(!r)return;const d=br(r.inicio);
+      if(confirm("Excluir de vez a reunião de "+r.nome+" ("+diaLongo(d.dia)+" às "+d.hora+")?\n\nIsso não pode ser desfeito."+(r.status==="ativa"?"\nEla também sai dos números do Painel Comercial.":"")))
+        acao(()=>api("reuniao","DELETE",null,"&id="+id),"Reunião excluída",b);
+    }
+    else if(a==="excluircanc"){
+      const n=AG.dados.reunioes.filter(r=>r.status!=="ativa").length;
+      if(confirm("Excluir de vez as "+n+" reuniões canceladas?\n\nIsso não pode ser desfeito."))acao(()=>api("canceladas","DELETE"),"Canceladas excluídas",b);
+    }
     else if(a==="tirarbl"){if(confirm("Tirar este bloqueio? O horário volta a aparecer no link."))acao(()=>api("bloqueio","DELETE",null,"&id="+id),"Bloqueio tirado",b);}
   });
+}
+// Grava o jeito de um dia (null = volta ao padrão) e redesenha; os horários livres do link mudam junto.
+function salvarModDia(dia,modalidade,ctrl){
+  if(ctrl)ctrl.disabled=true;AG.modPendente=true;
+  api("modalidade","POST",{dia,modalidade})
+    .then(j=>{AG.dados.config.modalidade_dias=j.modalidade_dias||{};toast("✅ "+(modalidade?diaLongo(dia)+": "+txtModDia(normMod(modalidade)||modalidade).toLowerCase():"Dia voltou ao padrão"));render();})
+    .catch(err=>{toast("⚠️ "+err.message);render();})
+    .then(()=>{AG.modPendente=false;limparLivres();if(AG.vista==="mes")render();});
 }
 function copiar(t,msg){
   (navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast(msg)).catch(()=>{prompt("Copie o link:",t);});
@@ -310,6 +544,7 @@ async function enviar(ov,b,fn,ok){
 }
 const campo=(rot,html)=>'<label class="agd-f"><span>'+rot+'</span>'+html+'</label>';
 
+function primeiraHora(d){const f=(((AG.dados.config||{}).semana||{})[String(dowDe(d))]||[])[0];return f?f[0]:"09:00";}
 function abrirMarcar(pre){
   const D=AG.dados,tipos=D.tipos.filter(t=>t.ativo);
   if(!tipos.length){toast("Crie um tipo de reunião primeiro (⚙️ Horários e tipos).");return;}
@@ -317,13 +552,16 @@ function abrirMarcar(pre){
     '<p class="agd-dica">Para reuniões combinadas por telefone ou pessoalmente. Pode ser fora do horário de atendimento, mas nunca em cima de outra reunião.</p>'+
     campo("Tipo",'<select id="agm-tipo">'+tipos.map(t=>'<option value="'+t.id+'">'+esc(t.nome)+' ('+esc(durTxt(t.duracao_min))+')</option>').join("")+'</select>')+
     '<div class="agd-2">'+campo("Dia",'<input type="date" id="agm-dia" min="'+hojeBR()+'" value="'+esc((pre&&pre.dia)||hojeBR())+'">')+campo("Horário",'<input type="time" id="agm-hora" step="300" value="'+esc((pre&&pre.hora)||"09:00")+'">')+'</div>'+
+    campo("Como vai ser",'<select id="agm-mod"><option value="presencial">📍 Presencial</option><option value="online">💻 Online</option><option value="">Ainda não definido</option></select>')+
     campo("Nome",'<input id="agm-nome" maxlength="80">')+
     '<div class="agd-2">'+campo("Telefone <small>(opcional)</small>",'<input id="agm-tel" type="tel" maxlength="20">')+campo("E-mail <small>(opcional)</small>",'<input id="agm-email" type="email" maxlength="120">')+'</div>'+
     campo("Observação <small>(opcional)</small>",'<textarea id="agm-obs" maxlength="500" rows="2"></textarea>')+
     '<label class="agd-ck"><input type="checkbox" id="agm-avisar" checked> Enviar a confirmação por WhatsApp e e-mail para a pessoa (o que ela tiver)</label>'+
     '<div class="agd-acoes"><button type="button" class="rh-btn rh-btn-sec" data-fechar="1">Voltar</button><button type="button" class="rh-btn" id="agm-ok">Marcar</button></div>');
   const v=id=>ov.querySelector(id).value;
-  ov.querySelector("#agm-ok").addEventListener("click",e=>enviar(ov,e.currentTarget,()=>api("reuniao","POST",{tipo_id:v("#agm-tipo"),dia:v("#agm-dia"),hora:v("#agm-hora"),nome:v("#agm-nome"),telefone:v("#agm-tel"),email:v("#agm-email"),obs:v("#agm-obs"),avisar:ov.querySelector("#agm-avisar").checked}),"Reunião marcada"));
+  ov.querySelector("#agm-ok").addEventListener("click",e=>enviar(ov,e.currentTarget,()=>api("reuniao","POST",{tipo_id:v("#agm-tipo"),dia:v("#agm-dia"),hora:v("#agm-hora"),nome:v("#agm-nome"),telefone:v("#agm-tel"),email:v("#agm-email"),obs:v("#agm-obs"),modalidade:v("#agm-mod")||null,avisar:ov.querySelector("#agm-avisar").checked}),"Reunião marcada"));
+  {const ajusta=()=>{const m=modHoraAdm(v("#agm-dia"),v("#agm-hora"));if(m!=="ambos")ov.querySelector("#agm-mod").value=m;};
+   ajusta();ov.querySelector("#agm-dia").addEventListener("change",ajusta);ov.querySelector("#agm-hora").addEventListener("change",ajusta);}
   ov.querySelector("#agm-nome").focus();
 }
 function abrirRemarcar(r){
@@ -334,20 +572,27 @@ function abrirRemarcar(r){
     '<div class="agd-acoes"><button type="button" class="rh-btn rh-btn-sec" data-fechar="1">Voltar</button><button type="button" class="rh-btn" id="agr-ok">Remarcar</button></div>');
   ov.querySelector("#agr-ok").addEventListener("click",e=>enviar(ov,e.currentTarget,()=>api("reuniao","PATCH",{dia:ov.querySelector("#agr-dia").value,hora:ov.querySelector("#agr-hora").value},"&id="+r.id),"Reunião remarcada"));
 }
-function abrirBloqueio(){
+function abrirBloqueio(dia){
+  const d0=dia&&/^\d{4}-\d{2}-\d{2}$/.test(dia)&&dia>=hojeBR()?dia:hojeBR();
   const ov=janela("⛔ Bloquear horário",
     '<p class="agd-dica">O horário bloqueado some do link. Reuniões já marcadas nele continuam: remarque ou cancele se precisar.</p>'+
-    '<div class="agd-2">'+campo("De",'<input type="date" id="agb-dia" min="'+hojeBR()+'" value="'+hojeBR()+'">')+campo("Até",'<input type="date" id="agb-ate" min="'+hojeBR()+'" value="'+hojeBR()+'">')+'</div>'+
+    '<div class="agd-2">'+campo("De",'<input type="date" id="agb-dia" min="'+hojeBR()+'" value="'+d0+'">')+campo("Até",'<input type="date" id="agb-ate" min="'+hojeBR()+'" value="'+d0+'">')+'</div>'+
     '<label class="agd-ck"><input type="checkbox" id="agb-inteiro" checked> Dia(s) inteiro(s)</label>'+
-    '<div class="agd-2" id="agb-horas" hidden>'+campo("Das",'<input type="time" id="agb-de" step="300" value="12:00">')+campo("Até as",'<input type="time" id="agb-ateh" step="300" value="14:00">')+'</div>'+
+    '<div id="agb-horas" hidden><div class="agd-2">'+campo("Das",'<input type="time" id="agb-de" step="300" value="12:00">')+campo("Até as",'<input type="time" id="agb-ateh" step="300" value="14:00">')+'</div>'+
+      campo("No resto do dia, o cliente pode marcar",'<select id="agb-mod"><option value="ambos">Online e presencial</option><option value="online">Só online</option><option value="presencial">Só presencial</option><option value="dividir">Dividir o dia (manhã / tarde)…</option></select>')+
+      '<div id="agb-div" hidden></div>'+
+      '<p class="agd-dica" id="agb-mod-d">Só vale para os horários que continuam livres neste dia.</p></div>'+
     campo("Motivo <small>(opcional, só você vê)</small>",'<input id="agb-motivo" maxlength="120" placeholder="Ex.: férias, feriado, visita">')+
     '<div class="agd-acoes"><button type="button" class="rh-btn rh-btn-sec" data-fechar="1">Voltar</button><button type="button" class="rh-btn" id="agb-ok">Bloquear</button></div>');
   const q=s=>ov.querySelector(s);
-  q("#agb-dia").addEventListener("change",()=>{if(q("#agb-ate").value<q("#agb-dia").value)q("#agb-ate").value=q("#agb-dia").value;});
+  const modAtual=()=>{const m=modDia(q("#agb-dia").value);q("#agb-mod").value=dividido(m)?"dividir":m;q("#agb-div").innerHTML=camposDivisao(m);q("#agb-div").hidden=!dividido(m);};
+  q("#agb-mod").addEventListener("change",()=>{q("#agb-div").hidden=q("#agb-mod").value!=="dividir";});
+  modAtual();
+  q("#agb-dia").addEventListener("change",()=>{if(q("#agb-ate").value<q("#agb-dia").value)q("#agb-ate").value=q("#agb-dia").value;modAtual();});
   q("#agb-inteiro").addEventListener("change",()=>{q("#agb-horas").hidden=q("#agb-inteiro").checked;});
   q("#agb-ok").addEventListener("click",e=>{
     const inteiro=q("#agb-inteiro").checked;
-    enviar(ov,e.currentTarget,()=>api("bloqueio","POST",{dia:q("#agb-dia").value,ateDia:q("#agb-ate").value,de:inteiro?null:q("#agb-de").value,ate:inteiro?null:q("#agb-ateh").value,motivo:q("#agb-motivo").value}),"Horário bloqueado");
+    enviar(ov,e.currentTarget,()=>api("bloqueio","POST",{dia:q("#agb-dia").value,ateDia:q("#agb-ate").value,de:inteiro?null:q("#agb-de").value,ate:inteiro?null:q("#agb-ateh").value,modalidade:inteiro?null:(q("#agb-mod").value==="dividir"?lerDivisao(q("#agb-div")):q("#agb-mod").value),motivo:q("#agb-motivo").value}),inteiro?"Horário bloqueado":"Horário bloqueado e jeito do dia definido");
   });
 }
 function abrirConfig(){
@@ -357,16 +602,20 @@ function abrirConfig(){
     return'<div class="agd-sem" data-d="'+i+'"><label class="agd-ck"><input type="checkbox" class="s-on"'+(on?" checked":"")+'> '+SEM[i]+'</label>'+
       '<span class="s-f"><input type="time" class="s-a1" step="300" value="'+f1[0]+'">–<input type="time" class="s-b1" step="300" value="'+f1[1]+'"></span>'+
       '<label class="agd-ck s-2l"><input type="checkbox" class="s-2"'+(f2?" checked":"")+'> 2ª faixa</label>'+
-      '<span class="s-f s-f2"'+(f2?"":" hidden")+'><input type="time" class="s-a2" step="300" value="'+(f2?f2[0]:"14:00")+'">–<input type="time" class="s-b2" step="300" value="'+(f2?f2[1]:"17:00")+'"></span></div>';
+      '<span class="s-f s-f2"'+(f2?"":" hidden")+'><input type="time" class="s-a2" step="300" value="'+(f2?f2[0]:"14:00")+'">–<input type="time" class="s-b2" step="300" value="'+(f2?f2[1]:"17:00")+'"></span>'+
+      (()=>{const m=normMod((c.modalidade_semana||{})[String(i)])||"ambos",div=dividido(m);
+        return'<select class="s-mod" aria-label="Online ou presencial na '+SEM[i]+'">'+["ambos","online","presencial"].map(k=>'<option value="'+k+'"'+(m===k?" selected":"")+'>'+MODS[k]+'</option>').join("")+'<option value="dividir"'+(div?" selected":"")+'>Dividir (manhã / tarde)…</option></select>'+
+          '<span class="s-div"'+(div?"":" hidden")+'>'+camposDivisao(m)+'</span>';})()+'</div>';
   };
   const tipoLinha=t=>'<div class="agd-tipo" data-id="'+(t?t.id:"")+'"><input type="color" class="t-cor" value="'+esc((t&&t.cor)||"#1e4d8c")+'" aria-label="Cor">'+
     '<input class="t-nome" maxlength="60" placeholder="Nome (ex.: Captação)" value="'+esc(t?t.nome:"")+'">'+
     '<select class="t-dur">'+[15,20,30,40,45,60,75,90,120].map(m=>'<option value="'+m+'"'+((t?t.duracao_min:30)===m?" selected":"")+'>'+durTxt(m)+'</option>').join("")+'</select>'+
-    '<input class="t-local" maxlength="300" placeholder="Local ou link da videochamada" value="'+esc((t&&t.local)||"")+'">'+
+    '<input class="t-local" maxlength="300" placeholder="📍 Endereço (presencial)" title="Endereço da reunião presencial" value="'+esc((t&&t.local)||"")+'">'+
+    '<input class="t-online" maxlength="300" placeholder="💻 Link ou instruções (online)" title="Link da videochamada (Meet, Teams…) ou como a pessoa recebe o link" value="'+esc((t&&t.local_online)||"")+'">'+
     '<label class="agd-ck"><input type="checkbox" class="t-ativo"'+(!t||t.ativo?" checked":"")+'> ativo</label>'+
     ((D.diretores||[]).filter(x=>x.ativo).length?'<div class="t-dir"><span>Exige livre:</span>'+(D.diretores||[]).filter(x=>x.ativo).map(x=>'<label class="agd-ck"><input type="checkbox" class="t-d" value="'+x.id+'"'+((t&&(t.diretores||[]).map(Number).includes(Number(x.id)))?" checked":"")+'> '+esc(x.nome)+'</label>').join("")+'</div>':'')+'</div>';
   const ov=janela("⚙️ Horários e tipos de reunião",
-    '<div class="agd-sub">Horário de atendimento <small>(o que aparece no link)</small></div>'+[1,2,3,4,5,6,0].map(linhaDia).join("")+
+    '<div class="agd-sub">Horário de atendimento <small>(o que aparece no link; à direita, se o dia atende online, presencial ou os dois. Um dia específico muda no calendário, na visão Dia)</small></div>'+[1,2,3,4,5,6,0].map(linhaDia).join("")+
     '<div class="agd-3">'+
       campo("Intervalo entre reuniões",'<select id="agc-int">'+[0,5,10,15,20,30,45,60].map(m=>'<option value="'+m+'"'+(c.intervalo_min===m?" selected":"")+'>'+(m?m+" min":"sem intervalo")+'</option>').join("")+'</select>')+
       campo("Antecedência mínima",'<select id="agc-ant">'+[0,1,2,4,8,12,24,48].map(h=>'<option value="'+h+'"'+(c.antecedencia_h===h?" selected":"")+'>'+(h?h+" h":"nenhuma")+'</option>').join("")+'</select>')+
@@ -378,7 +627,10 @@ function abrirConfig(){
     '<button type="button" class="agd-lk" id="agc-novo">+ novo tipo</button>'+
     '<div class="agd-acoes"><button type="button" class="rh-btn rh-btn-sec" data-fechar="1">Voltar</button><button type="button" class="rh-btn" id="agc-ok">Salvar</button></div>',true);
   const q=s=>ov.querySelector(s);
-  ov.addEventListener("change",e=>{if(e.target.classList.contains("s-2"))e.target.closest(".agd-sem").querySelector(".s-f2").hidden=!e.target.checked;});
+  ov.addEventListener("change",e=>{
+    if(e.target.classList.contains("s-2"))e.target.closest(".agd-sem").querySelector(".s-f2").hidden=!e.target.checked;
+    if(e.target.classList.contains("s-mod"))e.target.closest(".agd-sem").querySelector(".s-div").hidden=e.target.value!=="dividir";
+  });
   q("#agc-novo").addEventListener("click",()=>{q("#agc-tipos").insertAdjacentHTML("beforeend",tipoLinha(null));});
   q("#agc-ok").addEventListener("click",e=>{
     const semana={};
@@ -388,19 +640,85 @@ function abrirConfig(){
       if(l.querySelector(".s-2").checked)f.push([l.querySelector(".s-a2").value,l.querySelector(".s-b2").value]);
       semana[l.dataset.d]=f;
     });
-    const cfg={semana,intervalo_min:+q("#agc-int").value,antecedencia_h:+q("#agc-ant").value,janela_dias:+q("#agc-jan").value,passo_min:+q("#agc-passo").value,email_aviso:q("#agc-aviso").value};
-    const tipos=[...ov.querySelectorAll(".agd-tipo")].map(l=>({id:l.dataset.id||null,nome:l.querySelector(".t-nome").value,duracao_min:+l.querySelector(".t-dur").value,local:l.querySelector(".t-local").value,cor:l.querySelector(".t-cor").value,ativo:l.querySelector(".t-ativo").checked,diretores:[...l.querySelectorAll(".t-d:checked")].map(i=>Number(i.value))}))
+    const modalidade_semana={};
+    ov.querySelectorAll(".agd-sem").forEach(l=>{const m=l.querySelector(".s-mod").value;if(m==="dividir")modalidade_semana[l.dataset.d]=lerDivisao(l.querySelector(".s-div"));else if(m&&m!=="ambos")modalidade_semana[l.dataset.d]=m;});
+    const cfg={modalidade_semana,semana,intervalo_min:+q("#agc-int").value,antecedencia_h:+q("#agc-ant").value,janela_dias:+q("#agc-jan").value,passo_min:+q("#agc-passo").value,email_aviso:q("#agc-aviso").value};
+    const tipos=[...ov.querySelectorAll(".agd-tipo")].map(l=>({id:l.dataset.id||null,nome:l.querySelector(".t-nome").value,duracao_min:+l.querySelector(".t-dur").value,local:l.querySelector(".t-local").value,local_online:l.querySelector(".t-online").value,cor:l.querySelector(".t-cor").value,ativo:l.querySelector(".t-ativo").checked,diretores:[...l.querySelectorAll(".t-d:checked")].map(i=>Number(i.value))}))
       .filter(t=>t.id||t.nome.trim()); // linha nova em branco é ignorada
     enviar(ov,e.currentTarget,async()=>{
       await api("config","POST",cfg);
       for(const t of tipos){
         const antes=t.id&&D.tipos.find(x=>String(x.id)===String(t.id));
-        if(antes&&antes.nome===t.nome&&antes.duracao_min===t.duracao_min&&(antes.local||"")===t.local&&antes.cor===t.cor&&antes.ativo===t.ativo&&((l=>l.length===t.diretores.length&&l.every((x,i)=>x===t.diretores[i]))((antes.diretores||[]).map(Number).sort((a,b)=>a-b))))continue;
+        if(antes&&antes.nome===t.nome&&antes.duracao_min===t.duracao_min&&(antes.local||"")===t.local&&(antes.local_online||"")===t.local_online&&antes.cor===t.cor&&antes.ativo===t.ativo&&((l=>l.length===t.diretores.length&&l.every((x,i)=>x===t.diretores[i]))((antes.diretores||[]).map(Number).sort((a,b)=>a-b))))continue;
         await api("tipo","POST",t);
       }
     },"Configuração salva");
   });
 }
+/* ── resultado da reunião ──────────────────────────────────────────────── */
+function abrirResultado(r,pre){
+  if(!r)return;const a=br(r.inicio),sel=pre||r.resultado||"";
+  const ov=janela("📝 Resultado · "+r.nome,
+    '<p class="agd-dica">'+esc(r.tipo_nome||"Reunião")+' de <b>'+esc(diaLongo(a.dia))+' às '+a.hora+'</b>. O resultado entra nos números da agenda no Painel Comercial.</p>'+
+    '<div class="agd-res">'+Object.keys(RESULTADOS).map(k=>'<label class="agd-res-op'+(k==="faltou"?" falta":"")+'"><input type="radio" name="agres" value="'+k+'"'+(sel===k?" checked":"")+'><span>'+(k==="realizada"?"✅ ":"🚫 ")+RESULTADOS[k]+'</span></label>').join("")+'</div>'+
+    campo("Próximo passo",'<select id="agres-prox"><option value="">—</option>'+Object.keys(PROXIMOS).map(k=>'<option value="'+k+'"'+(r.proximo_passo===k?" selected":"")+'>'+PROXIMOS[k]+'</option>').join("")+'</select>')+
+    campo("Anotação <small>(opcional, só a equipe vê)</small>",'<textarea id="agres-obs" maxlength="1000" rows="3" placeholder="O que foi conversado, objeções, combinados…">'+esc(r.resultado_obs||"")+'</textarea>')+
+    '<div class="agd-acoes">'+(r.resultado?'<button type="button" class="rh-btn rh-btn-sec" id="agres-limpar">Desfazer</button>':'')+'<button type="button" class="rh-btn rh-btn-sec" data-fechar="1">Voltar</button><button type="button" class="rh-btn" id="agres-ok">Salvar</button></div>');
+  const q=s=>ov.querySelector(s);
+  // quem não veio: o natural é remarcar
+  ov.addEventListener("change",e=>{if(e.target.name==="agres"&&e.target.value==="faltou"&&!q("#agres-prox").value)q("#agres-prox").value="remarcar";});
+  if(sel==="faltou"&&!r.proximo_passo)q("#agres-prox").value="remarcar";
+  q("#agres-ok").addEventListener("click",e=>{
+    const v=(ov.querySelector('input[name="agres"]:checked')||{}).value;
+    if(!v){msg(ov,"Escolha se a reunião aconteceu ou se a pessoa não veio.",true);return;}
+    enviar(ov,e.currentTarget,()=>api("resultado","POST",{resultado:v,proximo:q("#agres-prox").value||null,anotacao:q("#agres-obs").value},"&id="+r.id),"Resultado registrado");
+  });
+  const lp=q("#agres-limpar");
+  if(lp)lp.addEventListener("click",e=>enviar(ov,e.currentTarget,()=>api("resultado","POST",{resultado:null},"&id="+r.id),"Resultado desfeito"));
+}
+
+/* ── 🎨 sua página (quem atende) ───────────────────────────────────────── */
+// Reduz a foto no próprio navegador: quadrada (corte no centro), 256 px, JPEG. Fica leve no banco e nos e-mails.
+function reduzirFoto(arq){
+  return new Promise((ok,nao)=>{
+    if(!arq||!/^image\//.test(arq.type)){nao(new Error("Escolha uma imagem (JPG ou PNG)."));return;}
+    const url=URL.createObjectURL(arq),img=new Image();
+    img.onload=()=>{
+      const L=256,c=document.createElement("canvas");c.width=c.height=L;
+      const s=Math.min(img.naturalWidth,img.naturalHeight),x=(img.naturalWidth-s)/2,y=(img.naturalHeight-s)/2;
+      const g=c.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,L,L);g.drawImage(img,x,y,s,s,0,0,L,L);
+      URL.revokeObjectURL(url);ok(c.toDataURL("image/jpeg",.86));
+    };
+    img.onerror=()=>{URL.revokeObjectURL(url);nao(new Error("Não consegui abrir essa imagem."));};
+    img.src=url;
+  });
+}
+function abrirMarca(){
+  const D=AG.dados,m=D.marca||{},t=D.tipos.find(x=>x.ativo);
+  let foto; // undefined = mantém · "" = tira · data: = troca
+  const ini=n=>String(n||"").trim().split(/\s+/).filter(Boolean).map(p=>p[0]).slice(0,2).join("").toUpperCase()||"?";
+  const ov=janela("🎨 Sua página de agendamento",
+    '<p class="agd-dica">É o que o cliente vê ao abrir o link, e a assinatura dos e-mails e das mensagens de WhatsApp.</p>'+
+    '<div class="agd-marca"><div class="agd-av" id="agmc-av"></div><div class="agd-marca-f"><label class="rh-btn rh-btn-sec agd-foto-bt">📷 Escolher foto<input type="file" id="agmc-arq" accept="image/*" hidden></label><button type="button" class="agd-lk agd-lk-v" id="agmc-tirar"'+(m.foto_dados?'':' hidden')+'>tirar foto</button><small>Foto de rosto, de preferência com fundo claro.</small></div></div>'+
+    '<div class="agd-2">'+campo("Nome de quem atende",'<input id="agmc-nome" maxlength="60" placeholder="Ex.: Gabriela Alvarenga" value="'+esc(m.nome||"")+'">')+campo("Cargo",'<input id="agmc-cargo" maxlength="60" placeholder="Ex.: Consultora Comercial" value="'+esc(m.cargo||"")+'">')+'</div>'+
+    campo("Mensagem de boas-vindas <small>(opcional, até 300 letras)</small>",'<textarea id="agmc-boas" maxlength="300" rows="3" placeholder="Ex.: Olá! Escolha o melhor horário para conversarmos sobre as soluções de segurança e facilities do Grupo ServCamp.">'+esc(m.boas_vindas||"")+'</textarea>')+
+    (t?'<p class="agd-dica"><a href="'+esc(linkDe(t))+'" target="_blank" rel="noopener">👀 Ver a página como o cliente vê</a> (salve antes)</p>':'')+
+    '<div class="agd-acoes"><button type="button" class="rh-btn rh-btn-sec" data-fechar="1">Voltar</button><button type="button" class="rh-btn" id="agmc-ok">Salvar</button></div>',true);
+  const q=s=>ov.querySelector(s);
+  const pintar=()=>{const av=q("#agmc-av"),src=foto!==undefined?foto:(m.foto_dados||"");
+    if(src){av.style.backgroundImage='url("'+src+'")';av.textContent="";}else{av.style.backgroundImage="";av.textContent=ini(q("#agmc-nome").value);}
+    q("#agmc-tirar").hidden=!src;};
+  pintar();
+  q("#agmc-nome").addEventListener("input",pintar);
+  q("#agmc-arq").addEventListener("change",e=>{const f=e.target.files&&e.target.files[0];if(!f)return;reduzirFoto(f).then(d=>{foto=d;msg(ov,"");pintar();}).catch(err=>msg(ov,err.message,true));});
+  q("#agmc-tirar").addEventListener("click",()=>{foto="";pintar();});
+  q("#agmc-ok").addEventListener("click",e=>{
+    const corpo={nome:q("#agmc-nome").value,cargo:q("#agmc-cargo").value,boas_vindas:q("#agmc-boas").value};
+    if(foto!==undefined)corpo.foto=foto;
+    enviar(ov,e.currentTarget,()=>api("marca","POST",corpo),"Página atualizada");
+  });
+}
+
 /* ── diretores (calendário público do iCloud) ──────────────────────────── */
 function semLeitura(D){return(D.diretores||[]).some(d=>d.ativo&&!d.valido);}
 const haTexto=iso=>{if(!iso)return"nunca";const m=Math.round((Date.now()-+new Date(iso))/60000);return m<1?"agora há pouco":m<60?"há "+m+" min":m<1440?"há "+Math.round(m/60)+" h":"há "+Math.round(m/1440)+" dias";};
@@ -421,7 +739,7 @@ function abrirDiretores(){
     '<details class="agdi-como"><summary>Como o diretor pega esse link no iPhone</summary><ol class="agd-passos"><li>Abrir o app <b>Calendário</b> › tocar em <b>Calendários</b> (embaixo)</li><li>Tocar no <b>ⓘ</b> ao lado do calendário que ele usa para os compromissos</li><li>Ativar <b>Calendário Público</b></li><li>Tocar em <b>Compartilhar Link</b> › <b>Copiar</b> e mandar o link para você</li></ol>'+
     '<p class="agd-dica">⚠️ Quem tiver esse link consegue ler os compromissos, com os títulos. Mande só para quem precisa. Se o diretor preferir, ele pode criar um calendário só de “Disponibilidade”, pôr nele os horários em que não pode, e publicar só esse. Para parar de compartilhar, é só desligar o Calendário Público no iPhone.</p></details>',true);
   const q=s=>ov.querySelector(s),aj=ds.reduce((m,d)=>(m[d.id]=d,m),{});
-  const acaoD=(fn,ok,b)=>{b.disabled=true;fn().then(()=>{toast("✅ "+ok);return api("");}).then(j=>{AG.dados=j;fechar();render();abrirDiretores();}).catch(e=>{b.disabled=false;msg(ov,e.message,true);});};
+  const acaoD=(fn,ok,b)=>{b.disabled=true;fn().then(()=>{toast("✅ "+ok);return api("");}).then(j=>{AG.dados=j;limparLivres();fechar();render();abrirDiretores();}).catch(e=>{b.disabled=false;msg(ov,e.message,true);});};
   ov.addEventListener("click",e=>{
     const b=e.target.closest("[data-d]");if(!b)return;
     const row=b.closest(".agdi"),id=row.dataset.id,d=aj[id];
@@ -452,6 +770,43 @@ function abrirIphone(){
     if(!confirm("Gerar um endereço novo? O que estiver assinado no iPhone para de atualizar até você assinar o novo."))return;
     enviar(ov,e.currentTarget,()=>api("ics","POST",{}),"Endereço novo gerado: abra 📱 de novo para assinar");
   });
+}
+
+/* ── números no Painel Comercial ───────────────────────────────────────── */
+// Chamado pelo comDashRender (index.html) com o lugar e o mês do painel ("2026-11"). Quem não pode ver
+// (o servidor responde 403) não vê nada: o bloco some.
+const PAINEL={pedido:0};
+raiz.agPainelComercial=function(el,mes){
+  if(!el)return;const n=++PAINEL.pedido;
+  el.innerHTML='<div class="agp"><div class="agp-h">📅 Agenda Comercial</div><div class="agp-vazio">Carregando os números da agenda…</div></div>';
+  api("numeros","GET",null,"&mes="+encodeURIComponent(mes||"")).then(j=>{if(n===PAINEL.pedido&&el.isConnected)el.innerHTML=painelHtml(j);})
+    .catch(e=>{if(n!==PAINEL.pedido)return;if(e.status===403||e.status===401||e.codigo==="SEM_TABELA")el.innerHTML="";else el.innerHTML='<div class="agp"><div class="agp-h">📅 Agenda Comercial</div><div class="agp-vazio">Não consegui carregar os números da agenda.</div></div>';});
+};
+function painelHtml(j){
+  const A=j.atual,B=j.anterior,[ano,mm]=j.mes.split("-"),mesNome=MESL[Number(mm)-1]+" de "+ano;
+  const dif=(x,y,suf)=>y==null||x==null?"":(x===y?'<em class="agp-ig">= mês anterior</em>':'<em class="'+(x>y?"agp-up":"agp-dn")+'">'+(x>y?"▲":"▼")+" "+Math.abs(x-y)+(suf||"")+' vs mês anterior</em>');
+  const tile=(ic,cor,lbl,val,sub,cmp)=>'<div class="agp-k" style="border-top-color:'+cor+'"><span class="agp-ic">'+ic+'</span><span class="agp-l">'+lbl+'</span><b>'+val+'</b><span class="agp-s">'+sub+'</span>'+(cmp||"")+'</div>';
+  const barras=(pares,cor,vazio)=>{if(!pares.length)return'<div class="agp-vazio">'+vazio+'</div>';const mx=Math.max(...pares.map(p=>p[1]));
+    return pares.map(([k,v])=>'<div class="agp-b"><span>'+esc(k)+'</span><div><i style="width:'+Math.max(4,v/mx*100)+'%;background:'+cor+'"></i></div><b>'+v+'</b></div>').join("");};
+  const topHora=j.por_hora.slice().sort((a,b)=>b[1]-a[1])[0];
+  let h='<div class="agp"><div class="agp-h">📅 Agenda Comercial <small>reuniões de '+esc(mesNome)+' · pelo link e cadastradas</small></div><div class="agp-ks">';
+  h+=tile("🗓️","#2e8fef","Reuniões no mês",A.marcadas,A.futuras?A.futuras+" ainda vão acontecer":"todas já aconteceram",dif(A.marcadas,B.marcadas));
+  h+=tile("✅","#16a34a","Realizadas",A.realizadas,A.pendentes?"⚠️ "+A.pendentes+" sem resultado registrado":"resultado registrado");
+  h+=tile("🎯","#0d9488","Comparecimento",A.comparecimento==null?"—":A.comparecimento+"%",A.faltas+" não compareceu"+(A.faltas===1?"":"ram"),dif(A.comparecimento,B.comparecimento," pts"));
+  h+=tile("🔗","#7c3aed","Marcadas pelo link",A.pelo_link,A.marcadas?Math.round(A.pelo_link/A.marcadas*100)+"% do total":"o cliente escolhe o horário");
+  h+=tile("📨","#f97316","Viraram proposta",A.viraram_proposta,A.fecharam?A.fecharam+" já fechou"+(A.fecharam===1?"":"aram")+" negócio":"das reuniões realizadas");
+  h+=tile("❌","#dc2626","Canceladas",A.canceladas,A.canceladas_cliente+" pelo próprio cliente");
+  h+='</div><div class="agp-g">';
+  const serie=j.serie.map(s=>[MES[Number(s.mes.slice(5))-1],s.marcadas,s.realizadas]),mx=Math.max(1,...serie.map(s=>s[1]));
+  h+='<div class="agp-c"><div class="agp-t">Últimos 6 meses <span><i style="background:#93c5fd"></i>marcadas <i style="background:#16a34a"></i>realizadas</span></div><div class="agp-serie">'+
+    serie.map(([m,a,b])=>'<div><div class="agp-col"><i style="height:'+(a/mx*100)+'%;background:#93c5fd" title="'+a+' marcadas"></i><i style="height:'+(b/mx*100)+'%;background:#16a34a" title="'+b+' realizadas"></i></div><span>'+m+'</span><b>'+a+'</b></div>').join("")+'</div></div>';
+  h+='<div class="agp-c"><div class="agp-t">Horários mais procurados <span>'+(topHora?"pico às "+esc(topHora[0]):"últimos 6 meses")+'</span></div>'+barras(j.por_hora,"#2e8fef","Ainda sem reuniões marcadas.")+'</div>';
+  h+='<div class="agp-c"><div class="agp-t">Dias mais procurados <span>últimos 6 meses</span></div>'+barras(j.por_dia,"#7c3aed","Ainda sem reuniões marcadas.")+'</div>';
+  h+='<div class="agp-c"><div class="agp-t">Depois da reunião <span>próximo passo das realizadas</span></div>'+barras(j.proximos_passos,"#f97316","Registre o resultado das reuniões na Agenda Comercial.")+
+    (j.por_tipo.length?'<div class="agp-t" style="margin-top:12px">Por tipo de reunião</div>'+barras(j.por_tipo,"#0d9488",""):"")+
+    ((j.por_modalidade||[]).length?'<div class="agp-t" style="margin-top:12px">Online × presencial</div>'+barras(j.por_modalidade.map(([k,v])=>[(k==="Online"?"💻 ":"📍 ")+k,v]),"#2e8fef",""):"")+'</div>';
+  h+='</div></div>';
+  return h;
 }
 
 // Sessão caiu ou outra pessoa entrou na mesma aba: nada da anterior fica na tela.
