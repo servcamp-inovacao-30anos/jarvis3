@@ -903,3 +903,37 @@ html[data-theme="dark"] .ml-item.sel .ml-and-m{background:#13253d;border-color:#
   .ml-item.nova{margin-top:12px}
 }
 html[data-theme="dark"] .ml-item.sel .ml-and-m{background:#13253d;border-color:#2f4f7c}
+/* ═══ a medida inteira numa tela: Andamento e Detalhes enxutos, e a página rola até a medida ═══ */
+.ml-item{scroll-margin-top:118px}
+/* Andamento dentro da medida (telas acima do celular): título e os 3 passos numa faixa baixa */
+@container sup (min-width:561px) and (max-width:1300px){
+  .ml-item.sel .ml-and-m{display:flex;align-items:center;gap:18px;margin:0 14px 8px;padding:8px 14px}
+  .ml-and-m h4{margin:0;flex:none;font-size:13.5px}
+  .ml-and-m .md-trilha{flex:1;margin:0}
+  .ml-and-m .md-trilha li{font-size:12.5px;line-height:1.3}
+  .ml-and-m .md-trilha li b{font-size:13px}
+}
+/* Detalhes compacto */
+.ml-item .md-det{padding:0 14px 12px}
+.md-det-g{gap:10px;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr)}
+.md-det-mot,.md-det-lado{padding:12px 14px;border-radius:12px}
+.md-det-mot header{margin-bottom:8px;gap:8px}
+.md-hi{width:26px;height:26px}
+.md-lbl{font-size:14px}
+.md-q{padding:8px 12px;font-size:13.5px;line-height:1.5}
+.md-det-nota{display:none}
+.md-det-l{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:8px 16px 0 0;padding-top:0;border-top:0}
+.md-det-l .md-lbl{margin:0;font-size:13px}
+.md-ch{height:28px;padding:0 10px;font-size:13px}
+.md-chi svg{width:18px;height:18px}
+.md-dl{gap:10px 12px;margin:0 0 10px}
+.md-dl dt{font-size:12px}
+.md-dl dd{font-size:13px}
+.md-dl-i svg{width:18px;height:18px}
+.md-det-lado{gap:8px}
+.md-det-ac{margin-top:4px;gap:8px}
+.md-det-ac .md-b{min-height:36px;font-size:13px}
+.md-det-lado .md-lbl{font-size:13px}
+@container tab (max-width:960px){
+  .md-det-g{grid-template-columns:minmax(0,1fr)}
+}
