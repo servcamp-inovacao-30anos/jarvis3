@@ -626,7 +626,10 @@ function selecionar(ch,manter){
   it.classList.add("sel");it.querySelector(".ml-row").setAttribute("aria-current","true");
   const box=it.closest(".ml-body"),as=box.querySelector(".ml-and");
   as.innerHTML=andamento(g);as.hidden=false;box.classList.add("com-and");
+  mostrar(it);
 }
+// leva a medida para logo abaixo do cabeçalho da página: a linha, o Andamento e o Detalhes ficam juntos na tela, sem subir e descer
+function mostrar(it){requestAnimationFrame(()=>it.scrollIntoView({block:"start",behavior:"smooth"}));}
 window.mdSel=(ev,ch)=>{if(ev.target.closest("button,label,input,a"))return;selecionar(ch);};
 // O motivo foi escrito pelo supervisor ou é o texto que o sistema monta das faltas marcadas (motivoAuto)?
 // Recalcula o automático com o que ficou salvo na medida: igual = ele não escreveu nada; começa igual = acrescentou.
@@ -661,7 +664,7 @@ window.mdDet=(ev,ch)=>{
   if(!it||!det)return;
   const abre=!MDS.abertas.has(ch);abre?MDS.abertas.add(ch):MDS.abertas.delete(ch);
   it.classList.toggle("ab",abre);det.hidden=!abre;b.setAttribute("aria-expanded",abre);
-  if(abre&&MDS.sel!==ch)selecionar(ch,true);
+  if(abre&&MDS.sel!==ch)selecionar(ch,true);else if(abre)mostrar(it);
 };
 window.mdFiltro=f=>{MDS.filtro=f;redesenhar();};
 window.mdBusca=v=>{MDS.busca=v;clearTimeout(MDS.tb);MDS.tb=setTimeout(()=>{redesenhar();const i=document.getElementById("md-busca");if(i){i.focus();i.setSelectionRange(v.length,v.length);}},180);};
