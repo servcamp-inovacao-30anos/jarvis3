@@ -73,28 +73,31 @@ test("só a coordenação dá a baixa: sem baixa a falta continua na cobrança",
 
 test("baixa da coordenação: faltas da janela viram T, as de fora não, e sobrevivem à planilha; desfazer devolve", async () => {
   const t = tabelas();
-  t.fm_faltas.push(falta(521, dia(-3)), falta(521, dia(-60)), falta(522, dia(-3)));
-  const r = await pedir(t, "raphaelvictor", { method: "POST", body: { colaborador: "PESSOA 521", re: 521, baixar: true, data_contato: dia(-1) } });
+  // falta em feriado não é cobrada: usa o dia útil mais próximo (contato 2 dias atrás, entre as duas faltas)
+  const FER = new Set(require("../api/_faltas_regras").comFeriadosNacionais([], hoje)), util = n => FER.has(dia(n)) ? util(n - 1) : dia(n);
+  const d3 = util(-3), d0 = util(0);
+  t.fm_faltas.push(falta(521, d3), falta(521, dia(-60)), falta(522, d3));
+  const r = await pedir(t, "raphaelvictor", { method: "POST", body: { colaborador: "PESSOA 521", re: 521, baixar: true, data_contato: dia(-2) } });
   assert.equal(r.statusCode, 200);
   assert.equal(r.body.baixa.ok, true);
   const porDia = Object.fromEntries(t.fm_faltas.map(f => [f.re + "@" + f.data, f.codigo]));
-  assert.equal(porDia["521@" + dia(-3)], "T", "falta que originou o feedback sai da cobrança");
+  assert.equal(porDia["521@" + d3], "T", "falta que originou o feedback sai da cobrança");
   assert.equal(porDia["521@" + dia(-60)], "I", "falta muito antiga da janela fica como estava");
-  assert.equal(porDia["522@" + dia(-3)], "I", "outra pessoa não é atingida");
+  assert.equal(porDia["522@" + d3], "I", "outra pessoa não é atingida");
   // falta nova depois do feedback, dentro dos 30 dias: chega pela planilha e também não gera alarme
-  const planilha = { faltas: [{ RE: 521, NOME: "PESSOA 521", DATA: dia(-3), ABONO: "I", CARGO: "X", LOCAL: "POSTO A", AREA: "FRANK", ESCALA: "12X36", TIPO: "CONTRATO" }, { RE: 521, NOME: "PESSOA 521", DATA: hoje, ABONO: "I", CARGO: "X", LOCAL: "POSTO A", AREA: "FRANK", ESCALA: "12X36", TIPO: "CONTRATO" }, { RE: 522, NOME: "PESSOA 522", DATA: dia(-3), ABONO: "I", CARGO: "X", LOCAL: "POSTO A", AREA: "FRANK", ESCALA: "12X36", TIPO: "CONTRATO" }], fichaDias: {} };
+  const planilha = { faltas: [{ RE: 521, NOME: "PESSOA 521", DATA: d3, ABONO: "I", CARGO: "X", LOCAL: "POSTO A", AREA: "FRANK", ESCALA: "12X36", TIPO: "CONTRATO" }, { RE: 521, NOME: "PESSOA 521", DATA: d0, ABONO: "I", CARGO: "X", LOCAL: "POSTO A", AREA: "FRANK", ESCALA: "12X36", TIPO: "CONTRATO" }, { RE: 522, NOME: "PESSOA 522", DATA: d3, ABONO: "I", CARGO: "X", LOCAL: "POSTO A", AREA: "FRANK", ESCALA: "12X36", TIPO: "CONTRATO" }], fichaDias: {} };
   await faltas.materializar(planilha);
   const depois = Object.fromEntries(t.fm_faltas.map(f => [f.re + "@" + f.data, f.codigo]));
-  assert.equal(depois["521@" + dia(-3)], "T", "a planilha seguinte não desfaz a baixa");
-  assert.equal(depois["521@" + hoje], "T", "falta dentro dos 30 dias do feedback vai para o acompanhamento");
-  assert.equal(depois["522@" + dia(-3)], "I");
+  assert.equal(depois["521@" + d3], "T", "a planilha seguinte não desfaz a baixa");
+  assert.equal(depois["521@" + d0], "T", "falta dentro dos 30 dias do feedback vai para o acompanhamento");
+  assert.equal(depois["522@" + d3], "I");
   // desfazer: tudo volta à cobrança
   const id = t.lig_contatos[0].id;
   const d = await pedir(t, "raphaelvictor", { method: "POST", query: { acao: "baixa" }, body: { id, baixar: false } });
   assert.equal(d.statusCode, 200);
   const volta = Object.fromEntries(t.fm_faltas.map(f => [f.re + "@" + f.data, f.codigo]));
-  assert.equal(volta["521@" + dia(-3)], "I");
-  assert.equal(volta["521@" + hoje], "I");
+  assert.equal(volta["521@" + d3], "I");
+  assert.equal(volta["521@" + d0], "I");
 });
 
 test("a falta já abonada ou de demitido não vira T: atestado vale mais", async () => {

@@ -304,8 +304,11 @@ test("sem acesso ao log de registros a apuração continua, só pela lista de at
 });
 
 test("POST demitido: o aprovador registra, as faltas saem da cobrança na hora; desfazer devolve", async () => {
+  // dias úteis antes de hoje (falta em feriado não é cobrada e mudaria o resultado)
+  const FER = new Set(R.comFeriadosNacionais([], hoje)), u = []; for (let n = -1; u.length < 3; n--) if (!FER.has(dia(n))) u.push(dia(n));
+  const [d1, d2, d3] = u;
   const t = tabelasVazias();
-  t.fm_faltas.push(reg(489, dia(-3), "I", { nome: "MATEUS CORREA" }), reg(489, dia(-1), "I", { nome: "MATEUS CORREA" }), reg(489, dia(-2), "A", { nome: "MATEUS CORREA" }), reg(490, dia(-3), "I", { nome: "OUTRO" }));
+  t.fm_faltas.push(reg(489, d3, "I", { nome: "MATEUS CORREA" }), reg(489, d1, "I", { nome: "MATEUS CORREA" }), reg(489, d2, "A", { nome: "MATEUS CORREA" }), reg(490, d3, "I", { nome: "OUTRO" }));
   supabaseFalso(t);
   const pedir = (body, usuario) => chamar(rh, { method: "POST", query: { modulo: "faltas", t: "demitido" }, usuario: usuario === undefined ? "aprovador" : usuario, body });
   assert.equal((await pedir({ re: 489, nome: "MATEUS CORREA" }, "supervisor.fulano")).statusCode, 403, "só aprovador");
@@ -320,8 +323,8 @@ test("POST demitido: o aprovador registra, as faltas saem da cobrança na hora; 
   assert.equal(volta.body.faltas, 2);
   assert.equal(t.fm_auditoria.filter(a => a.acao === "DEMITIDO_DESFEITO").length, 1);
   // a base é o último registro de cada pessoa: desfeito, o RE volta a ser cobrado na próxima planilha
-  await faltas.materializar({ faltas: [falta(489, dia(-1), { NOME: "MATEUS CORREA" })], ativos: ativosDoTeste([{ RE: 489, NOME: "MATEUS CORREA" }, { RE: 490, NOME: "OUTRO" }]) });
-  assert.equal(t.fm_faltas.find(f => f.re === 489 && f.data === dia(-1)).codigo, "I");
+  await faltas.materializar({ faltas: [falta(489, d1, { NOME: "MATEUS CORREA" })], ativos: ativosDoTeste([{ RE: 489, NOME: "MATEUS CORREA" }, { RE: 490, NOME: "OUTRO" }]) });
+  assert.equal(t.fm_faltas.find(f => f.re === 489 && f.data === d1).codigo, "I");
   assert.deepEqual(t.fm_faltas.map(f => [f.re, f.codigo]).sort(), [[489, "A"], [489, "I"], [489, "I"], [490, "I"]]);
 });
 
@@ -486,4 +489,17 @@ test("reserva técnica fora do cadastro: o posto dela é o nome do supervisor, e
   const sup = Object.fromEntries(t.fm_faltas.map(f => [f.re, f.supervisor]));
   assert.equal(sup[4726], "JEAN KLEBER", "do posto, no import");
   assert.equal(sup[4574], "JEAN KLEBER", "a já guardada também");
+});
+
+test("feriado: falta 'I' num feriado (nacional ou da tabela) sai da cobrança como FE; demissão e abono valem mais", async () => {
+  const fer = new Set(R.comFeriadosNacionais(["2026-12-08"], "2026-11-18"));
+  assert.ok(["2026-11-02", "2026-11-15", "2026-11-20", "2026-04-03", "2027-03-26", "2026-12-08"].every(d => fer.has(d)), "nacionais, Sexta-feira Santa e o da tabela");
+  assert.equal(cl(129, "2026-11-02", { feriados: fer }), "FE");
+  assert.equal(cl(129, "2026-11-03", { feriados: fer }), "I", "dia comum continua injustificado");
+  assert.equal(cl(129, "2026-11-02", { feriados: fer, ocorrencias: R.indexarOcorrencias([oc(129, "A", "2026-11-02", "2026-11-02")]) }), "A");
+  const t = tabelasVazias(); supabaseFalso(t);
+  t.fm_faltas.push({ re: 1001, data: "2026-10-12", codigo: "I", nome: "PESSOA 1001", escala: "12X36", tipo: "CONTRATO" });
+  await faltas.materializar({ faltas: [falta(1001, "2026-11-02"), falta(1001, "2026-11-03")], ativos: ativosDoTeste() });
+  assert.deepEqual(codigos(t), { "1001|2026-10-12": "FE", "1001|2026-11-02": "FE", "1001|2026-11-03": "I" }, "a já guardada também sai");
+  assert.ok(t.fm_auditoria.some(a => a.chave === "1001|2026-11-02" && a.depois.motivo === "feriado"));
 });

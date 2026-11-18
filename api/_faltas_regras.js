@@ -24,7 +24,22 @@ const CODIGO_AFASTADO = "AF";  // dia coberto por afastamento ou licença lança
 // Falta de quem já teve o feedback do SAC registrado e baixado pela coordenação (api/_lig_regras.js): sai da
 // cobrança e passa a ser acompanhada só no perfil da pessoa, na aba Feedback de Faltas (30 dias).
 const CODIGO_TRATADA = "T";
-const NAO_COBRADAS = new Set([CODIGO_DEMITIDO, CODIGO_AFASTADO, CODIGO_TRATADA]);
+// Falta lançada num feriado: feriado sem presença não é dia de trabalho (regra da coordenação), então não é cobrada.
+const CODIGO_FERIADO = "FE";
+const NAO_COBRADAS = new Set([CODIGO_DEMITIDO, CODIGO_AFASTADO, CODIGO_TRATADA, CODIGO_FERIADO]);
+
+// Feriados nacionais do ano (fixos + Sexta-feira Santa). Os municipais e pontos facultativos vêm da tabela fm_feriados.
+function feriadosNacionais(ano) {
+  const a = ano % 19, b = Math.floor(ano / 100), c = ano % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const pascoa = ano + "-" + String(Math.floor((h + l - 7 * m + 114) / 31)).padStart(2, "0") + "-" + String(((h + l - 7 * m + 114) % 31) + 1).padStart(2, "0");
+  return ["01-01", "04-21", "05-01", "09-07", "10-12", "11-02", "11-15", "11-20", "12-25"].map(x => ano + "-" + x).concat(somaDias(pascoa, -2));
+}
+// Lista da tabela + nacionais dos anos que interessam (o anterior, o atual e o próximo).
+function comFeriadosNacionais(datas, hoje) {
+  const ano = Number(String(hoje || new Date().toISOString()).slice(0, 4));
+  return [...new Set((datas || []).map(iso).filter(Boolean).concat(feriadosNacionais(ano - 1), feriadosNacionais(ano), feriadosNacionais(ano + 1)))].sort();
+}
 // A lista de ativos só vale para dizer quem saiu se vier completa (a de verdade tem ~550). Planilha
 // com a aba cortada ou quase vazia não pode transformar todo mundo em demitido.
 const MIN_ATIVOS_PARA_DEMITIDOS = 100;
@@ -168,13 +183,14 @@ const MAX_LACUNA_AFASTAMENTO = 15;
 //   dias: RE → { "AAAA-MM-DD": situação da Ficha } (para saber se a pessoa voltou a trabalhar); opcional
 //   tratadas: Map "RE|PRIMEIRONOME" → [{ de, ate }]: janelas de acompanhamento de quem teve o feedback baixado.
 //             Só vale para o que ainda seria "I": abono, afastamento e demissão valem mais.
+//   feriados: Set de datas "AAAA-MM-DD" (comFeriadosNacionais): o que ainda seria "I" num feriado vira FE.
 function classificarFalta(f, ctx) {
   const c = ctx || {};
   const codigo = String(f.codigo == null ? "" : f.codigo).toUpperCase().trim();
   if (codigo !== "I") return codigo || null;
   const re = reDe(f.re == null ? f.RE : f.re), data = iso(f.data == null ? f.DATA : f.data), nome = f.nome == null ? f.NOME : f.nome;
   const quem = re + "|" + primeiroNome(nome);
-  const injustificada = () => (((c.tratadas && c.tratadas.get(quem)) || []).some(j => data >= j.de && data <= j.ate) ? CODIGO_TRATADA : "I");
+  const injustificada = () => (c.feriados && c.feriados.has(data) ? CODIGO_FERIADO : ((c.tratadas && c.tratadas.get(quem)) || []).some(j => data >= j.de && data <= j.ate) ? CODIGO_TRATADA : "I");
   if (c.demitidos && c.demitidos.has(quem)) return CODIGO_DEMITIDO;
   // confirmados: contratação nova que a lista de ativos ainda não tem; não vira demitido por não estar nela
   if (c.ativos && c.ativos.size >= MIN_ATIVOS_PARA_DEMITIDOS && !(c.confirmados && c.confirmados.has(quem)) && !(c.ativos.has(re) && [].concat(c.ativos.get(re)).some(n => mesmaPessoa(n, nome)))) return CODIGO_DEMITIDO;
@@ -633,6 +649,6 @@ function dedupMedidas(lista) {
 }
 
 module.exports = {
-  FAMILIAS, SITUACOES, ABONADAS, CODIGO_DEMITIDO, CODIGO_AFASTADO, CODIGO_TRATADA, NAO_COBRADAS, MIN_ATIVOS_PARA_DEMITIDOS, MAX_LACUNA_AFASTAMENTO, indexarOcorrencias, classificarFalta, primeiroNome, familiaEscala, ehOperacional, trabalhouNoDia, trabalhandoRecente, montarCasos, reDe, competenciaDe, calendario, compactarCalendario, expandirCalendario, periodosDeAbono, dobrarAtestados, turnoDoSupervisor, SUPERVISORES_NOTURNOS, supervisorAtual,
+  FAMILIAS, SITUACOES, ABONADAS, CODIGO_DEMITIDO, CODIGO_AFASTADO, CODIGO_TRATADA, CODIGO_FERIADO, NAO_COBRADAS, feriadosNacionais, comFeriadosNacionais, MIN_ATIVOS_PARA_DEMITIDOS, MAX_LACUNA_AFASTAMENTO, indexarOcorrencias, classificarFalta, primeiroNome, familiaEscala, ehOperacional, trabalhouNoDia, trabalhandoRecente, montarCasos, reDe, competenciaDe, calendario, compactarCalendario, expandirCalendario, periodosDeAbono, dobrarAtestados, turnoDoSupervisor, SUPERVISORES_NOTURNOS, supervisorAtual,
   descreverMedida, somaDias, ddmm, medidaDoHistorico, dedupMedidas
 };

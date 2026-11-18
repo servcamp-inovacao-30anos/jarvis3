@@ -198,7 +198,8 @@ async function materializar(data, opcoes) {
   const guardadasOc = await lerOcorrencias(db); // Map chave → ocorrência
   const novasOc = await gravarOcorrencias(db, ocorrenciasDaPlanilha, guardadasOc);
   novasOc.forEach(x => guardadasOc.set(chaveOcorrencia(x), x));
-  const cobertura = { ativos, demitidos, confirmados, tratadas, ocorrencias: R.indexarOcorrencias([...guardadasOc.values()]), dias: re => diasPorRE.get(re) };
+  const feriados = new Set(R.comFeriadosNacionais((await db.listar("fm_feriados?select=data")).map(f => f.data)));
+  const cobertura = { ativos, demitidos, confirmados, tratadas, feriados, ocorrencias: R.indexarOcorrencias([...guardadasOc.values()]), dias: re => diasPorRE.get(re) };
   const classificar = f => R.classificarFalta(f, cobertura);
   const codigoDaPlanilha = new Map(); // o que o SAR2G mandou, antes da conferência
   const classificadas = [];           // faltas cujo código mudou na conferência
@@ -382,7 +383,7 @@ async function lerTratadas(db) {
   }
 }
 
-const MOTIVO_CODIGO = { [R.CODIGO_DEMITIDO]: "demitido", [R.CODIGO_AFASTADO]: "afastamento", [R.CODIGO_TRATADA]: "feedback do SAC com baixa (acompanhamento de 30 dias)" };
+const MOTIVO_CODIGO = { [R.CODIGO_DEMITIDO]: "demitido", [R.CODIGO_AFASTADO]: "afastamento", [R.CODIGO_TRATADA]: "feedback do SAC com baixa (acompanhamento de 30 dias)", [R.CODIGO_FERIADO]: "feriado" };
 const motivoDoCodigo = c => MOTIVO_CODIGO[c] || (R.ABONADAS.has(c) ? "abono lançado no SAR2G" : "");
 
 // Confere as faltas "I" que já estão no banco (de qualquer data) e troca o código das que não
@@ -497,7 +498,7 @@ async function verCasos({ res, db, ator }) {
   const reVisiveis = new Set(faltasVisiveis.map(f => String(f.re)));
   const r = R.montarCasos({
     hoje,
-    feriados: feriados.map(f => String(f.data).slice(0, 10)),
+    feriados: R.comFeriadosNacionais(feriados.map(f => f.data), hoje),
     admissoes, fichaDias,
     faltas: faltasVisiveis.map(f => ({ RE: f.re, DATA: f.data, ABONO: (!R.ABONADAS.has(f.codigo) && !R.NAO_COBRADAS.has(f.codigo) && cobertura(f.re, String(f.data).slice(0, 10))) ? "A" : f.codigo, NOME: f.nome, CARGO: f.cargo, LOCAL: f.posto, AREA: R.supervisorAtual(f.supervisor), ESCALA: f.escala, TIPO: f.tipo, HORARIO: horarioDa(horarios, f) })),
     medidas: medidas.map(m => ({ RE: m.re, DATA: m.data, TIPO: m.tipo, GRAU: m.grau, DIAS: m.dias, FASE: m.fase, HIST: m.chave, MOTIVO: m.motivo_sar2g, chave: m.chave, motivo: m.motivo, motivo_editado_por: m.motivo_editado_por, motivo_editado_em: m.motivo_editado_em }))
@@ -520,7 +521,7 @@ async function verCasos({ res, db, ator }) {
   r.casos.forEach(c => { resumo[c.situacao] = (resumo[c.situacao] || 0) + 1; });
   const abonadasPorRE = {};
   r.abonadas.forEach(a => { (abonadasPorRE[a.re] = abonadasPorRE[a.re] || []).push(a.data); });
-  const listaFeriados = feriados.map(f => String(f.data).slice(0, 10));
+  const listaFeriados = R.comFeriadosNacionais(feriados.map(f => f.data), hoje);
   r.casos.forEach(c => {
     c.folha = R.competenciaDe(c.primeiraFalta);
     const ultimo = [c.prazoFim, c.retornoPrevisto, ...(c.faltas || [])].filter(Boolean).sort().pop() || c.primeiraFalta;

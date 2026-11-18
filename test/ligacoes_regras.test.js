@@ -45,9 +45,9 @@ test("montarCasos: falta T não abre caso nem cai em 'sem código'", () => {
 });
 
 test("sem acesso ao log de baixas a planilha continua e as faltas T continuam T", async () => {
-  const t = { fm_faltas: [{ re: 10, data: "2026-11-02", codigo: "T", nome: "ANA SOUZA" }], fm_dias: [], fm_medidas: [], fm_admissoes: [], fm_feriados: [], fm_auditoria: [] };
+  const t = { fm_faltas: [{ re: 10, data: "2026-11-03", codigo: "T", nome: "ANA SOUZA" }], fm_dias: [], fm_medidas: [], fm_admissoes: [], fm_feriados: [], fm_auditoria: [] };
   supabaseFalso(t, { falhar: (m, caminho) => caminho === "fm_auditoria" && m === "GET" });
-  const planilha = { faltas: [{ RE: 10, NOME: "ANA SOUZA", DATA: "2026-11-02", ABONO: "I", CARGO: "X", LOCAL: "P", AREA: "FRANK", ESCALA: "12X36", TIPO: "CONTRATO" }], fichaDias: {} };
+  const planilha = { faltas: [{ RE: 10, NOME: "ANA SOUZA", DATA: "2026-11-03", ABONO: "I", CARGO: "X", LOCAL: "P", AREA: "FRANK", ESCALA: "12X36", TIPO: "CONTRATO" }], fichaDias: {} };
   const r = await faltas.materializar(planilha);
   assert.equal(r.ok, true);
   assert.equal(t.fm_faltas[0].codigo, "T", "o alarme falso não volta só porque o log caiu");
