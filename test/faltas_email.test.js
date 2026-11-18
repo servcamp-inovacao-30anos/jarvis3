@@ -648,6 +648,36 @@ test("medida na mesma data da falta também trata; medida cancelada ou de antes 
   assert.ok(/Ana Paula/i.test(jean), "medida anterior à falta não trata");
 });
 
+// medida gerada no painel (fm_auditoria), ainda não lançada no SAR2G
+const gerada = (chave, re, nome, criado_em, extra) => ({ id: 9000 + Number(String(chave).replace(/\D/g, "") || 0), ator: "jeankleber", acao: "MEDIDA_GERADA", entidade: "fm_medida_gerada", chave, antes: null,
+  depois: { re: String(re), nome, tipo: "ADVERTÊNCIA", grau: "ESCRITA", dias: 0, inicio: criado_em.slice(0, 10), motivo: "Faltas", faltas: [], caso: "", supervisor: "JEAN KLEBER" }, criado_em, ...extra });
+
+test("medida gerada no painel e ainda não lançada no SAR2G já trata a falta: não é cobrada nem aparece como sem medida", async () => {
+  base({ extras: [
+    gerada("G-1", 101, "ANA PAULA DE SOUZA", "2026-10-23T15:00:00Z"),           // depois das duas faltas da Ana (20 e 22/10)
+    gerada("G-2", 102, "BRUNO DO EDNEY", "2026-10-23T15:00:00Z"),
+    { id: 9100, ator: "jeankleber", acao: "MEDIDA_CANCELADA", entidade: "fm_medida_gerada", chave: "G-2", antes: null, depois: { motivo: "engano" }, criado_em: "2026-10-23T16:00:00Z" }
+  ] });
+  await cron();
+  const jean = para("jean@exemplo.com.br")[0].html;
+  assert.ok(!/Ana Paula/i.test(jean), "a Ana já tem medida gerada: fora da cobrança");
+  assert.ok(/Bruno/i.test(jean), "medida gerada e cancelada não trata");
+});
+
+test("semana seguinte: falta avisada que ganhou medida gerada aparece como medida (falta lançar no SAR2G), não como abonada", async () => {
+  const t = base();
+  await cron();
+  enviados = [];
+  agora = SEG_SEGUINTE;
+  t.fm_auditoria.push(gerada("G-3", 201, "CAIO DO FRANK", "2026-10-28T15:00:00Z"));
+  supabaseFalso(t);
+  await cron();
+  const frank = para("frank@exemplo.com.br")[0].html;
+  assert.match(frank, /MEDIDA APLICADA/);
+  assert.match(frank, /gerada no painel em 28\/10\/2026 · falta lançar no SAR2G/);
+  assert.ok(!/ABONADA/.test(frank));
+});
+
 test("teste de várias áreas: só as escolhidas, quantas quiser; sem lista vão todas; lista sem área válida é recusada", async () => {
   base();
   const pedir = body => api("teste_areas", { method: "POST", usuario: RESP, body });
