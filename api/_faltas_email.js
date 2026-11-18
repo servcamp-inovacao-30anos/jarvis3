@@ -224,21 +224,29 @@ function proximoEnvio(agenda, agora) {
 //     lançada depois aparece no quadro de atualizações da semana seguinte;
 //   • sem atestado registrado à mão no JARVIS cobrindo o dia e não anteriores à
 //     admissão de quem tem o RE hoje (RE reaproveitado) — as mesmas contas da tela.
-async function faltasDoPeriodo(db, inicio, fim, corteMs) {
-  const [faltas, adm, atest, viradas, medidas] = await Promise.all([
+// Medida gerada no Painel ServCamp que o SAR2G ainda não trouxe (a que já trouxe está na fm_medidas): para o aviso
+// já é medida aplicada, só falta lançar no SAR2G. Mesma forma da fm_medidas, com o dia em que foi gerada.
+async function geradasForaDoSar(db) {
+  return (await faltasMod.lerGeradas(db)).filter(g => g.status !== "CANCELADA" && !g.sar2g)
+    .map(g => ({ chave: g.chave, re: g.re, nome: g.nome, data: diaSP(new Date(g.geradaEm)), tipo: g.tipo, grau: g.grau, dias: g.dias, fase: "GERADA", gerada: true }));
+}
+async function faltasDoPeriodo(db, inicio, fim, corteMs, geradas) {
+  const [faltas, adm, atest, viradas, medidas, ger] = await Promise.all([
     db.listar(`fm_faltas?select=re,data,codigo,nome,cargo,posto,supervisor,escala,criado_em&data=gte.${inicio}&data=lte.${fim}&order=re.asc,data.asc`),
     db.listar("fm_admissoes?select=re,admissao&order=re.asc"),
     db.listar(`fm_auditoria?select=id,ator,acao,chave,depois,criado_em&acao=in.(${faltasMod.ACOES_ATESTADO.join(",")})&order=criado_em.asc,id.asc`),
     db.listar(`fm_auditoria?select=id,chave,criado_em&acao=eq.${faltasMod.ACAO_VIROU_I}&criado_em=gte.${inicio}T00:00:00Z&order=id.asc`),
-    db.listar(`fm_medidas?select=re,data,fase&data=gte.${inicio}&order=re.asc,data.asc`)
+    db.listar(`fm_medidas?select=re,data,fase&data=gte.${inicio}&order=re.asc,data.asc`),
+    geradas || geradasForaDoSar(db)
   ]);
   const admissao = {};
   adm.forEach(a => { if (a.admissao) admissao[String(a.re)] = iso(a.admissao); });
   const { ativos: atestados } = R.dobrarAtestados(atest);
   // Falta já tratada: medida disciplinar lançada a partir do dia da falta (o dia seguinte, por exemplo) encerra
   // a falta. A mesma regra da tela e da TV: a primeira medida a partir da falta decide, então não é cobrada de novo.
+  // A gerada no painel e ainda não lançada no SAR2G também trata: o supervisor já aplicou, falta só lançar.
   const tratadaAte = {};
-  medidas.forEach(m => {
+  [...medidas, ...ger].forEach(m => {
     if (/CANCEL/i.test(String(m.fase || ""))) return;
     const re = String(m.re), d = iso(m.data);
     if (!tratadaAte[re] || d > tratadaAte[re]) tratadaAte[re] = d;
@@ -263,11 +271,12 @@ async function faltasDoPeriodo(db, inicio, fim, corteMs) {
 // à mão), para o número do histórico nunca contar o que o aviso não contaria.
 async function historicoDoAno(db, hoje) {
   const ano = String(hoje).slice(0, 4);
-  const [medidas, faltasI, adm, atest] = await Promise.all([
+  const [medidas, faltasI, adm, atest, ger] = await Promise.all([
     db.listar(`fm_medidas?select=chave,re,data,tipo,grau,dias,fase,nome&order=re.asc,data.asc,chave.asc`),
     db.listar(`fm_faltas?select=re,data,nome&codigo=eq.I&order=re.asc,data.asc`),
     db.listar("fm_admissoes?select=re,admissao&order=re.asc"),
-    db.listar(`fm_auditoria?select=id,ator,acao,chave,depois,criado_em&acao=in.(${faltasMod.ACOES_ATESTADO.join(",")})&order=criado_em.asc,id.asc`)
+    db.listar(`fm_auditoria?select=id,ator,acao,chave,depois,criado_em&acao=in.(${faltasMod.ACOES_ATESTADO.join(",")})&order=criado_em.asc,id.asc`),
+    geradasForaDoSar(db)
   ]);
   const admissao = {};
   adm.forEach(a => { if (a.admissao) admissao[String(a.re)] = iso(a.admissao); });
@@ -277,7 +286,7 @@ async function historicoDoAno(db, hoje) {
     if (ad && f.data < ad) return false;
     return !atestados.some(a => a.re === String(f.re) && f.data >= a.inicio && f.data <= a.fim);
   });
-  return { ano, medidas: R.dedupMedidas(medidas).map(m => ({ ...m, data: iso(m.data) })), faltasI: validas };
+  return { ano, medidas: [...R.dedupMedidas(medidas).map(m => ({ ...m, data: iso(m.data) })), ...ger], faltasI: validas };
 }
 // `datasSemana`: as faltas que estão neste aviso entram sempre no histórico (o histórico nunca pode ter menos
 // faltas que a semana que está sendo avisada).
@@ -331,11 +340,13 @@ async function atualizacoesDa(db, area, inicio, agoraMs) {
   const [ant] = await db.obter(`fm_auditoria?select=depois&acao=eq.${ACAO_ENVIADO}&chave=eq.${encodeURIComponent(de + "|" + area)}&order=id.desc&limit=1`);
   if (!ant || !ant.depois) return null;
   const avisadas = Array.isArray(ant.depois.faltas) ? ant.depois.faltas : [];
-  const [linhas, medidas, atuais] = await Promise.all([
+  const ger = await geradasForaDoSar(db);
+  const [linhas, medidasSar, atuais] = await Promise.all([
     db.listar(`fm_faltas?select=re,data,codigo,nome&data=gte.${de}&data=lte.${ate}&order=re.asc,data.asc`),
     db.listar(`fm_medidas?select=chave,re,data,tipo,grau,dias,fase&data=gte.${de}&order=re.asc,data.asc,chave.asc`),
-    faltasDoPeriodo(db, de, ate, agoraMs)
+    faltasDoPeriodo(db, de, ate, agoraMs, ger)
   ]);
+  const medidas = [...medidasSar, ...ger];
   const k = (re, d) => String(re) + "|" + iso(d);
   const linhaDe = new Map(linhas.map(l => [k(l.re, l.data), l]));
   const contaHoje = new Set(atuais.map(f => k(f.re, f.data)));
@@ -350,7 +361,7 @@ async function atualizacoesDa(db, area, inicio, agoraMs) {
     const c = String(l.codigo || "").toUpperCase().trim();
     if (m && c === "I") { // continua injustificada no SAR2G e já tem medida: tratada (não é mais cobrada)
       const d = R.descreverMedida({ TIPO: m.tipo, GRAU: m.grau, DIAS: m.dias });
-      itens.push({ ...base, tipo: "MEDIDA", detalhe: d.charAt(0).toUpperCase() + d.slice(1) + " · lançada em " + ddmmaaaa(m.data) });
+      itens.push({ ...base, tipo: "MEDIDA", detalhe: d.charAt(0).toUpperCase() + d.slice(1) + (m.gerada ? " · gerada no painel em " + ddmmaaaa(m.data) + " · falta lançar no SAR2G" : " · lançada em " + ddmmaaaa(m.data)) });
       return;
     }
     if (!contaHoje.has(k(f.re, f.data))) itens.push({ ...base, tipo: "ABONADA", detalhe: ABONO[c] || "Atestado registrado no JARVIS" });
