@@ -853,6 +853,7 @@ aside.sb#sidebar.sb-mini #navRoot .ni{margin:2px 8px;padding:9px 0;}
     <div class="nav-cat-b">
       <div class="ni active" data-pg="visao" onclick="navTo('visao',this)"><span class="ni-ic">📊</span><span>Visão Geral</span></div>
       <div class="ni" data-pg="clientes" onclick="navTo('clientes',this)"><span class="ni-ic">🤝</span><span>Clientes</span></div>
+      <div class="ni" data-pg="votacao" onclick="navTo('votacao',this)"><span class="ni-ic">🗳️</span><span>Votação</span><span hidden>nome logo identidade shamir servix votar</span><span class="nib nib-novo">NOVO</span></div>
     </div>
   </div>
   <div class="nav-cat" data-cat="pessoal">
@@ -1947,6 +1948,10 @@ aside.sb#sidebar.sb-mini #navRoot .ni{margin:2px 8px;padding:9px 0;}
   <div class="page" id="pg-audqual">
     <div class="sec-hdr"><span class="sec-hdr-ic">✅</span><div><div class="sec-hdr-t">Auditoria de Qualidade</div><div class="sec-hdr-sub">Vistorias de postos: checklist tri-pilar, cobertura e conformidade</div></div></div>
     <div id="aud-content"><div style="padding:40px;text-align:center;color:#94a3b8;font-size:.85rem">Carregando auditorias…</div></div>
+  </div>
+  <div class="page" id="pg-votacao">
+    <div class="sec-hdr"><span class="sec-hdr-ic">🗳️</span><div><div class="sec-hdr-t">Votação — novo nome e nova logo</div><div class="sec-hdr-sub">Assista à apresentação e escolha a identidade do nosso Dashboard. Um voto por pessoa, e você pode trocar até encerrar.</div></div></div>
+    <div id="vt-content"><div style="padding:40px;text-align:center;color:#94a3b8;font-size:.85rem">Carregando…</div></div>
   </div>
   <div class="page" id="pg-agenda">
     <div class="sec-hdr"><span class="sec-hdr-ic">📅</span><div><div class="sec-hdr-t">Agenda Comercial</div><div class="sec-hdr-sub">Reuniões com clientes e captação: mande o link, o cliente escolhe um horário livre e nada fica em cima de nada.</div></div></div>
@@ -4700,7 +4705,7 @@ function setTurno(t,btn){document.querySelectorAll("#trnoPg .pi").forEach(b=>b.c
 function setArea(){ST.area=document.getElementById("areaS").value;rpg();refresh();}
 function rpg(){Object.keys(ST.tpg).forEach(k=>ST.tpg[k]=1);}
 
-const PTITLES={fmrel:"Relatório de Faltas x Medidas",metas:"Metas da Diretoria",visao:"Visão Geral",ativos:"Funcionários Ativos",clientes:"Clientes",celulares:"Celulares — Controle dos Aparelhos",agenda:"Agenda Comercial",faltas:"Faltas & Top 10",coberturas:"Coberturas",postos:"Justificativa de Postos Descobertos",os:"OS Avulsos",fts:"FTS",dispo:"Sem Alocação",restec:"Reservas Técnicas",hrextra:"Horas Extras",checklist:"Check List",rhvagas:"RH — Controle de Vagas",rhentrev:"RH — Entrevistas & Funil",rhdesl:"RH — Desligamentos",rhres:"RH — Reservas → Efetivação",rhtrein:"RH — Treinamentos",rhdash:"Painel RH — Diretoria",compro:"Comercial — Propostas e Serviços Extras",comdash:"Painel Comercial",config:"Configurações — Acessos & Usuários",sede:"Base Virtual — Equipe",prj:"Projetos — Evolução & Inovação",audqual:"Auditoria de Qualidade",ligacoes:"Feedback de Faltas",faltasmed:"Faltas x Medidas",bdvrel:"Relatório de Coberturas do Supervisor",faltassup:"Acompanhamento de Medidas (Supervisão)",apres:"Apresentação"};
+const PTITLES={fmrel:"Relatório de Faltas x Medidas",metas:"Metas da Diretoria",visao:"Visão Geral",ativos:"Funcionários Ativos",clientes:"Clientes",celulares:"Celulares — Controle dos Aparelhos",agenda:"Agenda Comercial",votacao:"Votação — novo nome e nova logo",faltas:"Faltas & Top 10",coberturas:"Coberturas",postos:"Justificativa de Postos Descobertos",os:"OS Avulsos",fts:"FTS",dispo:"Sem Alocação",restec:"Reservas Técnicas",hrextra:"Horas Extras",checklist:"Check List",rhvagas:"RH — Controle de Vagas",rhentrev:"RH — Entrevistas & Funil",rhdesl:"RH — Desligamentos",rhres:"RH — Reservas → Efetivação",rhtrein:"RH — Treinamentos",rhdash:"Painel RH — Diretoria",compro:"Comercial — Propostas e Serviços Extras",comdash:"Painel Comercial",config:"Configurações — Acessos & Usuários",sede:"Base Virtual — Equipe",prj:"Projetos — Evolução & Inovação",audqual:"Auditoria de Qualidade",ligacoes:"Feedback de Faltas",faltasmed:"Faltas x Medidas",bdvrel:"Relatório de Coberturas do Supervisor",faltassup:"Acompanhamento de Medidas (Supervisão)",apres:"Apresentação"};
 
 /* ── Sidebar 2.0: accordion com estado salvo + busca de módulos ── */
 function navCatToggle(k){
@@ -4744,6 +4749,7 @@ function sbPerfilRender(){
   document.getElementById("sbPerfilCargo").textContent=sessionStorage.getItem("userCargo")||"";
   box.style.display="";
   if(typeof ofIniciar==="function")ofIniciar(); // ofensiva: contador do cartão e ranking da primeira tela
+  if(typeof votIniciar==="function")votIniciar(); // votação do nome e da logo: janela de aviso para quem ainda não votou
 }
 /* favoritos ⭐ com persistência */
 function navFavGet(){try{return JSON.parse(localStorage.getItem("svc_navfav")||"[]");}catch(e){return[];}}
@@ -4844,6 +4850,7 @@ function navTo(p,btn){
   else if(p==="clientes"){renderClientes();}
   else if(p==="celulares"){if(typeof celLoad==="function")celLoad();}
   else if(p==="agenda"){if(typeof agLoad==="function")agLoad();}
+  else if(p==="votacao"){if(typeof votLoad==="function")votLoad();}
   else if(p==="rhvagas"){rhLoad();}
   else if(p==="rhentrev"){rhEntLoad();}
   else if(p==="rhdesl"){rhDesLoad();}
@@ -19031,6 +19038,7 @@ document.addEventListener("DOMContentLoaded",init);
 <link rel="stylesheet" href="/assets/ligacoes/ligacoes.css"><script src="/assets/ligacoes/ligacoes.js"></script>
 <link rel="stylesheet" href="/assets/ofensiva/ofensiva.css"><script src="/assets/ofensiva/ofensiva.js"></script>
 <link rel="stylesheet" href="/assets/agenda/agenda.css"><script src="/assets/agenda/agenda.js"></script><script src="/assets/sessao/guias.js"></script>
+<link rel="stylesheet" href="/assets/votacao/votacao.css"><script src="/assets/votacao/votacao.js"></script>
 <link rel="stylesheet" href="/assets/medida/assinatura.css"><script src="/assets/vendor/qrcode-generator.js"></script><script src="/assets/medida/assinatura.js"></script>
 </body>
 </html>
