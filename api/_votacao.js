@@ -32,7 +32,7 @@ const VOTACAO = {
   chamada: "Assista à apresentação e escolha a identidade que vai representar o nosso painel.",
   video: "/assets/votacao/apresentacao.mp4",
   opcoes: [
-    { id: "shamir", nome: "SHAMIR", sub: "Gestão Inteligente", img: "/assets/votacao/shamir.jpg" },
+    { id: "shamir", nome: "SHAMIR", sub: "Gestão Inteligente", img: "/assets/votacao/shamir.webp" },
     { id: "servix", nome: "SERVIX", sub: "Grupo ServCamp Terceirizações", img: "/assets/votacao/servix.jpg" }
   ],
   ate: null // prazo opcional (ISO, ex.: "2026-11-28T18:00:00-03:00"); sem prazo, fica aberta até o administrador encerrar
