@@ -42,7 +42,18 @@ function corpoEmail(etapa, nome) {
     5: `Olá, ${nome}!\n\nComo não obtive retorno até o momento, vou considerar a negociação em pausa.\n\nPermanecemos à disposição sempre que desejarem retomar a conversa ou caso surjam novas necessidades.\n\nSerá um prazer atendê-los.`
   }[etapa];
   const html = txt.split("\n").map(l => l.trim() ? `<p style="margin:0 0 12px">${l}</p>` : "").join("");
-  return html + `<p style="margin:18px 0 0;color:#0d1f35"><b>Grupo Serv Camp</b><br><span style="color:#64748b;font-size:13px">Terceirização de Serviços</span></p>`;
+  return html + assinaturaGabriela();
+}
+
+// Assinatura da Gabriela (comercial) no fim dos e-mails automáticos. A imagem fica no próprio painel
+// (assets/comercial/assinatura-gabriela.png); o endereço vem de PAINEL_URL, com o do painel como reserva.
+// Se a imagem não carregar, o cliente vê o texto ao lado.
+function assinaturaGabriela() {
+  const env = String(process.env.PAINEL_URL || "").trim().replace(/\/+$/, "");
+  const base = /^https:\/\//.test(env) ? env : "https://jarvis3-joao-ygor-s-projects.vercel.app";
+  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:20px;border-collapse:collapse">` +
+    `<tr><td style="padding:0"><img src="${base}/assets/comercial/assinatura-gabriela.png" width="420" alt="Gabriela Alvarenga — Comercial — Grupo ServCamp Terceirizações. comercial@gruposervcamp.com.br · www.gruposervcamp.com.br · (19) 3114.3778" style="display:block;width:420px;max-width:100%;height:auto;border:0"></td></tr>` +
+    `</table>`;
 }
 
 // Busca os e-mails REALMENTE enviados nos últimos `dias`, com quem respondeu
