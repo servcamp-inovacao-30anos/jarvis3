@@ -880,6 +880,7 @@ aside.sb#sidebar.sb-mini #navRoot .ni{margin:2px 8px;padding:9px 0;}
   <div class="nav-cat" data-cat="gestao">
     <div class="nav-cat-h" onclick="navCatToggle('gestao')"><span class="nav-cat-t">📊 Gestão</span><span class="nav-cat-ar">▾</span></div>
     <div class="nav-cat-b">
+      <div class="ni" data-pg="saude" data-perm="admin" onclick="navTo('saude',this)"><span class="ni-ic">🩺</span><span>Sa&uacute;de do Cliente</span><span class="nib nib-novo">NOVO</span></div>
       <div class="ni" data-pg="celulares" data-perm="admin" onclick="navTo('celulares',this)"><span class="ni-ic">📱</span><span>Celulares</span><span class="nib nib-novo">NOVO</span></div>
       <!-- DESATIVADA 17/08 a pedido do Joao: nao ha responsavel definido pela auditoria.
            A pagina e o codigo continuam existindo; para religar, descomente esta linha.
@@ -1956,6 +1957,10 @@ aside.sb#sidebar.sb-mini #navRoot .ni{margin:2px 8px;padding:9px 0;}
   <div class="page" id="pg-agenda">
     <div class="sec-hdr"><span class="sec-hdr-ic">📅</span><div><div class="sec-hdr-t">Agenda Comercial</div><div class="sec-hdr-sub">Reuniões com clientes e captação: mande o link, o cliente escolhe um horário livre e nada fica em cima de nada.</div></div></div>
     <div id="ag-content"><div style="padding:40px;text-align:center;color:#94a3b8;font-size:.85rem">Carregando…</div></div>
+  </div>
+  <div class="page" id="pg-saude">
+    <div class="sec-hdr"><span class="sec-hdr-ic">🩺</span><div><div class="sec-hdr-t">Saúde do Cliente</div><div class="sec-hdr-sub">Quem está em risco — e por quê. Faltas de contrato, postos descobertos e visita do supervisor nos últimos 30 dias.</div></div></div>
+    <div id="sau-content"><div style="padding:40px;text-align:center;color:#94a3b8;font-size:.85rem">Carregando…</div></div>
   </div>
   <div class="page" id="pg-celulares">
     <div class="sec-hdr"><span class="sec-hdr-ic">📱</span><div><div class="sec-hdr-t">Celulares</div><div class="sec-hdr-sub">Os aparelhos dos postos: o que está faltando, o que conferir, e o número e o login Zello de cada um.</div></div></div>
@@ -4705,7 +4710,7 @@ function setTurno(t,btn){document.querySelectorAll("#trnoPg .pi").forEach(b=>b.c
 function setArea(){ST.area=document.getElementById("areaS").value;rpg();refresh();}
 function rpg(){Object.keys(ST.tpg).forEach(k=>ST.tpg[k]=1);}
 
-const PTITLES={fmrel:"Relatório de Faltas x Medidas",metas:"Metas da Diretoria",visao:"Visão Geral",ativos:"Funcionários Ativos",clientes:"Clientes",celulares:"Celulares — Controle dos Aparelhos",agenda:"Agenda Comercial",votacao:"Votação — novo nome e nova logo",faltas:"Faltas & Top 10",coberturas:"Coberturas",postos:"Justificativa de Postos Descobertos",os:"OS Avulsos",fts:"FTS",dispo:"Sem Alocação",restec:"Reservas Técnicas",hrextra:"Horas Extras",checklist:"Check List",rhvagas:"RH — Controle de Vagas",rhentrev:"RH — Entrevistas & Funil",rhdesl:"RH — Desligamentos",rhres:"RH — Reservas → Efetivação",rhtrein:"RH — Treinamentos",rhdash:"Painel RH — Diretoria",compro:"Comercial — Propostas e Serviços Extras",comdash:"Painel Comercial",config:"Configurações — Acessos & Usuários",sede:"Base Virtual — Equipe",prj:"Projetos — Evolução & Inovação",audqual:"Auditoria de Qualidade",ligacoes:"Feedback de Faltas",faltasmed:"Faltas x Medidas",bdvrel:"Relatório de Coberturas do Supervisor",faltassup:"Acompanhamento de Medidas (Supervisão)",apres:"Apresentação"};
+const PTITLES={saude:"Saúde do Cliente",fmrel:"Relatório de Faltas x Medidas",metas:"Metas da Diretoria",visao:"Visão Geral",ativos:"Funcionários Ativos",clientes:"Clientes",celulares:"Celulares — Controle dos Aparelhos",agenda:"Agenda Comercial",votacao:"Votação — novo nome e nova logo",faltas:"Faltas & Top 10",coberturas:"Coberturas",postos:"Justificativa de Postos Descobertos",os:"OS Avulsos",fts:"FTS",dispo:"Sem Alocação",restec:"Reservas Técnicas",hrextra:"Horas Extras",checklist:"Check List",rhvagas:"RH — Controle de Vagas",rhentrev:"RH — Entrevistas & Funil",rhdesl:"RH — Desligamentos",rhres:"RH — Reservas → Efetivação",rhtrein:"RH — Treinamentos",rhdash:"Painel RH — Diretoria",compro:"Comercial — Propostas e Serviços Extras",comdash:"Painel Comercial",config:"Configurações — Acessos & Usuários",sede:"Base Virtual — Equipe",prj:"Projetos — Evolução & Inovação",audqual:"Auditoria de Qualidade",ligacoes:"Feedback de Faltas",faltasmed:"Faltas x Medidas",bdvrel:"Relatório de Coberturas do Supervisor",faltassup:"Acompanhamento de Medidas (Supervisão)",apres:"Apresentação"};
 
 /* ── Sidebar 2.0: accordion com estado salvo + busca de módulos ── */
 function navCatToggle(k){
@@ -4849,6 +4854,7 @@ function navTo(p,btn){
   else if(p==="ativos"){renderAtivos();}
   else if(p==="clientes"){renderClientes();}
   else if(p==="celulares"){if(typeof celLoad==="function")celLoad();}
+  else if(p==="saude"){sauRender();} // dados já vêm no batimento (/api/hq); desenha na hora, sem esperar o próximo
   else if(p==="agenda"){if(typeof agLoad==="function")agLoad();}
   else if(p==="votacao"){if(typeof votLoad==="function")votLoad();}
   else if(p==="rhvagas"){rhLoad();}
@@ -4882,6 +4888,7 @@ function refresh(){
   updVG();updOC();
   // guias de banco (RH, Comercial, painéis e módulos novos) reagem ao filtro
   const _rer={
+    saude:()=>sauRender(),
     audqual:()=>audRender(), ligacoes:()=>ligRender(),
     rhvagas:()=>{rhRender();rhRenderTbl();},
     rhentrev:()=>{rhEntRender();rhEntRenderTbl();},
@@ -19017,6 +19024,7 @@ function rtPing(){
         const _mudou=(_novo!==SAU_ASSINATURA);
         SAU_ASSINATURA=_novo;
         VG.saudeClientes=j.saudeClientes;
+        if(ST.pg==="saude"&&_mudou)sauRender();
       }
       if(ST.pg==="visao"&&typeof updOC==="function"){try{updOC();}catch(e){}}
     }
