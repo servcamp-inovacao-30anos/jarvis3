@@ -46,6 +46,9 @@ const MAX_FALTAS_HISTORICO = 20000;
 const MAX_OCORRENCIAS = 20000; // ocorrências por envio (o relatório completo tem ~3 mil linhas)
 const JANELA_DIAS = 150; // o que a tela carrega: casos mais antigos já se encerraram
 const DIAS_ACOMPANHADOS = 45; // quem faltou nesse período ainda tem os dias da ficha guardados
+const JANELA_FICHA = 60; // dias da Ficha regravados a cada planilha (antes disso a folha já fechou e o dia já está guardado)
+const LOTE_DIAS = 40;    // pessoas por vez na gravação dos dias da Ficha
+const CAMPOS_FALTA = ["codigo", "nome", "cargo", "posto", "supervisor", "escala", "tipo"]; // o que a planilha atualiza em fm_faltas
 
 function erro(res, status, mensagem, codigo) { return res.status(status).json({ error: mensagem, codigo }); }
 function hojeSP() { return new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10); }
@@ -218,28 +221,20 @@ async function materializar(data, opcoes) {
       supervisor: R.supervisorAtual(f.AREA) || supervisorDaPessoa(areasAtivos, re, f.NOME, f.LOCAL) || null, escala: f.ESCALA || null, tipo: f.TIPO || null, atualizado_em: agora
     });
   });
-  // Dias da ficha interessam de quem faltou nesta planilha e de quem faltou
-  // antes (está no banco): é assim que se vê o retorno numa planilha seguinte.
-  const reDoModulo = new Set(faltas.map(f => String(f.re)));
-  const recentes = await db.listar(`fm_faltas?select=re&data=gte.${R.somaDias(new Date().toISOString().slice(0, 10), -DIAS_ACOMPANHADOS)}&order=re.asc,data.asc`);
-  recentes.forEach(x => reDoModulo.add(String(x.re)));
-
-  const dias = [];
-  Object.entries(data.fichaDias || {}).forEach(([reTxt, porDia]) => {
-    const re = reNum(reTxt);
-    if (re == null || !reDoModulo.has(String(re))) return;
-    Object.entries(porDia || {}).forEach(([dia, situacao]) => { if (ehData(dia)) dias.push({ re, data: dia, situacao: situacao || null, atualizado_em: agora }); });
-  });
-
   // Período que esta planilha cobre: é nele que ela manda. Falta que existia no
   // banco e não veio mais (o RH corrigiu o lançamento) sai do módulo.
   const datas = faltas.map(f => f.data).concat(Object.values(data.fichaDias || {}).flatMap(m => Object.keys(m || {}))).filter(ehData).sort();
   let removidas = 0;
   const codigoAntes = new Map(); // código que a falta tinha no banco antes desta planilha
+  const guardada = new Map();    // a linha como está no banco: igual à da planilha, não é regravada
   if (datas.length) {
     const de = datas[0], ate = datas[datas.length - 1];
-    const existentes = await db.listar(`fm_faltas?select=re,data,codigo&data=gte.${de}&data=lte.${ate}&order=re.asc,data.asc`);
-    existentes.forEach(x => { codigoAntes.set(x.re + "|" + String(x.data).slice(0, 10), x.codigo || null); });
+    const existentes = await db.listar(`fm_faltas?select=re,data,${CAMPOS_FALTA.join(",")}&data=gte.${de}&data=lte.${ate}&order=re.asc,data.asc`);
+    existentes.forEach(x => {
+      const k = x.re + "|" + String(x.data).slice(0, 10);
+      codigoAntes.set(k, x.codigo || null);
+      guardada.set(k, x);
+    });
     const novas = new Set(faltas.map(f => f.re + "|" + f.data));
     const sumiram = new Map();
     existentes.forEach(x => {
@@ -250,7 +245,13 @@ async function materializar(data, opcoes) {
     });
     for (const [re, lista] of sumiram) { await db.remover(`fm_faltas?re=eq.${re}&data=in.(${lista.join(",")})`); removidas += lista.length; }
   }
-  if (faltas.length) await db.upsert("fm_faltas", faltas, "re,data");
+  // A planilha traz o período inteiro (desde junho) a cada envio: só vai ao banco a falta nova ou a que mudou.
+  const iguais = v => (v == null ? null : String(v));
+  const mudaram = faltas.filter(f => {
+    const g = guardada.get(f.re + "|" + f.data);
+    return !g || CAMPOS_FALTA.some(c => iguais(g[c]) !== iguais(f[c]));
+  });
+  if (mudaram.length) await db.upsert("fm_faltas", mudaram, "re,data");
   await consertarSemSupervisor(db, areasAtivos);
   await anotarAbonosTardios(db, faltas, codigoAntes);
   await anotarViradasInjustificada(db, faltas, codigoAntes);
@@ -262,7 +263,9 @@ async function materializar(data, opcoes) {
   // atestado lançado depois, o afastamento e a demissão não chegariam a ela.
   const reapuradas = await reapurarInjustificadasGuardadas(db, cobertura, classificar, diasPorRE, agora, classificadas);
   await anotarReapuradas(db, classificadas);
-  if (dias.length) await db.upsert("fm_dias", dias, "re,data");
+  // Os dias da Ficha: aqui, de uma vez (coleta automática); o envio pelo painel manda { dias: false } e grava
+  // em pedidos separados (api/import.js?etapa=dias), cada um com o próprio tempo da Vercel.
+  const dias = o.dias === false ? 0 : (await gravarDias(data, { db, agora })).gravados;
 
   // Medidas: o motivo editado no Painel ServCamp não vai no upsert, então nunca é sobrescrito.
   const medidas = [];
@@ -284,7 +287,61 @@ async function materializar(data, opcoes) {
     .filter(a => a.re != null && ehData(a.admissao));
   if (admissoes.length) await db.upsert("fm_admissoes", admissoes, "re");
 
-  return { ok: true, faltas: faltas.length, removidas, dias: dias.length, medidas: medidas.length, admissoes: admissoes.length, reapuradas, ocorrencias: (data.ocorrencias || []).length };
+  return { ok: true, faltas: faltas.length, gravadas: mudaram.length, removidas, dias, medidas: medidas.length, admissoes: admissoes.length, reapuradas, ocorrencias: (data.ocorrencias || []).length };
+}
+
+// ── dias da Ficha (fm_dias) ──────────────────────────────────────────────────
+// Interessam de quem faltou nesta planilha e de quem faltou antes (está no banco): é assim que se vê o retorno
+// numa planilha seguinte. A planilha traz a Ficha desde o começo do período (junho) e cresce a cada dia:
+// regravar tudo a cada envio passava de 100 mil linhas e estourava os 60 s da Vercel (HTTP 504, 23/11/2026).
+// Por isso só a janela recente é regravada. Quem ainda não tem nada guardado logo antes dela (pessoa nova no
+// módulo) recebe a Ficha inteira.
+// Vai por RE em ordem crescente e, com prazo, para entre um lote e outro: "proximo" é o RE de onde continuar
+// (null = terminou). Pessoa nunca fica pela metade, então continuar do RE não pula nem repete ninguém.
+async function gravarDias(data, opcoes) {
+  const o = opcoes || {};
+  const db = o.db || ponto.conectar();
+  if (!db) return { ok: false, motivo: "CONFIG_AUSENTE" };
+  const agora = o.agora || new Date().toISOString();
+  const relogio = o.relogio || Date.now; // os testes trocam
+  const comeco = relogio(), prazo = Number(o.prazoMs) || 0, de = Number(o.de) || 0;
+  const doModulo = new Set();
+  ((data && data.faltas) || []).forEach(f => {
+    const re = reNum(f.RE);
+    if (re != null && ehData(String(f.DATA || "").slice(0, 10)) && R.familiaEscala(f.ESCALA) && R.ehOperacional(f.TIPO)) doModulo.add(re);
+  });
+  const recentes = await db.listar(`fm_faltas?select=re&data=gte.${R.somaDias(new Date().toISOString().slice(0, 10), -DIAS_ACOMPANHADOS)}${de ? `&re=gte.${de}` : ""}&order=re.asc,data.asc`);
+  recentes.forEach(x => { const re = reNum(x.re); if (re != null) doModulo.add(re); });
+
+  const porRE = new Map(); // RE → { dia: situação }; "0521" e "521" são a mesma pessoa
+  let ultimo = "";         // último dia da Ficha inteira (não só dos REs deste pedido): a janela não muda entre pedidos
+  Object.entries((data && data.fichaDias) || {}).forEach(([reTxt, porDia]) => {
+    Object.keys(porDia || {}).forEach(d => { if (ehData(d) && d > ultimo) ultimo = d; });
+    const re = reNum(reTxt);
+    if (re == null || re < de || !doModulo.has(re)) return;
+    const m = porRE.get(re) || {};
+    Object.entries(porDia || {}).forEach(([dia, sit]) => { if (ehData(dia)) m[dia] = sit; });
+    if (Object.keys(m).length) porRE.set(re, m);
+  });
+  const res = [...porRE.keys()].sort((a, b) => a - b);
+  const ini = ultimo ? R.somaDias(ultimo, -JANELA_FICHA) : "";
+  let gravados = 0, pessoas = 0;
+  for (let i = 0; i < res.length; i += LOTE_DIAS) {
+    if (prazo && i > 0 && relogio() - comeco > prazo) return { ok: true, gravados, pessoas, proximo: res[i], faltam: res.length - i };
+    const lote = res.slice(i, i + LOTE_DIAS);
+    // já tem dias guardados nas duas semanas antes da janela: o que vem antes também já foi gravado
+    const jaTem = new Set();
+    (await db.listar(`fm_dias?select=re&re=in.(${lote.join(",")})&data=gte.${R.somaDias(ini, -14)}&data=lt.${ini}&order=re.asc,data.asc`))
+      .forEach(x => jaTem.add(Number(x.re)));
+    const linhas = [];
+    lote.forEach(re => Object.entries(porRE.get(re)).forEach(([dia, sit]) => {
+      if (!(jaTem.has(re) && dia < ini)) linhas.push({ re, data: dia, situacao: sit || null, atualizado_em: agora });
+    }));
+    if (linhas.length) await db.upsert("fm_dias", linhas, "re,data");
+    gravados += linhas.length;
+    pessoas += lote.length;
+  }
+  return { ok: true, gravados, pessoas, proximo: null, faltam: 0 };
 }
 
 // ── ocorrências do SAR2G ─────────────────────────────────────────────────────
@@ -1016,6 +1073,7 @@ module.exports = async function faltas(req, res) {
 };
 
 module.exports.materializar = materializar;
+module.exports.gravarDias = gravarDias;
 module.exports.reapurarComBanco = reapurarComBanco; // o api/ligacoes.js chama depois de dar ou desfazer a baixa de um feedback
 module.exports.lerGeradas = lerGeradas; // o resumo semanal da coordenação (api/_faltas_email.js) lê as mesmas medidas geradas
 // eventos de atestado registrados à mão: o aviso semanal por e-mail (api/_faltas_email.js) desconta as faltas cobertas, igual à tela

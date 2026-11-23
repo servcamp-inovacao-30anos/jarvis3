@@ -19,9 +19,42 @@
 //
 // Envio automático exige o cabeçalho x-ingest-token igual à env INGEST_TOKEN
 // (o robô não faz login, então não tem token de sessão).
+//
+// Envio pelo painel em etapas (23/11/2026). Com o banco lento, salvar a planilha e atualizar os módulos num
+// pedido só passava dos 60 s da Vercel: voltava HTTP 504 com a planilha já salva, e a tela dizia que não tinha
+// sido. Agora o painel manda:
+//   POST /api/import?etapas=cliente     salva a planilha (o que as outras telas carregam) e volta logo
+//   POST /api/import?etapa=faltas       Faltas x Medidas (sem os dias da Ficha)
+//   POST /api/import?etapa=dias[&de=RE] os dias da Ficha, em partes: a resposta diz de que RE continuar
+//   POST /api/import?etapa=ponto        Monitoramento de ponto
+// Cada pedido tem os próprios 60 s. Sem "etapas=cliente" (coleta automática, tela antiga em cache), tudo
+// continua num pedido só, como antes.
 
 const _auth = require("./_auth");
 const crypto = require("crypto");
+
+const ETAPAS = ["faltas", "dias", "ponto"];
+const PRAZO_DIAS_MS = 30000; // a etapa dos dias para aqui e devolve de onde continuar (a Vercel corta em 60 s)
+const ESPERA_RESUMOS_MS = 15000; // série do quadro e Saúde do Cliente: a próxima planilha refaz se não der tempo
+
+const esperar = ms => new Promise(r => setTimeout(r, ms).unref?.());
+
+// Uma etapa do envio pelo painel. A planilha já foi salva no pedido principal: aqui só o módulo.
+async function rodarEtapa(etapa, req, res, data) {
+  try {
+    if (etapa === "ponto") {
+      const ponto = require("./_ponto");
+      return res.status(200).json({ ok: true, etapa, ponto: await ponto.materializar(data, { ator: ponto.usuarioDoToken(req) }) });
+    }
+    const faltas = require("./_faltas");
+    if (etapa === "faltas") return res.status(200).json({ ok: true, etapa, faltas_medidas: await faltas.materializar(data, { dias: false }) });
+    return res.status(200).json({ ok: true, etapa, dias: await faltas.gravarDias(data, { de: req.query.de, prazoMs: PRAZO_DIAS_MS }) });
+  } catch (e) {
+    const msg = String((e && e.message) || e);
+    console.error(`[import] etapa ${etapa} falhou: ${msg}`);
+    return res.status(500).json({ error: msg.slice(0, 200), etapa });
+  }
+}
 
 // Obter o corpo CRU, em bytes, sem depender de como o ambiente se comporta.
 //
@@ -88,6 +121,10 @@ module.exports = async function handler(req, res) {
   // limite de 4,5 MB do corpo da Vercel. Continua sendo o caminho manual.
   const ehGzip = String((req.headers && req.headers["x-conteudo"]) || "").toLowerCase() === "json-gzip";
   const ehArquivo = !ehGzip && ctype.indexOf("json") < 0;
+  const q = req.query || {};
+  const etapa = String(q.etapa || "");
+  if (etapa && (ETAPAS.indexOf(etapa) < 0 || ehArquivo)) return res.status(400).json({ error: "Etapa desconhecida: " + etapa });
+  const clienteConduz = String(q.etapas || "") === "cliente" && !ehArquivo; // a tela manda os módulos depois
 
   // ── quem pode entrar ──────────────────────────────────────────────────────
   const tokenRobo = String((req.headers && req.headers["x-ingest-token"]) || "");
@@ -137,6 +174,7 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'Campo "data" ausente ou inválido. Esperado um objeto (o DASHBOARD_DATA inteiro).' });
     }
   }
+  if (etapa) return rodarEtapa(etapa, req, res, data);
 
   let rowCount = 0;
   for (const key of Object.keys(data)) {
@@ -244,6 +282,16 @@ module.exports = async function handler(req, res) {
     fetch(`${SUPABASE_URL}/rest/v1/rpc/atualizar_hist_supervisor`, { method: "POST", headers, body: "{}" })
   ]);
 
+  const row = inserted[0] || null;
+  if (row) delete row.data; // não devolve o snapshot inteiro de volta
+
+  // Envio pelo painel: a planilha está salva e as outras telas já a recebem. Os módulos vêm em pedidos
+  // separados (rodarEtapa); a resposta diz quais a tela deve mandar.
+  if (clienteConduz) {
+    await Promise.race([Promise.allSettled([historico, saude]), esperar(ESPERA_RESUMOS_MS)]);
+    return res.status(200).json({ ok: true, origem, row_count: rowCount, row, etapas: ETAPAS });
+  }
+
   // Monitoramento de ponto: as ocorrências de marcação vão para tabela própria (api/_ponto.js).
   const pontoP = (async () => {
     const ponto = require("./_ponto");
@@ -266,7 +314,5 @@ module.exports = async function handler(req, res) {
   // Os avisos de faltas no celular (push) saíram em 23/10/2026: o aviso agora é o
   // e-mail semanal (api/_faltas_email.js), agendado, e não depende da importação.
 
-  const row = inserted[0] || null;
-  if (row) delete row.data; // não devolve o snapshot inteiro de volta
   return res.status(200).json({ ok: true, origem, row_count: rowCount, row, faltas_medidas: faltasMedidas });
 };

@@ -8348,29 +8348,69 @@ function loadFromSupabase(){
     return false;
   });
 }
-function syncToSupabase(data,fname){
-  if(typeof fetch!=="function")return;
-  const statusEl=document.getElementById("dataStatusTxt");
-  const json=JSON.stringify({data:data,source_filename:fname||null});
-  // A Vercel recusa corpo acima de 4,5 MB; em gzip a planilha cabe com folga.
-  const montar=(typeof CompressionStream==="function")
+/* Corpo do envio. A Vercel recusa corpo acima de 4,5 MB; em gzip a planilha cabe com folga. */
+function _corpoEnvio(obj){
+  const json=JSON.stringify(obj);
+  return (typeof CompressionStream==="function")
     ? new Response(new Blob([json]).stream().pipeThrough(new CompressionStream("gzip"))).blob()
         .then(function(gz){return {headers:{"Content-Type":"application/octet-stream","x-conteudo":"json-gzip"},body:gz};})
     : Promise.resolve({headers:{"Content-Type":"application/json"},body:json});
-  montar.then(function(req){
-    return fetch("/api/import",{method:"POST",headers:req.headers,body:req.body});
-  }).then(function(resp){
+}
+function _postarEnvio(url,corpo){
+  return corpo.then(function(req){return fetch(url,{method:"POST",headers:req.headers,body:req.body});}).then(function(resp){
     if(resp.status===413)throw new Error("Planilha grande demais para o envio (HTTP 413)");
+    if(resp.status===504)throw new Error("o servidor demorou demais para responder (HTTP 504)");
     if(!resp.ok)return resp.json().catch(function(){return null;}).then(function(j){throw new Error(j&&j.error?j.error:("HTTP "+resp.status));});
     return resp.json();
-  }).then(function(j){
-    if(statusEl)statusEl.textContent=statusEl.textContent+" · Sincronizado com Supabase";
-    if(typeof fmAposEnvio==="function")fmAposEnvio(true,j);
-  }).catch(function(err){
+  });
+}
+function syncToSupabase(data,fname){
+  if(typeof fetch!=="function")return;
+  const statusEl=document.getElementById("dataStatusTxt");
+  const base=statusEl?statusEl.textContent:"";
+  const st=function(t){if(statusEl)statusEl.textContent=base+t;};
+  // 1) a planilha. "etapas=cliente": o servidor salva, volta logo e deixa os módulos para os pedidos abaixo
+  //    (tudo num pedido só passava dos 60 s da Vercel com o banco lento e voltava HTTP 504 com a planilha já salva).
+  _postarEnvio("/api/import?etapas=cliente",_corpoEnvio({data:data,source_filename:fname||null})).then(function(j){
+    st(" · Sincronizado com Supabase");
+    if(j&&Array.isArray(j.etapas))return _syncModulos(data,j.etapas,st);
+    if(typeof fmAposEnvio==="function")fmAposEnvio(true,j); // servidor antigo: já fez tudo
+  },function(err){
     console.error("Falha ao sincronizar com Supabase:",err);
-    if(statusEl)statusEl.textContent=statusEl.textContent+" · Falha ao sincronizar com Supabase";
+    st(" · Falha ao sincronizar com Supabase");
     alert("A planilha NÃO foi enviada ao servidor.\nOs outros aparelhos continuam com a anterior.\n\nMotivo: "+(err&&err.message?err.message:err));
     if(typeof fmAposEnvio==="function")fmAposEnvio(false,err);
+  });
+}
+/* 2) Os módulos que guardam histórico próprio, cada um no seu pedido (com os próprios 60 s), levando só as
+   abas que o servidor usa (api/_faltas.js e api/_ponto.js). A planilha já está salva: falha aqui não a desfaz. */
+function _syncModulos(data,etapas,st){
+  const abas=function(ks){const o={};ks.forEach(function(k){if(data[k]!==undefined)o[k]=data[k];});return {data:o};};
+  const tem=function(e){return etapas.indexOf(e)>=0;};
+  st(" · Sincronizado · atualizando Faltas x Medidas…");
+  const ponto=tem("ponto")?_postarEnvio("/api/import?etapa=ponto",_corpoEnvio(abas(["ativos","hrextra"]))).catch(function(e){console.error("Ponto não atualizou:",e);}):null;
+  // os dias da Ficha vão em partes: cada resposta diz de que RE continuar
+  const corpoDias=_corpoEnvio(abas(["faltas","fichaDias"]));
+  const dias=function(de,volta){
+    return _postarEnvio("/api/import?etapa=dias"+(de?"&de="+encodeURIComponent(de):""),corpoDias).then(function(j){
+      const r=(j&&j.dias)||{};
+      if(r.ok===false)throw new Error(r.motivo||"os dias da Ficha não foram gravados");
+      if(r.proximo&&volta<30)return dias(r.proximo,volta+1);
+      if(r.proximo)throw new Error("os dias da Ficha não terminaram de gravar");
+    });
+  };
+  const fm=!tem("faltas")?Promise.resolve(null):_postarEnvio("/api/import?etapa=faltas",_corpoEnvio(abas(["faltas","ativos","fichaDias","ocorrencias","disciplina"])))
+    .then(function(j){
+      const r=(j&&j.faltas_medidas)||{ok:false,erro:"resposta vazia"};
+      if(r.ok===false||!tem("dias"))return r;
+      st(" · Sincronizado · gravando os dias da Ficha…");
+      return dias("",1).then(function(){return r;});
+    })
+    .catch(function(e){return {ok:false,erro:String(e&&e.message?e.message:e)};});
+  return Promise.all([fm,ponto]).then(function(rs){
+    const r=rs[0];
+    st(r&&r.ok===false?" · Sincronizado · Faltas x Medidas não atualizou":" · Sincronizado com Supabase");
+    if(typeof fmAposEnvio==="function")fmAposEnvio(true,{faltas_medidas:r});
   });
 }
 /* ===== MÓDULO RH — CONTROLE DE VAGAS (acesso restrito admin) ===== */
