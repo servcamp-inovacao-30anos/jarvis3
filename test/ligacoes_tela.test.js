@@ -815,3 +815,81 @@ test("pasta: botão no card escolhe a pasta; na aba Pastas dá para procurar a p
   const semPermissao = ambiente({ pessoas: [msg()], podeBaixar: false });
   assert.ok(!/fb-pasta-b/.test(semPermissao.html("mensagem")), "só a coordenação vê o botão de pasta");
 });
+
+test("Black List (central): botão só da coordenação; indicadores, distribuição por cargo, fila por prioridade com o motivo", () => {
+  assert.ok(!/fb-blb/.test(ambiente({ pessoas: [msg()], podeBaixar: false }).html()), "SAC sem coordenação não vê o botão");
+  const e = ambiente({ pessoas: [msg()], podeBaixar: true });
+  assert.match(e.html(), /class="fb-blb"[^>]*onclick="ligBL\(this\)"[^>]*><svg class="bx-emb"[\s\S]*?<\/svg><span>BLACK <em>LIST<\/em><\/span>/, "botão com o emblema");
+  const p = (re, nome, cargo, extra) => ({ chave: re + "|" + nome.split(" ")[0], re, nome, cargo, posto: "POSTO", supervisor: "FRANK PIMENTEL", admissao: "2021-03-12", ativo: true, obs: "", medidas: [], injustificadas: [], abonadas: [], semRetorno: [], documentos: [], ocorrencias: [], pendentesSar2g: 0, incluidoEm: "2026-11-01T12:00:00Z", ...extra });
+  e.run("LIG_HOJE='2026-11-23';LIG_BL=" + JSON.stringify({ pessoas: [
+    p("1", "CARLOS ALMEIDA", "PORTEIRO (A)", { injustificadas: ["2026-08-01"], incluidoEm: "2026-08-10T12:00:00Z" }),
+    p("2", "SERGIO LIMA", "PORTEIRO (A)", { injustificadas: ["2026-11-01", "2026-11-18", "2026-11-20"] }),
+    p("3", "ALINE ROCHA", "AUXILIAR DE LIMPEZA", { pendentesSar2g: 1, medidas: [{ data: "2026-11-10", tipo: "ADVERTÊNCIA", grau: "ESCRITA", dias: 0, motivo: "" }] }),
+    p("4", "NAIR DIAS", "CONTROLADOR DE ACESSO")], historico: [] }) + ";LIG_BL_Q='';LIG_BL_F='todos';LIG_BL_C='';LIG_BL_SEL='';LIG_BL_PASTA='inj';blCentral();");
+  const k = e.els["bx-kpis"].innerHTML;
+  assert.match(k, /Total no arquivo<\/small><b>4<\/b>[\s\S]*Faltaram em 7 dias<\/small><b>1<\/b>[\s\S]*Com medida no ano<\/small><b>1<\/b>/);
+  assert.match(e.els["bx-cargos"].innerHTML, /<span>Porteiro \(A\)<\/span><i style="--p:100%"><\/i><b>2<\/b>[\s\S]*<span>Auxiliar de Limpeza<\/span><i style="--p:50%"><\/i><b>1<\/b>/, "distribuição por cargo, do maior para o menor");
+  const l = e.els["bx-lista"].innerHTML;
+  assert.match(l, /bx-rank">1<\/span><span class="bx-itx"><b>Sergio Lima<\/b><small class="v">Faltou nos últimos 7 dias[\s\S]*bx-rank">2<\/span><span class="bx-itx"><b>Aline Rocha<\/b><small class="a">Medida a lançar no SAR2G[\s\S]*Carlos Almeida<\/b><small class="g">Sem faltas há 114 dias/, "fila: quem pede ação primeiro, com o motivo; quem está há muito tempo sem faltar por último, em verde");
+  assert.match(l, /class="bx-it on" role="option" aria-selected="true"[^>]*data-k="2\|SERGIO"/, "o primeiro da fila já vem aberto");
+  e.run("LIG_BL_C='Porteiro (A)';blCentral()");
+  assert.ok(/SERGIO|Sergio/.test(e.els["bx-lista"].innerHTML) && !/Aline/.test(e.els["bx-lista"].innerHTML), "clicar no cargo filtra a fila");
+  e.run("LIG_BL_C='';ligBLKpi('med')");
+  assert.ok(/Aline/.test(e.els["bx-lista"].innerHTML) && !/Sergio|Carlos|Nair/.test(e.els["bx-lista"].innerHTML), "cartão Com medida filtra a fila");
+  assert.match(e.els["bx-kpis"].innerHTML, /<button type="button" class="bx-kpi on" aria-pressed="true" onclick="ligBLKpi\('med'\)">/, "cartão ativo marcado");
+  e.run("ligBLKpi('med')");
+  assert.ok(/Carlos/.test(e.els["bx-lista"].innerHTML) && e.run("LIG_BL_F") === "todos", "clicar de novo mostra todos");
+});
+
+test("Black List (central): dossiê com RE, nome, cargo, supervisor, admissão, último posto, campo digitável, documentos; histórico do ano em pastas e linha do tempo", () => {
+  const e = ambiente({ pessoas: [msg()], podeBaixar: true });
+  const pessoa = { chave: "9402|MARCOS", re: "9402", nome: "MARCOS A SILVA", cargo: "PORTEIRO (A)", posto: "COND. MIRANTE", supervisor: "FRANK PIMENTEL", admissao: "2021-03-12", ativo: true, obs: "Acompanhar comportamento.",
+    injustificadas: ["2025-12-20", "2026-02-03", "2026-11-18"], abonadas: [["2026-07-01", "A"]], medidas: [{ data: "2026-06-15", tipo: "ADVERTÊNCIA", grau: "ESCRITA", dias: 0, motivo: "USO INADEQUADO DO CRACHÁ" }],
+    semRetorno: [{ data: "2026-11-11", tipo: "Mensagem do SAC sem retorno", detalhe: "WhatsApp" }], ocorrencias: [{ em: "2026-11-19T13:00:00Z", por: "Jussilene Almeida", texto: "Aviso verbal dado." }],
+    documentos: [{ chave: "a1b2c3d4e5f60718", numero: "MD-0007", medida: "ADVERTÊNCIA ESCRITA", data: "2026-06-16", arquivo: "advertencia.pdf", tipo: "application/pdf" }],
+    pendentesSar2g: 0, incluidoEm: "2026-09-01T12:00:00Z", incluidoPorNome: "Jussilene Almeida", alteradoEm: "2026-11-10T17:32:00Z", alteradoPorNome: "Raphael Victor" };
+  e.run("LIG_HOJE='2026-11-23';LIG_BL=" + JSON.stringify({ pessoas: [pessoa], historico: [] }) + ";LIG_BL_Q='';LIG_BL_F='todos';LIG_BL_C='';LIG_BL_SEL='';LIG_BL_MODO='';LIG_BL_PASTA='inj';blCentral();");
+  const d = e.els["bx-dos"].innerHTML;
+  [["RE", "9402"], ["Nome", "Marcos A Silva"], ["Cargo", "Porteiro \\(A\\)"], ["Supervisor", "Frank Pimentel"], ["Admissão", "12\\/03\\/2021"], ["Último posto efetivo", "Cond\\. Mirante"]]
+    .forEach(([r, v]) => assert.match(d, new RegExp("<dt>" + r + "</dt><dd>" + v), r));
+  assert.match(d, /bx-sil-h3\.webp/, "silhueta de homem pelo nome, variante pelo RE");
+  assert.match(d, /Linha do tempo · 2026[\s\S]*class="bx-mk f" data-p="[\d.]+" style="left:[\d.]+%" title="03\/02\/2026 · Falta injustificada"/, "linha do tempo do ano");
+  const xs = [...d.matchAll(/class="bx-mk [a-z]+" data-p="[\d.]+" style="left:([\d.]+)%"/g)].map(m => Number(m[1]));
+  assert.ok(xs.length === 7 && xs.every((v, k) => !k || v - xs[k - 1] >= 1.79) && xs.every(v => v >= 0 && v <= 100), "todos na linha, sem um cobrir o outro: " + xs);
+  assert.ok(!/bx-orn2/.test(d), "ficha sem os enfeites nos cantos");
+  assert.ok(!/20\/12\/2025/.test(d), "o histórico é o do ano: falta do ano passado fica de fora");
+  assert.match(d, /<div class="bx-fi-div on" style="--i:0" data-k="inj"><button type="button" role="tab" class="bx-fi-tab" aria-selected="true"[^>]*><i[^>]*><\/i>Faltas injustificadas<b>2<\/b>[\s\S]*Medidas disciplinares<b>1<\/b>[\s\S]*Faltas abonadas<b>1<\/b>[\s\S]*Ligações sem retorno<b>1<\/b>/, "fichário: divisórias com a quantidade do ano");
+  assert.ok(!/Ocorrências<b>/.test(d), "ocorrências ficam só nas anotações, fora do fichário");
+  assert.match(d, /bx-fi-et">Histórico 2026</);
+  assert.match(d, /Faltas injustificadas<b>2<\/b><\/button><div class="bx-fi-cont" role="tabpanel" aria-label="Faltas injustificadas"><h5>Faltas injustificadas · 2026<span>2 registros<\/span><button type="button" class="bx-fi-x" aria-label="Fechar Faltas injustificadas e guardar na gaveta"[^>]*onclick="blPasta\(''\)">[\s\S]*?<\/button><\/h5><ol class="bx-fi-lst"><li><time>18\/11\/2026<\/time><span>Quarta<\/span><em>Sem justificativa<\/em><\/li>[\s\S]*<time>03\/02\/2026<\/time><span>Terça/, "a divisória puxada mostra nela mesma os acontecimentos, do mais recente para o mais antigo");
+  assert.equal((d.match(/class="bx-fi-cont"/g) || []).length, 1, "só a divisória puxada mostra o conteúdo");
+  assert.match(d, /<button type="button" class="bx-btn bx-amp" onclick="ligBLNotas\(\)">/, "botão para ampliar as anotações");
+  assert.ok(!/bx-ler/.test(d), "anotação curta não precisa de Ler tudo");
+  assert.match(d, /Anotações internas da coordenação <span class="bx-cont">2<\/span>/);
+  assert.match(d, /<article class="bx-nt fixa">[\s\S]*Anotação geral<\/span><time>10\/11\/2026<\/time><\/header><p>Acompanhar comportamento\.<\/p><footer>Raphael Victor<\/footer>[\s\S]*<span class="bx-ntag oc">Ocorrência<\/span><time>19\/11\/2026 \d\d:\d\d<\/time><\/header><p>Aviso verbal dado\.<\/p><footer>Jussilene Almeida/, "cada registro numa ficha, com data, hora e quem registrou");
+  assert.ok(!/bx-tend|30 anteriores/.test(d), "sem o card de tendência");
+  assert.match(d, /ligBLDoc\('a1b2c3d4e5f60718'\)[\s\S]*advertencia\.pdf/);
+  assert.match(d, /Registrar ocorrência[\s\S]*Editar anotação[\s\S]*Remover da Black List/);
+  e.run("LIG_BL_MODO='oc';blDossie()");
+  assert.match(e.els["bx-dos"].innerHTML, /<textarea id="bx-oc"[\s\S]*ligBLOcorrencia\(\)/, "campo digitável da ocorrência");
+  e.run("LIG_BL_MODO='nota';blDossie()");
+  assert.match(e.els["bx-dos"].innerHTML, /<textarea id="bx-obs"[^>]*>Acompanhar comportamento\./, "campo digitável da anotação");
+  e.run("LIG_BL_MODO='';blDossie();blPasta('med')");
+  assert.match(e.els["bx-hist"].innerHTML, /<div class="bx-fi-div on" style="--i:1" data-k="med">[\s\S]*Medidas disciplinares · 2026[\s\S]*<time>15\/06\/2026<\/time><span>Advertência Escrita<\/span><em>Uso Inadequado do Crachá<\/em>/, "puxar outra divisória: ela sobe com os acontecimentos dela");
+  e.run("blPasta('')");
+  assert.ok(/bx-fi-gav fechada/.test(e.els["bx-hist"].innerHTML) && !/bx-fi-cont|bx-fi-div on/.test(e.els["bx-hist"].innerHTML), "o X guarda a divisória: gaveta fechada, só as abas");
+  e.run("blPasta('abo')");
+  assert.match(e.els["bx-hist"].innerHTML, /bx-fi-div on" style="--i:2" data-k="abo"/, "e dá para puxar de novo");
+  const longa = e.run("blNotas(" + JSON.stringify({ obs: "x".repeat(300), ocorrencias: [] }) + ",false)");
+  assert.match(longa, /class="bx-nt fixa longa"[\s\S]*<button type="button" class="bx-ler" aria-expanded="false" onclick="blLer\(this\)">Ler tudo<\/button>/, "texto longo vem recolhido com Ler tudo");
+  assert.ok(!/bx-ler|longa/.test(e.run("blNotas(" + JSON.stringify({ obs: "x".repeat(300), ocorrencias: [] }) + ",true)")), "na janela ampliada tudo aparece inteiro");
+});
+
+test("Black List: silhueta pelo nome, com a escolha da coordenação valendo mais", () => {
+  const e = ambiente({ pessoas: [msg()], podeBaixar: true });
+  const sx = n => e.run("blSexo(" + JSON.stringify({ nome: n }) + ")");
+  assert.deepEqual(["DEBORA SOUZA", "SERGIO LIMA", "ALINE ROCHA", "NAIR DIAS", "SUELY MOTA", "JOSE SILVA", "MICHELE ALVES", "MICHEL ALVES", "LUCA PRADO", "RAQUEL DIAS"].map(sx), ["f", "m", "f", "f", "f", "m", "f", "m", "m", "f"]);
+  assert.equal(e.run("blSexo({nome:'ANDREA COSTA',silhueta:'m'})"), "m", "a correção da coordenação vale mais que o nome");
+  assert.match(e.run("blFoto({nome:'DEBORA',re:'15'})"), /bx-sil-f2\.webp/);
+  assert.match(e.run("blFoto({nome:'SERGIO',re:'15'})"), /bx-sil-h4\.webp/, "silhueta de homem e de mulher, variante pelo RE");
+});

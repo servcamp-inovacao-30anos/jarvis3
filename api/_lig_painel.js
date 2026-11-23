@@ -176,4 +176,14 @@ function montarPainel({ hoje, faltas, contatos, envios, telefones, diasHist, pas
   return { pessoas: saida, resumo };
 }
 
-module.exports = { PRAZO_RESPOSTA_DIAS, TENTATIVAS_PARA_BASE, DIAS_ACOMPANHAMENTO, venceu, tentativasSemRetorno, veredito, antesDepois, conta, acordoAuto, montarPainel, dataSP, dataDoContato, diasEntre };
+// Black List: o que o SAC tentou e ficou sem retorno. Mensagem vencida sem conversa até o fim do prazo dela,
+// e ligação registrada sem conversa (não atendeu, número inválido...). contatos: [{ data_contato, criado_em, efetivo, rot }].
+function semRetorno(envios, contatos, hoje) {
+  const conversas = contatos.filter(c => c.efetivo).map(dataDoContato);
+  const msg = envios.filter(d => venceu(d, hoje) && !conversas.some(c => c >= d && c <= L.somaDias(d, PRAZO_RESPOSTA_DIAS)))
+    .map(d => ({ data: d, tipo: "Mensagem do SAC sem retorno", detalhe: "WhatsApp" }));
+  const tent = contatos.filter(c => !c.efetivo).map(c => ({ data: dataDoContato(c), tipo: "Ligação sem conversa", detalhe: c.rot || "" }));
+  return msg.concat(tent).sort((a, b) => a.data.localeCompare(b.data));
+}
+
+module.exports = { semRetorno, PRAZO_RESPOSTA_DIAS, TENTATIVAS_PARA_BASE, DIAS_ACOMPANHAMENTO, venceu, tentativasSemRetorno, veredito, antesDepois, conta, acordoAuto, montarPainel, dataSP, dataDoContato, diasEntre };

@@ -29,6 +29,9 @@ const ACAO_RESULTADO = "LIG_RESULTADO";            // resultado do contato e pr�
 const ACAO_ATIVIDADE = "LIG_ATIVIDADE";
 const ACAO_PASTA = "LIG_PASTA";                    // pessoa movida para uma pasta (INSS, Abandono, Demitido): sai da fila do SAC; pasta null devolve            // próxima ação concluída, cancelada ou reagendada
 
+const ACAO_BLACKLIST = "LIG_BLACKLIST";
+const ACAO_BL_OCORRENCIA = "LIG_BLACKLIST_OCORRENCIA"; // ocorrência registrada pela coordenação no perfil da Black List: { texto, re, nome }            // Black List da coordenação: { ativo, re, nome, cargo, admissao, posto, obs } (o último de cada pessoa vale)
+
 const JANELA_DIAS = 30;      // acompanhamento depois do contato (e antes: faltas que originaram o feedback)
 const MIN_FALTAS_SEM_RETORNO = 2;
 
@@ -305,7 +308,22 @@ function celular(tel) {
 
 const MODELO_PADRAO = "Olá, {nome}. Aqui é o SAC do Grupo ServCamp. Registramos a sua ausência no trabalho{data} e precisamos entender o que aconteceu. Por favor, ligue para este número assim que puder, para conversarmos sobre o motivo da falta. Contamos com você.";
 
+// Black List: quem está nela hoje (a chave é "RE|PRIMEIRONOME"), com quem incluiu e quando; inclusão é sempre manual
+function blacklistAtual(eventos) {
+  const out = {}, desde = {};
+  porOrdem(eventos).forEach(e => {
+    if (e.acao !== ACAO_BLACKLIST || !e.depois) return;
+    const k = String(e.chave);
+    if (!e.depois.ativo) { delete desde[k]; delete out[k]; return; }
+    if (!desde[k]) desde[k] = { por: e.ator || "", em: e.criado_em || null };
+    out[k] = { ...e.depois, chave: k, incluidoPor: desde[k].por, incluidoEm: desde[k].em, alteradoPor: e.ator || "", alteradoEm: e.criado_em || null };
+  });
+  return out;
+}
+const limpaTexto = (v, max) => String(v == null ? "" : v).replace(/\r/g, "").replace(/[\u0000-\u0009\u000b-\u001f\u007f]/g, " ").trim().slice(0, max);
+
 module.exports = {
+  ACAO_BLACKLIST, ACAO_BL_OCORRENCIA, blacklistAtual, limpaTexto,
   ENTIDADE, ACAO_BAIXA, ACAO_BAIXA_FIM, ACAO_EDITADO, ACAO_EXCLUIDO, ACAO_ACORDO, ACAO_ZAP_ENVIO, ACAO_ZAP_CONFIG, ACAO_ZAP_MODELO, ACAO_ZAP_CONEXAO, ACAO_RESULTADO, ACAO_ATIVIDADE, ACAO_PASTA, PASTAS, RESULTADOS, PROXIMAS,
   JANELA_DIAS, MIN_FALTAS_SEM_RETORNO, NOMES, USUARIOS, MOTIVOS, CANAIS, ABONOS, MODELO_PADRAO,
   celular, podeBaixar, podeUsar, norm, primeiroNome, ehData, somaDias, reDe, limpa, janela,

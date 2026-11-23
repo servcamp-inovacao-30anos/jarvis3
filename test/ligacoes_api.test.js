@@ -469,3 +469,83 @@ test("pastas automáticas no painel: demitido, abandono e INSS da última planil
   p = await painel(t);
   assert.equal(pessoaDe(p, "PESSOA 3").situacao, "mensagem");
 });
+
+test("Black List: só a coordenação; inclusão manual pela lista de ativos, sem repetir; anotação, retirada e registro de quem fez", async () => {
+  const t = tabelas();
+  t.fm_medidas = [{ re: 7, data: dia(-20), tipo: "ADVERTÊNCIA", grau: "ESCRITA", dias: 0, fase: "Concluido", motivo_sar2g: "FALTA", nome: "CARLA SOUZA" }, { re: 7, data: dia(-10), tipo: "SUSPENSÃO", grau: "", dias: 1, fase: "CANCELADO", nome: "CARLA SOUZA" }];
+  t.fm_faltas.push(falta(7, dia(-21), { nome: "CARLA SOUZA" }), falta(7, dia(-15), { nome: "CARLA SOUZA", codigo: "A" }), falta(7, dia(-12), { nome: "CARLA SOUZA", codigo: "T" }), falta(7, dia(-11), { nome: "OUTRA PESSOA" }));
+  t.dashboard_snapshots.push({ id: 1, created_at: new Date().toISOString(), data: { ativos: [{ RE: 7, NOME: "CARLA SOUZA", CARGO: "PORTEIRA", ADMISSAO: "2023-04-15", LOCAL: "COND - JARDIM", AREA: "FRANK PIMENTEL" }, { RE: 8, NOME: "DIEGO LIMA", CARGO: "AUX", LOCAL: "POSTO B" }] } });
+  assert.equal((await pedir(t, "ingridycampana", { query: { acao: "blacklist" } })).statusCode, 403, "SAC sem coordenação não vê");
+  assert.equal((await pedir(t, "ingridycampana", { method: "POST", query: { acao: "blacklist" }, body: { re: 7, nome: "CARLA SOUZA" } })).statusCode, 403);
+  const busca = await pedir(t, "raphaelvictor", { query: { acao: "blacklist_busca", q: "carla" } });
+  assert.deepEqual(busca.body.pessoas.map(p => [p.re, p.cargo, p.admissao, p.posto]), [["7", "PORTEIRA", "2023-04-15", "COND - JARDIM"]]);
+  assert.equal((await pedir(t, "raphaelvictor", { query: { acao: "blacklist_busca", q: "8" } })).body.pessoas[0].nome, "DIEGO LIMA", "busca pelo RE");
+  assert.equal((await pedir(t, "raphaelvictor", { method: "POST", query: { acao: "blacklist" }, body: { re: 99, nome: "NINGUEM" } })).statusCode, 404, "fora da lista de ativos não entra");
+  assert.equal((await pedir(t, "raphaelvictor", { method: "POST", query: { acao: "blacklist" }, body: { re: 7, nome: "Carla Souza", obs: "Acompanhar\nno próximo mês" } })).statusCode, 200);
+  assert.equal((await pedir(t, "jussilenealmeida", { method: "POST", query: { acao: "blacklist" }, body: { re: 7, nome: "CARLA SOUZA" } })).statusCode, 409, "não entra duas vezes");
+  await pedir(t, "raphaelvictor", { method: "POST", query: { acao: "blacklist" }, body: { re: 8, nome: "DIEGO LIMA" } });
+  let r = await pedir(t, "raphaelvictor", { query: { acao: "blacklist" } });
+  const c = r.body.pessoas.find(p => p.re === "7");
+  assert.equal(r.body.pessoas.length, 2);
+  assert.equal(c.obs, "Acompanhar\nno próximo mês");
+  assert.deepEqual(c.medidas.map(m => m.tipo), ["ADVERTÊNCIA"], "medida cancelada fica de fora");
+  assert.deepEqual(c.injustificadas, [dia(-21), dia(-12)], "I e T, só da própria pessoa");
+  assert.deepEqual(c.abonadas, [[dia(-15), "A"]]);
+  assert.equal(c.incluidoPor, "raphaelvictor");
+  assert.equal(c.supervisor, "FRANK PIMENTEL", "supervisor pela área da lista de ativos");
+  await pedir(t, "jussilenealmeida", { method: "POST", query: { acao: "blacklist" }, body: { chave: "7|CARLA", obs: "Conversou com o RH" } });
+  await pedir(t, "jussilenealmeida", { method: "POST", query: { acao: "blacklist" }, body: { chave: "8|DIEGO", remover: true } });
+  r = await pedir(t, "raphaelvictor", { query: { acao: "blacklist" } });
+  assert.deepEqual(r.body.pessoas.map(p => [p.re, p.obs, p.incluidoPor, p.alteradoPor]), [["7", "Conversou com o RH", "raphaelvictor", "jussilenealmeida"]]);
+  assert.deepEqual(r.body.historico.map(h => [h.tipo, h.re, h.por]), [["removeu", "8", "Jussilene Almeida"], ["editou", "7", "Jussilene Almeida"], ["incluiu", "8", "Raphael Victor"], ["incluiu", "7", "Raphael Victor"]], "o registro mostra o nome de quem fez");
+  assert.equal(t.fm_faltas.length, 4, "o histórico do RH não muda");
+  assert.equal((await pedir(t, "raphaelvictor", { method: "POST", query: { acao: "blacklist" }, body: { re: 8, nome: "DIEGO LIMA" } })).statusCode, 200, "retirado pode voltar");
+});
+
+test("Black List: prévia de quem vai entrar traz o histórico sem gravar nada", async () => {
+  const t = tabelas();
+  t.fm_medidas = [];
+  t.fm_faltas.push(falta(8, dia(-3), { nome: "DIEGO LIMA" }));
+  t.dashboard_snapshots.push({ id: 1, created_at: new Date().toISOString(), data: { ativos: [{ RE: 8, NOME: "DIEGO LIMA", CARGO: "AUX", ADMISSAO: "2024-01-02", LOCAL: "POSTO B" }] } });
+  const r = await pedir(t, "raphaelvictor", { query: { acao: "blacklist", re: "8", nome: "DIEGO LIMA" } });
+  assert.deepEqual([r.body.pessoa.cargo, r.body.pessoa.admissao, r.body.pessoa.posto, r.body.pessoa.injustificadas], ["AUX", "2024-01-02", "POSTO B", [dia(-3)]]);
+  assert.equal(t.fm_auditoria.length, 0);
+});
+
+test("Black List: ocorrência datada, ligações sem retorno e documentos assinados das medidas geradas", async () => {
+  const t = tabelas();
+  t.fm_medidas = [];
+  t.dashboard_snapshots.push({ id: 1, created_at: new Date().toISOString(), data: { ativos: [{ RE: 7, NOME: "CARLA SOUZA", CARGO: "PORTEIRA", LOCAL: "POSTO A" }] } });
+  const quando = d => d + "T15:00:00Z";
+  t.fm_auditoria.push(
+    { id: 50, ator: "jussilenealmeida", acao: "LIG_ZAP_ENVIO", entidade: "lig_contato", chave: "7|CARLA", antes: null, depois: { ok: true }, criado_em: quando(dia(-6)) },
+    { id: 51, ator: "jussilenealmeida", acao: "LIG_ZAP_ENVIO", entidade: "lig_contato", chave: "7|CARLA", antes: null, depois: { ok: false }, criado_em: quando(dia(-5)) },
+    { id: 60, ator: "frankpimentel", acao: "MEDIDA_GERADA", entidade: "fm_medida_gerada", chave: "a1b2c3d4e5f60718", antes: null, depois: { re: "7", nome: "CARLA SOUZA", tipoId: "ADVERTENCIA_ESCRITA", tipo: "ADVERTÊNCIA", grau: "ESCRITA", dias: 0, inicio: dia(-4), motivo: "x", supervisor: "FRANK PIMENTEL" }, criado_em: quando(dia(-4)) },
+    { id: 61, ator: "frankpimentel", acao: "MEDIDA_ASSINADA", entidade: "fm_medida_gerada", chave: "a1b2c3d4e5f60718", antes: null, depois: { tipo: "application/pdf", nome: "advertencia.pdf", bytes: 1000, base64: "JVBERi0=" }, criado_em: quando(dia(-3)) }
+  );
+  await pedir(t, "raphaelvictor", { method: "POST", query: { acao: "blacklist" }, body: { re: 7, nome: "CARLA SOUZA" } });
+  assert.equal((await pedir(t, "raphaelvictor", { method: "POST", query: { acao: "blacklist" }, body: { chave: "7|CARLA", ocorrencia: " " } })).statusCode, 400, "ocorrência vazia não grava");
+  assert.equal((await pedir(t, "jussilenealmeida", { method: "POST", query: { acao: "blacklist" }, body: { chave: "7|CARLA", ocorrencia: "Aviso verbal dado pela coordenação." } })).statusCode, 200);
+  assert.equal((await pedir(t, "jussilenealmeida", { method: "POST", query: { acao: "blacklist" }, body: { chave: "9|NINGUEM", ocorrencia: "x x x" } })).statusCode, 404);
+  const r = await pedir(t, "raphaelvictor", { query: { acao: "blacklist" } });
+  const c = r.body.pessoas[0];
+  assert.deepEqual(c.ocorrencias.map(o => [o.por, o.texto]), [["Jussilene Almeida", "Aviso verbal dado pela coordenação."]]);
+  assert.deepEqual(c.semRetorno.map(x => [x.data, x.tipo]), [[dia(-6), "Mensagem do SAC sem retorno"]], "envio que falhou não conta");
+  assert.deepEqual(c.documentos.map(d => [d.chave, d.arquivo, d.tipo]), [["a1b2c3d4e5f60718", "advertencia.pdf", "application/pdf"]]);
+  assert.equal(c.pendentesSar2g, 1, "medida gerada que o SAR2G ainda não trouxe");
+  assert.equal(c.supervisor, "", "sem área na lista de ativos e sem falta: fica vazio");
+  assert.equal(r.body.historico[0].tipo, "ocorrencia");
+  assert.ok(!JSON.stringify(r.body).includes("JVBERi0="), "o arquivo não desce na lista");
+});
+
+test("Black List: a coordenação corrige a silhueta sem apagar a anotação; valor inválido é recusado", async () => {
+  const t = tabelas();
+  t.fm_medidas = [];
+  t.dashboard_snapshots.push({ id: 1, created_at: new Date().toISOString(), data: { ativos: [{ RE: 7, NOME: "ANDREA LIMA", CARGO: "PORTEIRA", LOCAL: "POSTO A" }] } });
+  await pedir(t, "raphaelvictor", { method: "POST", query: { acao: "blacklist" }, body: { re: 7, nome: "ANDREA LIMA", obs: "Acompanhar." } });
+  assert.equal((await pedir(t, "raphaelvictor", { method: "POST", query: { acao: "blacklist" }, body: { chave: "7|ANDREA", silhueta: "x" } })).statusCode, 400);
+  assert.equal((await pedir(t, "raphaelvictor", { method: "POST", query: { acao: "blacklist" }, body: { chave: "7|ANDREA", silhueta: "f" } })).statusCode, 200);
+  const r = await pedir(t, "raphaelvictor", { query: { acao: "blacklist" } });
+  assert.deepEqual([r.body.pessoas[0].silhueta, r.body.pessoas[0].obs], ["f", "Acompanhar."]);
+  assert.equal(r.body.historico[0].tipo, "silhueta");
+});

@@ -264,7 +264,7 @@ function fbConfirm(o){
   return new Promise(res=>{
     const id="fb-conf";let feito=false;
     const fim=v=>{if(feito)return;feito=true;fbFechar(id);res(v);};
-    fbDialog(id,{titulo:o.titulo,tam:"sm",corpo:'<p style="margin:0;font-size:.875rem;line-height:1.6;color:var(--fb-text2)">'+o.texto+'</p>',
+    fbDialog(id,{titulo:o.titulo,tam:"sm",tom:o.tom,corpo:'<p style="margin:0;font-size:.875rem;line-height:1.6;color:var(--fb-text2)">'+o.texto+'</p>',
       rodape:'<button type="button" class="fb-btn" id="fb-conf-n">Cancelar</button><button type="button" class="fb-btn '+(o.perigo?"warn":"pri")+'" id="fb-conf-s">'+_esc(o.ok||"Confirmar")+'</button>'});
     document.getElementById("fb-conf-n").onclick=()=>fim(false);
     document.getElementById("fb-conf-s").onclick=()=>fim(true);
@@ -705,7 +705,7 @@ function ligRender(){
   const P=LIG_P.filter(p=>fbSupOk(fbSupDe(p)));
   const n={visao:null,fila:null,monit:P.filter(p=>p.situacao==="acomp").length,desemp:null,hist:fbContatosFiltrados().length};
   h+='<nav class="fb-abas" aria-label="Seções"><div class="fb-dsub fb-abas-t" role="tablist" aria-label="Seções" data-ind="fundo">'+FB_ABAS.map(a=>'<button type="button" role="tab" class="'+(LIG_ABA===a.k?"on":"")+'" aria-selected="'+(LIG_ABA===a.k)+'" onclick="ligAba(\''+a.k+'\')">'+fbI(a.ic)+a.t+(n[a.k]!==null?'<span class="n">'+n[a.k]+'</span>':"")+'</button>').join("")+'</div>'
-    +'<div class="fb-abas-a"><div class="fb-bg"><label class="fb-search">'+fbI("search")+'<span class="fb-sr">Histórico do colaborador</span><input id="lig-bg" class="fb-in" type="search" placeholder="Histórico do colaborador" autocomplete="off" oninput="ligBuscaG(this.value)" onkeydown="ligBuscaGTecla(event)" onblur="setTimeout(ligBuscaGFecha,180)"></label><div class="fb-bg-r" id="lig-bg-r" role="listbox"></div></div>'
+    +'<div class="fb-abas-a">'+blBotao()+'<div class="fb-bg"><label class="fb-search">'+fbI("search")+'<span class="fb-sr">Histórico do colaborador</span><input id="lig-bg" class="fb-in" type="search" placeholder="Histórico do colaborador" autocomplete="off" oninput="ligBuscaG(this.value)" onkeydown="ligBuscaGTecla(event)" onblur="setTimeout(ligBuscaGFecha,180)"></label><div class="fb-bg-r" id="lig-bg-r" role="listbox"></div></div>'
     +'<button type="button" class="fb-btn sm" onclick="ligZapAbrir(\'\',\'\',\'\',[],null)">'+fbI("chat")+'Enviar WhatsApp<span id="lig-zap-chip" class="fb-zp">'+ligZapChipHtml()+'</span></button>'
     +'<button type="button" class="fb-btn sm navy" onclick="ligForm()">'+fbI("phone")+'Registrar feedback</button></div></nav></section>';
   h+='<div id="lig-panel"></div></div>';
@@ -2363,3 +2363,360 @@ function ligSalvar(id){
     .catch(e=>{erro(e.message||"Não consegui salvar.");if(btn)btn.disabled=false;});
 }
 
+
+/* ═════ Black List da coordenação ═════
+   Lista interna de quem está no radar de desligamento. Inclusão sempre manual (nada automático), só a coordenação
+   vê; o servidor guarda cada inclusão, anotação, ocorrência e retirada com quem fez e quando. Retirar não mexe no
+   histórico do RH. Visual "Arquivo Oculto": página de fichas (papel envelhecido) e perfil em dossiê.
+   Imagens em assets/ligacoes/bx-*.webp: preto irregular, papel com a borda gasta, lacre e as silhuetas de arquivo
+   (homem e mulher reais, contorno tirado das fotos da referência). No hover só mudam transform e opacity. */
+let LIG_BL={pessoas:[],historico:[]},LIG_BL_Q="",LIG_BL_F="todos",LIG_BL_C="",LIG_BL_SEL="",LIG_BL_MODO="",LIG_BL_PASTA="inj",LIG_BL_RES=[],LIG_BL_NOVO=null,LIG_BL_T=0;
+const BL_IC={
+  mais:'<path d="M12 5v14M5 12h14"/>',
+  busca:'<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.3-4.3"/>',
+  funil:'<path d="M3 4.5h18l-7 8.2v6.3l-4 2v-8.3z"/>',
+  ordem:'<path d="M7 4v16M4 17l3 3 3-3M14 6h7M14 11h5M14 16h3"/>',
+  x:'<path d="M6 6l12 12M18 6L6 18"/>',
+  cadeado:'<rect x="5" y="10.5" width="14" height="10" rx="1.6" fill="currentColor" stroke="none"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/><circle cx="12" cy="15.2" r="1.4" fill="#000" fill-opacity=".55" stroke="none"/>',
+  pdf:'<path d="M6 2.5h8.5l4 4V21a.5.5 0 0 1-.5.5H6a.5.5 0 0 1-.5-.5V3a.5.5 0 0 1 .5-.5z" fill="#f4f4f5" stroke="none"/><path d="M14.5 2.5v4h4" fill="none" stroke="#9aa0a8"/><rect x="4" y="12" width="12" height="6" rx="1" fill="#c62a2a" stroke="none"/><path d="M6 16.6v-3h1.1a.9.9 0 0 1 0 1.8H6M9.5 13.6v3h.9a1.5 1.5 0 0 0 0-3zM13.4 16.6v-3h1.8M13.4 15.1h1.4" stroke="#fff" stroke-width="1"/>',
+  img:'<path d="M6 2.5h8.5l4 4V21a.5.5 0 0 1-.5.5H6a.5.5 0 0 1-.5-.5V3a.5.5 0 0 1 .5-.5z" fill="#f4f4f5" stroke="none"/><path d="M14.5 2.5v4h4" fill="none" stroke="#9aa0a8"/><rect x="4" y="11.5" width="12" height="7" rx="1" fill="#2f7d4f" stroke="none"/><path d="M5.5 17.2l2.6-3 1.9 2 1.3-1.3 2.2 2.3" stroke="#fff" stroke-width="1"/>',
+  hist:'<path d="M3.5 12a8.5 8.5 0 1 0 2.5-6"/><path d="M3 4v4.5h4.5"/><path d="M12 7.5V12l3 2"/>',
+  pena:'<path d="M20 4c-6 .5-10.5 4-12.5 10.5L6 19"/><path d="M20 4c-.5 6-4 10-10 11.5"/><path d="M4 21l2-2"/>',
+  lapis:'<path d="M4 20l1-4.5L15.5 5a2 2 0 0 1 2.8 0l.7.7a2 2 0 0 1 0 2.8L8.5 19 4 20z"/><path d="M13.5 7l3.5 3.5"/>',
+  sair:'<path d="M15 4h3.5a1.5 1.5 0 0 1 1.5 1.5v13a1.5 1.5 0 0 1-1.5 1.5H15"/><path d="M10 8l-4 4 4 4M6 12h10"/>',
+  gente:'<circle cx="9" cy="8" r="3.2"/><path d="M3 20c.5-4 3-6 6-6s5.5 2 6 6"/><circle cx="17" cy="9" r="2.4"/><path d="M15.5 14.2c2.6-.3 4.7 1.4 5.5 4.8"/>'
+};
+function blI(n,c){return'<svg class="bl-i'+(c?" "+c:"")+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(BL_IC[n]||"")+'</svg>';}
+
+/* ── silhuetas de arquivo: imagens prontas de um homem e de uma mulher (preto sobre fundo de estúdio, com granulado) ── */
+/* o sistema não tem o sexo do colaborador: deduz pelo primeiro nome; a coordenação corrige no perfil (fica gravado) */
+const BL_FEM=new Set("RAQUEL ISABEL MIRIAM CARMEM CARMEN ESTER ESTHER ELIZABETH ELISABETH LUZ INES BEATRIZ LIZ IRIS NAIR MARLI ROSELI SUELI ARACELI NATALI RUTH RUTE JUDITH EDITH LOURDES DOLORES MERCEDES ABIGAIL MABEL RACHEL YASMIN JASMIN KAREN KELLEN ELLEN HELEN MARIANGEL LUCIMAR DEISIMAR ROSIMAR SOLANGE IRANI".split(" "));
+const BL_MASC=new Set("LUCA NIKOLA JOSHUA JOSUA ISAIA ZACARIA TOBIA".split(" "));
+function blSexo(p){
+  if(p&&(p.silhueta==="m"||p.silhueta==="f"))return p.silhueta;
+  const n=_ligNorm(p&&p.nome).split(" ")[0]||"";
+  if(BL_MASC.has(n))return"m";
+  if(BL_FEM.has(n)||/(A|ANE|INE|ENE|ETE|ELE|ELLE|IDE|ICE|ISE|ESE|UTE|ILDE|EIRE|EIDE|Y)$/.test(n))return"f";
+  return"m";
+}
+/* 4 homens e 2 mulheres diferentes: a variante sai do RE, então cada pessoa fica sempre com a mesma */
+function blFoto(p){const f=blSexo(p)==="f",n=Number(String((p&&p.re)||"").replace(/\D/g,""))||0;return'<img class="bx-foto-s" src="/assets/ligacoes/bx-sil-'+(f?"f"+(n%2+1):"h"+(n%4+1))+'.webp" alt="" width="360" height="420" decoding="async">';}
+/* emblema da Black List: selo escuro com cadeado prateado e a inscrição girando no anel; "id" separa os gradientes de cada cópia.
+   Sem a inscrição (anel=false) para tamanhos pequenos, como o botão de entrada. */
+function blEmblema(id,anel){
+  const a=id+"-a",d=id+"-d",c=id+"-c";
+  return'<svg class="bx-emb" viewBox="0 0 100 100" aria-hidden="true"><defs>'
+    +'<linearGradient id="'+a+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f4f5"/><stop offset=".48" stop-color="#b3b3b9"/><stop offset=".52" stop-color="#707077"/><stop offset="1" stop-color="#cfcfd4"/></linearGradient>'
+    +'<radialGradient id="'+d+'" cx=".5" cy=".32" r=".75"><stop offset="0" stop-color="#2a2a2e"/><stop offset="1" stop-color="#040405"/></radialGradient>'
+    +'<path id="'+c+'" d="M50 50m-39 0a39 39 0 1 1 78 0a39 39 0 1 1-78 0"/></defs>'
+    +'<circle cx="50" cy="50" r="48" fill="#08080a" stroke="url(#'+a+')" stroke-width="1.8"/><circle cx="50" cy="50" r="44.6" fill="none" stroke="#3a3a3f" stroke-width=".7"/>'
+    +(anel?'<g class="bx-emb-anel"><text font-family="Oswald,Roboto Condensed,sans-serif" font-size="7" font-weight="500" fill="#a9a9b0"><textPath href="#'+c+'" textLength="242" lengthAdjust="spacing">ACESSO RESTRITO • COORDENAÇÃO •</textPath></text></g>'
+      :'<g stroke="#4a4a50" stroke-width="1.2">'+[0,45,90,135,180,225,270,315].map(g=>'<path d="M50 6.5v4" transform="rotate('+g+' 50 50)"/>').join("")+'</g>')
+    +'<circle cx="50" cy="50" r="31" fill="url(#'+d+')" stroke="url(#'+a+')" stroke-width="1.3"/>'
+    +'<path class="bx-emb-arco" d="M40.5 47V39.5a9.5 9.5 0 0 1 19 0V47" fill="none" stroke="url(#'+a+')" stroke-width="4.2" stroke-linecap="round"/>'
+    +'<rect x="34.5" y="45" width="31" height="24" rx="3.5" fill="url(#'+a+')"/><rect x="34.5" y="45" width="31" height="24" rx="3.5" fill="none" stroke="#000" stroke-opacity=".35"/>'
+    +'<path d="M50 50.6a3.4 3.4 0 0 1 1.7 6.3l1.1 6.4h-5.6l1.1-6.4A3.4 3.4 0 0 1 50 50.6z" fill="#09090a"/><circle class="bx-emb-luz" cx="50" cy="54" r="1.2" fill="#e04848"/></svg>';
+}
+const BL_CAMADAS='<i class="bx-sombra" aria-hidden="true"></i><i class="bx-luz" aria-hidden="true"></i>';
+const BL_CARIMBO='<span class="bx-carimbo" aria-label="Confidencial, restrito"><b>CONFIDENCIAL</b><small>RESTRITO</small></span>';
+function blD(d){d=String(d||"");return d.length>=10?d.slice(8,10)+"/"+d.slice(5,7)+"/"+d.slice(0,4):"—";}
+function blDH(t){if(!t)return"—";const x=new Date(t);return isNaN(x)?"—":x.toLocaleDateString("pt-BR")+" "+x.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});}
+function blT(s){return fbTitulo(s)||"—";}
+function blAtual(){return LIG_BL.pessoas.find(p=>p.chave===LIG_BL_SEL)||null;}
+function blBotao(){return LIG_PODE_BAIXAR?'<button type="button" class="fb-blb" id="lig-blb" onclick="ligBL(this)" aria-label="Black List: arquivo restrito da coordenação">'+blEmblema("bxe-b",false)+'<span>BLACK <em>LIST</em></span></button>':"";}
+
+/* ── página de fichas ── */
+/* ── central de acompanhamento: indicadores, fila de prioridade e o dossiê de quem foi clicado ── */
+function ligBL(btn){
+  const r=btn&&btn.getBoundingClientRect?btn.getBoundingClientRect():null;
+  ligApi("/api/ligacoes?acao=blacklist").then(j=>{
+    LIG_BL={pessoas:j.pessoas||[],historico:j.historico||[]};LIG_BL_Q="";LIG_BL_F="todos";LIG_BL_C="";LIG_BL_SEL="";LIG_BL_MODO="";LIG_BL_PASTA="inj";
+    const ov=fbDialog("lig-bl",{titulo:"Black List",tam:"bx",tom:"blx",semFoco:true,corpo:''
+      +'<header class="bx-top"><div class="bx-marca">'+blEmblema("bxe-g",true)+'<div class="bx-tit"><h2><span>Black</span> <em>List</em></h2><p>Módulo: Feedback de Faltas e Ligações — acesso restrito à coordenação</p></div></div>'
+      +'<div class="bx-ferr"><label class="bx-busca">'+blI("busca")+'<span class="fb-sr">Pesquisar arquivo</span><input type="search" placeholder="Pesquisar Arquivo" autocomplete="off" oninput="LIG_BL_Q=this.value;blCentral()"></label>'
+      +'<label class="bx-btn bx-sel">'+blI("funil")+'<span class="fb-sr">Filtros</span><select id="bx-f" onchange="LIG_BL_F=this.value;blCentral()" aria-label="Filtros"><option value="todos">Filtros</option><option value="rec">Entraram em 30 dias</option><option value="f7">Faltaram em 7 dias</option><option value="med">Com medida disciplinar</option><option value="lig">Com ligações sem retorno</option><option value="fora">Fora dos ativos</option></select></label>'
+      +'<button type="button" class="bx-btn bx-pri" onclick="ligBLAdd()">Adicionar Novo Registro</button></div></header>'
+      +'<div class="bx-kpis" id="bx-kpis"></div>'
+      +'<div class="bx-central"><aside class="bx-painel bx-fila" aria-label="Fila de prioridade">'
+      +'<div class="bx-ph"><h3>Fila de prioridade</h3><button type="button" class="bx-upd" id="bx-upd" onclick="ligBLHist()"></button></div>'
+      +'<div class="bx-cbar" id="bx-cargos" role="group" aria-label="Filtrar por cargo"></div><div class="bx-lista" id="bx-lista" role="listbox" aria-label="Colaboradores na Black List"></div>'
+      +'<p class="bx-atalho"><kbd>↑</kbd> <kbd>↓</kbd> trocam de pessoa</p></aside>'
+      +'<section class="bx-painel bx-dos" id="bx-dos" aria-live="polite"></section></div>'});
+    const fx=ov.querySelector(".fb-dlg-h .fb-ib");if(fx)fx.innerHTML=blI("x");
+    blCentral(true);
+    const d=ov.querySelector(".fb-dlg"),anel=ov.querySelector(".bx-emb-anel"),arco=ov.querySelector(".bx-emb-arco");
+    if(fbMov()){
+      /* a página sai do botão, devagar, como um arquivo sendo aberto; o anel do emblema gira e o cadeado destrava */
+      if(r&&d){const f=d.getBoundingClientRect(),sx=r.width/f.width,sy=r.height/f.height,tx=r.left+r.width/2-(f.left+f.width/2),ty=r.top+r.height/2-(f.top+f.height/2);
+        d.animate([{transform:"translate("+tx+"px,"+ty+"px) scale("+sx+","+sy+")",opacity:.2},{transform:"none",opacity:1}],{duration:480,easing:"cubic-bezier(.65,0,.35,1)"});}
+      if(anel)anel.animate([{transform:"rotate(-120deg)",opacity:0},{transform:"rotate(0)",opacity:1}],{duration:1200,delay:300,easing:"cubic-bezier(.2,.8,.2,1)",fill:"backwards"});
+      if(arco)arco.animate([{transform:"translateY(0)"},{transform:"translateY(-5px)",offset:.45},{transform:"translateY(0)"}],{duration:700,delay:900,easing:"cubic-bezier(.3,0,.2,1)"});
+    }
+  }).catch(e=>fbToast(e.message||"Não consegui abrir a Black List.","err"));
+}
+function blCargo(p){return blT(p.cargo);}
+/* o histórico mostrado é o do ano: de 1º de janeiro até hoje */
+function blHoje(){return ligHojeISO();}
+function blIni(){return blHoje().slice(0,4)+"-01-01";}
+function blAno(p){
+  const i=blIni(),no=d=>String(d||"").slice(0,10)>=i;
+  return{...p,injustificadas:(p.injustificadas||[]).filter(no),abonadas:(p.abonadas||[]).filter(a=>no(a[0])),medidas:(p.medidas||[]).filter(m=>no(m.data)),
+    semRetorno:(p.semRetorno||[]).filter(x=>no(x.data)),ocorrenciasAno:(p.ocorrencias||[]).filter(o=>no(o.em))};
+}
+const blDias=(a,b)=>Math.round((Date.parse(String(b).slice(0,10)+"T12:00:00Z")-Date.parse(String(a).slice(0,10)+"T12:00:00Z"))/864e5);
+/* sinais tirados só dos dados (ninguém escolhe nível): vermelho pede ação, âmbar pede conferência, verde é bom sinal */
+function blSinais(p){
+  const h=blHoje(),f=p.injustificadas||[],ult=f.length?f[f.length-1]:"",f30=f.filter(d=>blDias(d,h)<=30).length,f60=f.filter(d=>{const n=blDias(d,h);return n>30&&n<=60;}).length,s=[];
+  if(ult&&blDias(ult,h)<=7)s.push(["v","Faltou nos últimos 7 dias"]);
+  if(f30>f60&&f30>=2)s.push(["v","Faltas subindo"]);
+  if(p.pendentesSar2g)s.push(["a",p.pendentesSar2g===1?"Medida a lançar no SAR2G":p.pendentesSar2g+" medidas a lançar no SAR2G"]);
+  if((p.semRetorno||[]).filter(x=>blDias(x.data,h)<=30).length>=2)s.push(["a","SAC sem retorno"]);
+  const desde=ult||String(p.incluidoEm||"").slice(0,10);
+  if(desde&&blDias(desde,h)>45)s.push(["g","Sem faltas há "+blDias(desde,h)+" dias"]);
+  return{s,f30,f60};
+}
+function blPrio(p){const x=blSinais(p);return x.s.reduce((t,s)=>t+(s[0]==="v"?100:s[0]==="a"?40:-20),0)+x.f30*5+(p.injustificadas||[]).length;}
+/* filtros da fila; os cartões de resumo contam com os mesmos */
+const BL_FK={rec:p=>!!p.incluidoEm&&blDias(p.incluidoEm,blHoje())<=30,f7:p=>p.injustificadas.some(d=>blDias(d,blHoje())<=7),med:p=>p.medidas.length>0,lig:p=>p.semRetorno.length>0,fora:p=>!p.ativo};
+function blFiltrados(){
+  const q=_ligNorm(LIG_BL_Q),qd=String(LIG_BL_Q||"").replace(/\D/g,"");
+  return LIG_BL.pessoas.map(blAno).filter(p=>(!q||_ligNorm(p.nome).indexOf(q)>=0||(qd&&String(p.re).indexOf(qd)===0))&&(!LIG_BL_C||blCargo(p)===LIG_BL_C)
+    &&(!BL_FK[LIG_BL_F]||BL_FK[LIG_BL_F](p)))
+    .sort((a,b)=>blPrio(b)-blPrio(a)||String(a.nome).localeCompare(String(b.nome),"pt-BR"));
+}
+function blChips(p){const s=blSinais(p).s;return s.length?s.map(x=>'<span class="bx-chip '+x[0]+'"><i></i>'+_esc(x[1])+'</span>').join(""):'<span class="bx-chip"><i></i>Sem alerta</span>';}
+function blKpis(){
+  const P=LIG_BL.pessoas.map(blAno),t=P.length;
+  /* cada cartão filtra a fila; clicar de novo (ou no Total) volta a mostrar todos */
+  const k=(f,r,s,al)=>{const on=LIG_BL_F===f||(f==="todos"&&!BL_FK[LIG_BL_F]);
+    return'<button type="button" class="bx-kpi'+(al?" al":"")+(on?" on":"")+'" aria-pressed="'+on+'" onclick="ligBLKpi(\''+f+'\')"><small>'+r+'</small><b>'+(BL_FK[f]?P.filter(BL_FK[f]).length:t)+'</b><span>'+s+'</span></button>';};
+  return k("todos","Total no arquivo",t===1?"colaborador":"colaboradores")
+    +k("rec","Entraram em 30 dias","inclusões recentes")
+    +k("f7","Faltaram em 7 dias","pedem atenção agora",true)
+    +k("med","Com medida no ano","de "+t+" no arquivo")
+    +k("lig","Sem retorno do SAC","no ano");
+}
+function ligBLKpi(f){LIG_BL_F=LIG_BL_F===f?"todos":f;blCentral();}
+function blCargos(){
+  const m=new Map();LIG_BL.pessoas.forEach(p=>{const c=blCargo(p);m.set(c,(m.get(c)||0)+1);});
+  const cs=[...m.entries()].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],"pt-BR")),mx=cs.length?cs[0][1]:1;
+  return'<p class="bx-h4">Distribuição por cargo</p>'+cs.map(c=>'<button type="button" class="bx-bar'+(LIG_BL_C===c[0]?" on":"")+'" aria-pressed="'+(LIG_BL_C===c[0])+'" data-c="'+_esc(c[0])+'" onclick="LIG_BL_C=LIG_BL_C===this.dataset.c?\'\':this.dataset.c;blCentral()" title="Filtrar: '+_esc(c[0])+'"><span>'+_esc(c[0])+'</span><i style="--p:'+Math.round(c[1]/mx*100)+'%"></i><b>'+c[1]+'</b></button>').join("");
+}
+function blCentral(entra){
+  const box=document.getElementById("bx-lista");if(!box)return;
+  const k=document.getElementById("bx-kpis");if(k)k.innerHTML=blKpis();
+  const fs=document.getElementById("bx-f");if(fs)fs.value=LIG_BL_F;
+  const c=document.getElementById("bx-cargos");if(c)c.innerHTML=blCargos();
+  const up=document.getElementById("bx-upd"),h=LIG_BL.historico[0];if(up)up.innerHTML=blI("hist")+(h?"Atualizado "+blDH(h.em):"Histórico de alterações");
+  const l=blFiltrados();
+  if(!l.some(p=>p.chave===LIG_BL_SEL))LIG_BL_SEL=l.length?l[0].chave:"";
+  box.innerHTML=l.length?l.map((p,i)=>{const s=blSinais(p).s[0],on=p.chave===LIG_BL_SEL;
+    return'<button type="button" class="bx-it'+(on?" on":"")+'" role="option" aria-selected="'+on+'" tabindex="'+(on?0:-1)+'" data-k="'+_esc(p.chave)+'" onclick="ligBLSel(this.dataset.k)"><span class="bx-rank">'+(i+1)+'</span>'
+      +'<span class="bx-itx"><b>'+_esc(blT(p.nome))+'</b><small class="'+(s?s[0]:"")+'">'+_esc(s?s[1]:blCargo(p))+'</small></span>'+blFoto(p).replace('class="bx-foto-s"','class="bx-av"')+'</button>';}).join("")
+    :'<p class="bx-tvz">'+(LIG_BL.pessoas.length?"Ninguém com esse filtro.":"Nenhuma ficha no arquivo.")+'</p>';
+  blDossie(false);
+  if(entra)setTimeout(()=>blFolhaSobe(document.getElementById("bx-hist")),350);
+  if(entra&&fbMov())[...box.children].slice(0,10).forEach((x,i)=>x.animate([{opacity:0,transform:"translate3d(-12px,0,0)"},{opacity:1,transform:"none"}],{duration:380,delay:240+i*45,easing:"cubic-bezier(.2,.8,.2,1)",fill:"backwards"}));
+}
+function ligBLSel(k){if(k===LIG_BL_SEL)return;LIG_BL_SEL=k;LIG_BL_MODO="";
+  document.querySelectorAll("#bx-lista .bx-it").forEach(b=>{const on=b.dataset.k===k;b.classList.toggle("on",on);b.setAttribute("aria-selected",on);b.tabIndex=on?0:-1;});
+  blDossie(true);}
+/* ↑ ↓ trocam de pessoa na fila (fora de campos de texto) */
+if(!window._blTecla){window._blTecla=1;document.addEventListener("keydown",e=>{
+  if(e.key!=="ArrowDown"&&e.key!=="ArrowUp")return;
+  const ovs=document.querySelectorAll(".fb-ov:not(.out)");if(!ovs.length||ovs[ovs.length-1].id!=="lig-bl")return;
+  if(e.target&&/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName))return;
+  const bs=[...document.querySelectorAll("#bx-lista .bx-it")];if(!bs.length)return;
+  e.preventDefault();const i=bs.findIndex(b=>b.dataset.k===LIG_BL_SEL),n=bs[Math.max(0,Math.min(bs.length-1,i+(e.key==="ArrowDown"?1:-1)))];
+  ligBLSel(n.dataset.k);n.focus();if(n.scrollIntoView)n.scrollIntoView({block:"nearest"});
+});}
+
+/* ── dossiê ── */
+/* linha do tempo do ano: cada falta, medida, mensagem sem retorno, ocorrência e a entrada na lista vira um marcador */
+const BL_MES=["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+/* todos os marcadores ficam na linha: o que está colado no anterior anda um pouco para o lado (no fim do ano, para a
+   esquerda) até ficar a "g" % de distância. Na tela, blTlAjusta refaz com a largura real da linha (16px entre centros). */
+function blAfasta(xs,g){const x=xs.slice();for(let k=1;k<x.length;k++)x[k]=Math.max(x[k],x[k-1]+g);
+  for(let k=x.length-1;k>=0;k--)x[k]=Math.max(0,Math.min(x[k],k===x.length-1?100:x[k+1]-g));return x;}
+function blTlAjusta(tl){const w=tl&&tl.offsetWidth;if(!w)return;const ms=[...tl.querySelectorAll(".bx-mk")],x=blAfasta(ms.map(m=>Number(m.dataset.p)),1600/w);
+  ms.forEach((m,k)=>{m.style.left=x[k].toFixed(2)+"%";});}
+function blLinha(p){
+  const i=blIni(),h=blHoje(),tot=Math.max(1,blDias(i,h)),pos=d=>Math.max(0,Math.min(100,blDias(i,d)/tot*100));
+  const inc=String(p.incluidoEm||"").slice(0,10),L=[].concat(
+    p.semRetorno.map(x=>[x.data,"s",x.tipo]),p.abonadas.map(a=>[a[0],"ab","Falta abonada"]),p.injustificadas.map(d=>[d,"f","Falta injustificada"]),
+    p.medidas.map(m=>[m.data,"m","Medida: "+fbTitulo([m.tipo,m.grau].filter(Boolean).join(" "))]),p.ocorrenciasAno.map(o=>[String(o.em).slice(0,10),"o","Ocorrência"]),
+    inc>=i?[[inc,"i","Entrou na Black List"]]:[]).map(m=>[pos(m[0]),m[1],blD(m[0])+" · "+m[2]]).sort((a,b)=>a[0]-b[0]);
+  const x=blAfasta(L.map(m=>m[0]),1.8),mks=L.map((m,k)=>'<i class="bx-mk '+m[1]+'" data-p="'+m[0].toFixed(2)+'" style="left:'+x[k].toFixed(2)+'%" title="'+_esc(m[2])+'"></i>').join("");
+  const meses=[];for(let m=0;m<=Number(h.slice(5,7))-1;m++){const d=h.slice(0,4)+"-"+String(m+1).padStart(2,"0")+"-01";meses.push('<span class="bx-ms" style="left:'+pos(d).toFixed(2)+'%">'+BL_MES[m]+'</span>');}
+  return'<div class="bx-tl" role="img" aria-label="Linha do tempo do ano: '+p.injustificadas.length+' faltas, '+p.medidas.length+' medidas, '+p.semRetorno.length+' mensagens sem retorno">'+meses.join("")+mks+'</div>'
+    +'<div class="bx-leg"><span><i class="f"></i>Falta</span><span><i class="ab"></i>Abonada</span><span><i class="m"></i>Medida</span><span><i class="s"></i>SAC sem retorno</span><span><i class="o"></i>Ocorrência</span><span><i class="i"></i>Entrou na lista</span></div>';
+}
+/* histórico do ano em pastas, como um fichário: cada tipo é uma pasta com a quantidade; uma aberta por vez */
+const BL_PASTAS=[{k:"inj",t:"Faltas injustificadas"},{k:"med",t:"Medidas disciplinares"},{k:"abo",t:"Faltas abonadas"},{k:"sr",t:"Ligações sem retorno"}];
+const BL_SEM=["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
+function blSemana(d){const x=new Date(String(d).slice(0,10)+"T12:00:00Z");return isNaN(x)?"":BL_SEM[x.getUTCDay()];}
+function blItensPasta(p,k){
+  if(k==="inj")return p.injustificadas.slice().reverse().map(d=>[d,blSemana(d),"Sem justificativa"]);
+  if(k==="med")return p.medidas.slice().reverse().map(m=>[m.data,fbTitulo([m.tipo,m.grau].filter(Boolean).join(" "))+(m.dias?" · "+m.dias+(m.dias===1?" dia":" dias"):""),m.motivo?fbTitulo(m.motivo):""]);
+  if(k==="abo")return p.abonadas.slice().reverse().map(a=>[a[0],blSemana(a[0]),FB_ABO_NOME[a[1]]||"Abonada"]);
+  return p.semRetorno.slice().reverse().map(x=>[x.data,x.tipo,x.detalhe||""]);
+}
+/* histórico do ano como fichário de índice: divisórias com abas, uma atrás da outra, dentro da gaveta. Clicou na
+   aba, aquela divisória é puxada para cima, para fora da gaveta, e os acontecimentos aparecem escritos nela mesma
+   (do mais recente ao mais antigo). A de antes desce de volta. */
+const BL_FI_COR={inj:"#d14848",med:"#e6e6e9",abo:"#6c8f74",sr:"#8c8c93"};
+function blPastas(p,novo){
+  if(LIG_BL_PASTA&&!BL_PASTAS.some(x=>x.k===LIG_BL_PASTA))LIG_BL_PASTA="inj";
+  const n=k=>blItensPasta(p,k).length,ab=LIG_BL_PASTA,fn=novo?"blPastaNovo":"blPasta";
+  /* sem divisória puxada (fechou no X) a gaveta encolhe e mostra só as abas */
+  return'<div class="bx-fi"><div class="bx-fi-gav'+(ab?"":" fechada")+'" role="tablist" aria-label="Histórico do ano por situação">'
+    +BL_PASTAS.map((x,i)=>{const on=x.k===ab,it=on?blItensPasta(p,x.k):[];
+      return'<div class="bx-fi-div'+(on?" on":"")+'" style="--i:'+i+'" data-k="'+x.k+'"'+(on?"":' onclick="'+fn+'(\''+x.k+'\')"')+'>'
+        +'<button type="button" role="tab" class="bx-fi-tab" aria-selected="'+on+'" style="left:'+(3+i*24)+'%" onclick="event.stopPropagation();'+fn+'(\''+x.k+'\')"><i style="background:'+BL_FI_COR[x.k]+'"></i>'+x.t+'<b>'+n(x.k)+'</b></button>'
+        +(on?'<div class="bx-fi-cont" role="tabpanel" aria-label="'+x.t+'"><h5>'+x.t+' · '+blIni().slice(0,4)+'<span>'+n(x.k)+(n(x.k)===1?" registro":" registros")+'</span><button type="button" class="bx-fi-x" aria-label="Fechar '+x.t+' e guardar na gaveta" title="Guardar na gaveta" onclick="'+fn+'(\'\')">'+blI("x")+'</button></h5>'
+          +(it.length?'<ol class="bx-fi-lst">'+it.map(c=>'<li><time>'+blD(c[0])+'</time><span>'+_esc(c[1])+'</span><em>'+_esc(c[2]||"")+'</em></li>').join("")+'</ol>':'<p class="bx-fi-vz">Nenhum registro no ano.</p>')+'</div>':"")
+        +'</div>';}).join("")+'</div>'
+    +'<div class="bx-fi-frente"><span class="bx-fi-et">Histórico '+blIni().slice(0,4)+'</span><span class="bx-fi-pux" aria-hidden="true"></span></div></div>';
+}
+/* a divisória sai da gaveta: sobe devagar, passa um pouco e assenta. "desce" faz o caminho de volta antes de trocar */
+function blFiAltura(b){const g=b&&b.querySelector(".bx-fi-gav");return g?parseFloat(getComputedStyle(g).getPropertyValue("--bx-fi-h"))||320:320;}
+function blFolhaSobe(b){const d=b&&b.querySelector(".bx-fi-div.on");if(!d||!fbMov()||!d.animate)return;
+  d.animate([{transform:"translate3d(0,"+blFiAltura(b)+"px,0)"},{transform:"translate3d(0,-6px,0)",offset:.8},{transform:"none"}],{duration:720,easing:"cubic-bezier(.2,.8,.2,1)"});}
+function blTrocaPasta(b,k,monta){
+  const d=b&&b.querySelector(".bx-fi-div.on");
+  if(!d||!fbMov()||!d.animate){LIG_BL_PASTA=k;monta();return;}
+  d.animate([{transform:"none"},{transform:"translate3d(0,"+blFiAltura(b)+"px,0)"}],{duration:300,easing:"cubic-bezier(.4,0,1,1)",fill:"forwards"}).onfinish=()=>{LIG_BL_PASTA=k;monta();blFolhaSobe(b);};
+}
+function blPasta(k){const b=document.getElementById("bx-hist"),p=blAtual();if(!b||!p||k===LIG_BL_PASTA)return;blTrocaPasta(b,k,()=>{b.innerHTML=blPastas(blAno(p));});}
+function blPastaNovo(k){const b=document.getElementById("bl-prev-h");if(!b||!LIG_BL_NOVO||k===LIG_BL_PASTA)return;blTrocaPasta(b,k,()=>{b.innerHTML=blPastas(blAno(LIG_BL_NOVO),true);});}
+/* cada registro numa ficha pautada, a mais nova em cima; a anotação geral fica presa por um clipe no topo.
+   Na tela, texto longo vem recolhido (3 linhas) com "Ler tudo"; na janela ampliada (inteiro=true) tudo aparece aberto. */
+function blNotas(p,inteiro){
+  const nota=(tipo,cls,quando,texto,quem)=>{const longo=!inteiro&&(String(texto).length>180||String(texto).split("\n").length>3);
+    return'<article class="bx-nt'+cls+(longo?" longa":"")+'">'+(cls?'<i class="bx-clip" aria-hidden="true"></i>':"")+'<header><span class="bx-ntag'+(cls?"":" oc")+'">'+tipo+'</span><time>'+quando+'</time></header><p>'+_esc(texto)+'</p>'
+      +(longo?'<button type="button" class="bx-ler" aria-expanded="false" onclick="blLer(this)">Ler tudo</button>':"")+(quem?'<footer>'+_esc(quem)+'</footer>':"")+'</article>';};
+  return(p.obs?[nota("Anotação geral"," fixa",blD(String(p.alteradoEm||p.incluidoEm||"").slice(0,10)),p.obs,p.alteradoPorNome||p.incluidoPorNome)]:[])
+    .concat((p.ocorrencias||[]).slice().reverse().map(o=>nota("Ocorrência","",blDH(o.em),o.texto,o.por))).join("");
+}
+function blLer(b){const a=b.closest(".bx-nt");if(!a)return;const ab=a.classList.toggle("aberta");b.textContent=ab?"Recolher":"Ler tudo";b.setAttribute("aria-expanded",ab);}
+function ligBLNotas(){
+  const p=blAtual();if(!p)return;const l=blNotas(p,true);
+  const ov=fbDialog("lig-bl-notas",{titulo:"Anotações internas · "+blT(p.nome),tam:"bxj",tom:"blx",sub:"Da mais recente para a mais antiga. "+((p.obs?1:0)+(p.ocorrencias||[]).length)+" registro(s).",
+    corpo:l?'<div class="bx-nts grande">'+l+'</div>':'<p class="bx-tvz">Nenhuma anotação ainda.</p>',
+    rodape:'<button type="button" class="bx-btn" onclick="fbFechar(\'lig-bl-notas\');LIG_BL_MODO=\'oc\';blDossie();blFoca(\'bx-oc\')">'+blI("pena")+'Registrar ocorrência</button><button type="button" class="bx-btn bx-pri" onclick="fbFechar(\'lig-bl-notas\')">Fechar</button>'});
+  blMoldura(ov);
+}
+function blAnotacoes(p){
+  if(LIG_BL_MODO==="nota")return'<label class="fb-sr" for="bx-obs">Anotação da coordenação</label><textarea id="bx-obs" class="bx-papel-t" maxlength="2000" placeholder="Anotação geral sobre o acompanhamento">'+_esc(p.obs)+'</textarea>'
+    +'<div class="bx-ed"><button type="button" class="bx-btn" onclick="LIG_BL_MODO=\'\';blDossie()">Cancelar</button><button type="button" class="bx-btn bx-pri" onclick="ligBLNota()">Salvar anotação</button></div>';
+  if(LIG_BL_MODO==="oc")return'<label class="fb-sr" for="bx-oc">Nova ocorrência</label><textarea id="bx-oc" class="bx-papel-t" maxlength="1000" placeholder="O que aconteceu (a data e o seu nome entram sozinhos)"></textarea>'
+    +'<div class="bx-ed"><button type="button" class="bx-btn" onclick="LIG_BL_MODO=\'\';blDossie()">Cancelar</button><button type="button" class="bx-btn bx-pri" onclick="ligBLOcorrencia()">Registrar ocorrência</button></div>';
+  const l=blNotas(p,false);
+  return l?'<div class="bx-nts" tabindex="0" aria-label="Anotações internas, da mais recente para a mais antiga">'+l+'</div>'
+    :'<p class="bx-tvz">Nenhuma anotação ainda. Use "Registrar ocorrência" para começar o registro.</p>';
+}
+function blDossie(anima){
+  const box=document.getElementById("bx-dos");if(!box)return;
+  const p0=blAtual();
+  if(!p0){box.innerHTML='<div class="bx-vazio"><p>'+(LIG_BL.pessoas.length?"Escolha alguém na fila.":"Nenhuma ficha no arquivo.")+'</p><button type="button" class="bx-btn bx-pri" onclick="ligBLAdd()">Adicionar Novo Registro</button></div>';return;}
+  const p=blAno(p0),sx=blSexo(p),dado=(r,v)=>'<div><dt>'+r+'</dt><dd>'+v+'</dd></div>';
+  const docs=(p.documentos||[]).map(d=>'<li><button type="button" onclick="ligBLDoc(\''+_esc(d.chave)+'\')">'+blI(d.tipo==="application/pdf"?"pdf":"img","bx-arq")+'<span><b>'+_esc(d.arquivo||((d.numero||"Medida")+" assinada"))+'</b><small>'+_esc(fbTitulo(d.medida))+' · '+blD(d.data)+(d.digital?" · assinada no celular":"")+'</small></span>'+blI("cadeado","bx-cad")+'</button></li>').join("");
+  box.innerHTML='<div class="bx-dtopo"><div class="bx-ficha bx-estatica">'+BL_CAMADAS+blCarta(p)+'</div>'
+    +'<div class="bx-dinfo"><div class="bx-dcab"><div class="bx-chips">'+blChips(p)+'</div></div>'
+    +'<dl class="bx-dl">'+dado("RE",_esc(p.re))+dado("Nome",_esc(blT(p.nome)))+dado("Cargo",_esc(blT(p.cargo)))+dado("Supervisor",_esc(blT(p.supervisor)))
+    +dado("Admissão",blD(p.admissao))+dado("Último posto efetivo",_esc(blT(p.posto)))+dado("Situação",p.ativo===false?"Fora dos ativos":"Ativo")
+    +dado("Na Black List desde",blD(String(p.incluidoEm||"").slice(0,10))+(p.incluidoPorNome?" · "+_esc(p.incluidoPorNome):""))+'</dl>'
+    +'<span class="bx-sx" role="group" aria-label="Silhueta da ficha"><small>Silhueta</small><button type="button" aria-pressed="'+(sx==="m")+'" onclick="ligBLSilhueta(\'m\')">Masculina</button><button type="button" aria-pressed="'+(sx==="f")+'" onclick="ligBLSilhueta(\'f\')">Feminina</button></span></div></div>'
+    +'<section class="bx-sec"><p class="bx-h4">Linha do tempo · '+blIni().slice(0,4)+'</p>'+blLinha(p)+'</section>'
+    +'<section class="bx-sec"><p class="bx-h4">Histórico do ano</p><div id="bx-hist">'+blPastas(p)+'</div></section>'
+    +'<div class="bx-baixo"><section class="bx-sec"><div class="bx-nhead"><p class="bx-h4">Anotações internas da coordenação <span class="bx-cont">'+((p0.obs?1:0)+(p0.ocorrencias||[]).length)+'</span></p>'+((p0.obs||(p0.ocorrencias||[]).length)&&!LIG_BL_MODO?'<button type="button" class="bx-btn bx-amp" onclick="ligBLNotas()">'+blI("busca")+'Ampliar</button>':"")+'</div>'+blAnotacoes(p0)+'</section>'
+    +'<section class="bx-sec"><p class="bx-h4">Documentos anexados</p>'+(docs?'<ul class="bx-arqs">'+docs+'</ul>':'<p class="bx-tvz">Nenhuma medida assinada anexada no sistema.</p>')
+    +'<p class="bx-h4" style="margin-top:14px">Ações administrativas</p><div class="bx-acoes"><button type="button" class="bx-btn" onclick="LIG_BL_MODO=\'oc\';blDossie();blFoca(\'bx-oc\')">'+blI("pena")+'Registrar ocorrência</button>'
+    +'<button type="button" class="bx-btn" onclick="LIG_BL_MODO=\'nota\';blDossie();blFoca(\'bx-obs\')">'+blI("lapis")+'Editar anotação</button>'
+    +'<button type="button" class="bx-btn bx-perigo" onclick="ligBLTirar()">'+blI("sair")+'Remover da Black List</button></div>'
+    +'<button type="button" class="bx-upd bx-acesso" onclick="ligBLHist()">Última atualização: '+_esc(p.alteradoPorNome||p.incluidoPorNome||"Coordenação")+' — '+blDH(p.alteradoEm||p.incluidoEm)+'</button></section></div>';
+  blTlAjusta(box.querySelector(".bx-tl"));
+  if(anima)blFolhaSobe(document.getElementById("bx-hist"));
+  if(!anima||!fbMov())return;
+  box.animate([{opacity:.25,transform:"translate3d(14px,0,0)"},{opacity:1,transform:"none"}],{duration:380,easing:"cubic-bezier(.2,.8,.2,1)"});
+  /* o carimbo bate no papel */
+  const s=box.querySelector(".bx-carimbo");if(s&&s.animate)s.animate([{opacity:0,transform:"rotate(-24deg) scale(1.6)"},{opacity:.9,transform:"rotate(-11deg) scale(.95)",offset:.7},{transform:"rotate(-12deg) scale(1)"}],{duration:460,delay:160,easing:"cubic-bezier(.3,0,.2,1)",fill:"backwards"});
+}
+function blCarta(p,prev){
+  const linha=(r,v)=>'<span class="bx-ln"><span>'+r+':</span> '+_esc(v)+'</span>';
+  return'<span class="bx-papel"><span class="bx-foto">'+blFoto(p)+'</span>'
+    +'<span class="bx-dados"><b class="bx-nome">'+_esc(String(p.nome||"").toUpperCase())+'</b>'+linha("RE","#"+p.re)+linha("Cargo",blT(p.cargo))+linha("Posto",blT(p.posto))+'</span>'
+    +'<span class="bx-oc"><b>Histórico de ocorrências</b><span>Medidas: '+p.medidas.length+'</span><span>Faltas injustificadas: '+p.injustificadas.length+'</span><span>Ligações sem retorno: '+(p.semRetorno||[]).length+'</span></span>'
+    +BL_CARIMBO+(prev?"":'<span class="bx-rub" title="Incluído por '+_esc(p.incluidoPorNome||"")+'">'+_esc(p.incluidoPorNome||"")+'<svg viewBox="0 0 120 10" preserveAspectRatio="none" aria-hidden="true"><path d="M2 7C18 2.5 34 9 52 5.5S88 1.5 118 6.5"/></svg></span>')
+    +(p.ativo===false?'<span class="bx-fora">Fora dos ativos</span>':"")+'</span>';
+}
+/* janela do arquivo: o X no padrão da Black List */
+function blMoldura(ov){const fx=ov.querySelector(".fb-dlg-h .fb-ib");if(fx)fx.innerHTML=blI("x");}
+function blFoca(id){const t=document.getElementById(id);if(t&&t.focus)t.focus();}
+function ligBLDoc(ch){
+  if(typeof window.mdVerAssinado!=="function"){fbToast("O visualizador de documentos não carregou.","err");return;}
+  window.mdVerAssinado(ch);
+  const o=document.getElementById("md-anexo");if(o)o.style.zIndex="100001"; // acima do perfil
+}
+
+/* ── gravar ── */
+function blRecarrega(msg){return ligApi("/api/ligacoes?acao=blacklist").then(j=>{LIG_BL={pessoas:j.pessoas||[],historico:j.historico||[]};blCentral();if(msg)fbToast(msg);});}
+function ligBLNota(){
+  const p=blAtual(),t=document.getElementById("bx-obs");if(!p||!t)return;
+  ligApi("/api/ligacoes?acao=blacklist","POST",{chave:p.chave,obs:t.value}).then(()=>{LIG_BL_MODO="";return blRecarrega("Anotação salva.");}).catch(e=>fbToast(e.message||"Não consegui salvar.","err"));
+}
+function ligBLSilhueta(s){
+  const p=blAtual();if(!p||blSexo(p)===s)return;
+  ligApi("/api/ligacoes?acao=blacklist","POST",{chave:p.chave,silhueta:s}).then(()=>blRecarrega("Silhueta alterada.")).catch(e=>fbToast(e.message||"Não consegui alterar.","err"));
+}
+function ligBLOcorrencia(){
+  const p=blAtual(),t=document.getElementById("bx-oc");if(!p||!t)return;
+  ligApi("/api/ligacoes?acao=blacklist","POST",{chave:p.chave,ocorrencia:t.value}).then(()=>{LIG_BL_MODO="";return blRecarrega("Ocorrência registrada.");}).catch(e=>fbToast(e.message||"Não consegui registrar.","err"));
+}
+function ligBLTirar(){
+  const p=blAtual();if(!p)return;
+  fbConfirm({titulo:"Remover da Black List?",perigo:true,tom:"blx",ok:"Remover",texto:"<b>"+_esc(blT(p.nome))+"</b> sai do acompanhamento da coordenação. O histórico de faltas e medidas não muda, e a retirada fica registrada."})
+    .then(ok=>{if(ok)ligApi("/api/ligacoes?acao=blacklist","POST",{chave:p.chave,remover:true}).then(()=>{LIG_BL_SEL="";return blRecarrega(blT(p.nome)+" removido da Black List.");}).catch(e=>fbToast(e.message||"Não consegui remover.","err"));});
+}
+/* ── incluir ── */
+function ligBLAdd(){
+  LIG_BL_RES=[];LIG_BL_NOVO=null;
+  const ov=fbDialog("lig-bl-add",{titulo:"Adicionar Novo Registro",tam:"bxj",tom:"blx",sub:"Procure na lista de ativos pelo nome ou pelo RE.",
+    corpo:'<label class="bx-busca">'+blI("busca")+'<span class="fb-sr">Nome ou RE</span><input id="bl-q" type="search" autocomplete="off" placeholder="Digite o nome ou o RE" oninput="ligBLBusca(this.value)"></label><div class="bx-res" id="bl-res" aria-live="polite"></div><div id="bl-prev"></div>',
+    rodape:'<button type="button" class="bx-btn" onclick="fbFechar(\'lig-bl-add\')">Cancelar</button><button type="button" class="bx-btn bx-pri" id="bl-ok" disabled onclick="ligBLIncluir()">Adicionar à Black List</button>'});
+  blMoldura(ov);
+}
+function ligBLBusca(v){
+  clearTimeout(LIG_BL_T);
+  LIG_BL_T=setTimeout(()=>{
+    const ul=document.getElementById("bl-res");if(!ul)return;
+    if(String(v||"").trim().length<2&&!/\d/.test(v)){ul.innerHTML="";return;}
+    ligApi("/api/ligacoes?acao=blacklist_busca&q="+encodeURIComponent(v)).then(j=>{
+      LIG_BL_RES=j.pessoas||[];const ja=new Set(LIG_BL.pessoas.map(p=>p.chave));
+      ul.innerHTML=LIG_BL_RES.map((c,i)=>{const k=c.re+"|"+_ligNorm(c.nome).split(" ")[0];return'<button type="button"'+(ja.has(k)?' disabled':"")+' onclick="ligBLPega('+i+')"><b>'+_esc(blT(c.nome))+'</b><span>RE '+_esc(c.re)+(c.cargo?" · "+_esc(blT(c.cargo)):"")+(ja.has(k)?" · já está na Black List":"")+'</span></button>';}).join("")||'<p class="bx-tvz">Ninguém encontrado na lista de ativos.</p>';
+    }).catch(e=>{ul.innerHTML='<p class="bx-tvz">'+_esc(e.message||"Não consegui buscar.")+'</p>';});
+  },250);
+}
+function ligBLPega(i){
+  const c=LIG_BL_RES[i],box=document.getElementById("bl-prev"),ok=document.getElementById("bl-ok");if(!c||!box)return;
+  document.querySelectorAll("#bl-res button").forEach((b,k)=>b.classList.toggle("on",k===i));
+  box.innerHTML='<p class="bx-tvz">Carregando o histórico…</p>';if(ok)ok.disabled=true;
+  ligApi("/api/ligacoes?acao=blacklist&re="+encodeURIComponent(c.re)+"&nome="+encodeURIComponent(c.nome)).then(j=>{
+    LIG_BL_NOVO=j.pessoa;LIG_BL_PASTA="inj";
+    box.innerHTML='<div class="bx-prev"><div class="bx-ficha bx-estatica">'+BL_CAMADAS+blCarta(blAno(j.pessoa),true)+'</div><div class="bx-prev-r"><h4>Histórico do ano</h4><div id="bl-prev-h">'+blPastas(blAno(j.pessoa),true)+'</div>'
+      +'<h4>Anotação da coordenação</h4><label class="fb-sr" for="bl-obs-n">Anotação da coordenação</label><textarea id="bl-obs-n" class="bx-papel-t" maxlength="2000" placeholder="Opcional: o motivo do acompanhamento"></textarea></div></div>';
+    if(ok)ok.disabled=false;
+  }).catch(e=>{box.innerHTML='<p class="bx-tvz">'+_esc(e.message||"Não consegui carregar.")+'</p>';});
+}
+function ligBLIncluir(){
+  const p=LIG_BL_NOVO,t=document.getElementById("bl-obs-n"),ok=document.getElementById("bl-ok");if(!p)return;if(ok)ok.disabled=true;
+  ligApi("/api/ligacoes?acao=blacklist","POST",{re:p.re,nome:p.nome,obs:t?t.value:""}).then(()=>{fbFechar("lig-bl-add");return blRecarrega(blT(p.nome)+" incluído na Black List.");})
+    .catch(e=>{fbToast(e.message||"Não consegui incluir.","err");if(ok)ok.disabled=false;});
+}
+function ligBLHist(){
+  const T={incluiu:"incluiu",editou:"alterou a anotação de",silhueta:"corrigiu a silhueta de",removeu:"removeu",ocorrencia:"registrou ocorrência para"};
+  const ov=fbDialog("lig-bl-hist",{titulo:"Histórico de Alterações",tam:"bxj",tom:"blx",sub:"Quem incluiu, alterou, registrou ou removeu, com data e horário.",
+    corpo:LIG_BL.historico.length?'<ol class="bx-hist">'+LIG_BL.historico.map(h=>'<li><time>'+blDH(h.em)+'</time><span><b>'+_esc(h.por)+'</b> '+(T[h.tipo]||"alterou")+' <b>'+_esc(blT(h.nome))+'</b> · RE '+_esc(h.re)+'</span></li>').join("")+'</ol>':'<p class="bx-tvz">Nenhuma alteração registrada.</p>',
+    rodape:'<button type="button" class="bx-btn bx-pri" onclick="fbFechar(\'lig-bl-hist\')">Fechar</button>'});
+  blMoldura(ov);
+}

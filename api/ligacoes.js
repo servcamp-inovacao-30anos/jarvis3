@@ -16,6 +16,10 @@
 //   GET    ?acao=motivos       motivos de falta (padrões e criados pelo SAC)
 //   POST   ?acao=motivo        { nome } cria (qualquer pessoa do SAC) · { chave, nome?, ativo? } renomeia ou desativa (coordenação)
 //   GET    ?acao=sem_retorno   pasta "Sem posicionamento" (regra antiga, sem uso na tela)
+//   GET    ?acao=blacklist         Black List (só coordenação): quem está nela, com medidas, faltas e o registro de alterações
+//   GET    ?acao=blacklist_busca&q=   procura na lista de ativos da última planilha, por nome ou RE
+//   POST   ?acao=blacklist        { re, nome, obs? } inclui · { chave, obs } edita a anotação · { chave, remover:true } retira
+//                                  · { chave, ocorrencia } registra uma ocorrência datada no perfil
 //   GET/POST ?acao=zap_autorizar | zap_registrar | zap_modelo   WhatsApp do SAC (o Baileys roda no PC do SAC, wa-sac/; a tela fala com ele)
 //
 // Regras em _lig_regras.js. Autorização no servidor: quem não tem "lig" não lê nem grava nada,
@@ -247,6 +251,108 @@ async function pasta({ res, db, ator, body }) {
   return res.status(200).json({ ok: true, movidas: ok.length, pasta: destino });
 }
 
+// ── Black List da coordenação ────────────────────────────────────────────────
+// Só lê o histórico (fm_faltas, fm_medidas, lista de ativos): incluir ou retirar não muda nada no RH.
+const BL_NAO = "Só a coordenação acessa a Black List.";
+const BL_INJUST = ["I", "T"], BL_ABONO = ["A", "J", "L", "AF"];
+async function ativosDaUltimaPlanilha(db) {
+  const r = await db.obter("dashboard_snapshots?select=ativos:data->ativos&order=created_at.desc&limit=1");
+  return (Array.isArray(r) && r[0] && Array.isArray(r[0].ativos) ? r[0].ativos : []).filter(a => a && a.RE != null && a.NOME);
+}
+const dadosDoAtivo = a => ({ re: L.reDe(a.RE), nome: L.limpa(a.NOME, 120), cargo: L.limpa(a.CARGO, 80), admissao: L.ehData(String(a.ADMISSAO || "").slice(0, 10)) ? String(a.ADMISSAO).slice(0, 10) : "", posto: L.limpa(a.LOCAL || a.TPCLIENTE, 120), supervisor: L.limpa(FR.supervisorAtual(a.AREA) || a.AREA, 80) });
+// medidas (sem as canceladas), faltas sem justificativa (I e T), abonadas e os dados atuais de cada pessoa, em ordem de data
+async function historicoBL(db, lista, ocorrenciasEv) {
+  const res_ = [...new Set(lista.map(p => reNum(p.re)).filter(x => x != null))];
+  if (!res_.length) return [];
+  const chaves = new Set(lista.map(p => p.chave));
+  const [faltas, medidas, ativos, envEv, contatos, geradas] = await Promise.all([
+    db.listar(`fm_faltas?select=re,data,nome,codigo,posto,supervisor&re=in.(${res_.join(",")})&order=data.asc`),
+    db.listar(`fm_medidas?select=re,data,tipo,grau,dias,fase,motivo_sar2g,motivo,nome&re=in.(${res_.join(",")})&order=data.asc`),
+    ativosDaUltimaPlanilha(db),
+    eventosDe(db, [L.ACAO_ZAP_ENVIO]).then(l => l.filter(e => chaves.has(String(e.chave)) && e.depois && e.depois.ok === true)),
+    contatosCompletos(db),
+    require("./_faltas").lerGeradas(db).catch(e => { console.error("[ligacoes] medidas geradas:", e && e.message); return []; })
+  ]);
+  const hoje = hojeSP();
+  const mesma = (x, p) => L.reDe(x.re != null ? x.re : x.RE) === L.reDe(p.re) && (!(x.nome || x.NOME) || L.primeiroNome(x.nome || x.NOME) === L.primeiroNome(p.nome));
+  return lista.map(p => {
+    const fs = faltas.filter(f => mesma(f, p)), at = ativos.find(a => mesma(a, p)), atual = at ? dadosDoAtivo(at) : null;
+    const ultPosto = [...fs].reverse().find(f => f.posto), ultSup = [...fs].reverse().find(f => f.supervisor);
+    return {
+      chave: p.chave, re: p.re, silhueta: p.silhueta || "", nome: (atual && atual.nome) || p.nome, cargo: (atual && atual.cargo) || p.cargo || "", admissao: (atual && atual.admissao) || p.admissao || "",
+      posto: (atual && atual.posto) || (ultPosto && ultPosto.posto) || p.posto || "", ativo: !!atual, obs: p.obs || "",
+      supervisor: (atual && atual.supervisor) || (ultSup && FR.supervisorAtual(ultSup.supervisor)) || p.supervisor || "",
+      // medida gerada no sistema que a planilha do SAR2G ainda não trouxe
+      pendentesSar2g: geradas.filter(g => mesma(g, p) && g.status === "PENDENTE").length,
+      incluidoPor: p.incluidoPor, incluidoEm: p.incluidoEm, alteradoPor: p.alteradoPor, alteradoEm: p.alteradoEm, incluidoPorNome: L.NOMES[p.incluidoPor] || p.incluidoPor || "", alteradoPorNome: L.NOMES[p.alteradoPor] || p.alteradoPor || "",
+      medidas: medidas.filter(m => mesma(m, p) && !/CANCEL/i.test(String(m.fase || ""))).map(m => ({ data: String(m.data).slice(0, 10), tipo: m.tipo || "", grau: m.grau || "", dias: Number(m.dias) || 0, motivo: m.motivo || m.motivo_sar2g || "" })),
+      injustificadas: fs.filter(f => BL_INJUST.includes(f.codigo || "I")).map(f => String(f.data).slice(0, 10)),
+      abonadas: fs.filter(f => BL_ABONO.includes(f.codigo)).map(f => [String(f.data).slice(0, 10), f.codigo]),
+      semRetorno: P.semRetorno(envEv.filter(e => String(e.chave) === p.chave).map(e => P.dataSP(e.criado_em)).sort(),
+        contatos.filter(c => L.norm(c.colaborador) === L.norm(p.nome) || (c.baixa && L.reDe(c.baixa.re) === L.reDe(p.re)))
+          .map(c => ({ data_contato: c.data_contato, criado_em: c.criado_em, efetivo: L.efetivo(c.resultado), rot: (L.RESULTADOS[c.resultado] || {}).rot || "" })), hoje),
+      // documentos assinados das medidas geradas no sistema (o arquivo abre pela rota medida_assinado do módulo Faltas)
+      documentos: geradas.filter(g => mesma(g, p) && g.status !== "CANCELADA" && g.assinado)
+        .map(g => ({ chave: g.chave, numero: g.numero, medida: fbRot(g), data: P.dataSP(g.assinado.em || g.geradaEm), arquivo: g.assinado.nome || "", tipo: g.assinado.tipo || "", digital: !!g.assinado.digital })),
+      ocorrencias: (ocorrenciasEv || []).filter(e => String(e.chave) === p.chave && e.depois && e.depois.texto)
+        .map(e => ({ em: e.criado_em || null, por: L.NOMES[e.ator] || e.ator || "", texto: e.depois.texto }))
+    };
+  });
+}
+const fbRot = g => [g.tipo, g.grau && g.grau !== g.tipo ? g.grau : ""].filter(Boolean).join(" ") + (g.dias ? " · " + g.dias + (g.dias === 1 ? " dia" : " dias") : "");
+async function blacklist({ req, res, db, ator }) {
+  if (!L.podeBaixar(ator)) return erro(res, 403, BL_NAO, "NAO_AUTORIZADO");
+  const q = req.query || {};
+  if (q.re != null) { // prévia de quem vai ser incluído: o mesmo histórico, sem gravar nada
+    const at = (await ativosDaUltimaPlanilha(db)).find(a => L.reDe(a.RE) === L.reDe(q.re) && L.primeiroNome(a.NOME) === L.primeiroNome(q.nome));
+    if (!at) return erro(res, 404, "Colaborador não encontrado na lista de ativos.", "NAO_ENCONTRADO");
+    const d = dadosDoAtivo(at);
+    return res.status(200).json({ ok: true, pessoa: (await historicoBL(db, [{ ...d, chave: d.re + "|" + L.primeiroNome(d.nome) }]))[0] });
+  }
+  const ev = await eventosDe(db, [L.ACAO_BLACKLIST, L.ACAO_BL_OCORRENCIA]);
+  const pessoas = (await historicoBL(db, Object.values(L.blacklistAtual(ev)), ev.filter(e => e.acao === L.ACAO_BL_OCORRENCIA))).sort((a, b) => String(b.incluidoEm || "").localeCompare(String(a.incluidoEm || "")));
+  const historico = ev.filter(e => e.depois).map(e => ({ por: L.NOMES[e.ator] || e.ator || "", em: e.criado_em || null, nome: e.depois.nome || "", re: e.depois.re || "",
+    tipo: e.acao === L.ACAO_BL_OCORRENCIA ? "ocorrencia" : !e.depois.ativo ? "removeu" : !e.antes ? "incluiu" : e.antes.silhueta !== e.depois.silhueta ? "silhueta" : "editou" })).reverse().slice(0, 200);
+  return res.status(200).json({ ok: true, pessoas, historico });
+}
+async function blacklistBusca({ req, res, db, ator }) {
+  if (!L.podeBaixar(ator)) return erro(res, 403, BL_NAO, "NAO_AUTORIZADO");
+  const q = L.norm(L.limpa((req.query || {}).q, 80)), qd = q.replace(/\D/g, "").replace(/^0+/, "");
+  if (q.length < 2 && !qd) return res.status(200).json({ ok: true, pessoas: [] });
+  const pessoas = (await ativosDaUltimaPlanilha(db)).map(dadosDoAtivo)
+    .filter(a => (/^\d+$/.test(q) ? a.re.replace(/^0+/, "").startsWith(qd) : L.norm(a.nome).includes(q))).slice(0, 15);
+  return res.status(200).json({ ok: true, pessoas });
+}
+async function blacklistSalvar({ res, db, ator, body }) {
+  if (!L.podeBaixar(ator)) return erro(res, 403, BL_NAO, "NAO_AUTORIZADO");
+  const atual = L.blacklistAtual(await eventosDe(db, [L.ACAO_BLACKLIST]));
+  if (body.chave != null) { // editar a anotação, registrar ocorrência ou retirar
+    const p = atual[String(body.chave)];
+    if (!p) return erro(res, 404, "Essa pessoa não está na Black List.", "NAO_ENCONTRADO");
+    if (body.ocorrencia != null) {
+      const texto = L.limpaTexto(body.ocorrencia, 1000);
+      if (texto.length < 3) return erro(res, 400, "Escreva a ocorrência.", "DADOS_INVALIDOS");
+      await db.inserir("fm_auditoria", [evento(ator, L.ACAO_BL_OCORRENCIA, p.chave, null, { texto, re: p.re, nome: p.nome })]);
+      return res.status(200).json({ ok: true });
+    }
+    const { chave, incluidoPor, incluidoEm, alteradoPor, alteradoEm, ...dados } = p;
+    // { obs } troca a anotação; { silhueta: "m"|"f" } corrige a silhueta da ficha (o sistema não tem o sexo: a tela deduz pelo nome)
+    if (body.silhueta != null && !["m", "f"].includes(body.silhueta)) return erro(res, 400, "Silhueta inválida.", "DADOS_INVALIDOS");
+    const depois = body.remover === true ? { ...dados, ativo: false } : { ...dados, obs: body.obs === undefined ? dados.obs || "" : L.limpaTexto(body.obs, 2000), ...(body.silhueta ? { silhueta: body.silhueta } : {}) };
+    await db.inserir("fm_auditoria", [evento(ator, L.ACAO_BLACKLIST, chave, dados, depois)]);
+    return res.status(200).json({ ok: true });
+  }
+  // incluir: só quem está na lista de ativos (os dados vêm de lá, não da tela)
+  const re = reNum(body.re), nome1 = L.primeiroNome(body.nome);
+  if (re == null || !nome1) return erro(res, 400, "Escolha o colaborador na busca.", "DADOS_INVALIDOS");
+  const at = (await ativosDaUltimaPlanilha(db)).find(a => L.reDe(a.RE) === String(re) && L.primeiroNome(a.NOME) === nome1);
+  if (!at) return erro(res, 404, "Colaborador não encontrado na lista de ativos.", "NAO_ENCONTRADO");
+  const chave = re + "|" + nome1;
+  if (atual[chave]) return erro(res, 409, "Esse colaborador já está na Black List.", "DUPLICADO");
+  await db.inserir("fm_auditoria", [evento(ator, L.ACAO_BLACKLIST, chave, null, { ...dadosDoAtivo(at), obs: L.limpaTexto(body.obs, 2000), ativo: true })]);
+  return res.status(200).json({ ok: true, chave });
+}
+
 async function baixa({ res, db, ator, body }) {
   if (!L.podeBaixar(ator)) return erro(res, 403, "Só a coordenação dá ou desfaz a baixa na cobrança.", "NAO_AUTORIZADO");
   if (!ehId(body.id)) return erro(res, 400, "Campo id é obrigatório.", "SEM_ID");
@@ -435,7 +541,7 @@ async function zapRegistrar({ res, db, ator, body }) {
 // ── roteamento ──────────────────────────────────────────────────────────────
 const ROTAS = {
   "GET ": listar, "POST ": criar, "PATCH ": editar, "DELETE ": excluir,
-  "GET painel": painel, "GET indicadores": indicadores, "GET colaborador": colaborador, "GET motivos": motivos, "POST motivo": motivo, "POST baixa": baixa, "POST pasta": pasta, "POST acordo": acordo, "POST atividade": atividade, "GET sem_retorno": semRetorno,
+  "GET painel": painel, "GET indicadores": indicadores, "GET colaborador": colaborador, "GET motivos": motivos, "POST motivo": motivo, "POST baixa": baixa, "POST pasta": pasta, "POST acordo": acordo, "POST atividade": atividade, "GET sem_retorno": semRetorno, "GET blacklist": blacklist, "GET blacklist_busca": blacklistBusca, "POST blacklist": blacklistSalvar,
   "POST zap_autorizar": zapAutorizar, "POST zap_registrar": zapRegistrar,
   "GET zap_modelo": zapModelo, "POST zap_modelo": zapModelo
 };
@@ -451,7 +557,7 @@ module.exports = async function handler(req, res) {
   const acao = String((req.query && req.query.acao) || "");
   const rota = ROTAS[`${req.method} ${acao}`];
   if (!rota) {
-    if (acao === "" || ["baixa", "pasta", "acordo", "atividade", "sem_retorno", "painel", "indicadores", "colaborador", "motivos", "motivo"].includes(acao) || acao.startsWith("zap_")) { res.setHeader("Allow", "GET, POST, PATCH, DELETE"); return erro(res, 405, "Método não permitido.", "METODO"); }
+    if (acao === "" || ["baixa", "pasta", "acordo", "atividade", "sem_retorno", "painel", "indicadores", "colaborador", "motivos", "motivo", "blacklist", "blacklist_busca"].includes(acao) || acao.startsWith("zap_")) { res.setHeader("Allow", "GET, POST, PATCH, DELETE"); return erro(res, 405, "Método não permitido.", "METODO"); }
     return erro(res, 404, "Ação desconhecida.", "ROTA_DESCONHECIDA");
   }
   try {

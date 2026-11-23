@@ -217,3 +217,15 @@ test("pastas automáticas: D = Demitido, posto ABANDONO = Abandono, INSS da plan
   assert.equal(vale["4|PESSOA"].pasta, "abandono");
   assert.equal(vale["2|PESSOA"].pasta, "abandono");
 });
+
+test("Black List, sem retorno: mensagem vencida sem conversa no prazo e ligação registrada sem conversa", () => {
+  const h = "2026-11-20";
+  const r = P.semRetorno(["2026-11-10", "2026-11-14", "2026-11-19"], [
+    { data_contato: "2026-11-15", efetivo: true },
+    { data_contato: "2026-11-12", efetivo: false, rot: "Não atendeu" }
+  ], h);
+  assert.deepEqual(r, [
+    { data: "2026-11-10", tipo: "Mensagem do SAC sem retorno", detalhe: "WhatsApp" },
+    { data: "2026-11-12", tipo: "Ligação sem conversa", detalhe: "Não atendeu" }
+  ], "a de 14/11 teve conversa no dia 15; a de 19/11 ainda está no prazo");
+});
