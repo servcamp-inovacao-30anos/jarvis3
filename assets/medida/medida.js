@@ -11,7 +11,7 @@
    Esconder botão é conveniência: quem barra é o servidor. */
 (function(){
 "use strict";
-const MDS={lista:null,em:0,carregando:null,erro:null,coord:false,minhas:0,filtro:"PENDENTE",busca:"",ed:null,avisado:false,zoom:null,abertas:new Set(),sel:null};
+const MDS={lista:null,em:0,carregando:null,erro:null,coord:false,minhas:0,filtro:"PENDENTE",busca:"",ed:null,avisado:false,zoom:null,sels:{},fil:{},sf:{}};
 const TIPOS={
   ADVERTENCIA_VERBAL:{rot:"Advertência verbal",sub:"Conversa registrada por escrito",dica:"Para a primeira ocorrência leve: o registro guarda que a conversa aconteceu."},
   ADVERTENCIA_ESCRITA:{rot:"Advertência escrita",sub:"Aviso formal assinado",dica:"Aviso formal que o colaborador assina. Conta no histórico de reincidência."},
@@ -54,7 +54,10 @@ const IC={
   users:svg('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17.5" cy="9" r="2.5"/><path d="M17 14a5 5 0 0 1 5 5"/>'),
   build:svg('<rect x="4" y="3" width="11" height="18" rx="1"/><path d="M15 9h5v12h-5M8 7h3M8 11h3M8 15h3"/>'),
   chevd:svg('<path d="m6 9 6 6 6-6"/>'),
-  calc:svg('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M9 15l2 2 4-4"/>')
+  calc:svg('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M9 15l2 2 4-4"/>'),
+  send:svg('<path d="M10 14 21 3M21 3l-6.5 18a.55.55 0 0 1-1 0L10 14l-7-3.5a.55.55 0 0 1 0-1z"/>'),
+  trash:svg('<path d="M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/>'),
+  quote:svg('<path d="M10 11H6a1 1 0 0 1-1-1V8a2 2 0 0 1 2-2h1M10 11v3a3 3 0 0 1-3 3M19 11h-4a1 1 0 0 1-1-1V8a2 2 0 0 1 2-2h1M19 11v3a3 3 0 0 1-3 3"/>')
 };
 
 async function api(t,metodo,corpo){
@@ -529,44 +532,126 @@ function selosNasLinhas(){
 
 /* ── aba "Medidas geradas" ── */
 const STATUS={PENDENTE:["Falta lançar no SAR2G","pend"],LANCADA:["Lançada no SAR2G","ok"],CANCELADA:["Cancelada","canc"]};
+// ── filtro por supervisor: as fotos entram no lugar do seletor "Supervisor: Todos" e mexem no MESMO FS.sup ──
+const soSup=n=>FOTOS.has(String(n||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase().trim().split(/\s+/)[0]); // o filtro é só dos 6 supervisores de campo
+const iniSup=n=>String(n||"").trim().split(/\s+/).slice(0,2).map(w=>w[0]||"").join("").toUpperCase();
+function fotoSup(n,z){
+  const k=String(n||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase().trim().split(/\s+/)[0];
+  return FOTOS.has(k)?`<img src="/assets/medida/supervisores/${k.toLowerCase()}.png" alt="" width="${z}" height="${z}" decoding="async">`:`<span class="md-ini">${esc(iniSup(n))}</span>`;
+}
+const mesmoSup=(a,b)=>norm(a)===norm(b);
+const arHtml=(nome,nL,nG,filtrado)=>(nome?`<span class="md-ar-f">${fotoSup(nome,26)}</span><b>Área do ${esc(titulo(nome))}</b>`:`<b>Todas as áreas</b>`)+`<span>· ${nL} ${nL===1?"medida":"medidas"}${filtrado?" · geral: "+nG:""}</span>`+(nome?`<button type="button" class="md-todos" onclick="mdSupI('')">Ver todas as áreas</button>`:"");
+function ajustaVazio(){const t=document.querySelector(".md-tela");if(!t)return;const vz=t.querySelector(".md-vz2");if(vz)vz.hidden=!!t.querySelector(".md-sw:not(.fora)");}
+const ICN=['<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>','<path d="M4 20l1-4L16 5l3 3L8 19z"/><path d="M14 7l3 3"/>','<path d="M5 12l5 5 9-10"/>','<path d="M6 6l12 12M18 6L6 18"/>'].map(d=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`);
+const capCard=(j,atras)=>j===0?(atras?atras+" há 3 dias ou mais":"aguardando o lançamento"):["","falta assinar no celular","pela planilha ou marcadas","geradas por engano"][j];
+// o realce desliza por trás da foto escolhida
+function posRail(){
+  const r=document.querySelector(".md-rail");if(!r)return;
+  const b=r.querySelector(".md-pb.on"),h=r.querySelector(".md-hl");
+  r.classList.toggle("has",!!b);
+  if(b&&h){h.style.transform="translateY("+(b.offsetTop-8)+"px)";h.style.height=(b.offsetHeight+16)+"px";}
+}
+// Escolher o supervisor atualiza no lugar, sem redesenhar: a foto escolhida ganha destaque e as outras esmaecem (só classes e
+// transições), os números dos cartões trocam, as seções dos outros recolhem e a do escolhido entra com um deslize suave.
+function aplicaSup(){
+  const t=document.querySelector(".md-tela");
+  if(!t||!MDS.lista){fsRender();return;}
+  const nome=(typeof FS!=="undefined"&&FS.sup)||"",reduz=window.matchMedia("(prefers-reduced-motion:reduce)").matches;
+  const e=typeof fsEscopo==="function"?fsEscopo():{vista:"todas"};
+  const Lb=MDS.lista.filter(g=>e.vista==="minha"?(g.supervisor||"")===e.meu:true);
+  const L=Lb.filter(g=>!nome||mesmoSup(g.supervisor,nome)),filtrado=L.length!==Lb.length;
+  const sws=[...t.querySelectorAll(".md-sw")],rc=el=>el.getBoundingClientRect(),fora=w=>!!nome&&!mesmoSup(titulo(nome),w.dataset.s);
+  const antes=new Map(sws.filter(w=>!w.classList.contains("fora")).map(w=>[w,rc(w).top]));
+  t.querySelectorAll(".md-pb").forEach(b=>{const on=b.dataset.s===nome;b.classList.toggle("on",on);b.setAttribute("aria-pressed",on);});
+  posRail();
+  const ar=t.querySelector(".md-ar");if(ar)ar.innerHTML=arHtml(nome,L.length,Lb.length,filtrado);
+  const FILT=["PENDENTE","SEMASS","LANCADA","CANCELADA"];
+  const cn=(gs,f)=>f==="SEMASS"?gs.filter(g=>g.status!=="CANCELADA"&&!g.assinado).length:gs.filter(g=>g.status===f).length;
+  const atras=L.filter(g=>g.status==="PENDENTE"&&g.diasPendente>=3).length,mudou=[];
+  t.querySelectorAll(".md-sc").forEach((c,j)=>{
+    const a=cn(L,FILT[j]),g=cn(Lb,FILT[j]),v=c.querySelector(".md-v"),de=c.querySelector(".md-de");
+    if(v.textContent!==String(a)){v.textContent=a;mudou.push(v);}
+    de.textContent=" de "+g;de.hidden=!filtrado;
+    c.querySelector(".md-cp").textContent=capCard(j,atras);
+    c.title=(filtrado?"Esta área, de "+g+" no geral. ":"")+"Clique de novo para ver todas.";
+  });
+  const entram=[];
+  sws.forEach(w=>{const f=fora(w);if(!f&&w.classList.contains("fora"))entram.push(w);w.classList.toggle("fora",f);w.inert=f;});
+  ajustaVazio();
+  if(reduz)return;
+  const suave="cubic-bezier(.22,1,.36,1)",vh=innerHeight,vai=(el,kf,op)=>el.animate(kf,Object.assign({fill:"backwards"},op));
+  mudou.forEach((v,i)=>vai(v,[{opacity:.3,transform:"translateY(10px)"},{opacity:1,transform:"none"}],{duration:420,delay:40+i*30,easing:suave}));
+  if(ar)vai(ar,[{opacity:.3},{opacity:1}],{duration:380,easing:"ease-out"});
+  let k=0;
+  sws.forEach(w=>{
+    if(w.classList.contains("fora"))return;
+    const r=rc(w);if(r.bottom<0||r.top>vh+160)return;
+    if(entram.includes(w))vai(w,[{opacity:.35,transform:"translateY(28px)"},{opacity:1,transform:"none"}],{duration:620,delay:40*Math.min(k++,3),easing:suave});
+    else{const dy=(antes.get(w)||r.top)-r.top;if(Math.abs(dy)>1)vai(w,[{transform:"translateY("+dy+"px)"},{transform:"none"}],{duration:620,easing:suave});}
+  });
+}
+window.mdSupI=x=>{FS.sup=(x&&x===FS.sup)?"":x;FS.ab={};aplicaSup();};
+function dockSup(opts,grande){
+  const sel=(typeof FS!=="undefined"&&FS.sup)||"";
+  const pend=x=>(MDS.lista||[]).filter(g=>g.status==="PENDENTE"&&mesmoSup(g.supervisor,x)).length;
+  if(grande)return `<aside class="md-rail${sel?" has":""}" role="group" aria-label="Supervisor"><div class="md-ri"><i class="md-hl" aria-hidden="true"></i><small>EQUIPE</small>`+opts.map(x=>{
+    const on=x===sel,p=MDS.lista?pend(x):-1,pn=String(titulo(x)).split(" ")[0];
+    return `<button type="button" class="md-pb${on?" on":""}" data-s="${esc(x)}" onclick="mdSupI(this.dataset.s)" aria-label="${esc(titulo(x))}" aria-pressed="${on}" title="${esc(titulo(x))}${p>0?" · "+p+" a lançar":""}">`+
+      `<span class="md-pi">${fotoSup(x,108)}</span>${p>=0?`<b class="md-pn${p?"":" z"}">${p}</b>`:""}<span class="md-pe">${esc(pn)}</span></button>`;}).join("")+`</div></aside>`;
+  return `<div class="md-dock${grande?" g":""}" role="group" aria-label="Supervisor"><button type="button" class="md-dk-t${sel?"":" on"}" onclick="mdSup('')" aria-pressed="${!sel}">Todos</button>`+
+    opts.map(x=>{const on=x===sel,p=MDS.lista?pend(x):-1;return `<button type="button" class="md-dk${on?" on":""}" data-s="${esc(x)}" onclick="mdSup(this.dataset.s)" title="${esc(titulo(x))}${p>0?" · "+p+" a lançar":""}" aria-label="${esc(titulo(x))}" aria-pressed="${on}">${fotoSup(x,grande?64:50)}${p>=0?`<b class="md-dk-n${p?"":" z"}">${p}</b>`:""}</button>`;}).join("")+`</div>`;
+}
+window.mdSup=x=>{FS.sup=(x&&x===FS.sup)?"":x;FS.ab={};fsRender();};
 function tela(){
   if(MDS.erro)return `<div class="md-vazio"><b>Não foi possível carregar as medidas geradas</b>${esc(MDS.erro)}</div>`;
   if(!MDS.lista){carregar();return `<div class="md-vazio"><b>Carregando…</b></div>`;}
   const e=typeof fsEscopo==="function"?fsEscopo():{vista:"todas"};
   const naArea=g=>typeof fsNaArea!=="function"||fsNaArea(g.supervisor||""); // o mesmo filtro de área/"ver como" da tela
+  const Lb=MDS.lista.filter(g=>e.vista==="minha"?(g.supervisor||"")===e.meu:true); // todas as áreas que a pessoa vê (o supervisor escolhido só esconde seções)
   const L=MDS.lista.filter(naArea),q=MDS.busca.trim().toLowerCase();
   const n=s=>L.filter(g=>g.status===s).length,atras=L.filter(g=>g.status==="PENDENTE"&&g.diasPendente>=3).length;
   const semAss=g=>g.status!=="CANCELADA"&&!g.assinado,nSem=L.filter(semAss).length;
-  const k=(id,cls,rot,val,sub)=>`<button type="button" class="md-kpi ${cls}${MDS.filtro===id?" on":""}" onclick="mdFiltro('${id}')"><small>${rot}</small><b>${val}</b><span>${sub}</span></button>`;
-  let h=`<div class="md-tela"><div class="md-kpis k5">`+
-    k("PENDENTE","am","Falta lançar no SAR2G",n("PENDENTE"),atras?`${atras} há 3 dias ou mais`:"geradas no painel")+
-    k("SEMASS",nSem?"am":"","Sem documento assinado",nSem,"falta assinar no celular ou anexar a foto")+
-    k("LANCADA","ok","Lançadas no SAR2G",n("LANCADA"),"pela planilha ou marcadas")+
-    k("CANCELADA","","Canceladas",n("CANCELADA"),"geradas por engano")+
-    k("TODAS","","Todas",L.length,MDS.coord?"de todas as áreas":"da sua área")+`</div>`;
-  h+=`<div class="md-bar"><input class="md-in md-busca" id="md-busca" placeholder="Buscar por colaborador, RE, número ou motivo" value="${esc(MDS.busca)}" oninput="mdBusca(this.value)"><span class="md-dica" style="margin:0">A medida sai de "falta lançar" sozinha quando a planilha diária trouxer a medida do colaborador.</span></div>`;
-  const vis=L.filter(g=>(MDS.filtro==="TODAS"||(MDS.filtro==="SEMASS"?semAss(g):g.status===MDS.filtro))&&(!q||[g.nome,g.re,g.numero,g.motivo,g.posto].some(v=>String(v||"").toLowerCase().indexOf(q)>=0)));
-  if(!vis.length)return h+`<div class="md-vazio"><b>${MDS.filtro==="PENDENTE"?"Nada pendente":MDS.filtro==="SEMASS"?"Todas com o documento assinado":"Nenhuma medida"}</b>${MDS.filtro==="PENDENTE"?"Todas as medidas geradas já estão no SAR2G.":MDS.filtro==="SEMASS"?"Todas as medidas têm a foto ou o PDF do documento assinado.":"Nenhuma medida com esse filtro."}</div></div>`;
+  const G=Lb,filtrado=L.length!==G.length;
+  const FILT=["PENDENTE","SEMASS","LANCADA","CANCELADA"],ROT=["A lançar","Sem assinatura","Lançadas","Canceladas"];
+  const conta=(gs,f)=>f==="SEMASS"?gs.filter(semAss).length:gs.filter(x=>x.status===f).length;
+  const nA=FILT.map(f=>conta(L,f)),nG=FILT.map(f=>conta(G,f));
+  const nomeSup=(typeof FS!=="undefined"&&FS.sup)||"";
+  const sc=j=>{
+    const id=FILT[j],on=MDS.filtro===id;
+    return `<button type="button" class="md-sc c${j}${on?" on":""}" onclick="mdFiltro('${on?"TODAS":id}')" aria-pressed="${on}" title="${filtrado?"Esta área, de "+nG[j]+" no geral. ":""}Clique de novo para ver todas.">`+
+      `<span class="md-w" aria-hidden="true">${ICN[j]}</span><small>${ROT[j]}</small><b><span class="md-v">${nA[j]}</span><span class="md-de"${filtrado?"":" hidden"}> de ${nG[j]}</span></b><span class="md-cp">${capCard(j,atras)}</span></button>`;
+  };
+  const sups=((MDS.sups&&MDS.sups.length?MDS.sups:[...new Set(G.map(x=>x.supervisor).filter(Boolean))].sort()).filter(soSup));
+  const dockBloco=e.vista!=="minha"&&sups.length>1?dockSup(sups,true):"";
+  let h=`<div class="md-tela"><div class="md-scs${MDS.filtro&&MDS.filtro!=="TODAS"?" has":""}">${[0,1,2,3].map(sc).join("")}</div>`+
+    `<div class="md-f${dockBloco?" cr":""}">${dockBloco}<div class="md-fc">`;
+  const vis=Lb.filter(g=>(MDS.filtro==="TODAS"||(MDS.filtro==="SEMASS"?semAss(g):g.status===MDS.filtro))&&(!q||[g.nome,g.re,g.numero,g.motivo,g.posto].some(v=>String(v||"").toLowerCase().indexOf(q)>=0)));
+  if(!vis.length)return h+`<div class="md-vazio"><b>${MDS.filtro==="PENDENTE"?"Nada pendente":MDS.filtro==="SEMASS"?"Todas com o documento assinado":"Nenhuma medida"}</b>${MDS.filtro==="PENDENTE"?"Todas as medidas geradas já estão no SAR2G.":MDS.filtro==="SEMASS"?"Todas as medidas têm a foto ou o PDF do documento assinado.":"Nenhuma medida com esse filtro."}</div></div></div></div>`;
   const por=new Map();vis.forEach(g=>{const x=titulo(g.supervisor||"Sem supervisor");(por.get(x)||por.set(x,[]).get(x)).push(g);});
   const pend=gs=>gs.filter(g=>g.status==="PENDENTE").length,recus=g=>g.status!=="CANCELADA"&&g.assinado&&g.assinado.digital&&g.assinado.resultado==="RECUSADA";
   [...por.keys()].sort((x,y)=>pend(por.get(y))-pend(por.get(x))||x.localeCompare(y)).forEach(sup=>{
     const gs=por.get(sup);
     // os totais da faixa contam todas as medidas do supervisor (sem cancelada), com ou sem filtro na tela
-    const todas=L.filter(g=>titulo(g.supervisor||"Sem supervisor")===sup&&g.status!=="CANCELADA");
+    const todas=Lb.filter(g=>titulo(g.supervisor||"Sem supervisor")===sup&&g.status!=="CANCELADA");
     // as linhas de um colaborador ficam juntas: quem tem mais pendência primeiro; dentro dele, a mais recente primeiro
     const cols=new Map();gs.forEach(g=>{const k=String(g.re);(cols.get(k)||cols.set(k,[]).get(k)).push(g);});
     const ordem=[...cols.values()].sort((x,y)=>pend(y)-pend(x)||String(y[0].geradaEm).localeCompare(String(x[0].geradaEm)))
       .flatMap(ms=>ms.sort((x,y)=>String(y.geradaEm).localeCompare(String(x.geradaEm))));
+    // a medida mostrada no painel é a que o usuário escolheu naquele supervisor; sem escolha, a primeira
+    const sf=MDS.sf[sup]||"",ok=g=>!sf||sinal(g).includes(sf),fqq=norm(MDS.fil[sup]||"").trim(),ok2=g=>ok(g)&&(!fqq||norm(g.nome+" "+g.re).includes(fqq));
+    const escolhida=ordem.find(g=>g.chave===MDS.sels[sup]&&ok2(g))||ordem.find(ok2)||ordem[0];
     let ant=null;
-    const linhas=ordem.map(g=>{const nova=ant!==null&&ant!==g.re;ant=g.re;return item(g,nova);}).join("");
-    const sel=ordem.find(g=>g.chave===MDS.sel);
-    const st=(ic,cls,n,rot)=>`<div class="ml-st"><span class="ml-ic ${cls}" aria-hidden="true">${ic}</span><div><b>${n}</b><small>${rot}</small></div></div>`;
-    h+=`<section class="ml-sup" aria-label="Supervisor ${esc(sup)}"><header class="ml-band"><div class="ml-band-n">${avatarSup(sup)}<div><small>Supervisor</small><h3>${esc(sup)}</h3></div></div>`+
-      `<div class="ml-band-s">${st(IC.doc,"",todas.length,"Medidas")}${st(IC.x,"er",todas.filter(recus).length,"Recusadas")}${st(IC.cal,"",pend(todas),"A lançar no SAR2G")}</div></header>`+
-      `<div class="ml-body${sel?" com-and":""}"><aside class="ml-and" aria-label="Andamento"${sel?"":" hidden"}>${sel?andamento(sel):""}</aside>`+
-      `<div class="ml-tab"><div class="ml-th"><span>Colaborador</span><span>Ocorrência</span><span>Data</span><span>Posto</span><span>Situação</span><span>Ações</span></div>${linhas}</div></div></section>`;
+    const fq=norm(MDS.fil[sup]||"").trim();
+    const itens=ordem.map(g=>{const nova=ant!==null&&ant!==g.re;ant=g.re;return li(g,g===escolhida,nova,!ok2(g));}).join("");
+    const nVis=ordem.filter(ok2).length;
+    const st=(ic,cls,n,rot,f)=>`<button type="button" class="ml-st${sf===f?" on":""}" data-f="${f}" aria-pressed="${sf===f}" onclick="mdSt(this)" title="Mostrar na lista ao lado: ${rot.toLowerCase()}"><span class="ml-ic ${cls}" aria-hidden="true">${ic}</span><div><b>${n}</b><small>${rot}</small></div></button>`;
+    const fora=nomeSup&&!mesmoSup(titulo(nomeSup),sup);
+    h+=`<div class="md-sw${fora?" fora":""}" data-s="${esc(sup)}"${fora?" inert":""}><div class="md-si"><section class="ml-sup" data-sup="${esc(sup)}" aria-label="Supervisor ${esc(sup)}"><header class="ml-band"><div class="ml-band-n">${avatarSup(sup)}<div><small>Supervisor</small><h3>${esc(sup)}</h3></div></div>`+
+      `<div class="ml-band-s">${st(IC.doc,"",todas.length,"Medidas","")}${st(IC.x,"er",todas.filter(recus).length,"Recusadas","R")}${st(IC.cal,"",pend(todas),"A lançar no SAR2G","P")}</div></header>`+
+      `<div class="ml-mdl"><div class="ml-lst"><div class="ml-fil"><input type="search" class="md-in" placeholder="Filtrar por nome ou RE" value="${esc(MDS.fil[sup]||"")}" oninput="mdFiltraLi(this)" aria-label="Filtrar os colaboradores de ${esc(sup)}"><span class="ml-fil-c">${nVis} de ${ordem.length}</span></div><div class="ml-li-l" role="listbox" aria-label="Medidas de ${esc(sup)}">${itens}</div><p class="ml-vz"${nVis?" hidden":""}>Nenhuma medida com esse filtro.</p></div><div class="ml-pnl" aria-live="polite">${painel(escolhida)}</div></div></section></div></div>`;
   });
-  return h+`</div>`;
+  h+=`<p class="md-vz2" hidden>Nenhuma medida deste supervisor com o filtro atual.</p>`;
+  return h+`</div></div></div>`;
 }
 // Foto de cada supervisor na faixa azul, pelo primeiro nome que vem da planilha. As fotos que o Raphael mandou,
 // recortadas no círculo que já tinham e ampliadas só por reamostragem (sem filtro nem retoque).
@@ -576,96 +661,107 @@ function avatarSup(nome){
   return FOTOS.has(k)?`<span class="ml-av ml-foto"><img src="/assets/medida/supervisores/${k.toLowerCase()}.png" alt="Foto de ${esc(nome)}" width="92" height="92" decoding="async"></span>`
     :`<span class="ml-av" aria-hidden="true">${IC.user}</span>`;
 }
-const trilha=g=>{
-  const a=g.assinado,dig=a&&a.digital,rec=dig&&a.resultado==="RECUSADA";
-  const passo=(cls,tit,txt2)=>`<li class="${cls}"><i aria-hidden="true"></i><b>${tit}</b><span>${txt2}</span></li>`;
-  return `<ol class="md-trilha">`+[passo("ok","Gerada no painel",`${esc(quando(g.geradaEm))} · ${esc(nomeDe(g.geradaPor))}`),
-    a?passo(rec?"er":"ok",rec?"Recusou assinar":dig?"Assinada no celular":"Documento em papel anexado",`${esc(quando(a.em))} · ${esc(nomeDe(a.por))}${a.sha256?` · SHA-256 <code>${esc(a.sha256.slice(0,12))}</code>`:""}`)
-     :passo(g.status==="CANCELADA"?"":"pend","Assinatura","ainda sem o documento assinado"),
-    g.status==="CANCELADA"?passo("er","Cancelada",`${esc(nomeDe(g.canceladaPor))}${g.canceladaEm?" · "+esc(quando(g.canceladaEm)):""}${g.motivoCancelamento?` · “${esc(g.motivoCancelamento)}”`:""}`)
-     :g.status==="LANCADA"?passo("ok","No SAR2G",g.lancadaPor==="planilha"?`a planilha trouxe em ${esc(dma(g.lancadaEm))}`:`marcada por ${esc(nomeDe(g.lancadaPor))} · ${esc(quando(g.lancadaEm))}`)
-     :passo("pend","SAR2G",`falta lançar${g.diasPendente?` · há ${g.diasPendente} ${g.diasPendente===1?"dia":"dias"}`:""}`)].join("")+`</ol>`;
-};
-// painel da esquerda: o andamento da medida da linha selecionada
-const andamento=g=>`<h4>Andamento</h4><p class="ml-and-q"><b>${esc(titulo(g.nome))}</b><span>${esc(g.numero)}</span></p>${trilha(g)}`;
-function item(g,nova){
-  const eu=uk(),pode=MDS.coord||g.geradaPor===eu,viva=g.status!=="CANCELADA",n=g.diasPendente;
-  const t=TIPOS[g.tipoId]?TIPOS[g.tipoId].rot:g.tipo,dias=g.tipoId==="SUSPENSAO"?" · "+g.dias+(g.dias===1?" dia":" dias"):"";
-  const a=g.assinado,dig=a&&a.digital,recusou=dig&&a.resultado==="RECUSADA";
-  const sar=g.status==="PENDENTE"?{c:"pend",t:"A lançar no SAR2G",s:n?`Há ${n} ${n===1?"dia":"dias"}`:"Gerada hoje"}
-    :g.status==="LANCADA"?{c:"ok",t:"Lançada no SAR2G",s:g.lancadaPor==="planilha"?`Planilha de ${dm(g.lancadaEm)}`:`Marcada por ${nomeDe(g.lancadaPor)}`}
-    :{c:"canc",t:"Cancelada",s:`Por ${nomeDe(g.canceladaPor)}`};
-  const ass=!a?(viva?{c:"sem",i:IC.ass,t:"Sem assinatura"}:null):recusou?{c:"rec",i:IC.x,t:"Recusou assinar"}:dig?{c:"ok",i:IC.ok,t:"Assinada no celular"}:{c:"ok",i:IC.ok,t:"Assinada em papel"};
-  const sel=MDS.sel===g.chave,ab=MDS.abertas.has(g.chave),txt=textoDe(g);
-  const bt=(cls,fn,ic,rot)=>`<button type="button" class="md-b ${cls}" data-c="${g.chave}" onclick="${fn}(this.dataset.c)">${ic}${rot}</button>`;
-  // três lugares fixos, sempre na mesma ordem: documento, SAR2G, detalhes
-  const b1=a?bt("","mdVerAssinado",IC.olho,dig?"Via do documento":"Ver assinado"):(viva?bt("pri","mdAssinarSeguro",IC.ass,"Assinar no celular"):"");
-  const b2=pode&&g.status==="PENDENTE"?bt(a?"pri":"","mdLancadaSim",IC.ok,"Já lancei no SAR2G"):(pode&&g.status==="LANCADA"&&g.manual?bt("","mdLancadaNao","","Desfazer lançamento"):"");
-  const b3=`<button type="button" class="md-b md-chev" aria-expanded="${ab}" aria-controls="md-det-${g.chave}" onclick="mdDet(event,'${g.chave}')">Detalhes${IC.chevd}</button>`;
-  return `<div class="ml-item ${g.status}${sel?" sel":""}${ab?" ab":""}${nova?" nova":""}" data-c="${g.chave}">`+
-    `<div class="ml-row" tabindex="0" aria-current="${sel}" onclick="mdSel(event,'${g.chave}')" onkeydown="if(event.key==='Enter'&&event.target===this)mdSel(event,'${g.chave}')">`+
-    `<div class="c-col"><b>${esc(titulo(g.nome))}</b><small>RE ${esc(g.re)}<span class="c-posto-in"> · ${esc(g.posto||"")}</span></small></div>`+
-    `<div class="c-oc"><span class="ml-tp ${esc(g.tipoId||"")}">${IC[g.tipoId]||""}${esc(t)}${esc(dias)}</span><small title="${esc(g.motivo)}">${esc(g.motivo)}</small></div>`+
-    `<div class="c-dt"><span class="ml-i">${IC.cal}</span>${esc(dma(g.inicio))}</div>`+
-    `<div class="c-po"><span class="ml-i">${IC.pin}</span>${esc(g.posto||"—")}</div>`+
-    `<div class="c-si"><span class="ml-bd ${sar.c}">${sar.c==="pend"?`<i class="ml-bd-i">!</i>`:sar.c==="ok"?`<i class="ml-bd-i ok">${IC.ok}</i>`:"<i></i>"}<span><b>${sar.t}</b><small class="${g.status==="PENDENTE"&&n>=3?"atr":""}">${esc(sar.s)}</small></span></span>${ass?`<span class="ml-as ${ass.c}">${ass.i}${ass.t}</span>`:""}</div>`+
-    `<div class="c-ac"><span>${b1}</span><span>${b2}</span><span>${b3}</span></div></div>`+
-    `<div class="ml-and-m"><h4>Andamento</h4>${trilha(g)}</div>`+
-    `<div class="md-det" id="md-det-${g.chave}"${ab?"":" hidden"}>${detalhe(g,txt)}</div></div>`;
+// situação da medida em uma palavra e uma cor (a mesma na lista e no painel)
+function estado(g){
+  const a=g.assinado,rec=!!a&&a.digital&&a.resultado==="RECUSADA";
+  if(g.status==="CANCELADA")return{c:"",t:"cancelada"};
+  if(rec)return{c:"er",t:"recusou assinar"};
+  if(!a)return{c:"pend",t:"sem assinatura"};
+  if(g.status==="PENDENTE")return{c:"pend",t:"a lançar no SAR2G"};
+  return{c:"ok",t:"lançada no SAR2G"};
 }
-window.mdLancadaSim=ch=>window.mdLancada(ch,true);
-window.mdLancadaNao=ch=>window.mdLancada(ch,false);
-// seleciona a linha e mostra o andamento dela à esquerda (sem redesenhar a lista); clicar de novo desmarca
-function selecionar(ch,manter){
-  const novo=manter||MDS.sel!==ch?ch:null;MDS.sel=novo;
-  document.querySelectorAll(".ml-item.sel").forEach(r=>r.classList.remove("sel"));
-  document.querySelectorAll(".ml-row[aria-current]").forEach(r=>r.setAttribute("aria-current","false"));
-  document.querySelectorAll(".ml-and").forEach(x=>{x.hidden=true;x.closest(".ml-body").classList.remove("com-and");});
-  const it=novo&&document.querySelector('.ml-item[data-c="'+novo+'"]'),g=novo&&(MDS.lista||[]).find(x=>x.chave===novo);
-  if(!it||!g)return;
-  it.classList.add("sel");it.querySelector(".ml-row").setAttribute("aria-current","true");
-  const box=it.closest(".ml-body"),as=box.querySelector(".ml-and");
-  as.innerHTML=andamento(g);as.hidden=false;box.classList.add("com-and");
-  mostrar(it);
+const tipoDe=g=>(TIPOS[g.tipoId]?TIPOS[g.tipoId].rot:g.tipo)+(g.tipoId==="SUSPENSAO"?" · "+g.dias+(g.dias===1?" dia":" dias"):"");
+// uma linha da lista: nome em cima; embaixo a situação, o tipo e a data
+const norm=v=>String(v==null?"":v).normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();
+const sinal=g=>(g.status!=="CANCELADA"&&g.assinado&&g.assinado.digital&&g.assinado.resultado==="RECUSADA"?"R":"")+(g.status==="PENDENTE"?"P":"");
+function li(g,sel,nova,oculto){
+  const e=estado(g);
+  return `<button type="button" class="ml-li${sel?" sel":""}${nova?" nova":""}" role="option" aria-selected="${sel}" data-c="${g.chave}" data-q="${esc(norm(g.nome+" "+g.re))}" data-s="${sinal(g)}"${oculto?" hidden":""} onclick="mdSel('${g.chave}')">`+
+    `<span class="ml-li-n">${esc(titulo(g.nome))}</span><span class="ml-li-m"><i class="ml-dot ${e.c}"></i>${esc(e.t)} · ${esc(tipoDe(g))} · ${esc(dm(g.inicio))}</span></button>`;
 }
-// leva a medida para logo abaixo do cabeçalho da página: a linha, o Andamento e o Detalhes ficam juntos na tela, sem subir e descer
-function mostrar(it){requestAnimationFrame(()=>it.scrollIntoView({block:"start",behavior:"smooth"}));}
-window.mdSel=(ev,ch)=>{if(ev.target.closest("button,label,input,a"))return;selecionar(ch);};
 // O motivo foi escrito pelo supervisor ou é o texto que o sistema monta das faltas marcadas (motivoAuto)?
 // Recalcula o automático com o que ficou salvo na medida: igual = ele não escreveu nada; começa igual = acrescentou.
 function textoDe(g){
   const auto=motivoAuto({c:{posto:g.posto},faltas:new Set(g.faltas||[]),sits:new Set(g.situacoes||[])}).trim(),m=String(g.motivo||"").trim();
-  if(auto&&m===auto)return{tipo:"AUTO",cls:"auto",longo:"Texto automático do sistema",nota:"O supervisor manteve o texto que o sistema monta a partir das faltas e situações marcadas. Não escreveu nada além disso.",auto};
-  if(auto&&m.startsWith(auto))return{tipo:"MAIS",cls:"sup",longo:"Texto automático + complemento do supervisor",nota:"Em destaque, o que o supervisor acrescentou ao texto automático.",auto};
-  return{tipo:"SUP",cls:"sup",longo:"Escrito pelo supervisor",nota:"",auto};
+  if(auto&&m===auto)return{tipo:"AUTO",longo:"texto automático do sistema",auto};
+  if(auto&&m.startsWith(auto))return{tipo:"MAIS",longo:"texto automático + complemento do supervisor",auto};
+  return{tipo:"SUP",longo:"escrito pelo supervisor",auto};
 }
-function detalhe(g,txt){
-  const m=String(g.motivo||"").trim();
-  const corpo=txt.tipo==="MAIS"?`<span class="md-q-auto">${esc(txt.auto)}</span> <mark>${esc(m.slice(txt.auto.length).trim())}</mark>`:esc(m);
-  const fl=(g.faltas||[]).slice().sort(),sits=(g.situacoes||[]).filter(s=>SITUACOES[s]);
-  const t=TIPOS[g.tipoId]?TIPOS[g.tipoId].rot:g.tipo;
-  const marcou=(fl.length?`<div class="md-det-l"><span class="md-lbl">${fl.length===1?"Falta marcada":fl.length+" faltas marcadas"}</span><div class="md-chs"><span class="md-chi">${IC.calc}</span>${fl.map(d=>`<span class="md-ch">${esc(dma(d))}</span>`).join("")}</div></div>`:"")+
-    (sits.length?`<div class="md-det-l"><span class="md-lbl">Situações marcadas</span><div class="md-chs">${sits.map(s=>`<span class="md-ch s">${esc(SITUACOES[s])}</span>`).join("")}</div></div>`:"")||
-    `<div class="md-det-l"><span class="md-lbl">O que foi marcado</span><span class="md-det-vz">Nenhuma falta ou situação marcada: o motivo foi escrito à mão.</span></div>`;
-  const a=g.assinado,dig=a&&a.digital,viva=g.status!=="CANCELADA",pode=MDS.coord||g.geradaPor===uk();
-  const acoes=[`<button type="button" class="md-b" data-c="${g.chave}" onclick="mdReimprimir(this.dataset.c)" title="Imprime o documento sem assinatura">${IC.imp}Imprimir</button>`];
-  if(viva&&!dig)acoes.push(`<label class="md-b" title="${a?"Trocar o arquivo do documento assinado":"Foto ou PDF do documento assinado pelo colaborador"}">${IC.clip}${a?"Trocar arquivo assinado":"Anexar assinado"}<input type="file" accept="image/*,application/pdf" data-c="${g.chave}" onchange="mdAnexar(this)" hidden></label>`);
-  if(pode&&viva)acoes.push(`<button type="button" class="md-b er" data-c="${g.chave}" onclick="mdCancelar(this.dataset.c)" title="Cancelar (gerada por engano)">${IC.x}Cancelar medida</button>`);
-  const DI={Medida:IC.doc,"A partir de":IC.cal,Empresa:IC.build,Cargo:IC.users,Posto:IC.pin,"Área":IC.user};
-  const dado=(k,v)=>v?`<div><span class="md-dl-i">${DI[k]}</span><div><dt>${k}</dt><dd>${esc(v)}</dd></div></div>`:"";
-  return `<div class="md-det-g"><section class="md-det-mot"><header><span class="md-hi">${IC.doc}</span><span class="md-lbl">Motivo escrito no documento</span><span class="md-orig ${txt.cls}">${txt.longo}</span></header>`+
-    `<blockquote class="md-q">${corpo}</blockquote>${txt.nota?`<p class="md-det-nota">${IC.info}${txt.nota}</p>`:""}${marcou}</section>`+
-    `<aside class="md-det-lado"><dl class="md-dl">${dado("Medida",t+(g.tipoId==="SUSPENSAO"?" · "+g.dias+(g.dias===1?" dia":" dias"):""))}${dado("A partir de",dma(g.inicio))}${dado("Empresa",g.empresa)}${dado("Cargo",g.cargo)}${dado("Posto",g.posto)}${dado("Área",titulo(g.supervisor))}</dl>`+
-    `<span class="md-lbl">Ações</span><div class="md-det-ac">${acoes.join("")}</div></aside></div>`;
+// painel da medida selecionada: três marcos (gerada, assinatura, SAR2G), o motivo e as ações.
+// Os marcos são independentes: a assinatura do colaborador NÃO trava o lançamento no SAR2G (pode lançar com ou sem assinatura).
+const quandoA=t=>{const x=Date.parse(t);if(!x)return"";const z=new Date(x-3*3600000).toISOString();return z.slice(8,10)+"/"+z.slice(5,7)+"/"+z.slice(0,4)+" às "+z.slice(11,16);};
+const pop=(m,tit,linhas,nota)=>`<div class="pn-ph ${m.c}"><span>${m.i}</span><div><b>${esc(tit)}</b><small>${esc(m.t)}</small></div></div><dl class="pn-pb">${linhas.filter(l=>l[1]).map(l=>`<div><dt>${l[0]}</dt><dd>${esc(l[1])}</dd></div>`).join("")}</dl>${nota?`<p class="pn-pn">${esc(nota)}</p>`:""}`;
+function painel(g){
+  const eu=uk(),pode=MDS.coord||g.geradaPor===eu,viva=g.status!=="CANCELADA",n=g.diasPendente;
+  const a=g.assinado,dig=a&&a.digital,recusou=dig&&a.resultado==="RECUSADA",txt=textoDe(g),m=String(g.motivo||"").trim();
+  const m1={c:"ok",i:IC.ok,t:"Gerada",s:`${quando(g.geradaEm)} · ${nomeDe(g.geradaPor)}`};
+  const m2=a?(recusou?{c:"er",i:IC.x,t:"Recusou assinar",s:quando(a.em)}:{c:"ok",i:IC.ok,t:dig?"Assinada no celular":"Assinada em papel",s:quando(a.em)})
+    :(viva?{c:"pend",i:IC.ass,t:"Assinatura pendente",s:"falta o celular"}:{c:"",i:IC.ass,t:"Sem assinatura",s:"medida cancelada"});
+  const m3=g.status==="CANCELADA"?{c:"canc",i:IC.x,t:"Cancelada",s:`${nomeDe(g.canceladaPor)}${g.motivoCancelamento?": "+g.motivoCancelamento:""}`}
+    :g.status==="LANCADA"?{c:"ok",i:IC.ok,t:"Lançada no SAR2G",s:g.lancadaPor==="planilha"?`planilha de ${dm(g.lancadaEm)}`:`marcada por ${nomeDe(g.lancadaPor)}`}
+    :{c:"pend",i:IC.send,t:"A lançar no SAR2G",s:n?`há ${n} ${n===1?"dia":"dias"}`:"gerada hoje"};
+  const corpo=txt.tipo==="MAIS"?`<span class="pn-aut">${esc(txt.auto)}</span> <mark>${esc(m.slice(txt.auto.length).trim())}</mark>`:esc(m);
+  const fl=(g.faltas||[]).slice().sort().map(dma),sits=(g.situacoes||[]).filter(x=>SITUACOES[x]).map(x=>SITUACOES[x]);
+  const extra=[fl.length?(fl.length===1?"Falta de ":"Faltas de ")+fl.join(", "):"",sits.join(", ")].filter(Boolean).join(" · ");
+  const chip=(ic,v)=>v?`<span class="pn-cp">${ic}${esc(v)}</span>`:"";
+  const bt=(cls,fn,ic,rot)=>`<button type="button" class="md-b ${cls}" data-c="${g.chave}" onclick="${fn}(this.dataset.c)">${ic}${rot}</button>`;
+  const ac=[];
+  if(!a&&viva)ac.push(bt("","mdAssinarSeguro",IC.ass,"Assinar no celular"));
+  if(a)ac.push(bt("","mdVerAssinado",IC.olho,dig?"Via do documento":"Ver assinado"));
+  if(pode&&g.status==="PENDENTE")ac.push(bt("pri","mdLancadaSim",IC.ok,"Já lancei no SAR2G"));
+  if(pode&&g.status==="LANCADA"&&g.manual)ac.push(bt("","mdLancadaNao","","Desfazer lançamento"));
+  const ln=[`<button type="button" class="pn-ib" title="Imprimir" aria-label="Imprimir" data-c="${g.chave}" onclick="mdReimprimir(this.dataset.c)">${IC.imp}</button>`];
+  if(viva&&!dig){const tt=a?"Trocar o arquivo assinado":"Anexar o documento assinado";ln.push(`<label class="pn-ib" title="${tt}" aria-label="${tt}">${IC.clip}<input type="file" accept="image/*,application/pdf" data-c="${g.chave}" onchange="mdAnexar(this)" hidden></label>`);}
+  if(pode&&viva)ln.push(`<button type="button" class="pn-ib er" title="Cancelar a medida" aria-label="Cancelar a medida" data-c="${g.chave}" onclick="mdCancelar(this.dataset.c)">${IC.trash}</button>`);
+  const p1=pop(m1,"Medida gerada",[["Gerada por",nomeDe(g.geradaPor)],["Quando",quandoA(g.geradaEm)],["Documento",g.numero],["Tipo",tipoDe(g)],["A partir de",dma(g.inicio)]],"Criada no painel pelo supervisor.");
+  const p2=a?(recusou?pop(m2,"Assinatura do colaborador",[["Registrado por",nomeDe(a.por)],["Quando",quandoA(a.em)],["Resultado","O colaborador recusou assinar"]],"A recusa fica registrada no documento.")
+    :dig?pop(m2,"Assinatura do colaborador",[["Coletada por",nomeDe(a.por)],["Quando",quandoA(a.em)],["Como","Desenhada no celular, supervisor e colaborador"],["Selo SHA-256",a.sha256?a.sha256.slice(0,16)+"…":""]],"O documento assinado fica guardado e abre em Via do documento.")
+    :pop(m2,"Assinatura do colaborador",[["Anexado por",nomeDe(a.por)],["Quando",quandoA(a.em)],["Como","Foto ou PDF do documento assinado em papel"]],""))
+    :pop(m2,"Assinatura do colaborador",[["Situação",viva?"Ainda sem assinatura":"Medida cancelada, sem assinatura"],["Como resolver",viva?"Assinar no celular ou anexar a foto do documento assinado":""]],viva?"Não impede o lançamento no SAR2G.":"");
+  const sg=g.sar2g?[g.sar2g.tipo,g.sar2g.grau&&g.sar2g.grau!==g.sar2g.tipo?g.sar2g.grau:"",g.sar2g.dias?g.sar2g.dias+(g.sar2g.dias===1?" dia":" dias"):""].filter(Boolean).join(" · "):"";
+  const p3=g.status==="CANCELADA"?pop(m3,"Situação no SAR2G",[["Cancelada por",nomeDe(g.canceladaPor)],["Quando",g.canceladaEm?quandoA(g.canceladaEm):""],["Motivo",g.motivoCancelamento]],"Medida cancelada não vai para o SAR2G.")
+    :g.status==="LANCADA"?pop(m3,"Situação no SAR2G",g.lancadaPor==="planilha"?[["Como","A planilha diária trouxe a medida"],["Na planilha em",dma(g.lancadaEm)],["Registro",sg]]:[["Marcada por",nomeDe(g.lancadaPor)],["Quando",quandoA(g.lancadaEm)]],"")
+    :pop(m3,"Situação no SAR2G",[["Situação","Ainda não aparece no SAR2G"],["Parada",n?`há ${n} ${n===1?"dia":"dias"}`:"gerada hoje"],["Como resolver","Lance no SAR2G e clique em Já lancei, ou espere a planilha diária trazer a medida"]],"Pode lançar com ou sem a assinatura do colaborador.");
+  const mk=(x,pp)=>`<div class="pn-mk ${x.c}" tabindex="0" aria-label="${esc(x.t)}: ${esc(x.s)}"><span class="pn-nd ${x.c}">${x.i}</span><b>${esc(x.t)}</b><span class="pn-ms">${esc(x.s)}</span><div class="pn-pp" role="tooltip">${pp}</div></div>`;
+  return `<button type="button" class="pn-back" onclick="mdLista(this)">Voltar à lista</button>`+
+    `<header class="pn-h"><h4>${esc(tipoDe(g))}</h4><span class="pn-dt">${IC.cal}${esc(dma(g.inicio))}</span></header>`+
+    `<p class="pn-nm"><b>${esc(titulo(g.nome))}</b> · RE ${esc(g.re)}</p>`+
+    `<div class="pn-tm"><span class="pn-lh l1 ok"></span><span class="pn-lh l2 ${m2.c==="ok"||m2.c==="er"?m2.c:""}"></span>${mk(m1,p1)}${mk(m2,p2)}${mk(m3,p3)}</div>`+
+    `<div class="pn-mot"><span class="pn-k">${IC.quote}Motivo · ${txt.longo}</span><p>${corpo}</p>${extra?`<p class="pn-ex">${esc(extra)}</p>`:""}</div>`+
+    `<div class="pn-ch">${chip(IC.build,g.empresa)}${chip(IC.user,g.cargo&&titulo(g.cargo))}${chip(IC.pin,g.posto)}</div>`+
+    `<div class="pn-ac"><span class="pn-pr">${ac.join("")}</span><span class="pn-ln">${ln.join("")}</span></div>`;
 }
-// abre e fecha o detalhamento sem redesenhar a lista; abrir também seleciona a linha (o andamento aparece à esquerda)
-window.mdDet=(ev,ch)=>{
-  const b=ev.currentTarget,it=b.closest(".ml-item"),det=document.getElementById("md-det-"+ch);
-  if(!it||!det)return;
-  const abre=!MDS.abertas.has(ch);abre?MDS.abertas.add(ch):MDS.abertas.delete(ch);
-  it.classList.toggle("ab",abre);det.hidden=!abre;b.setAttribute("aria-expanded",abre);
-  if(abre&&MDS.sel!==ch)selecionar(ch,true);else if(abre)mostrar(it);
+window.mdLancadaSim=ch=>window.mdLancada(ch,true);
+window.mdLancadaNao=ch=>window.mdLancada(ch,false);
+// escolher uma medida troca só o painel do supervisor (sem redesenhar a tela); em tela estreita o painel fica embaixo da lista, então a página rola até ele
+window.mdSel=(ch,quieto)=>{
+  const g=(MDS.lista||[]).find(x=>x.chave===ch),bt=document.querySelector('.ml-li[data-c="'+ch+'"]'),sec=bt&&bt.closest(".ml-sup");
+  if(!g||!sec)return;
+  MDS.sels[sec.dataset.sup]=ch;
+  sec.querySelectorAll(".ml-li").forEach(b=>{const on=b===bt;b.classList.toggle("sel",on);b.setAttribute("aria-selected",on);});
+  const pn=sec.querySelector(".ml-pnl");pn.innerHTML=painel(g);
+  if(!quieto&&getComputedStyle(sec.querySelector(".ml-mdl")).gridTemplateColumns.split(" ").length===1)pn.scrollIntoView({block:"start",behavior:"smooth"});
 };
+// filtro da lista por nome ou RE: esconde as linhas na hora (sem redesenhar); se a medida do painel sumiu, o painel passa para a primeira que sobrou
+function aplicaLista(sec){
+  const q=norm(sec.querySelector(".ml-fil input").value).trim(),f=MDS.sf[sec.dataset.sup]||"",itens=[...sec.querySelectorAll(".ml-li")];
+  itens.forEach(b=>{b.hidden=(!!q&&!b.dataset.q.includes(q))||(!!f&&!b.dataset.s.includes(f));});
+  const vis=itens.filter(b=>!b.hidden);
+  sec.querySelector(".ml-fil-c").textContent=vis.length+" de "+itens.length;
+  sec.querySelector(".ml-vz").hidden=vis.length>0;
+  const sel=sec.querySelector(".ml-li.sel");
+  if(vis.length&&(!sel||sel.hidden))window.mdSel(vis[0].dataset.c,true);
+}
+window.mdFiltraLi=inp=>{const sec=inp.closest(".ml-sup");MDS.fil[sec.dataset.sup]=inp.value;aplicaLista(sec);};
+// Os três números da faixa do supervisor são botões que filtram a lista ao lado (todas, recusadas, a lançar no SAR2G)
+window.mdSt=b=>{
+  const sec=b.closest(".ml-sup"),f=b.dataset.f;
+  MDS.sf[sec.dataset.sup]=(MDS.sf[sec.dataset.sup]===f)?"":f;
+  const atual=MDS.sf[sec.dataset.sup]||"";
+  sec.querySelectorAll(".ml-st").forEach(x=>{const on=x.dataset.f===atual;x.classList.toggle("on",on);x.setAttribute("aria-pressed",on);});
+  aplicaLista(sec);
+};
+window.mdLista=b=>{const l=b.closest(".ml-sup").querySelector(".ml-lst");l.scrollIntoView({block:"start",behavior:"smooth"});};
 window.mdFiltro=f=>{MDS.filtro=f;redesenhar();};
 window.mdBusca=v=>{MDS.busca=v;clearTimeout(MDS.tb);MDS.tb=setTimeout(()=>{redesenhar();const i=document.getElementById("md-busca");if(i){i.focus();i.setSelectionRange(v.length,v.length);}},180);};
 window.mdReimprimir=ch=>{const g=(MDS.lista||[]).find(x=>x.chave===ch);if(g){injetaCss();imprimir(docDaGerada(g));}};
@@ -739,7 +835,7 @@ window.mdVerAssinado=async function(ch){
   const g=(MDS.lista||[]).find(x=>x.chave===ch);
   const dig=!!(g&&g.assinado&&g.assinado.digital);
   const ov=document.createElement("div");ov.className="md-ov";ov.id="md-anexo";
-  const fechar=()=>{const u=ov.dataset.url;if(u)URL.revokeObjectURL(u);ov.remove();document.removeEventListener("keydown",esc1);};
+  const fechar=()=>{document.body.classList.remove("md-pa");const u=ov.dataset.url;if(u)URL.revokeObjectURL(u);ov.remove();document.removeEventListener("keydown",esc1);};
   const esc1=e=>{if(e.key==="Escape")fechar();};
   ov.innerHTML=`<div class="md-win" style="width:min(980px,100%)" role="dialog" aria-modal="true" aria-label="Documento assinado"><div class="md-hd"><div class="t"><b>${dig?"Via do documento":"Documento assinado"} · ${esc(g?g.numero:"")}</b><span>${g?esc(titulo(g.nome))+" · "+(dig?(g.assinado.resultado==="RECUSADA"?"recusa registrada por ":"assinado no celular com ")+esc(nomeDe(g.assinado.por)):"anexado por "+esc(nomeDe(g.assinado&&g.assinado.por)))+" em "+esc(quando(g.assinado&&g.assinado.em)):""}</span></div><button type="button" class="md-x" aria-label="Fechar">✕</button></div><div class="md-anexo-c"><p class="md-dica">Carregando…</p></div></div>`;
   ov.addEventListener("click",e=>{if(e.target===ov||e.target.closest(".md-x"))fechar();});
@@ -753,7 +849,8 @@ window.mdVerAssinado=async function(ch){
     const nome=(j.numero||"medida")+"-assinada."+(j.tipo==="application/pdf"?"pdf":j.tipo==="image/png"?"png":"jpg");
     const pdf=j.tipo==="application/pdf",viaBtn=dig&&g.status!=="CANCELADA"?`<button type="button" class="md-b pri" data-md-via>${IC.qr}Enviar ao colaborador (QR, SMS ou e-mail)</button>`:"";
     c.innerHTML=(pdf?`<p class="md-dica" style="color:#fff">Abrindo o documento…</p>`:`<img src="${url}" alt="Documento assinado">`)+
-      `<div class="md-anexo-r">${viaBtn}${pdf?`<a class="md-b" href="${url}" target="_blank" rel="noopener">Abrir o PDF</a>`:""}<a class="md-b" href="${url}" download="${esc(nome)}">Baixar</a></div>`;
+      `<div class="md-anexo-r">${viaBtn}${pdf?`<a class="md-b" href="${url}" target="_blank" rel="noopener">Abrir o PDF</a>`:""}<button type="button" class="md-b" data-md-imp>${IC.imp}Imprimir</button><a class="md-b" href="${url}" download="${esc(nome)}">Baixar</a></div>`;
+    const ib=c.querySelector("[data-md-imp]");if(ib)ib.onclick=()=>{document.body.classList.add("md-pa");const f=()=>{document.body.classList.remove("md-pa");window.removeEventListener("afterprint",f);};window.addEventListener("afterprint",f);window.print();};
     const vb=c.querySelector("[data-md-via]");if(vb)vb.onclick=()=>{fechar();window.mdViaSegura(ch);};
     if(pdf){
       const aviso=c.firstElementChild;
@@ -772,11 +869,14 @@ function encaixar(){
   window.fsRender=function(){
     r0.apply(this,arguments);
     const box=document.getElementById("fs-sec"),tabs=box&&box.querySelector(".fm-tabs");
+    // o seletor "Supervisor: Todos" dá lugar às fotos (valem para todas as abas, pois mexem no mesmo FS.sup)
+    const sb=box&&box.querySelector(".fm-selb");
+    if(sb){const ops=[...sb.querySelectorAll("option")].map(o=>o.value).filter(Boolean).filter(soSup);MDS.sups=ops;if(typeof FS!=="undefined"&&FS.aba==="MEDIDA"&&podeGerar())sb.remove();else sb.outerHTML=dockSup(ops);}
     if(!tabs||!podeGerar())return;
     const p=(MDS.lista||[]).filter(g=>g.status==="PENDENTE").length;
     const on=typeof FS!=="undefined"&&FS.aba==="MEDIDA";
     tabs.insertAdjacentHTML("beforeend",`<button type="button" role="tab" aria-selected="${on}" class="fm-tab${on?" on":""}" onclick="FS.aba='MEDIDA';fsRender();mdCarregar()">Medidas geradas<span class="n">${MDS.lista?p:"…"}</span></button>`);
-    if(on){let x=tabs.nextSibling;while(x){const y=x.nextSibling;x.remove();x=y;}tabs.insertAdjacentHTML("afterend",tela());}
+    if(on){let x=tabs.nextSibling;while(x){const y=x.nextSibling;x.remove();x=y;}tabs.insertAdjacentHTML("afterend",tela());ajustaVazio();posRail();}
     else selosNasLinhas();
   };
   if(typeof d0==="function")window.fsDetalhe=function(c){return d0.apply(this,arguments)+acaoCaso(c);};
