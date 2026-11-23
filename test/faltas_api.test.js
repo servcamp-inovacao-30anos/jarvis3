@@ -213,6 +213,90 @@ test("a cópia da planilha que as telas carregam não leva os dias da ficha nem 
   assert.equal(tab.fm_dias.length, 2, "mas o módulo guardou");
 });
 
+// ── envio pelo painel em etapas (HTTP 504 de 23/11/2026) ─────────────────────
+const enviar = (importar, query, data) => chamar(importar, { method: "POST", usuario: "aprovador", query, headers: { "content-type": "application/json" }, body: { data, source_filename: "Base dados.xlsx" } });
+
+test("etapas: o pedido principal só salva a planilha e diz quais etapas a tela manda", async () => {
+  const importar = require("../api/import");
+  const tab = tabelasVazias(); supabaseFalso(tab);
+  const r = await enviar(importar, { etapas: "cliente" }, { ...planilha(), clientes: [] });
+  assert.equal(r.statusCode, 200);
+  assert.equal(tab.dashboard_snapshots.length, 1, "a planilha foi salva");
+  assert.deepEqual(r.body.etapas, ["faltas", "dias", "ponto"]);
+  assert.equal(tab.fm_faltas.length + tab.fm_dias.length + tab.fm_medidas.length, 0, "os módulos ficam para as etapas");
+  assert.equal(r.body.faltas_medidas, undefined);
+});
+
+test("etapas: 'faltas' grava o módulo sem os dias; 'dias' grava os dias; nenhuma salva outra planilha", async () => {
+  const importar = require("../api/import");
+  const tab = tabelasVazias(); supabaseFalso(tab);
+  const f = await enviar(importar, { etapa: "faltas" }, planilha());
+  assert.equal(f.statusCode, 200);
+  assert.deepEqual([f.body.faltas_medidas.ok, f.body.faltas_medidas.faltas, f.body.faltas_medidas.medidas], [true, 1, 1]);
+  assert.deepEqual([tab.fm_faltas.length, tab.fm_medidas.length, tab.fm_dias.length], [1, 1, 0]);
+  const d = await enviar(importar, { etapa: "dias" }, planilha());
+  assert.equal(d.statusCode, 200);
+  assert.deepEqual([d.body.dias.ok, d.body.dias.gravados, d.body.dias.proximo], [true, 2, null]);
+  assert.deepEqual(tab.fm_dias.map(x => [x.re, x.data]), [[521, "2026-10-10"], [521, "2026-10-12"]]);
+  assert.equal((tab.dashboard_snapshots || []).length, 0);
+});
+
+test("etapas: etapa desconhecida é recusada; falha no banco volta 500 com o motivo", async () => {
+  const importar = require("../api/import");
+  supabaseFalso(tabelasVazias());
+  assert.equal((await enviar(importar, { etapa: "tudo" }, planilha())).statusCode, 400);
+  supabaseFalso(tabelasVazias(), { falhar: (metodo, caminho) => caminho.startsWith("fm_") });
+  const r = await enviar(importar, { etapa: "faltas" }, planilha());
+  assert.equal(r.statusCode, 500);
+  assert.match(r.body.error, /Supabase 500/);
+});
+
+test("dias da Ficha: com prazo, para entre lotes e continua do RE indicado, sem pular nem repetir", async () => {
+  const t = tabelasVazias(); const log = supabaseFalso(t);
+  const res = Array.from({ length: 100 }, (_, i) => 1000 + i);
+  const data = {
+    faltas: res.map(re => falta(re, "2026-11-18")),
+    fichaDias: Object.fromEntries(res.map(re => [re, { "2026-11-18": "FALTA", "2026-11-19": "TRABALHANDO", "2026-11-20": "FOLGA" }]))
+  };
+  let ms = 0; const relogio = () => (ms += 1000); // cada leitura do relógio anda 1 s
+  const a = await faltas.gravarDias(data, { prazoMs: 1500, relogio });
+  assert.equal(a.proximo, 1080, "parou depois de dois lotes de 40");
+  assert.equal(a.gravados, 240);
+  const b = await faltas.gravarDias(data, { de: a.proximo, prazoMs: 1500, relogio });
+  assert.deepEqual([b.proximo, b.gravados], [null, 60]);
+  assert.equal(t.fm_dias.length, 300);
+  assert.equal(new Set(t.fm_dias.map(x => x.re + "|" + x.data)).size, 300);
+  assert.ok(log.filter(x => x.metodo === "POST" && x.tabela === "fm_dias").length >= 3);
+});
+
+test("dias da Ficha: quem já tem a Ficha guardada só regrava os últimos 60 dias; pessoa nova recebe tudo", async () => {
+  const t = tabelasVazias();
+  t.fm_dias.push({ re: 521, data: "2026-08-01", situacao: "GUARDADA" }, { re: 521, data: "2026-09-10", situacao: "GUARDADA" });
+  supabaseFalso(t);
+  const r = await faltas.gravarDias({
+    faltas: [falta(521, "2026-11-20"), falta(600, "2026-11-20")],
+    fichaDias: { 521: { "2026-08-01": "NOVA", "2026-09-10": "NOVA", "2026-11-20": "NOVA" }, 600: { "2026-08-01": "NOVA", "2026-11-20": "NOVA" } }
+  });
+  assert.equal(r.gravados, 3);
+  const sit = (re, dia) => (t.fm_dias.find(x => x.re === re && x.data === dia) || {}).situacao;
+  assert.equal(sit(521, "2026-08-01"), "GUARDADA", "antes da janela, já guardado: não regrava");
+  assert.equal(sit(521, "2026-09-10"), "GUARDADA");
+  assert.equal(sit(521, "2026-11-20"), "NOVA");
+  assert.equal(sit(600, "2026-08-01"), "NOVA", "pessoa nova no módulo: a Ficha inteira");
+  assert.equal(sit(600, "2026-11-20"), "NOVA");
+});
+
+test("falta igual à já guardada não é regravada a cada planilha", async () => {
+  const t = tabelasVazias(); const log = supabaseFalso(t);
+  await faltas.materializar(planilha());
+  const antes = log.length;
+  const r = await faltas.materializar(planilha());
+  assert.equal(log.slice(antes).filter(x => x.metodo === "POST" && x.tabela === "fm_faltas").length, 0);
+  assert.deepEqual([r.faltas, r.gravadas], [1, 0]);
+  await faltas.materializar(planilha({ faltas: [falta(521, "2026-10-10", { LOCAL: "POSTO B" })] }));
+  assert.equal(t.fm_faltas[0].posto, "POSTO B", "mudou: regrava");
+});
+
 test("revisão: falta sem código que vira abonada não é marcada como 'lançado depois'", async () => {
   const t = tabelasVazias(); supabaseFalso(t);
   await faltas.materializar(planilha({ faltas: [falta(521, "2026-10-10", { ABONO: "—" })] }));

@@ -75,6 +75,8 @@ module.exports = async function handler(req, res) {
   if (req.query && req.query.modulo === "ofensiva") return require("./_ofensiva")(req, res);
   // Agenda Comercial (administração): mesmo motivo (api/_agenda.js).
   if (req.query && req.query.modulo === "agenda") return require("./_agenda")(req, res);
+  // Votação do novo nome e da nova logo do Dashboard: mesmo motivo (api/_votacao.js).
+  if (req.query && req.query.modulo === "votacao") return require("./_votacao")(req, res);
   const SUPABASE_URL = process.env.SUPABASE_URL;
   const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
