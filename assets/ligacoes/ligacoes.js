@@ -246,6 +246,7 @@ function fbDialog(id,o){
 }
 function fbFechar(id,agora){
   const ov=document.getElementById(id);if(!ov)return;
+  if(ov._aoFechar){ov._aoFechar();ov._aoFechar=null;}
   if(agora||(window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches)){ov.remove();return;}
   ov.classList.add("out");setTimeout(()=>{const o=document.getElementById(id);if(o&&o.classList.contains("out"))o.remove();},170);
 }
@@ -2370,7 +2371,7 @@ function ligSalvar(id){
    histórico do RH. Visual "Arquivo Oculto": página de fichas (papel envelhecido) e perfil em dossiê.
    Imagens em assets/ligacoes/bx-*.webp: preto irregular, papel com a borda gasta, lacre e as silhuetas de arquivo
    (homem e mulher reais, contorno tirado das fotos da referência). No hover só mudam transform e opacity. */
-let LIG_BL={pessoas:[],historico:[]},LIG_BL_Q="",LIG_BL_F="todos",LIG_BL_C="",LIG_BL_SEL="",LIG_BL_MODO="",LIG_BL_PASTA="inj",LIG_BL_RES=[],LIG_BL_NOVO=null,LIG_BL_T=0;
+let LIG_BL_BT=0,LIG_BL_VISTO=null,LIG_BL={pessoas:[],historico:[]},LIG_BL_Q="",LIG_BL_F="todos",LIG_BL_C="",LIG_BL_SEL="",LIG_BL_MODO="",LIG_BL_PASTA="inj",LIG_BL_RES=[],LIG_BL_NOVO=null,LIG_BL_T=0;
 const BL_IC={
   mais:'<path d="M12 5v14M5 12h14"/>',
   busca:'<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.3-4.3"/>',
@@ -2433,7 +2434,7 @@ function ligBL(btn){
     LIG_BL={pessoas:j.pessoas||[],historico:j.historico||[]};LIG_BL_Q="";LIG_BL_F="todos";LIG_BL_C="";LIG_BL_SEL="";LIG_BL_MODO="";LIG_BL_PASTA="inj";
     const ov=fbDialog("lig-bl",{titulo:"Black List",tam:"bx",tom:"blx",semFoco:true,corpo:''
       +'<header class="bx-top"><div class="bx-marca">'+blEmblema("bxe-g",true)+'<div class="bx-tit"><h2><span>Black</span> <em>List</em></h2><p>Módulo: Feedback de Faltas e Ligações — acesso restrito à coordenação</p></div></div>'
-      +'<div class="bx-ferr"><label class="bx-busca">'+blI("busca")+'<span class="fb-sr">Pesquisar arquivo</span><input type="search" placeholder="Pesquisar Arquivo" autocomplete="off" oninput="LIG_BL_Q=this.value;blCentral()"></label>'
+      +'<div class="bx-ferr"><label class="bx-busca">'+blI("busca")+'<span class="fb-sr">Pesquisar arquivo</span><input type="search" placeholder="Pesquisar Arquivo" autocomplete="off" oninput="LIG_BL_Q=this.value;clearTimeout(LIG_BL_BT);LIG_BL_BT=setTimeout(blCentral,120)"></label>'
       +'<label class="bx-btn bx-sel">'+blI("funil")+'<span class="fb-sr">Filtros</span><select id="bx-f" onchange="LIG_BL_F=this.value;blCentral()" aria-label="Filtros"><option value="todos">Filtros</option><option value="rec">Entraram em 30 dias</option><option value="f7">Faltaram em 7 dias</option><option value="med">Com medida disciplinar</option><option value="lig">Com ligações sem retorno</option><option value="fora">Fora dos ativos</option></select></label>'
       +'<button type="button" class="bx-btn bx-pri" onclick="ligBLAdd()">Adicionar Novo Registro</button></div></header>'
       +'<div class="bx-kpis" id="bx-kpis"></div>'
@@ -2444,9 +2445,9 @@ function ligBL(btn){
       +'<section class="bx-painel bx-dos" id="bx-dos" aria-live="polite"></section></div>'});
     const fx=ov.querySelector(".fb-dlg-h .fb-ib");if(fx)fx.innerHTML=blI("x");
     blCentral(true);
-    /* enquanto rola, nada reage ao mouse: sem efeitos de hover disparando nos cartões que passam sob o cursor */
-    const sc=ov.querySelector(".fb-dlg-b");let rt=0;
-    if(sc)sc.addEventListener("scroll",()=>{if(!rt)sc.classList.add("bx-rola");clearTimeout(rt);rt=setTimeout(()=>{rt=0;sc.classList.remove("bx-rola");},160);},{passive:true});
+    /* a tela de trás fica coberta: as animações dela param enquanto a Black List está aberta e voltam ao fechar */
+    const pausadas=document.getAnimations?document.getAnimations().filter(a=>a.playState==="running"&&!(a.effect&&ov.contains(a.effect.target))):[];
+    pausadas.forEach(a=>a.pause());ov._aoFechar=()=>pausadas.forEach(a=>{try{a.play();}catch(e){}});
     const d=ov.querySelector(".fb-dlg"),anel=ov.querySelector(".bx-emb-anel"),arco=ov.querySelector(".bx-emb-arco");
     if(fbMov()){
       /* a página sai do botão, devagar, como um arquivo sendo aberto; o anel do emblema gira e o cadeado destrava */
@@ -2517,7 +2518,7 @@ function blCentral(entra){
     return'<button type="button" class="bx-it'+(on?" on":"")+'" role="option" aria-selected="'+on+'" tabindex="'+(on?0:-1)+'" data-k="'+_esc(p.chave)+'" onclick="ligBLSel(this.dataset.k)"><span class="bx-rank">'+(i+1)+'</span>'
       +'<span class="bx-itx"><b>'+_esc(blT(p.nome))+'</b><small class="'+(s?s[0]:"")+'">'+_esc(s?s[1]:blCargo(p))+'</small></span>'+blFoto(p).replace('class="bx-foto-s"','class="bx-av"')+'</button>';}).join("")
     :'<p class="bx-tvz">'+(LIG_BL.pessoas.length?"Ninguém com esse filtro.":"Nenhuma ficha no arquivo.")+'</p>';
-  blDossie(false);
+  if(entra||!LIG_BL_VISTO||LIG_BL_VISTO[0]!==LIG_BL_SEL||LIG_BL_VISTO[1]!==LIG_BL)blDossie(false);
   if(entra)setTimeout(()=>blFolhaSobe(document.getElementById("bx-hist")),350);
   if(entra&&fbMov())[...box.children].slice(0,10).forEach((x,i)=>x.animate([{opacity:0,transform:"translate3d(-12px,0,0)"},{opacity:1,transform:"none"}],{duration:380,delay:240+i*45,easing:"cubic-bezier(.2,.8,.2,1)",fill:"backwards"}));
 }
@@ -2587,11 +2588,11 @@ function blFiMede(b){const g=b&&b.querySelector(".bx-fi-gav:not(.fechada)"),c=g&
   const l=c.querySelector(".bx-fi-lst,.bx-fi-vz"),h5=c.querySelector("h5");g.style.setProperty("--bx-fi-h",Math.max(200,Math.ceil((h5?h5.offsetHeight+8:0)+(l?l.scrollHeight:0)+48))+"px");}
 function blFiAltura(b){const g=b&&b.querySelector(".bx-fi-gav");return g?parseFloat(getComputedStyle(g).getPropertyValue("--bx-fi-h"))||320:320;}
 function blFolhaSobe(b){const d=b&&b.querySelector(".bx-fi-div.on");if(!d||!fbMov()||!d.animate)return;
-  d.animate([{transform:"translate3d(0,"+blFiAltura(b)+"px,0)"},{transform:"translate3d(0,-6px,0)",offset:.8},{transform:"none"}],{duration:720,easing:"cubic-bezier(.2,.8,.2,1)"});}
+  d.animate([{transform:"translate3d(0,"+Math.min(blFiAltura(b),260)+"px,0)"},{transform:"translate3d(0,-4px,0)",offset:.8},{transform:"none"}],{duration:420,easing:"cubic-bezier(.2,.8,.2,1)"});}
 function blTrocaPasta(b,k,monta){
   const d=b&&b.querySelector(".bx-fi-div.on");
-  if(!d||!fbMov()||!d.animate){LIG_BL_PASTA=k;monta();return;}
-  d.animate([{transform:"none"},{transform:"translate3d(0,"+blFiAltura(b)+"px,0)"}],{duration:300,easing:"cubic-bezier(.4,0,1,1)",fill:"forwards"}).onfinish=()=>{LIG_BL_PASTA=k;monta();blFolhaSobe(b);};
+  if(!d||!fbMov()||!d.animate||k){LIG_BL_PASTA=k;monta();blFolhaSobe(b);return;}
+  d.animate([{transform:"none"},{transform:"translate3d(0,"+blFiAltura(b)+"px,0)"}],{duration:220,easing:"cubic-bezier(.4,0,1,1)",fill:"forwards"}).onfinish=()=>{LIG_BL_PASTA=k;monta();};
 }
 function blPasta(k){const b=document.getElementById("bx-hist"),p=blAtual();if(!b||!p||k===LIG_BL_PASTA)return;blTrocaPasta(b,k,()=>{b.innerHTML=blPastas(blAno(p));blFiMede(b);});}
 function blPastaNovo(k){const b=document.getElementById("bl-prev-h");if(!b||!LIG_BL_NOVO||k===LIG_BL_PASTA)return;blTrocaPasta(b,k,()=>{b.innerHTML=blPastas(blAno(LIG_BL_NOVO),true);});}
@@ -2622,6 +2623,7 @@ function blAnotacoes(p){
     :'<p class="bx-tvz">Nenhuma anotação ainda. Use "Registrar ocorrência" para começar o registro.</p>';
 }
 function blDossie(anima){
+  LIG_BL_VISTO=[LIG_BL_SEL,LIG_BL];
   const box=document.getElementById("bx-dos");if(!box)return;
   const p0=blAtual();
   if(!p0){box.innerHTML='<div class="bx-vazio"><p>'+(LIG_BL.pessoas.length?"Escolha alguém na fila.":"Nenhuma ficha no arquivo.")+'</p><button type="button" class="bx-btn bx-pri" onclick="ligBLAdd()">Adicionar Novo Registro</button></div>';return;}
@@ -2642,9 +2644,8 @@ function blDossie(anima){
     +'<button type="button" class="bx-btn bx-perigo" onclick="ligBLTirar()">'+blI("sair")+'Remover da Black List</button></div>'
     +'<button type="button" class="bx-upd bx-acesso" onclick="ligBLHist()">Última atualização: '+_esc(p.alteradoPorNome||p.incluidoPorNome||"Coordenação")+' — '+blDH(p.alteradoEm||p.incluidoEm)+'</button></section></div>';
   blTlAjusta(box.querySelector(".bx-tl"));blFiMede(document.getElementById("bx-hist"));
-  if(anima)blFolhaSobe(document.getElementById("bx-hist"));
   if(!anima||!fbMov())return;
-  box.animate([{opacity:.25,transform:"translate3d(14px,0,0)"},{opacity:1,transform:"none"}],{duration:380,easing:"cubic-bezier(.2,.8,.2,1)"});
+  box.animate([{opacity:.4,transform:"translate3d(8px,0,0)"},{opacity:1,transform:"none"}],{duration:200,easing:"cubic-bezier(.2,.8,.2,1)"});
   /* o carimbo bate no papel */
   const s=box.querySelector(".bx-carimbo");if(s&&s.animate)s.animate([{opacity:0,transform:"rotate(-24deg) scale(1.6)"},{opacity:.9,transform:"rotate(-11deg) scale(.95)",offset:.7},{transform:"rotate(-12deg) scale(1)"}],{duration:460,delay:160,easing:"cubic-bezier(.3,0,.2,1)",fill:"backwards"});
 }

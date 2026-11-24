@@ -2286,9 +2286,6 @@ html[data-theme="dark"] .fb-pasta-res b{color:#f1f5f9}html[data-theme="dark"] .f
 .fb-dlg.blx.bx{width:100vw;max-width:none;height:100vh;max-height:none;border:0;border-radius:0;outline:0;box-shadow:none;
   background:radial-gradient(50% 42% at 22% -6%,rgba(255,255,255,.07),transparent 70%),radial-gradient(130% 95% at 50% 45%,transparent 45%,rgba(0,0,0,.7)),var(--bx-negro) center/cover,#060607}
 .fb-dlg.blx.bx .fb-dlg-b{padding:0 34px 34px;overflow:auto;overscroll-behavior:contain}
-.bx-rola *{pointer-events:none}
-/* com a Black List aberta, as animações da tela de trás (que fica coberta) param: não disputam quadro com a rolagem */
-body:has(>.fb-ov .fb-dlg.blx)>:not(.fb-ov),body:has(>.fb-ov .fb-dlg.blx)>:not(.fb-ov) *,body:has(>.fb-ov .fb-dlg.blx)>:not(.fb-ov) *::before,body:has(>.fb-ov .fb-dlg.blx)>:not(.fb-ov) *::after{animation-play-state:paused!important}
 .bx-top{position:relative;display:flex;align-items:flex-end;gap:24px;min-height:138px;padding:24px 64px 18px 8px}
 .bx-tit{position:relative;z-index:1}
 .bx-tit h2{margin:0;font-family:"Oswald","Roboto Condensed",sans-serif;font-size:calc(var(--t24)*2.5);font-weight:600;line-height:1;letter-spacing:.01em;text-transform:uppercase;
@@ -2386,7 +2383,7 @@ body:has(>.fb-ov .fb-dlg.blx)>:not(.fb-ov),body:has(>.fb-ov .fb-dlg.blx)>:not(.f
 .bx-papel-t:focus{outline:none;border-color:#e0e5eb;box-shadow:inset 0 2px 6px rgba(0,0,0,.35),0 0 0 3px rgba(200,210,222,.2)}
 .bx-papel-t::placeholder{color:#5c6168}
 .bx-ed{display:flex;justify-content:flex-end;gap:10px;margin-top:10px}
-.bx-baixo{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(280px,1fr);gap:28px}
+.bx-baixo{content-visibility:auto;contain-intrinsic-size:auto 520px;display:grid;grid-template-columns:minmax(0,1.7fr) minmax(280px,1fr);gap:28px}
 
 .bx-arqs{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .bx-arqs button{width:100%;display:flex;align-items:center;gap:10px;padding:7px 10px;border:1px solid #2e2e32;border-radius:4px;cursor:pointer;text-align:left;font:inherit;color:var(--bx-t1);
@@ -2527,7 +2524,7 @@ body:has(>.fb-ov .fb-dlg.blx)>:not(.fb-ov),body:has(>.fb-ov .fb-dlg.blx)>:not(.f
 .bx-fi-gav::before{content:"";position:absolute;left:0;right:0;bottom:0;height:186px;border-radius:6px 6px 0 0;background:linear-gradient(180deg,#060607,#151518);box-shadow:inset 0 14px 20px rgba(0,0,0,.9),inset 0 -2px 0 rgba(255,255,255,.05)}
 .bx-fi-div{position:absolute;z-index:2;left:20px;right:20px;bottom:0;top:calc(var(--bx-fi-h) + 32px + var(--i) * 24px);border-radius:3px 3px 0 0;cursor:pointer;
   background:linear-gradient(180deg,hsl(50 8% calc(84% - var(--i) * 3%)),hsl(50 8% calc(76% - var(--i) * 3%)));box-shadow:0 -4px 10px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.5);transition:transform .35s cubic-bezier(.2,.8,.2,1),filter .3s ease}
-.bx-fi-div:not(.on):hover{transform:translateY(-6px);filter:brightness(1.05)}
+.bx-fi-div:not(.on):hover{transform:translateY(-6px)}
 /* a puxada fica atrás das outras (as abas delas continuam à vista) e mostra os acontecimentos na parte que saiu da gaveta */
 .bx-fi-div.on{z-index:1;top:calc(32px + var(--i) * 24px);cursor:default;background:url("bx-papel.webp") center/100% 100% no-repeat,hsl(50 10% 88%);box-shadow:0 -8px 22px rgba(0,0,0,.65),inset 0 1px 0 rgba(255,255,255,.6);will-change:transform}
 .bx-fi-tab{position:absolute;top:-26px;height:27px;padding:0 12px;display:flex;align-items:center;gap:8px;border:0;border-radius:6px 6px 0 0;cursor:pointer;background:inherit;box-shadow:0 -2px 4px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.5);
