@@ -23,6 +23,7 @@ test("vCard: linhas de até 75 bytes, CRLF, campos que o celular precisa", () =>
   v.split("\r\n").forEach(l => assert.ok(Buffer.byteLength(l) <= 75, "linha longa: " + l));
   assert.match(v, /\r\nFN:Gabriela Alvarenga\r\n/);
   assert.match(v, /\r\nTEL;TYPE=WORK,VOICE:\+551931143778\r\n/);
+  assert.match(v, /\r\nTEL;TYPE=CELL,VOICE:\+5519974119536\r\n/);
   assert.match(v, /\r\nEMAIL;TYPE=INTERNET,WORK:comercial@gruposervcamp\.com\.br\r\n/);
   assert.match(v.replace(/\r\n /g, ""), /ADR;TYPE=WORK:;;Av\. Dermival Bernardes Siqueira\\, 3\.582/);
 });

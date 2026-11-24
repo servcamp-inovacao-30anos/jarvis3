@@ -32,7 +32,7 @@
       cargo: "Comercial",
       foto: "/assets/cartao/gabi.jpg",
       email: "comercial@gruposervcamp.com.br",
-      celular: "",   // ex.: "(19) 99999-9999" — com ele aparecem os botões WhatsApp e Ligar no celular
+      celular: "(19) 97411-9536",   // com ele aparecem o botão WhatsApp e a ligação direta para o celular
       whatsapp: "",  // vazio = usa o celular
       contato: "/assets/cartao/contato/gabriela-alvarenga.vcf"
     }

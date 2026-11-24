@@ -125,7 +125,7 @@
   // Cartão 9 × 5 cm, frente e verso, numa folha A4 — imprimir em papel ou "Salvar como PDF" para a gráfica
   raiz.cvImprimir = () => {
     const ap = pessoaAtual(), p = C().CARTOES[ap], E = C().EMPRESA, link = url(ap), o = location.origin;
-    const tels = [p.celular ? "Cel. " + p.celular : "", ...E.fixos].filter(Boolean).join("  ·  ");
+    const fixos = E.fixos.join("  ·  ");
     const w = window.open("", "_blank");
     if (!w) { toast("⚠️ O navegador bloqueou a janela de impressão. Libere pop-ups para o painel."); return; }
     w.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Cartão de visita — ${esc(p.nome)}</title><style>
@@ -138,7 +138,7 @@
       .f{background:#fff;padding:5mm 5mm 4mm 9mm}
       .f:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3.2mm;background:#0d1f35;border-right:1mm solid #facc15}
       .f .logo{position:absolute;right:4mm;top:3.5mm;width:30mm}
-      .f h1{margin:11mm 0 0;font-size:15pt;line-height:1.1;letter-spacing:-.2px}
+      .f h1{margin:7.5mm 0 0;font-size:15pt;line-height:1.1;letter-spacing:-.2px}
       .f .cg{margin:.8mm 0 0;font-size:8.5pt;color:#2148c4;font-weight:700}
       .f ul{list-style:none;margin:3mm 0 0;padding:0;font-size:7pt;line-height:1.5;color:#334155}
       @media screen{body{padding:10mm}}
@@ -158,7 +158,8 @@
         <h1>${esc(p.nome)}</h1>
         <p class="cg">${esc(p.cargo)}</p>
         <ul>
-          <li><b>Tel.</b> ${esc(tels)}</li>
+          ${p.celular ? `<li><b>Cel./WhatsApp</b> ${esc(p.celular)}</li>` : ""}
+          <li><b>Tel.</b> ${esc(fixos)}</li>
           <li><b>E-mail</b> ${esc(p.email)}</li>
           <li><b>Site</b> ${esc(E.siteTexto)}</li>
           <li>${esc(E.endereco.rua)} - ${esc(E.endereco.bairro)} · ${esc(E.endereco.cidade)}/${esc(E.endereco.uf)}</li>
