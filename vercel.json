@@ -24,7 +24,16 @@
     "api/import.js": { "maxDuration": 60 },
     "api/ligacoes.js": { "maxDuration": 30 }
   },
+  "rewrites": [
+    { "source": "/cartao/:apelido", "destination": "/cartao.html" }
+  ],
   "headers": [
+    {
+      "source": "/assets/cartao/contato/(.*)",
+      "headers": [
+        { "key": "Content-Type", "value": "text/vcard; charset=utf-8" }
+      ]
+    },
     {
       "source": "/(.*)",
       "headers": [

@@ -1,0 +1,60 @@
+/* Página do cartão de visita (cartao.html). Pensada para o celular de quem leu o QR Code;
+   no computador fica centralizada. Cores do Grupo ServCamp: azul-marinho do painel, azul da logo, verde e amarelo. */
+:root{--az:#0d1f35;--az2:#1e4d8c;--azl:#2148c4;--vd:#15803d;--vd2:#16a34a;--am:#facc15;--cz:#64748b;--bd:#e2e8f0;--fd:#eef2f7}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--fd);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--az);min-height:100vh;display:flex;flex-direction:column}
+a{color:inherit}
+
+.ct-hero{background:linear-gradient(135deg,#0d1f35 0%,#14335a 60%,#1e4d8c 100%);border-bottom:4px solid var(--am);height:130px}
+
+.ct{width:100%;max-width:480px;margin:-104px auto 0;padding:0 16px 20px;flex:1;display:flex;flex-direction:column;gap:14px}
+.ct-msg{background:#fff;border-radius:18px;padding:40px 20px;text-align:center;color:var(--cz)}
+
+.ct-cartao{background:#fff;border-radius:22px;padding:18px 18px 20px;text-align:center;box-shadow:0 14px 40px rgba(13,31,53,.14);border-top:5px solid var(--azl)}
+.ct-logo{display:block;width:200px;max-width:70%;height:auto;margin:0 auto 6px}
+.ct-foto{display:block;width:120px;height:120px;border-radius:50%;object-fit:cover;margin:6px auto 12px;box-shadow:0 0 0 4px #fff,0 0 0 7px var(--am),0 10px 24px rgba(13,31,53,.25)}
+.ct-cartao h1{margin:0;font-size:1.55rem;line-height:1.2;letter-spacing:-.2px}
+.ct-cargo{margin:4px 0 16px;color:var(--cz);font-size:.95rem;font-weight:600}
+
+.ct-salvar{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:15px 18px;border-radius:14px;background:var(--vd);color:#fff;text-decoration:none;font-weight:800;font-size:1.05rem;box-shadow:0 8px 20px rgba(21,128,61,.28);transition:background .15s,transform .1s}
+.ct-salvar:hover{background:var(--vd2)}
+.ct-salvar:active{transform:scale(.98)}
+.ct-salvar svg{width:22px;height:22px}
+
+/* 3 por linha; a última linha estica (5 botões = 3 + 2). Com 4, fica 2 + 2. */
+.ct-acoes{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.ct-ac{flex:1 1 calc(33.333% - 6px);min-width:0}
+.ct-acoes[data-n="4"] .ct-ac,.ct-acoes[data-n="2"] .ct-ac{flex-basis:calc(50% - 4px)}
+.ct-ac{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:72px;padding:10px 4px;border-radius:14px;border:1px solid var(--bd);background:#f8fafc;color:var(--az2);text-decoration:none;font:inherit;font-weight:700;font-size:.78rem;cursor:pointer;transition:background .15s,border-color .15s,transform .1s}
+.ct-ac:hover{background:#eef4ff;border-color:#c7d6f5}
+.ct-ac:active{transform:scale(.97)}
+.ct-ac svg{width:22px;height:22px}
+.ct-ac-zap{background:#ecfdf3;border-color:#bbf7d0;color:var(--vd)}
+.ct-ac-zap:hover{background:#dcfce7;border-color:#86efac}
+
+.ct-bloco{background:#fff;border-radius:18px;padding:18px;box-shadow:0 6px 20px rgba(13,31,53,.06)}
+.ct-bloco h2{margin:0 0 8px;font-size:1rem}
+.ct-bloco p{margin:0 0 12px;color:#334155;font-size:.92rem;line-height:1.55}
+.ct-serv{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
+.ct-serv li{display:flex;align-items:center;gap:9px;font-size:.9rem;font-weight:600;color:#1e293b}
+.ct-serv svg{flex:0 0 18px;width:18px;height:18px;padding:3px;border-radius:50%;background:#dcfce7;color:var(--vd);stroke-width:3}
+
+.ct-lista{list-style:none;margin:0;padding:0}
+.ct-lista li{display:flex;gap:12px;align-items:flex-start;padding:11px 0;border-top:1px solid var(--bd)}
+.ct-lista li:first-child{border-top:0;padding-top:2px}
+.ct-lista svg{flex:0 0 20px;width:20px;height:20px;margin-top:2px;color:var(--az2)}
+.ct-lista div{min-width:0;font-size:.92rem;line-height:1.45}
+.ct-lista small{display:block;color:var(--cz);font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+.ct-lista a{font-weight:600;text-decoration:none;overflow-wrap:anywhere}
+.ct-lista a:hover{text-decoration:underline}
+.ct-sep{font-style:normal;color:#94a3b8;margin:0 6px}
+.ct-nw{white-space:nowrap}
+
+.ct-rod{text-align:center;color:#94a3b8;font-size:.75rem;padding:6px 16px 22px}
+
+@media (min-width:600px){
+  .ct-hero{height:180px}
+  .ct{margin-top:-120px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}

@@ -911,6 +911,7 @@ aside.sb#sidebar.sb-mini #navRoot .ni{margin:2px 8px;padding:9px 0;}
     <div class="nav-cat-b">
       <div class="ni" data-pg="compro" data-perm="com" onclick="navTo('compro',this)"><span class="ni-ic">💼</span><span>Propostas e Serviços Extras</span><span hidden>cadência cadencia reforço</span><span class="nib nib-novo">NOVO</span></div>
       <div class="ni" data-pg="agenda" data-perm="agenda" onclick="navTo('agenda',this)"><span class="ni-ic">📅</span><span>Agenda Comercial</span><span hidden>reunião reuniao agendar agendamento link cliente captação</span><span class="nib nib-novo">NOVO</span></div>
+      <div class="ni" data-pg="cartao" data-perm="com" onclick="navTo('cartao',this)"><span class="ni-ic">🪪</span><span>Cart&atilde;o de Visita</span><span hidden>qr qrcode cartao visita contato apresentacao gabi gabriela</span><span class="nib nib-novo">NOVO</span></div>
     </div>
   </div>
   <div class="nav-cat" data-cat="dir">
@@ -1957,6 +1958,10 @@ aside.sb#sidebar.sb-mini #navRoot .ni{margin:2px 8px;padding:9px 0;}
   <div class="page" id="pg-agenda">
     <div class="sec-hdr"><span class="sec-hdr-ic">📅</span><div><div class="sec-hdr-t">Agenda Comercial</div><div class="sec-hdr-sub">Reuniões com clientes e captação: mande o link, o cliente escolhe um horário livre e nada fica em cima de nada.</div></div></div>
     <div id="ag-content"><div style="padding:40px;text-align:center;color:#94a3b8;font-size:.85rem">Carregando…</div></div>
+  </div>
+  <div class="page" id="pg-cartao">
+    <div class="sec-hdr"><span class="sec-hdr-ic">🪪</span><div><div class="sec-hdr-t">Cartão de Visita</div><div class="sec-hdr-sub">O QR Code que abre o cartão digital: o cliente aponta a câmera, salva o contato e conhece o Grupo ServCamp.</div></div></div>
+    <div id="cv-content"><div style="padding:40px;text-align:center;color:#94a3b8;font-size:.85rem">Carregando…</div></div>
   </div>
   <div class="page" id="pg-saude">
     <div class="sec-hdr"><span class="sec-hdr-ic">🩺</span><div><div class="sec-hdr-t">Saúde do Cliente</div><div class="sec-hdr-sub">Quem está em risco — e por quê. Faltas de contrato, postos descobertos e visita do supervisor nos últimos 30 dias.</div></div></div>
@@ -4710,7 +4715,7 @@ function setTurno(t,btn){document.querySelectorAll("#trnoPg .pi").forEach(b=>b.c
 function setArea(){ST.area=document.getElementById("areaS").value;rpg();refresh();}
 function rpg(){Object.keys(ST.tpg).forEach(k=>ST.tpg[k]=1);}
 
-const PTITLES={saude:"Saúde do Cliente",fmrel:"Relatório de Faltas x Medidas",metas:"Metas da Diretoria",visao:"Visão Geral",ativos:"Funcionários Ativos",clientes:"Clientes",celulares:"Celulares — Controle dos Aparelhos",agenda:"Agenda Comercial",votacao:"Votação — novo nome e nova logo",faltas:"Faltas & Top 10",coberturas:"Coberturas",postos:"Justificativa de Postos Descobertos",os:"OS Avulsos",fts:"FTS",dispo:"Sem Alocação",restec:"Reservas Técnicas",hrextra:"Horas Extras",checklist:"Check List",rhvagas:"RH — Controle de Vagas",rhentrev:"RH — Entrevistas & Funil",rhdesl:"RH — Desligamentos",rhres:"RH — Reservas → Efetivação",rhtrein:"RH — Treinamentos",rhdash:"Painel RH — Diretoria",compro:"Comercial — Propostas e Serviços Extras",comdash:"Painel Comercial",config:"Configurações — Acessos & Usuários",sede:"Base Virtual — Equipe",prj:"Projetos — Evolução & Inovação",audqual:"Auditoria de Qualidade",ligacoes:"Feedback de Faltas",faltasmed:"Faltas x Medidas",bdvrel:"Relatório de Coberturas do Supervisor",faltassup:"Acompanhamento de Medidas (Supervisão)",apres:"Apresentação"};
+const PTITLES={saude:"Saúde do Cliente",cartao:"Cartão de Visita",fmrel:"Relatório de Faltas x Medidas",metas:"Metas da Diretoria",visao:"Visão Geral",ativos:"Funcionários Ativos",clientes:"Clientes",celulares:"Celulares — Controle dos Aparelhos",agenda:"Agenda Comercial",votacao:"Votação — novo nome e nova logo",faltas:"Faltas & Top 10",coberturas:"Coberturas",postos:"Justificativa de Postos Descobertos",os:"OS Avulsos",fts:"FTS",dispo:"Sem Alocação",restec:"Reservas Técnicas",hrextra:"Horas Extras",checklist:"Check List",rhvagas:"RH — Controle de Vagas",rhentrev:"RH — Entrevistas & Funil",rhdesl:"RH — Desligamentos",rhres:"RH — Reservas → Efetivação",rhtrein:"RH — Treinamentos",rhdash:"Painel RH — Diretoria",compro:"Comercial — Propostas e Serviços Extras",comdash:"Painel Comercial",config:"Configurações — Acessos & Usuários",sede:"Base Virtual — Equipe",prj:"Projetos — Evolução & Inovação",audqual:"Auditoria de Qualidade",ligacoes:"Feedback de Faltas",faltasmed:"Faltas x Medidas",bdvrel:"Relatório de Coberturas do Supervisor",faltassup:"Acompanhamento de Medidas (Supervisão)",apres:"Apresentação"};
 
 /* ── Sidebar 2.0: accordion com estado salvo + busca de módulos ── */
 function navCatToggle(k){
@@ -4856,6 +4861,7 @@ function navTo(p,btn){
   else if(p==="celulares"){if(typeof celLoad==="function")celLoad();}
   else if(p==="saude"){sauRender();} // dados já vêm no batimento (/api/hq); desenha na hora, sem esperar o próximo
   else if(p==="agenda"){if(typeof agLoad==="function")agLoad();}
+  else if(p==="cartao"){if(typeof cvLoad==="function")cvLoad();} // assets/cartao/painel.js
   else if(p==="votacao"){if(typeof votLoad==="function")votLoad();}
   else if(p==="rhvagas"){rhLoad();}
   else if(p==="rhentrev"){rhEntLoad();}
@@ -19088,5 +19094,6 @@ document.addEventListener("DOMContentLoaded",init);
 <link rel="stylesheet" href="/assets/agenda/agenda.css"><script src="/assets/agenda/agenda.js"></script><script src="/assets/sessao/guias.js"></script>
 <link rel="stylesheet" href="/assets/votacao/votacao.css"><script src="/assets/votacao/votacao.js"></script>
 <link rel="stylesheet" href="/assets/medida/assinatura.css"><script src="/assets/vendor/qrcode-generator.js"></script><script src="/assets/medida/assinatura.js"></script>
+<link rel="stylesheet" href="/assets/cartao/painel.css"><script src="/assets/cartao/cartoes.js"></script><script src="/assets/cartao/painel.js"></script>
 </body>
 </html>

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 140" role="img" aria-label="Grupo ServCamp terceirizações — 30 anos">
+  <!-- Logo do Grupo ServCamp em vetor (o mesmo desenho do modo TV do painel), versão para fundo claro, com o selo de 30 anos. -->
+  <defs>
+    <linearGradient id="lgC" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c3c7cd"/><stop offset="1" stop-color="#7f858e"/></linearGradient>
+    <linearGradient id="lgA" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4f86ff"/><stop offset="1" stop-color="#2148c4"/></linearGradient>
+    <clipPath id="lcC"><rect x="-20" y="-20" width="122" height="260"/></clipPath>
+    <clipPath id="lcA"><rect x="16" y="-20" width="140" height="260"/></clipPath>
+  </defs>
+  <g transform="translate(4 2)">
+    <g clip-path="url(#lcC)">
+      <path d="M103.54 41.46A47 47 0 1 0 55.36 94.97L56.27 68.99A21 21 0 1 1 77.8 45.08Z" fill="#5d636d" transform="translate(-6 3)"/>
+      <path d="M103.54 41.46A47 47 0 1 0 55.36 94.97L56.27 68.99A21 21 0 1 1 77.8 45.08Z" fill="url(#lgC)"/>
+    </g>
+    <g clip-path="url(#lcA)">
+      <path d="M52.84 45.71A47 47 0 1 1 14.46 85.46L40.2 89.08A21 21 0 1 0 57.35 71.32Z" fill="#14307f" transform="translate(-6 3)"/>
+      <path d="M52.84 45.71A47 47 0 1 1 14.46 85.46L40.2 89.08A21 21 0 1 0 57.35 71.32Z" fill="url(#lgA)"/>
+    </g>
+  </g>
+  <text x="132" y="44" font-size="25" fill="#7f858e" style="font-family:Segoe UI,Arial,sans-serif;font-weight:400">Grupo</text>
+  <text x="124" y="96" font-size="54" font-style="italic" textLength="268" lengthAdjust="spacingAndGlyphs" style="font-family:Segoe UI Black,Arial Black,Segoe UI,Arial,sans-serif;font-weight:900;letter-spacing:-1px"><tspan fill="#8a9099">SERV</tspan><tspan fill="#2148c4">CAMP</tspan></text>
+  <text x="390" y="126" font-size="21" fill="#2f4fb0" text-anchor="end" style="font-family:Segoe UI,Arial,sans-serif;font-weight:400">terceirizações</text>
+  <text x="352" y="48" font-size="44" font-style="italic" fill="#2148c4" text-anchor="end" style="font-family:Segoe UI Black,Arial Black,Segoe UI,Arial,sans-serif;font-weight:900">30</text>
+  <text x="355" y="22" font-size="13" fill="#2148c4" style="font-family:Segoe UI,Arial,sans-serif;font-weight:700">anos</text>
+</svg>
