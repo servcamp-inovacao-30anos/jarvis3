@@ -2444,6 +2444,9 @@ function ligBL(btn){
       +'<section class="bx-painel bx-dos" id="bx-dos" aria-live="polite"></section></div>'});
     const fx=ov.querySelector(".fb-dlg-h .fb-ib");if(fx)fx.innerHTML=blI("x");
     blCentral(true);
+    /* enquanto rola, nada reage ao mouse: sem efeitos de hover disparando nos cartões que passam sob o cursor */
+    const sc=ov.querySelector(".fb-dlg-b");let rt=0;
+    if(sc)sc.addEventListener("scroll",()=>{if(!rt)sc.classList.add("bx-rola");clearTimeout(rt);rt=setTimeout(()=>{rt=0;sc.classList.remove("bx-rola");},160);},{passive:true});
     const d=ov.querySelector(".fb-dlg"),anel=ov.querySelector(".bx-emb-anel"),arco=ov.querySelector(".bx-emb-arco");
     if(fbMov()){
       /* a página sai do botão, devagar, como um arquivo sendo aberto; o anel do emblema gira e o cadeado destrava */
@@ -2579,6 +2582,9 @@ function blPastas(p,novo){
     +'<div class="bx-fi-frente"><span class="bx-fi-et">Histórico '+blIni().slice(0,4)+'</span><span class="bx-fi-pux" aria-hidden="true"></span></div></div>';
 }
 /* a divisória sai da gaveta: sobe devagar, passa um pouco e assenta. "desce" faz o caminho de volta antes de trocar */
+/* a divisória puxada cresce até caber tudo: sem barra de rolagem dentro dela, a roda do mouse rola a página sem "prender" no meio */
+function blFiMede(b){const g=b&&b.querySelector(".bx-fi-gav:not(.fechada)"),c=g&&g.querySelector(".bx-fi-cont");if(!c||!c.offsetHeight)return;
+  const l=c.querySelector(".bx-fi-lst,.bx-fi-vz"),h5=c.querySelector("h5");g.style.setProperty("--bx-fi-h",Math.max(200,Math.ceil((h5?h5.offsetHeight+8:0)+(l?l.scrollHeight:0)+48))+"px");}
 function blFiAltura(b){const g=b&&b.querySelector(".bx-fi-gav");return g?parseFloat(getComputedStyle(g).getPropertyValue("--bx-fi-h"))||320:320;}
 function blFolhaSobe(b){const d=b&&b.querySelector(".bx-fi-div.on");if(!d||!fbMov()||!d.animate)return;
   d.animate([{transform:"translate3d(0,"+blFiAltura(b)+"px,0)"},{transform:"translate3d(0,-6px,0)",offset:.8},{transform:"none"}],{duration:720,easing:"cubic-bezier(.2,.8,.2,1)"});}
@@ -2587,7 +2593,7 @@ function blTrocaPasta(b,k,monta){
   if(!d||!fbMov()||!d.animate){LIG_BL_PASTA=k;monta();return;}
   d.animate([{transform:"none"},{transform:"translate3d(0,"+blFiAltura(b)+"px,0)"}],{duration:300,easing:"cubic-bezier(.4,0,1,1)",fill:"forwards"}).onfinish=()=>{LIG_BL_PASTA=k;monta();blFolhaSobe(b);};
 }
-function blPasta(k){const b=document.getElementById("bx-hist"),p=blAtual();if(!b||!p||k===LIG_BL_PASTA)return;blTrocaPasta(b,k,()=>{b.innerHTML=blPastas(blAno(p));});}
+function blPasta(k){const b=document.getElementById("bx-hist"),p=blAtual();if(!b||!p||k===LIG_BL_PASTA)return;blTrocaPasta(b,k,()=>{b.innerHTML=blPastas(blAno(p));blFiMede(b);});}
 function blPastaNovo(k){const b=document.getElementById("bl-prev-h");if(!b||!LIG_BL_NOVO||k===LIG_BL_PASTA)return;blTrocaPasta(b,k,()=>{b.innerHTML=blPastas(blAno(LIG_BL_NOVO),true);});}
 /* cada registro numa ficha pautada, a mais nova em cima; a anotação geral fica presa por um clipe no topo.
    Na tela, texto longo vem recolhido (3 linhas) com "Ler tudo"; na janela ampliada (inteiro=true) tudo aparece aberto. */
@@ -2612,7 +2618,7 @@ function blAnotacoes(p){
   if(LIG_BL_MODO==="oc")return'<label class="fb-sr" for="bx-oc">Nova ocorrência</label><textarea id="bx-oc" class="bx-papel-t" maxlength="1000" placeholder="O que aconteceu (a data e o seu nome entram sozinhos)"></textarea>'
     +'<div class="bx-ed"><button type="button" class="bx-btn" onclick="LIG_BL_MODO=\'\';blDossie()">Cancelar</button><button type="button" class="bx-btn bx-pri" onclick="ligBLOcorrencia()">Registrar ocorrência</button></div>';
   const l=blNotas(p,false);
-  return l?'<div class="bx-nts" tabindex="0" aria-label="Anotações internas, da mais recente para a mais antiga">'+l+'</div>'
+  return l?'<div class="bx-nts">'+l+'</div>'
     :'<p class="bx-tvz">Nenhuma anotação ainda. Use "Registrar ocorrência" para começar o registro.</p>';
 }
 function blDossie(anima){
@@ -2635,7 +2641,7 @@ function blDossie(anima){
     +'<button type="button" class="bx-btn" onclick="LIG_BL_MODO=\'nota\';blDossie();blFoca(\'bx-obs\')">'+blI("lapis")+'Editar anotação</button>'
     +'<button type="button" class="bx-btn bx-perigo" onclick="ligBLTirar()">'+blI("sair")+'Remover da Black List</button></div>'
     +'<button type="button" class="bx-upd bx-acesso" onclick="ligBLHist()">Última atualização: '+_esc(p.alteradoPorNome||p.incluidoPorNome||"Coordenação")+' — '+blDH(p.alteradoEm||p.incluidoEm)+'</button></section></div>';
-  blTlAjusta(box.querySelector(".bx-tl"));
+  blTlAjusta(box.querySelector(".bx-tl"));blFiMede(document.getElementById("bx-hist"));
   if(anima)blFolhaSobe(document.getElementById("bx-hist"));
   if(!anima||!fbMov())return;
   box.animate([{opacity:.25,transform:"translate3d(14px,0,0)"},{opacity:1,transform:"none"}],{duration:380,easing:"cubic-bezier(.2,.8,.2,1)"});

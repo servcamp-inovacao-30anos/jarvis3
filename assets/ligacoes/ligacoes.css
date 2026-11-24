@@ -2285,7 +2285,10 @@ html[data-theme="dark"] .fb-pasta-res b{color:#f1f5f9}html[data-theme="dark"] .f
 .fb-ov:has(.fb-dlg.bx){padding:0}
 .fb-dlg.blx.bx{width:100vw;max-width:none;height:100vh;max-height:none;border:0;border-radius:0;outline:0;box-shadow:none;
   background:radial-gradient(50% 42% at 22% -6%,rgba(255,255,255,.07),transparent 70%),radial-gradient(130% 95% at 50% 45%,transparent 45%,rgba(0,0,0,.7)),var(--bx-negro) center/cover,#060607}
-.fb-dlg.blx.bx .fb-dlg-b{padding:0 34px 34px;overflow:auto}
+.fb-dlg.blx.bx .fb-dlg-b{padding:0 34px 34px;overflow:auto;overscroll-behavior:contain}
+.bx-rola *{pointer-events:none}
+/* com a Black List aberta, as animações da tela de trás (que fica coberta) param: não disputam quadro com a rolagem */
+body:has(>.fb-ov .fb-dlg.blx)>:not(.fb-ov),body:has(>.fb-ov .fb-dlg.blx)>:not(.fb-ov) *,body:has(>.fb-ov .fb-dlg.blx)>:not(.fb-ov) *::before,body:has(>.fb-ov .fb-dlg.blx)>:not(.fb-ov) *::after{animation-play-state:paused!important}
 .bx-top{position:relative;display:flex;align-items:flex-end;gap:24px;min-height:138px;padding:24px 64px 18px 8px}
 .bx-tit{position:relative;z-index:1}
 .bx-tit h2{margin:0;font-family:"Oswald","Roboto Condensed",sans-serif;font-size:calc(var(--t24)*2.5);font-weight:600;line-height:1;letter-spacing:.01em;text-transform:uppercase;
@@ -2557,7 +2560,7 @@ html[data-theme="dark"] .fb-pasta-res b{color:#f1f5f9}html[data-theme="dark"] .f
 @media (prefers-reduced-motion:reduce){.bx-it,.bx-bar,.bx-fi-div,.bx-mk,.bx-kpi,.bx-fi-x{transition:none}.bx-kpi:hover{transform:none}.bx-fi-div:not(.on):hover{transform:none}}
 /* anotações: fichas pautadas, uma por registro, a mais nova em cima */
 .bx-cont{display:inline-block;margin-left:6px;padding:0 6px;border:1px solid #3a3a3f;border-radius:3px;color:#e4e4e7;font-size:var(--t12)}
-.bx-nts{display:grid;gap:14px;max-height:460px;overflow:auto;padding:6px 8px 8px 2px;scrollbar-width:thin;scrollbar-color:#3a3a3f transparent}
+.bx-nts{display:grid;gap:14px;padding:6px 8px 8px 2px}
 .bx-nt{position:relative;padding:12px 18px 10px 30px;border-radius:2px;color:#1b1d20;background:url("bx-papel.webp") center/100% 100% no-repeat,#dcdcd6;box-shadow:0 8px 16px rgba(0,0,0,.55),0 1px 2px rgba(0,0,0,.6)}
 .bx-nt::before{content:"";position:absolute;left:20px;top:0;bottom:0;width:1px;background:rgba(190,60,60,.5)}
 .bx-nt header{display:flex;align-items:center;gap:10px;margin-bottom:4px}
