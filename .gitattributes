@@ -1,0 +1,2 @@
+# vCard exige fim de linha CRLF: guarda o arquivo como está, sem conversão
+assets/cartao/contato/*.vcf -text
