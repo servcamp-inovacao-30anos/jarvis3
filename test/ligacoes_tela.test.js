@@ -832,6 +832,9 @@ test("Black List (central): botão só da coordenação; indicadores, distribui�
   const l = e.els["bx-lista"].innerHTML;
   assert.match(l, /bx-rank">1<\/span><span class="bx-itx"><b>Sergio Lima<\/b><small class="v">Faltou nos últimos 7 dias[\s\S]*bx-rank">2<\/span><span class="bx-itx"><b>Aline Rocha<\/b><small class="a">Medida a lançar no SAR2G[\s\S]*Carlos Almeida<\/b><small class="g">Sem faltas há 114 dias/, "fila: quem pede ação primeiro, com o motivo; quem está há muito tempo sem faltar por último, em verde");
   assert.match(l, /class="bx-it on" role="option" aria-selected="true"[^>]*data-k="2\|SERGIO"/, "o primeiro da fila já vem aberto");
+  assert.match(l, /^<div class="bx-grp-at" role="group" aria-label="Atenção imediata"><p class="bx-grp" aria-hidden="true"><i class="bx-lamp"><\/i>Atenção imediata<\/p><button[^>]*data-k="2\|SERGIO" data-r="v"[^]*?<\/button><\/div><div role="group" aria-label="Demais">[\s\S]*data-r="a"[\s\S]*Aline/, "quem está em vermelho no topo vai para Atenção imediata; o resto em Demais, com a faixa de risco");
+  assert.match(l, /data-k="2\|SERGIO"[^]*?<span class="bx-sem" data-tip="Últimas 8 semanas · 3 faltas">(<i[^>]*><\/i>){8}<\/span>/, "8 semanas de faltas na fila");
+  assert.deepEqual(JSON.parse(e.run("JSON.stringify([...blSemanas({injustificadas:['2026-11-01','2026-11-18','2026-11-20','2026-09-01']}).matchAll(/<i( class=\"t\")?/g)].map(m=>m[1]?1:0))")), [0, 0, 0, 0, 1, 0, 0, 1], "a barrinha da direita é a semana de hoje; falta de mais de 8 semanas fica de fora");
   e.run("LIG_BL_C='Porteiro (A)';blCentral()");
   assert.ok(/SERGIO|Sergio/.test(e.els["bx-lista"].innerHTML) && !/Aline/.test(e.els["bx-lista"].innerHTML), "clicar no cargo filtra a fila");
   e.run("LIG_BL_C='';ligBLKpi('med')");
@@ -850,18 +853,25 @@ test("Black List (central): dossiê com RE, nome, cargo, supervisor, admissão, 
     pendentesSar2g: 0, incluidoEm: "2026-09-01T12:00:00Z", incluidoPorNome: "Jussilene Almeida", alteradoEm: "2026-11-10T17:32:00Z", alteradoPorNome: "Raphael Victor" };
   e.run("LIG_HOJE='2026-11-23';LIG_BL=" + JSON.stringify({ pessoas: [pessoa], historico: [] }) + ";LIG_BL_Q='';LIG_BL_F='todos';LIG_BL_C='';LIG_BL_SEL='';LIG_BL_MODO='';LIG_BL_PASTA='inj';blCentral();");
   const d = e.els["bx-dos"].innerHTML;
-  [["RE", "9402"], ["Nome", "Marcos A Silva"], ["Cargo", "Porteiro \\(A\\)"], ["Supervisor", "Frank Pimentel"], ["Admissão", "12\\/03\\/2021"], ["Último posto efetivo", "Cond\\. Mirante"]]
+  [["Supervisor", "Frank Pimentel"], ["Admissão", "12\\/03\\/2021"], ["Situação", "Ativo"]]
     .forEach(([r, v]) => assert.match(d, new RegExp("<dt>" + r + "</dt><dd>" + v), r));
+  ["RE", "Nome", "Cargo", "Último posto efetivo"].forEach(r => assert.ok(!d.includes("<dt>" + r + "</dt>"), r + " já está na ficha, não repete ao lado"));
+  assert.match(d, /RE:<\/span> #9402[\s\S]*Cargo:<\/span> Porteiro \(A\)[\s\S]*Posto:<\/span> Cond\. Mirante/, "a ficha mostra RE, cargo e posto");
+  assert.match(d, /<div class="bx-pasta"><span class="bx-pasta-aba">Marcos A Silva · RE 9402<\/span><div class="bx-dtopo">[\s\S]*class="bx-clip bx-clip-f"[\s\S]*<\/div><section class="bx-sec"><p class="bx-h4">Linha do tempo/, "dossiê dentro da pasta com o nome na aba e o clipe na foto");
   assert.match(d, /bx-sil-h3\.webp/, "silhueta de homem pelo nome, variante pelo RE");
-  assert.match(d, /Linha do tempo · 2026[\s\S]*class="bx-mk f" data-p="[\d.]+" style="left:[\d.]+%" title="03\/02\/2026 · Falta injustificada"/, "linha do tempo do ano");
-  const xs = [...d.matchAll(/class="bx-mk [a-z]+" data-p="[\d.]+" style="left:([\d.]+)%"/g)].map(m => Number(m[1]));
-  assert.ok(xs.length === 7 && xs.every((v, k) => !k || v - xs[k - 1] >= 1.79) && xs.every(v => v >= 0 && v <= 100), "todos na linha, sem um cobrir o outro: " + xs);
+  const cols = [...d.matchAll(/class="bx-tm((?: [a-z]+)*)"/g)].map(m => m[1]);
+  assert.equal(cols.length, 12, "uma coluna por mês");
+  assert.deepEqual([cols[0], cols[10], cols[11]], [" vz", " on", " fut"], "janeiro vazio, novembro é o mês atual, dezembro ainda não chegou");
+  assert.match(d, /data-tip="Novembro · 2026&#10;1 falta injustificada&#10;1 sem retorno do SAC&#10;1 ocorrência" aria-label="Novembro · 2026: 1 falta injustificada, 1 sem retorno do SAC, 1 ocorrência" onclick="blMes\(11\)"><span class="bx-tm-b" style="height:\d+px"><i class="f" style="flex-grow:1"><\/i><i class="s"[^>]*><\/i><i class="o"/, "novembro: total do mês empilhado por tipo, com o detalhe no balão");
+  assert.match(d, /Setembro · 2026&#10;Nenhum registro&#10;Entrou na Black List"[^>]*><em class="bx-tm-in"/, "bandeirinha no mês em que entrou na lista");
+  assert.ok(!/bx-mk/.test(d), "sem as bolinhas soltas");
   assert.ok(!/bx-orn2/.test(d), "ficha sem os enfeites nos cantos");
   assert.ok(!/20\/12\/2025/.test(d), "o histórico é o do ano: falta do ano passado fica de fora");
   assert.match(d, /<div class="bx-fi-div on" style="--i:0" data-k="inj"><button type="button" role="tab" class="bx-fi-tab" aria-selected="true"[^>]*><i[^>]*><\/i>Faltas injustificadas<b>2<\/b>[\s\S]*Medidas disciplinares<b>1<\/b>[\s\S]*Faltas abonadas<b>1<\/b>[\s\S]*Ligações sem retorno<b>1<\/b>/, "fichário: divisórias com a quantidade do ano");
   assert.ok(!/Ocorrências<b>/.test(d), "ocorrências ficam só nas anotações, fora do fichário");
   assert.match(d, /bx-fi-et">Histórico 2026</);
-  assert.match(d, /Faltas injustificadas<b>2<\/b><\/button><div class="bx-fi-cont" role="tabpanel" aria-label="Faltas injustificadas"><h5>Faltas injustificadas · 2026<span>2 registros<\/span><button type="button" class="bx-fi-x" aria-label="Fechar Faltas injustificadas e guardar na gaveta"[^>]*onclick="blPasta\(''\)">[\s\S]*?<\/button><\/h5><ol class="bx-fi-lst"><li><time>18\/11\/2026<\/time><span>Quarta<\/span><em>Sem justificativa<\/em><\/li>[\s\S]*<time>03\/02\/2026<\/time><span>Terça/, "a divisória puxada mostra nela mesma os acontecimentos, do mais recente para o mais antigo");
+  assert.match(d, /Faltas injustificadas<b>2<\/b><\/button><div class="bx-fi-cont" role="tabpanel" aria-label="Faltas injustificadas"><h5>Faltas injustificadas · 2026<span>2 registros<\/span><button type="button" class="bx-fi-x" aria-label="Fechar Faltas injustificadas e guardar na gaveta"[^>]*onclick="blPasta\(''\)">[\s\S]*?<\/button><\/h5><div class="bx-fi-mb" aria-hidden="true">[\s\S]*?<\/div><ol class="bx-fi-lst"><li class="bx-fi-mes" data-m="11"><b>Novembro<\/b> · 1 falta<\/li><li data-m="11"><time>18\/11\/2026<\/time><span>Quarta<\/span><em><\/em><span class="bx-fi-cb f">Sem justificativa<\/span><\/li><li class="bx-fi-mes" data-m="02"><b>Fevereiro<\/b> · 1 falta<\/li><li data-m="02"><time>03\/02\/2026<\/time><span>Terça/, "a divisória puxada mostra os acontecimentos por mês, do mais recente para o mais antigo, com carimbo");
+  assert.equal((d.match(/<i style="height:26px"><\/i>/g) || []).length, 2, "barrinha dos 12 meses: fevereiro e novembro com 1 falta cada");
   assert.equal((d.match(/class="bx-fi-cont"/g) || []).length, 1, "só a divisória puxada mostra o conteúdo");
   assert.match(d, /<button type="button" class="bx-btn bx-amp" onclick="ligBLNotas\(\)">/, "botão para ampliar as anotações");
   assert.ok(!/bx-ler/.test(d), "anotação curta não precisa de Ler tudo");

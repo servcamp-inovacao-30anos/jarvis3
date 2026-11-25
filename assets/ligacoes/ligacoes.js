@@ -2434,7 +2434,7 @@ function ligBL(btn){
     LIG_BL={pessoas:j.pessoas||[],historico:j.historico||[]};LIG_BL_Q="";LIG_BL_F="todos";LIG_BL_C="";LIG_BL_SEL="";LIG_BL_MODO="";LIG_BL_PASTA="inj";
     const ov=fbDialog("lig-bl",{titulo:"Black List",tam:"bx",tom:"blx",semFoco:true,corpo:''
       +'<header class="bx-top"><div class="bx-marca">'+blEmblema("bxe-g",true)+'<div class="bx-tit"><h2><span>Black</span> <em>List</em></h2><p>Módulo: Feedback de Faltas e Ligações — acesso restrito à coordenação</p></div></div>'
-      +'<div class="bx-ferr"><label class="bx-busca">'+blI("busca")+'<span class="fb-sr">Pesquisar arquivo</span><input type="search" placeholder="Pesquisar Arquivo" autocomplete="off" oninput="LIG_BL_Q=this.value;clearTimeout(LIG_BL_BT);LIG_BL_BT=setTimeout(blCentral,120)"></label>'
+      +'<div class="bx-ferr"><label class="bx-busca">'+blI("busca")+'<span class="fb-sr">Buscar colaborador</span><input type="search" placeholder="Buscar colaborador"autocomplete="off" oninput="LIG_BL_Q=this.value;clearTimeout(LIG_BL_BT);LIG_BL_BT=setTimeout(blCentral,120)"></label>'
       +'<label class="bx-btn bx-sel">'+blI("funil")+'<span class="fb-sr">Filtros</span><select id="bx-f" onchange="LIG_BL_F=this.value;blCentral()" aria-label="Filtros"><option value="todos">Filtros</option><option value="rec">Entraram em 30 dias</option><option value="f7">Faltaram em 7 dias</option><option value="med">Com medida disciplinar</option><option value="lig">Com ligações sem retorno</option><option value="fora">Fora dos ativos</option></select></label>'
       +'<button type="button" class="bx-btn bx-pri" onclick="ligBLAdd()">Adicionar Novo Registro</button></div></header>'
       +'<div class="bx-kpis" id="bx-kpis"></div>'
@@ -2445,11 +2445,28 @@ function ligBL(btn){
       +'<section class="bx-painel bx-dos" id="bx-dos" aria-live="polite"></section></div>'});
     const fx=ov.querySelector(".fb-dlg-h .fb-ib");if(fx)fx.innerHTML=blI("x");
     blCentral(true);
+    fbTipInit();const tip=document.querySelector(".fb-tip"),corpo=ov.querySelector(".fb-dlg-b");if(tip)tip.classList.add("bx");
+    /* o balão só some quando o mouse anda: ao rolar, o conteúdo sai de baixo dele, então esconde */
+    if(tip&&corpo)corpo.addEventListener("scroll",()=>tip.classList.remove("on"),{passive:true});
+    /* a largura mudou (janela, painel lateral): refaz o espaço da linha do tempo e a altura da divisória */
+    const dos=document.getElementById("bx-dos");let lw=0;
+    const ro=dos&&window.ResizeObserver?new ResizeObserver(e=>{const w=Math.round(e[0].contentRect.width);if(w===lw)return;lw=w;blFiMede(document.getElementById("bx-hist"));}):null;
+    if(ro)ro.observe(dos);
+    blFicha3D(dos);
     /* a tela de trás fica coberta: as animações dela param enquanto a Black List está aberta e voltam ao fechar */
     const pausadas=document.getAnimations?document.getAnimations().filter(a=>a.playState==="running"&&!(a.effect&&ov.contains(a.effect.target))):[];
-    pausadas.forEach(a=>a.pause());ov._aoFechar=()=>pausadas.forEach(a=>{try{a.play();}catch(e){}});
+    pausadas.forEach(a=>a.pause());ov._aoFechar=()=>{pausadas.forEach(a=>{try{a.play();}catch(e){}});if(ro)ro.disconnect();if(tip)tip.classList.remove("bx","on");};
     const d=ov.querySelector(".fb-dlg"),anel=ov.querySelector(".bx-emb-anel"),arco=ov.querySelector(".bx-emb-arco");
+    /* fumaça numa camada própria (anda na rolagem e com o mouse) */
+    if(d&&d.insertAdjacentHTML)d.insertAdjacentHTML("afterbegin",'<i class="bx-fundo" aria-hidden="true"></i>');
+    blCena3D(ov);
     if(fbMov()){
+      /* abertura em cascata (até ~600ms): cabeçalho, cartões, fila e dossiê; a ficha é posta na mesa e a sombra cresce */
+      const sobe=(el,delay)=>{if(el)el.animate([{opacity:0,transform:"translate3d(0,14px,0)"}],{duration:320,delay,easing:"cubic-bezier(.2,.8,.2,1)",fill:"backwards"});};
+      sobe(ov.querySelector(".bx-top"),60);ov.querySelectorAll(".bx-kpi").forEach((k,i)=>sobe(k,120+i*40));sobe(ov.querySelector(".bx-fila"),200);sobe(dos,220);
+      const fi=ov.querySelector(".bx-dtopo .bx-ficha"),so=fi&&fi.querySelector(".bx-sombra");
+      if(fi)fi.animate([{opacity:0,transform:"perspective(900px) translate3d(0,-18px,0) rotate(-1.5deg) scale(1.03)"}],{duration:380,delay:260,easing:"cubic-bezier(.2,.8,.2,1)",fill:"backwards"});
+      if(so)so.animate([{opacity:0}],{duration:380,delay:260,fill:"backwards"});
       /* a página sai do botão, devagar, como um arquivo sendo aberto; o anel do emblema gira e o cadeado destrava */
       if(r&&d){const f=d.getBoundingClientRect(),sx=r.width/f.width,sy=r.height/f.height,tx=r.left+r.width/2-(f.left+f.width/2),ty=r.top+r.height/2-(f.top+f.height/2);
         d.animate([{transform:"translate("+tx+"px,"+ty+"px) scale("+sx+","+sy+")",opacity:.2},{transform:"none",opacity:1}],{duration:480,easing:"cubic-bezier(.65,0,.35,1)"});}
@@ -2500,6 +2517,12 @@ function blKpis(){
     +k("med","Com medida no ano","de "+t+" no arquivo")
     +k("lig","Sem retorno do SAC","no ano");
 }
+/* nível de risco pelos sinais: vermelho pede ação, âmbar pede conferência, o resto fica neutro */
+function blRisco(p){const s=blSinais(p).s;return s.some(x=>x[0]==="v")?"v":s.some(x=>x[0]==="a")?"a":"n";}
+/* faltas injustificadas nas últimas 8 semanas, uma barrinha por semana (a da direita é a desta semana) */
+function blSemanas(p){const h=blHoje(),c=Array(8).fill(0);(p.injustificadas||[]).forEach(d=>{const n=blDias(d,h);if(n>=0&&n<56)c[7-Math.floor(n/7)]++;});
+  const mx=Math.max(1,...c),t=c.reduce((a,b)=>a+b,0);
+  return'<span class="bx-sem" data-tip="Últimas 8 semanas · '+(t===1?"1 falta":t+" faltas")+'">'+c.map(n=>'<i'+(n?' class="t" style="height:'+Math.max(30,Math.round(n/mx*100))+'%"':"")+'></i>').join("")+'</span>';}
 function ligBLKpi(f){LIG_BL_F=LIG_BL_F===f?"todos":f;blCentral();}
 function blCargos(){
   const m=new Map();LIG_BL.pessoas.forEach(p=>{const c=blCargo(p);m.set(c,(m.get(c)||0)+1);});
@@ -2514,17 +2537,45 @@ function blCentral(entra){
   const up=document.getElementById("bx-upd"),h=LIG_BL.historico[0];if(up)up.innerHTML=blI("hist")+(h?"Atualizado "+blDH(h.em):"Histórico de alterações");
   const l=blFiltrados();
   if(!l.some(p=>p.chave===LIG_BL_SEL))LIG_BL_SEL=l.length?l[0].chave:"";
-  box.innerHTML=l.length?l.map((p,i)=>{const s=blSinais(p).s[0],on=p.chave===LIG_BL_SEL;
-    return'<button type="button" class="bx-it'+(on?" on":"")+'" role="option" aria-selected="'+on+'" tabindex="'+(on?0:-1)+'" data-k="'+_esc(p.chave)+'" onclick="ligBLSel(this.dataset.k)"><span class="bx-rank">'+(i+1)+'</span>'
-      +'<span class="bx-itx"><b>'+_esc(blT(p.nome))+'</b><small class="'+(s?s[0]:"")+'">'+_esc(s?s[1]:blCargo(p))+'</small></span>'+blFoto(p).replace('class="bx-foto-s"','class="bx-av"')+'</button>';}).join("")
-    :'<p class="bx-tvz">'+(LIG_BL.pessoas.length?"Ninguém com esse filtro.":"Nenhuma ficha no arquivo.")+'</p>';
+  const it=(p,i)=>{const s=blSinais(p).s[0],on=p.chave===LIG_BL_SEL;
+    return'<button type="button" class="bx-it'+(on?" on":"")+'" role="option" aria-selected="'+on+'" tabindex="'+(on?0:-1)+'" data-k="'+_esc(p.chave)+'" data-r="'+blRisco(p)+'" onclick="ligBLSel(this.dataset.k)"><span class="bx-rank">'+(i+1)+'</span>'
+      +'<span class="bx-itx"><b>'+_esc(blT(p.nome))+'</b><small class="'+(s?s[0]:"")+'">'+_esc(s?s[1]:blCargo(p))+'</small></span>'+blSemanas(p)+blFoto(p).replace('class="bx-foto-s"','class="bx-av"')+'</button>';};
+  /* os primeiros da fila em vermelho (até 3) ficam num grupo à parte, com a luz acesa */
+  let na=0;while(na<3&&na<l.length&&blRisco(l[na])==="v")na++;
+  box.innerHTML=!l.length?'<p class="bx-tvz">'+(LIG_BL.pessoas.length?"Ninguém com esse filtro.":"Nenhuma ficha no arquivo.")+'</p>'
+    :!na?l.map(it).join("")
+    :'<div class="bx-grp-at" role="group" aria-label="Atenção imediata"><p class="bx-grp" aria-hidden="true"><i class="bx-lamp"></i>Atenção imediata</p>'+l.slice(0,na).map(it).join("")+'</div>'
+      +(l.length>na?'<div role="group" aria-label="Demais"><p class="bx-grp" aria-hidden="true">Demais</p>'+l.slice(na).map((p,i)=>it(p,i+na)).join("")+'</div>':"");
   if(entra||!LIG_BL_VISTO||LIG_BL_VISTO[0]!==LIG_BL_SEL||LIG_BL_VISTO[1]!==LIG_BL)blDossie(false);
-  if(entra)setTimeout(()=>blFolhaSobe(document.getElementById("bx-hist")),350);
-  if(entra&&fbMov())[...box.children].slice(0,10).forEach((x,i)=>x.animate([{opacity:0,transform:"translate3d(-12px,0,0)"},{opacity:1,transform:"none"}],{duration:380,delay:240+i*45,easing:"cubic-bezier(.2,.8,.2,1)",fill:"backwards"}));
+  if(entra)setTimeout(()=>blFolhaSobe(document.getElementById("bx-hist")),300);
+  if(entra&&fbMov())[...box.querySelectorAll(".bx-it")].slice(0,10).forEach((x,i)=>x.animate([{opacity:0,transform:"translate3d(-12px,0,0)"},{opacity:1,transform:"none"}],{duration:300,delay:240+i*25,easing:"cubic-bezier(.2,.8,.2,1)",fill:"backwards"}));
 }
-function ligBLSel(k){if(k===LIG_BL_SEL)return;LIG_BL_SEL=k;LIG_BL_MODO="";
-  document.querySelectorAll("#bx-lista .bx-it").forEach(b=>{const on=b.dataset.k===k;b.classList.toggle("on",on);b.setAttribute("aria-selected",on);b.tabIndex=on?0:-1;});
-  blDossie(true);}
+/* a ficha nova entra pelo lado de onde veio: de baixo quando desce na fila, de cima quando sobe */
+function ligBLSel(k){if(k===LIG_BL_SEL)return;const bs=[...document.querySelectorAll("#bx-lista .bx-it")],de=bs.findIndex(b=>b.dataset.k===LIG_BL_SEL),pa=bs.findIndex(b=>b.dataset.k===k);LIG_BL_SEL=k;LIG_BL_MODO="";
+  bs.forEach(b=>{const on=b.dataset.k===k;b.classList.toggle("on",on);b.setAttribute("aria-selected",on);b.tabIndex=on?0:-1;});
+  blDossie(pa<de?-1:1);}
+/* profundidade com o mouse: o fundo anda ao contrário e o cabeçalho a favor, cada camada a uma distância.
+   Mexe só no "translate" dessas 4 camadas (nada de variável na tela toda, que recalcularia tudo a cada quadro). */
+function blCena3D(ov){
+  if(!ov||!fbMov()||!(window.matchMedia&&window.matchMedia("(hover:hover) and (pointer:fine)").matches))return;
+  const cam=[[".bx-fundo",-16],[".bx-top .bx-emb",10],[".bx-top .bx-tit",6],[".bx-kpis",3]].map(c=>[ov.querySelector(c[0]),c[1]]).filter(c=>c[0]);
+  let raf=0,x=0,y=0;
+  ov.addEventListener("pointermove",e=>{x=e.clientX/window.innerWidth*2-1;y=e.clientY/window.innerHeight*2-1;if(raf)return;
+    raf=requestAnimationFrame(()=>{raf=0;cam.forEach(c=>{c[0].style.translate=(x*c[1]).toFixed(1)+"px "+(y*c[1]).toFixed(1)+"px";});});},{passive:true});
+}
+/* a ficha do dossiê inclina até 4° seguindo o mouse; foto e carimbo andam mais que o papel (profundidade) e a luz acompanha.
+   Só com mouse e sem "reduzir movimento"; um quadro por vez (requestAnimationFrame). */
+function blFicha3D(box){
+  if(!box||!fbMov()||!(window.matchMedia&&window.matchMedia("(hover:hover) and (pointer:fine)").matches))return;
+  let f=null,raf=0,ev=null;
+  const solta=()=>{if(!f)return;f.classList.remove("on");["--rx","--ry","--dx","--dy"].forEach(v=>f.style.removeProperty(v));f=null;};
+  box.addEventListener("pointermove",e=>{ev=e;if(raf)return;raf=requestAnimationFrame(()=>{raf=0;
+    const a=ev.target&&ev.target.closest?ev.target.closest(".bx-dtopo .bx-ficha"):null;if(a!==f)solta();if(!a)return;f=a;
+    const r=a.getBoundingClientRect(),x=Math.max(0,Math.min(1,(ev.clientX-r.left)/r.width)),y=Math.max(0,Math.min(1,(ev.clientY-r.top)/r.height)),dx=x*2-1,dy=y*2-1,s=a.style;
+    a.classList.add("on");s.setProperty("--ry",(dx*4).toFixed(2)+"deg");s.setProperty("--rx",(-dy*4).toFixed(2)+"deg");
+    s.setProperty("--dx",dx.toFixed(3));s.setProperty("--dy",dy.toFixed(3));s.setProperty("--mx",(x*100).toFixed(1)+"%");s.setProperty("--my",(y*100).toFixed(1)+"%");});},{passive:true});
+  box.addEventListener("pointerleave",solta);
+}
 /* ↑ ↓ trocam de pessoa na fila (fora de campos de texto) */
 if(!window._blTecla){window._blTecla=1;document.addEventListener("keydown",e=>{
   if(e.key!=="ArrowDown"&&e.key!=="ArrowUp")return;
@@ -2536,31 +2587,39 @@ if(!window._blTecla){window._blTecla=1;document.addEventListener("keydown",e=>{
 });}
 
 /* ── dossiê ── */
-/* linha do tempo do ano: cada falta, medida, mensagem sem retorno, ocorrência e a entrada na lista vira um marcador */
+/* linha do tempo do ano em colunas, uma por mês: a altura é o total do mês e as cores empilham o que aconteceu.
+   Clicar num mês abre o fichário naquele mês (blMes). Os meses que ainda não chegaram ficam apagados. */
 const BL_MES=["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
-/* todos os marcadores ficam na linha: o que está colado no anterior anda um pouco para o lado (no fim do ano, para a
-   esquerda) até ficar a "g" % de distância. Na tela, blTlAjusta refaz com a largura real da linha (16px entre centros). */
-function blAfasta(xs,g){const x=xs.slice();for(let k=1;k<x.length;k++)x[k]=Math.max(x[k],x[k-1]+g);
-  for(let k=x.length-1;k>=0;k--)x[k]=Math.max(0,Math.min(x[k],k===x.length-1?100:x[k+1]-g));return x;}
-function blTlAjusta(tl){const w=tl&&tl.offsetWidth;if(!w)return;const ms=[...tl.querySelectorAll(".bx-mk")],x=blAfasta(ms.map(m=>Number(m.dataset.p)),1600/w);
-  ms.forEach((m,k)=>{m.style.left=x[k].toFixed(2)+"%";});}
+const BL_MES_L=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+const BL_TM=[["f","falta injustificada","faltas injustificadas"],["ab","abonada","abonadas"],["m","medida","medidas"],["s","sem retorno do SAC","sem retorno do SAC"],["o","ocorrência","ocorrências"]];
 function blLinha(p){
-  const i=blIni(),h=blHoje(),tot=Math.max(1,blDias(i,h)),pos=d=>Math.max(0,Math.min(100,blDias(i,d)/tot*100));
-  const inc=String(p.incluidoEm||"").slice(0,10),L=[].concat(
-    p.semRetorno.map(x=>[x.data,"s",x.tipo]),p.abonadas.map(a=>[a[0],"ab","Falta abonada"]),p.injustificadas.map(d=>[d,"f","Falta injustificada"]),
-    p.medidas.map(m=>[m.data,"m","Medida: "+fbTitulo([m.tipo,m.grau].filter(Boolean).join(" "))]),p.ocorrenciasAno.map(o=>[String(o.em).slice(0,10),"o","Ocorrência"]),
-    inc>=i?[[inc,"i","Entrou na Black List"]]:[]).map(m=>[pos(m[0]),m[1],blD(m[0])+" · "+m[2]]).sort((a,b)=>a[0]-b[0]);
-  const x=blAfasta(L.map(m=>m[0]),1.8),mks=L.map((m,k)=>'<i class="bx-mk '+m[1]+'" data-p="'+m[0].toFixed(2)+'" style="left:'+x[k].toFixed(2)+'%" title="'+_esc(m[2])+'"></i>').join("");
-  const meses=[];for(let m=0;m<=Number(h.slice(5,7))-1;m++){const d=h.slice(0,4)+"-"+String(m+1).padStart(2,"0")+"-01";meses.push('<span class="bx-ms" style="left:'+pos(d).toFixed(2)+'%">'+BL_MES[m]+'</span>');}
-  return'<div class="bx-tl" role="img" aria-label="Linha do tempo do ano: '+p.injustificadas.length+' faltas, '+p.medidas.length+' medidas, '+p.semRetorno.length+' mensagens sem retorno">'+meses.join("")+mks+'</div>'
+  const h=blHoje(),ano=h.slice(0,4),hm=Number(h.slice(5,7)),mes=d=>Number(String(d).slice(5,7))-1,c=Array.from({length:12},()=>({f:0,ab:0,m:0,s:0,o:0}));
+  p.injustificadas.forEach(d=>c[mes(d)].f++);p.abonadas.forEach(x=>c[mes(x[0])].ab++);p.medidas.forEach(x=>c[mes(x.data)].m++);p.semRetorno.forEach(x=>c[mes(x.data)].s++);p.ocorrenciasAno.forEach(x=>c[mes(x.em)].o++);
+  const tot=x=>x.f+x.ab+x.m+x.s+x.o,mx=Math.max(1,...c.map(tot)),inc=String(p.incluidoEm||"").slice(0,10),mi=inc.slice(0,4)===ano?mes(inc):-1;
+  const cols=c.map((x,i)=>{const t=tot(x),det=BL_TM.filter(k=>x[k[0]]).map(k=>x[k[0]]+" "+(x[k[0]]===1?k[1]:k[2])),rot=BL_MES_L[i]+" · "+ano;
+    if(i>=hm)return'<span class="bx-tm fut" aria-hidden="true"><span class="bx-tm-b"></span><small>'+BL_MES[i]+'</small></span>';
+    return'<button type="button" class="bx-tm'+(i===hm-1?" on":"")+(t?"":" vz")+'" style="--k:'+i+'" data-tip="'+rot+'&#10;'+(det.length?det.join("&#10;"):"Nenhum registro")+(i===mi?"&#10;Entrou na Black List":"")+'" aria-label="'+rot+': '+(det.join(", ")||"nenhum registro")+(i===mi?", entrou na Black List":"")+'" onclick="blMes('+(i+1)+')">'
+      +(i===mi?'<em class="bx-tm-in" aria-hidden="true"></em>':"")+'<span class="bx-tm-b" style="height:'+(t?Math.max(6,Math.round(t/mx*64)):3)+'px">'+BL_TM.filter(k=>x[k[0]]).map(k=>'<i class="'+k[0]+'" style="flex-grow:'+x[k[0]]+'"></i>').join("")+'</span><small>'+BL_MES[i]+'</small></button>';}).join("");
+  return'<div class="bx-tl" role="group" aria-label="Registros por mês em '+ano+'">'+cols+'</div>'
     +'<div class="bx-leg"><span><i class="f"></i>Falta</span><span><i class="ab"></i>Abonada</span><span><i class="m"></i>Medida</span><span><i class="s"></i>SAC sem retorno</span><span><i class="o"></i>Ocorrência</span><span><i class="i"></i>Entrou na lista</span></div>';
+}
+/* clicar num mês da linha do tempo puxa a divisória que tem registro naquele mês e marca o mês nela */
+function blMes(m){
+  const p0=blAtual(),b=document.getElementById("bx-hist");if(!p0||!b)return;
+  const p=blAno(p0),mm=String(m).padStart(2,"0"),tem=k=>!!k&&blItensPasta(p,k).some(c=>String(c[0]).slice(5,7)===mm);
+  const k=tem(LIG_BL_PASTA)?LIG_BL_PASTA:(BL_PASTAS.find(x=>tem(x.k))||{}).k;
+  if(!k){fbToast("Nenhum registro no fichário em "+BL_MES_L[m-1].toLowerCase()+" (só anotações).");return;}
+  if(k!==LIG_BL_PASTA)blTrocaPasta(b,k,()=>{b.innerHTML=blPastas(p);blFiMede(b);});
+  b.querySelectorAll(".bx-fi-lst .realce").forEach(x=>x.classList.remove("realce"));
+  const ls=b.querySelectorAll('.bx-fi-lst [data-m="'+mm+'"]');ls.forEach(x=>x.classList.add("realce"));
+  if(ls[0]&&ls[0].scrollIntoView)ls[0].scrollIntoView({block:"center",behavior:fbMov()?"smooth":"auto"});
 }
 /* histórico do ano em pastas, como um fichário: cada tipo é uma pasta com a quantidade; uma aberta por vez */
 const BL_PASTAS=[{k:"inj",t:"Faltas injustificadas"},{k:"med",t:"Medidas disciplinares"},{k:"abo",t:"Faltas abonadas"},{k:"sr",t:"Ligações sem retorno"}];
 const BL_SEM=["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
 function blSemana(d){const x=new Date(String(d).slice(0,10)+"T12:00:00Z");return isNaN(x)?"":BL_SEM[x.getUTCDay()];}
 function blItensPasta(p,k){
-  if(k==="inj")return p.injustificadas.slice().reverse().map(d=>[d,blSemana(d),"Sem justificativa"]);
+  if(k==="inj")return p.injustificadas.slice().reverse().map(d=>[d,blSemana(d),""]);
   if(k==="med")return p.medidas.slice().reverse().map(m=>[m.data,fbTitulo([m.tipo,m.grau].filter(Boolean).join(" "))+(m.dias?" · "+m.dias+(m.dias===1?" dia":" dias"):""),m.motivo?fbTitulo(m.motivo):""]);
   if(k==="abo")return p.abonadas.slice().reverse().map(a=>[a[0],blSemana(a[0]),FB_ABO_NOME[a[1]]||"Abonada"]);
   return p.semRetorno.slice().reverse().map(x=>[x.data,x.tipo,x.detalhe||""]);
@@ -2568,7 +2627,14 @@ function blItensPasta(p,k){
 /* histórico do ano como fichário de índice: divisórias com abas, uma atrás da outra, dentro da gaveta. Clicou na
    aba, aquela divisória é puxada para cima, para fora da gaveta, e os acontecimentos aparecem escritos nela mesma
    (do mais recente ao mais antigo). A de antes desce de volta. */
-const BL_FI_COR={inj:"#d14848",med:"#e6e6e9",abo:"#6c8f74",sr:"#8c8c93"};
+const BL_FI_COR={inj:"var(--bx-st-f)",med:"var(--bx-st-m)",abo:"var(--bx-st-ab)",sr:"var(--bx-st-s)"};
+/* carimbo de cada registro e o nome da unidade (singular, plural) no separador do mês */
+const BL_FI_CB={inj:["Sem justificativa","f",["falta","faltas"]],med:["Medida","m",["medida","medidas"]],abo:["Abonada","ab",["abonada","abonadas"]],sr:["Sem retorno","s",["ligação","ligações"]]};
+function blFiMeses(it){const c=Array(12).fill(0),hm=Number(blHoje().slice(5,7));it.forEach(x=>c[Number(String(x[0]).slice(5,7))-1]++);const mx=Math.max(1,...c);
+  return'<div class="bx-fi-mb" aria-hidden="true">'+c.map((n,i)=>'<span'+(i>=hm?' class="fut"':"")+'><i'+(n?' style="height:'+Math.max(5,Math.round(n/mx*26))+'px"':' class="z"')+'></i><small>'+BL_MES[i].charAt(0)+'</small></span>').join("")+'</div>';}
+function blFiLista(it,k){const g=new Map(),cb=BL_FI_CB[k];it.forEach(c=>{const m=String(c[0]).slice(5,7);if(!g.has(m))g.set(m,[]);g.get(m).push(c);});
+  return'<ol class="bx-fi-lst">'+[...g].map(([m,cs])=>'<li class="bx-fi-mes" data-m="'+m+'"><b>'+BL_MES_L[Number(m)-1]+'</b> · '+cs.length+" "+cb[2][cs.length===1?0:1]+'</li>'
+    +cs.map(c=>'<li data-m="'+m+'"><time>'+blD(c[0])+'</time><span>'+_esc(c[1])+'</span><em>'+_esc(c[2]||"")+'</em><span class="bx-fi-cb '+cb[1]+'">'+cb[0]+'</span></li>').join("")).join("")+'</ol>';}
 function blPastas(p,novo){
   if(LIG_BL_PASTA&&!BL_PASTAS.some(x=>x.k===LIG_BL_PASTA))LIG_BL_PASTA="inj";
   const n=k=>blItensPasta(p,k).length,ab=LIG_BL_PASTA,fn=novo?"blPastaNovo":"blPasta";
@@ -2578,17 +2644,17 @@ function blPastas(p,novo){
       return'<div class="bx-fi-div'+(on?" on":"")+'" style="--i:'+i+'" data-k="'+x.k+'"'+(on?"":' onclick="'+fn+'(\''+x.k+'\')"')+'>'
         +'<button type="button" role="tab" class="bx-fi-tab" aria-selected="'+on+'" style="left:'+(3+i*24)+'%" onclick="event.stopPropagation();'+fn+'(\''+x.k+'\')"><i style="background:'+BL_FI_COR[x.k]+'"></i>'+x.t+'<b>'+n(x.k)+'</b></button>'
         +(on?'<div class="bx-fi-cont" role="tabpanel" aria-label="'+x.t+'"><h5>'+x.t+' · '+blIni().slice(0,4)+'<span>'+n(x.k)+(n(x.k)===1?" registro":" registros")+'</span><button type="button" class="bx-fi-x" aria-label="Fechar '+x.t+' e guardar na gaveta" title="Guardar na gaveta" onclick="'+fn+'(\'\')">'+blI("x")+'</button></h5>'
-          +(it.length?'<ol class="bx-fi-lst">'+it.map(c=>'<li><time>'+blD(c[0])+'</time><span>'+_esc(c[1])+'</span><em>'+_esc(c[2]||"")+'</em></li>').join("")+'</ol>':'<p class="bx-fi-vz">Nenhum registro no ano.</p>')+'</div>':"")
+          +(it.length?blFiMeses(it)+blFiLista(it,x.k):'<p class="bx-fi-vz">Nenhum registro no ano.</p>')+'</div>':"")
         +'</div>';}).join("")+'</div>'
     +'<div class="bx-fi-frente"><span class="bx-fi-et">Histórico '+blIni().slice(0,4)+'</span><span class="bx-fi-pux" aria-hidden="true"></span></div></div>';
 }
 /* a divisória sai da gaveta: sobe devagar, passa um pouco e assenta. "desce" faz o caminho de volta antes de trocar */
 /* a divisória puxada cresce até caber tudo: sem barra de rolagem dentro dela, a roda do mouse rola a página sem "prender" no meio */
 function blFiMede(b){const g=b&&b.querySelector(".bx-fi-gav:not(.fechada)"),c=g&&g.querySelector(".bx-fi-cont");if(!c||!c.offsetHeight)return;
-  const l=c.querySelector(".bx-fi-lst,.bx-fi-vz"),h5=c.querySelector("h5");g.style.setProperty("--bx-fi-h",Math.max(200,Math.ceil((h5?h5.offsetHeight+8:0)+(l?l.scrollHeight:0)+48))+"px");}
+  g.style.setProperty("--bx-fi-h",Math.max(200,Math.ceil([...c.children].reduce((t,x)=>t+x.offsetHeight,0)+64))+"px");}
 function blFiAltura(b){const g=b&&b.querySelector(".bx-fi-gav");return g?parseFloat(getComputedStyle(g).getPropertyValue("--bx-fi-h"))||320:320;}
 function blFolhaSobe(b){const d=b&&b.querySelector(".bx-fi-div.on");if(!d||!fbMov()||!d.animate)return;
-  d.animate([{transform:"translate3d(0,"+Math.min(blFiAltura(b),260)+"px,0)"},{transform:"translate3d(0,-4px,0)",offset:.8},{transform:"none"}],{duration:420,easing:"cubic-bezier(.2,.8,.2,1)"});}
+  /* sai da gaveta inclinada para trás e se endireita ao subir */ d.animate([{transform:"perspective(900px) translate3d(0,"+Math.min(blFiAltura(b),260)+"px,0) rotateX(12deg)",transformOrigin:"50% 100%"},{transform:"perspective(900px) translate3d(0,-4px,0) rotateX(0deg)",transformOrigin:"50% 100%",offset:.8},{transform:"perspective(900px) translate3d(0,0,0) rotateX(0deg)",transformOrigin:"50% 100%"}],{duration:420,easing:"cubic-bezier(.2,.8,.2,1)"});}
 function blTrocaPasta(b,k,monta){
   const d=b&&b.querySelector(".bx-fi-div.on");
   if(!d||!fbMov()||!d.animate||k){LIG_BL_PASTA=k;monta();blFolhaSobe(b);return;}
@@ -2627,15 +2693,16 @@ function blDossie(anima){
   const box=document.getElementById("bx-dos");if(!box)return;
   const p0=blAtual();
   if(!p0){box.innerHTML='<div class="bx-vazio"><p>'+(LIG_BL.pessoas.length?"Escolha alguém na fila.":"Nenhuma ficha no arquivo.")+'</p><button type="button" class="bx-btn bx-pri" onclick="ligBLAdd()">Adicionar Novo Registro</button></div>';return;}
+  /* a lista ao lado da ficha mostra só o que a ficha não tem (nome, RE, cargo e posto já estão nela) */
   const p=blAno(p0),sx=blSexo(p),dado=(r,v)=>'<div><dt>'+r+'</dt><dd>'+v+'</dd></div>';
   const docs=(p.documentos||[]).map(d=>'<li><button type="button" onclick="ligBLDoc(\''+_esc(d.chave)+'\')">'+blI(d.tipo==="application/pdf"?"pdf":"img","bx-arq")+'<span><b>'+_esc(d.arquivo||((d.numero||"Medida")+" assinada"))+'</b><small>'+_esc(fbTitulo(d.medida))+' · '+blD(d.data)+(d.digital?" · assinada no celular":"")+'</small></span>'+blI("cadeado","bx-cad")+'</button></li>').join("");
-  box.innerHTML='<div class="bx-dtopo"><div class="bx-ficha bx-estatica">'+BL_CAMADAS+blCarta(p)+'</div>'
+  box.innerHTML='<div class="bx-pasta"><span class="bx-pasta-aba">'+_esc(blT(p.nome))+' · RE '+_esc(p.re)+'</span><div class="bx-dtopo"><div class="bx-ficha bx-estatica">'+BL_CAMADAS+'<i class="bx-clip bx-clip-f" aria-hidden="true"></i>'+blCarta(p)+'</div>'
     +'<div class="bx-dinfo"><div class="bx-dcab"><div class="bx-chips">'+blChips(p)+'</div></div>'
-    +'<dl class="bx-dl">'+dado("RE",_esc(p.re))+dado("Nome",_esc(blT(p.nome)))+dado("Cargo",_esc(blT(p.cargo)))+dado("Supervisor",_esc(blT(p.supervisor)))
-    +dado("Admissão",blD(p.admissao))+dado("Último posto efetivo",_esc(blT(p.posto)))+dado("Situação",p.ativo===false?"Fora dos ativos":"Ativo")
+    +'<dl class="bx-dl">'+dado("Supervisor",_esc(blT(p.supervisor)))
+    +dado("Admissão",blD(p.admissao))+dado("Situação",p.ativo===false?"Fora dos ativos":"Ativo")
     +dado("Na Black List desde",blD(String(p.incluidoEm||"").slice(0,10))+(p.incluidoPorNome?" · "+_esc(p.incluidoPorNome):""))+'</dl>'
     +'<span class="bx-sx" role="group" aria-label="Silhueta da ficha"><small>Silhueta</small><button type="button" aria-pressed="'+(sx==="m")+'" onclick="ligBLSilhueta(\'m\')">Masculina</button><button type="button" aria-pressed="'+(sx==="f")+'" onclick="ligBLSilhueta(\'f\')">Feminina</button></span></div></div>'
-    +'<section class="bx-sec"><p class="bx-h4">Linha do tempo · '+blIni().slice(0,4)+'</p>'+blLinha(p)+'</section>'
+    +'</div><section class="bx-sec"><p class="bx-h4">Linha do tempo · '+blIni().slice(0,4)+'</p>'+blLinha(p)+'</section>'
     +'<section class="bx-sec"><p class="bx-h4">Histórico do ano</p><div id="bx-hist">'+blPastas(p)+'</div></section>'
     +'<div class="bx-baixo"><section class="bx-sec"><div class="bx-nhead"><p class="bx-h4">Anotações internas da coordenação <span class="bx-cont">'+((p0.obs?1:0)+(p0.ocorrencias||[]).length)+'</span></p>'+((p0.obs||(p0.ocorrencias||[]).length)&&!LIG_BL_MODO?'<button type="button" class="bx-btn bx-amp" onclick="ligBLNotas()">'+blI("busca")+'Ampliar</button>':"")+'</div>'+blAnotacoes(p0)+'</section>'
     +'<section class="bx-sec"><p class="bx-h4">Documentos anexados</p>'+(docs?'<ul class="bx-arqs">'+docs+'</ul>':'<p class="bx-tvz">Nenhuma medida assinada anexada no sistema.</p>')
@@ -2643,9 +2710,11 @@ function blDossie(anima){
     +'<button type="button" class="bx-btn" onclick="LIG_BL_MODO=\'nota\';blDossie();blFoca(\'bx-obs\')">'+blI("lapis")+'Editar anotação</button>'
     +'<button type="button" class="bx-btn bx-perigo" onclick="ligBLTirar()">'+blI("sair")+'Remover da Black List</button></div>'
     +'<button type="button" class="bx-upd bx-acesso" onclick="ligBLHist()">Última atualização: '+_esc(p.alteradoPorNome||p.incluidoPorNome||"Coordenação")+' — '+blDH(p.alteradoEm||p.incluidoEm)+'</button></section></div>';
-  blTlAjusta(box.querySelector(".bx-tl"));blFiMede(document.getElementById("bx-hist"));
+  blFiMede(document.getElementById("bx-hist"));
   if(!anima||!fbMov())return;
-  box.animate([{opacity:.4,transform:"translate3d(8px,0,0)"},{opacity:1,transform:"none"}],{duration:200,easing:"cubic-bezier(.2,.8,.2,1)"});
+  /* a pasta nova já está pronta embaixo; a capa abre por cima em 250ms, para cima quando desce na fila e para baixo quando sobe */
+  const pa=box.querySelector(".bx-pasta");if(pa){const capa=document.createElement("i");capa.className="bx-capa";capa.setAttribute("aria-hidden","true");capa.style.transformOrigin=anima<0?"50% 100%":"50% 0";pa.appendChild(capa);
+    capa.animate([{transform:"perspective(1400px) rotateX(0deg)",opacity:1},{transform:"perspective(1400px) rotateX("+(anima<0?-100:100)+"deg)",opacity:0}],{duration:250,easing:"cubic-bezier(.4,0,.2,1)",fill:"forwards"}).onfinish=()=>capa.remove();}
   /* o carimbo bate no papel */
   const s=box.querySelector(".bx-carimbo");if(s&&s.animate)s.animate([{opacity:0,transform:"rotate(-24deg) scale(1.6)"},{opacity:.9,transform:"rotate(-11deg) scale(.95)",offset:.7},{transform:"rotate(-12deg) scale(1)"}],{duration:460,delay:160,easing:"cubic-bezier(.3,0,.2,1)",fill:"backwards"});
 }
