@@ -585,10 +585,10 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
 /* LOGO do login (SERVIX), centralizado acima do formulário */
 .login-logo{display:flex;justify-content:center;align-items:center;margin-bottom:34px;}
 .login-logo:empty{display:none;}
-.login-logo{position:relative;}
-/* o logo faz parte do fundo: luz azul ao redor, mistura de luz (screen) e brilho nas bordas */
-.login-logo::before{content:'';position:absolute;left:50%;top:50%;width:170%;height:190%;transform:translate(-50%,-50%);background:radial-gradient(closest-side,rgba(48,150,245,.14) 0%,rgba(30,110,210,.06) 50%,rgba(20,80,170,.02) 75%,transparent 100%);pointer-events:none;}
-.login-logo img{position:relative;display:block;height:min(320px,31vh);width:auto;max-width:100%;mix-blend-mode:screen;filter:drop-shadow(0 0 8px rgba(70,170,255,.22));}
+/* Cores do logo iguais ao original; só leva por cima as mesmas listras finas do fundo (bem leves). */
+.login-logo-in{position:relative;display:block;line-height:0;max-width:100%;}
+.login-logo img{display:block;height:min(320px,31vh);width:auto;max-width:100%;}
+.login-logo-in::after{content:'';position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(100deg,rgba(6,22,38,.1) 0,rgba(6,22,38,.1) 2px,transparent 2px,transparent 10.22px);-webkit-mask:url(/assets/login/logo.webp) center/100% 100% no-repeat;mask:url(/assets/login/logo.webp) center/100% 100% no-repeat;}
 .login-field{margin-bottom:22px;}
 .login-field label{display:block;font-size:1.05rem;font-weight:700;color:rgba(214,226,240,.78);text-transform:uppercase;letter-spacing:.16em;margin-bottom:11px;}
 .login-input{position:relative;}
@@ -808,7 +808,7 @@ aside.sb#sidebar.sb-mini #navRoot .ni{margin:2px 8px;padding:9px 0;}
 </div>
 <div class="login-overlay" id="loginOverlay">
   <div class="login-box">
-    <div class="login-logo"><img src="/assets/login/logo.webp" alt="SERVIX" width="960" height="787"></div>
+    <div class="login-logo"><span class="login-logo-in"><img src="/assets/login/logo.webp" alt="SERVIX" width="960" height="787"></span></div>
     <form onsubmit="return doLogin(event)">
       <div class="login-field">
         <label for="loginUser">Usuário</label>
