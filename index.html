@@ -585,7 +585,10 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
 /* LOGO do login (SERVIX), centralizado acima do formulário */
 .login-logo{display:flex;justify-content:center;align-items:center;margin-bottom:34px;}
 .login-logo:empty{display:none;}
-.login-logo img{display:block;height:min(295px,28vh);width:auto;max-width:100%;}
+.login-logo{position:relative;}
+/* o logo faz parte do fundo: luz azul ao redor, mistura de luz (screen) e brilho nas bordas */
+.login-logo::before{content:'';position:absolute;left:50%;top:50%;width:170%;height:190%;transform:translate(-50%,-50%);background:radial-gradient(closest-side,rgba(48,150,245,.14) 0%,rgba(30,110,210,.06) 50%,rgba(20,80,170,.02) 75%,transparent 100%);pointer-events:none;}
+.login-logo img{position:relative;display:block;height:min(320px,31vh);width:auto;max-width:100%;mix-blend-mode:screen;filter:drop-shadow(0 0 8px rgba(70,170,255,.22));}
 .login-field{margin-bottom:22px;}
 .login-field label{display:block;font-size:1.05rem;font-weight:700;color:rgba(214,226,240,.78);text-transform:uppercase;letter-spacing:.16em;margin-bottom:11px;}
 .login-input{position:relative;}
