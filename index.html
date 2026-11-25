@@ -578,29 +578,38 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
 #intro-som{position:absolute;bottom:18px;left:22px;background:rgba(0,0,0,.55);color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:20px;padding:8px 16px;font-size:.8rem;font-weight:700;cursor:pointer;}
 #intro-som:hover{background:rgba(0,0,0,.75);}
 @media(max-width:600px){#intro-skip{bottom:12px;right:12px;font-size:.72rem;padding:7px 12px;}#intro-som{bottom:12px;left:12px;font-size:.72rem;padding:7px 12px;}}
-.login-overlay{position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#0a1628 0%,#0d1f35 40%,#1a3a5c 100%);display:flex;align-items:center;justify-content:center;transition:opacity .5s,visibility .5s;}
+.login-overlay{position:fixed;inset:0;z-index:9999;overflow:hidden;display:flex;align-items:center;justify-content:center;transition:opacity .5s,visibility .5s;
+  background:
+    radial-gradient(ellipse 70% 55% at 50% -5%,rgba(34,112,185,.32),transparent 60%),
+    radial-gradient(ellipse 55% 50% at 88% 92%,rgba(24,84,150,.28),transparent 62%),
+    repeating-linear-gradient(100deg,rgba(255,255,255,.016) 0,rgba(255,255,255,.016) 1px,transparent 1px,transparent 4px),
+    linear-gradient(165deg,#0a2236 0%,#071727 48%,#040c15 100%);}
 .login-overlay.hidden{opacity:0;visibility:hidden;pointer-events:none;}
-.login-box{background:rgba(255,255,255,.04);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:40px 36px 32px;width:380px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4);animation:fu .4s ease both;}
-.login-logo{margin-bottom:8px;}
-.login-logo svg{filter:drop-shadow(0 2px 8px rgba(46,143,239,.3));}
-.login-subtitle{font-size:.72rem;color:rgba(255,255,255,.4);letter-spacing:1.5px;text-transform:uppercase;font-weight:600;margin-bottom:28px;}
-.login-field{position:relative;margin-bottom:16px;text-align:left;}
-.login-manter{display:flex;align-items:center;gap:9px;margin:-4px 0 14px;font-size:.78rem;color:rgba(255,255,255,.75);cursor:pointer;text-align:left;min-height:32px}
-.login-manter input{width:18px;height:18px;margin:0;accent-color:#2e8fef;flex:none}
-.login-field label{display:block;font-size:.65rem;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;}
-.login-field input{width:100%;padding:11px 14px 11px 38px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#fff;font-size:.85rem;outline:none;transition:border-color .2s,box-shadow .2s;}
-.login-field input:focus{border-color:rgba(46,143,239,.6);box-shadow:0 0 0 3px rgba(46,143,239,.15);}
-.login-field input::placeholder{color:rgba(255,255,255,.25);}
-.login-field .lf-ic{position:absolute;left:12px;bottom:12px;font-size:.9rem;opacity:.4;}
-.login-btn{width:100%;padding:12px;background:linear-gradient(135deg,#1e4d8c,#2e8fef);border:none;border-radius:8px;color:#fff;font-size:.85rem;font-weight:700;cursor:pointer;transition:transform .15s,box-shadow .15s;margin-top:6px;letter-spacing:.3px;}
-.login-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(46,143,239,.35);}
+.login-bg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
+.login-box{position:relative;width:min(460px,calc(100vw - 40px));text-align:left;}
+/* LOGO: o espaço fica reservado aqui; o logo novo entra dentro de .login-logo */
+.login-logo{display:flex;justify-content:center;align-items:center;margin-bottom:26px;}
+.login-logo:empty{display:none;}
+.login-logo img{max-width:100%;height:auto;}
+.login-field{margin-bottom:18px;}
+.login-field label{display:block;font-size:.78rem;font-weight:700;color:rgba(214,226,240,.78);text-transform:uppercase;letter-spacing:.16em;margin-bottom:9px;}
+.login-input{position:relative;}
+.login-input input{width:100%;height:54px;padding:0 18px;background:rgba(3,10,18,.78);border:1px solid rgba(150,185,225,.22);border-radius:12px;color:#fff;font-size:1rem;outline:none;transition:border-color .15s,box-shadow .15s;}
+.login-input input.com-olho{padding-right:52px;}
+.login-input input:focus{border-color:rgba(70,170,240,.75);box-shadow:0 0 0 3px rgba(46,143,239,.18);}
+.login-input input::placeholder{color:rgba(255,255,255,.28);}
+.login-input input:-webkit-autofill{-webkit-box-shadow:0 0 0 100px #07131f inset;-webkit-text-fill-color:#fff;caret-color:#fff;}
+.login-olho{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:42px;height:42px;display:flex;align-items:center;justify-content:center;background:none;border:none;border-radius:10px;color:rgba(214,226,240,.75);cursor:pointer;}
+.login-olho:hover{color:#fff;background:rgba(255,255,255,.06);}
+.login-olho svg{width:22px;height:22px;}
+.login-manter{display:flex;align-items:center;gap:11px;margin:2px 0 20px;font-size:.88rem;color:rgba(214,226,240,.82);cursor:pointer;min-height:32px;}
+.login-manter input{width:22px;height:22px;margin:0;accent-color:#2e8fef;flex:none;border-radius:5px;cursor:pointer;}
+.login-btn{width:100%;height:56px;border:none;border-radius:12px;color:#fff;font-size:1.05rem;font-weight:800;letter-spacing:.02em;cursor:pointer;background:linear-gradient(100deg,#2c63ea 0%,#27a5ee 55%,#2cd3f0 100%);box-shadow:0 12px 30px rgba(40,170,240,.28);transition:transform .15s,box-shadow .15s,filter .15s;}
+.login-btn:hover{transform:translateY(-1px);box-shadow:0 16px 36px rgba(40,170,240,.4);filter:brightness(1.05);}
 .login-btn:active{transform:translateY(0);}
-.login-error{color:#f87171;font-size:.72rem;margin-top:10px;min-height:18px;font-weight:600;}
-.login-footer{margin-top:28px;padding-top:16px;border-top:1px solid rgba(255,255,255,.06);}
-.login-footer span{font-size:.6rem;color:rgba(255,255,255,.25);letter-spacing:.5px;}
-.login-footer b{color:rgba(46,143,239,.7);font-weight:700;}
-.login-particles{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
-.login-particles div{position:absolute;border-radius:50%;background:rgba(46,143,239,.08);animation:float 8s infinite ease-in-out;}
+.login-btn:disabled{opacity:.7;cursor:default;transform:none;}
+.login-error{color:#fb8f8f;font-size:.84rem;margin-top:12px;min-height:20px;font-weight:600;text-align:center;}
+.login-bemvindo{margin-top:20px;text-align:center;font-size:.95rem;letter-spacing:.14em;color:rgba(190,206,224,.6);}
 @keyframes float{0%,100%{transform:translateY(0) scale(1);opacity:.3;}50%{transform:translateY(-30px) scale(1.1);opacity:.6;}}
 /* CREDIT SIDEBAR */
 .sb-credit{padding:8px 14px 10px;text-align:center;border-top:1px solid rgba(255,255,255,.06);}
@@ -701,8 +710,6 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
   .det-body{flex-direction:column;}
   .det-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));}
   .t10c{grid-template-columns:1fr!important;}
-  .login-box{width:calc(100vw - 40px);max-width:380px;padding:30px 24px 24px;}
-  .login-box svg{width:180px;height:auto;}
   .as{min-width:110px;font-size:.65rem;}
 }
 @media(max-width:420px){
@@ -788,36 +795,56 @@ aside.sb#sidebar.sb-mini #navRoot .ni{margin:2px 8px;padding:9px 0;}
   </div>
 </div>
 <div class="login-overlay" id="loginOverlay">
-  <div class="login-particles">
-    <div style="width:120px;height:120px;top:10%;left:15%;animation-delay:0s;"></div>
-    <div style="width:80px;height:80px;top:60%;left:75%;animation-delay:2s;"></div>
-    <div style="width:60px;height:60px;top:30%;left:85%;animation-delay:4s;"></div>
-    <div style="width:100px;height:100px;top:75%;left:20%;animation-delay:1s;"></div>
-    <div style="width:50px;height:50px;top:15%;left:55%;animation-delay:3s;"></div>
-  </div>
+  <svg class="login-bg" viewBox="0 0 1906 880" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <defs><filter id="lgGlow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="5"/></filter></defs>
+    <g fill="none" stroke-linecap="round">
+      <!-- linhas finas, à esquerda -->
+      <g stroke="rgba(70,150,215,.16)" stroke-width="1.2">
+        <path d="M210 0 C330 150 430 300 480 470"/>
+        <path d="M330 0 C400 120 450 230 470 330"/>
+        <path d="M0 60 C250 90 420 190 590 340"/>
+        <path d="M0 500 C200 450 430 340 600 230"/>
+        <path d="M0 690 C220 640 330 560 420 470"/>
+        <path d="M110 880 C230 760 340 650 470 560"/>
+      </g>
+      <!-- teia fina, à direita -->
+      <g stroke="rgba(80,165,235,.2)" stroke-width="1">
+        <path d="M1500 0 C1640 190 1800 320 1906 470"/>
+        <path d="M1380 0 C1520 170 1700 300 1906 360"/>
+        <path d="M1300 880 C1500 710 1700 420 1906 130"/>
+        <path d="M1560 880 C1690 720 1800 560 1906 520"/>
+      </g>
+      <!-- curvas brilhantes -->
+      <path d="M1110 880 C1350 780 1600 520 1790 0" stroke="rgba(70,170,245,.55)" stroke-width="7" filter="url(#lgGlow)"/>
+      <path d="M1110 880 C1350 780 1600 520 1790 0" stroke="rgba(120,200,255,.95)" stroke-width="2.4"/>
+      <path d="M1135 880 C1380 790 1625 545 1810 8" stroke="rgba(90,175,245,.7)" stroke-width="1.6"/>
+      <path d="M1160 880 C1405 800 1650 570 1830 20" stroke="rgba(80,160,235,.4)" stroke-width="1.2"/>
+    </g>
+  </svg>
   <div class="login-box">
-    <div class="login-logo">
-      <img src="logo-servcamp.png" alt="Grupo ServCamp" height="110">
-    </div>
-    <div class="login-subtitle">Painel de Gestão Operacional</div>
+    <!-- LOGO: colocar aqui o logo novo, dentro de <div class="login-logo"> (ex.: <img src="logo-novo.png" alt="Grupo ServCamp" height="150">) -->
+    <div class="login-logo"></div>
     <form onsubmit="return doLogin(event)">
       <div class="login-field">
-        <label>Usuário</label>
-        <span class="lf-ic">👤</span>
-        <input type="text" id="loginUser" placeholder="Digite seu usuário" autocomplete="username" autofocus>
+        <label for="loginUser">Usuário</label>
+        <div class="login-input">
+          <input type="text" id="loginUser" placeholder="Digite seu usuário" autocomplete="username" autofocus>
+        </div>
       </div>
       <div class="login-field">
-        <label>Senha</label>
-        <span class="lf-ic">🔒</span>
-        <input type="password" id="loginPass" placeholder="Digite sua senha" autocomplete="current-password">
+        <label for="loginPass">Senha</label>
+        <div class="login-input">
+          <input type="password" id="loginPass" class="com-olho" placeholder="Digite sua senha" autocomplete="current-password">
+          <button type="button" class="login-olho" id="loginOlho" aria-label="Mostrar senha" onclick="loginMostrarSenha()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 6.2A9.8 9.8 0 0 1 12 6c5 0 8.5 4 9.5 6a12.6 12.6 0 0 1-2.6 3.3"/><path d="M6.6 6.7C4.5 8.1 3 10.2 2.5 12c1 2 4.5 6 9.5 6 1.5 0 2.8-.3 4-.9"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>
+          </button>
+        </div>
       </div>
       <label class="login-manter"><input type="checkbox" id="loginManter"> Manter conectado neste aparelho</label>
       <button type="submit" class="login-btn">Entrar</button>
       <div class="login-error" id="loginError"></div>
     </form>
-    <div class="login-footer">
-      <span>Desenvolvido por <b>Convert Vision</b> — Automação Inteligente</span>
-    </div>
+    <div class="login-bemvindo">Seja bem-vindo</div>
   </div>
 </div>
 <div class="mob-header">
@@ -3946,6 +3973,11 @@ function _sessaoExpirou(msg){
   setTimeout(function(){_expirouAvisado=false;},2000);
 }
 // senha digitada no login, só em memória: é a prova que o servidor exige na troca obrigatória
+function loginMostrarSenha(){
+  var i=document.getElementById("loginPass"),b=document.getElementById("loginOlho");if(!i)return;
+  var ver=i.type==="password";i.type=ver?"text":"password";
+  if(b){b.setAttribute("aria-label",ver?"Ocultar senha":"Mostrar senha");b.style.color=ver?"#fff":"";}
+}
 let _pwLogin="",_manterLogin=false;
 async function doLogin(e){
   e.preventDefault();
