@@ -4,14 +4,12 @@ const test = require("node:test");
 const assert = require("node:assert");
 const fs = require("fs");
 const path = require("path");
-const crypto = require("crypto");
 const vm = require("vm");
 const { supabaseFalso, chamar } = require("./_supabase_falso");
 
 process.env.SUPABASE_URL = "https://falso.supabase.co";
 process.env.SUPABASE_SERVICE_ROLE_KEY = "chave-servico";
 process.env.AUTH_SECRET = "segredo-de-teste";
-process.env.SUPABASE_JWT_SECRET = "jwt-de-teste";
 const rh = require("../api/rh");
 
 const JOYCE = "330601ad-3078-4028-a72b-4a22df36c23d", AMAURI = "2613e9d2-99f3-4923-bff1-96e90563008c";
@@ -33,7 +31,7 @@ function ambiente(tabelas) {
   return { log, cabs, tabelas };
 }
 const pede = (usuario, o = {}) => chamar(rh, { usuario, query: { modulo: "ferias", ...(o.query || {}) }, method: o.method || "GET", body: o.body, headers: o.headers || {} });
-const jwtDe = h => JSON.parse(Buffer.from(String(h.Authorization).split(" ")[1].split(".")[1], "base64url").toString());
+const uidDe = h => h["x-fe-uid"];
 
 test("sem login do Jarvis não entra", async () => {
   ambiente(base());
@@ -61,21 +59,17 @@ test("t=eu: quem já está ligado recebe o próprio id; quem é novo entra como 
   assert.strictEqual(a.tabelas.usuarios.find(u => u.jarvis_user === "adrianomacedo").nome, "Adriano Macedo", "sem nome no banco, usa o da sessão");
 });
 
-test("repassa ao PostgREST com o papel fe_app e o id da pessoa, assinado com o JWT secret", async () => {
+test("repassa ao PostgREST com a chave de sempre e o id da pessoa (a página não escolhe o id)", async () => {
   const a = ambiente(base());
-  const r = await pede("amauri", { headers: { "x-fe-path": "/rest/v1/vw_escala?select=*&order=nome.asc", prefer: "count=exact", authorization: "x" } });
+  const r = await pede("amauri", { headers: { "x-fe-path": "/rest/v1/vw_escala?select=*&order=nome.asc", prefer: "count=exact", "x-fe-uid": JOYCE } });
   assert.strictEqual(r.statusCode, 200);
   assert.deepStrictEqual(JSON.parse(r.body), [{ periodo_id: 1, nome: "Fulano" }]);
   const ida = a.cabs.find(c => c.url.includes("/rest/v1/vw_escala"));
   assert.strictEqual(ida.url, "https://falso.supabase.co/rest/v1/vw_escala?select=*&order=nome.asc");
   assert.strictEqual(ida.h.apikey, "chave-servico");
+  assert.strictEqual(ida.h.Authorization, "Bearer chave-servico");
   assert.strictEqual(ida.h.prefer, "count=exact");
-  const tok = String(ida.h.Authorization).split(" ")[1].split(".");
-  assert.strictEqual(crypto.createHmac("sha256", "jwt-de-teste").update(tok[0] + "." + tok[1]).digest("base64url"), tok[2], "assinatura confere");
-  const c = jwtDe(ida.h);
-  assert.strictEqual(c.role, "fe_app");
-  assert.strictEqual(c.sub, AMAURI);
-  assert.ok(c.exp - c.iat <= 300, "token curto");
+  assert.strictEqual(uidDe(ida.h), AMAURI, "o id é o do login do Jarvis, não o que a página mandou");
 });
 
 test("SUPABASE_URL com /rest/v1 no fim também funciona", async () => {
@@ -113,17 +107,7 @@ test("quem edita grava: o corpo vai como veio", async () => {
   const r = await pede("joyce", { method: "PATCH", body: { cobertura: "Fulano" }, headers: { "x-fe-path": "/rest/v1/periodos?id=eq.1", "content-type": "application/json" } });
   assert.strictEqual(r.statusCode, 200);
   assert.strictEqual(a.tabelas.periodos[0].cobertura, "Fulano");
-  assert.strictEqual(jwtDe(a.cabs.find(c => c.url.includes("periodos")).h).sub, JOYCE);
-});
-
-test("sem SUPABASE_JWT_SECRET avisa o que falta", async () => {
-  ambiente(base());
-  const s = process.env.SUPABASE_JWT_SECRET; delete process.env.SUPABASE_JWT_SECRET;
-  try {
-    const r = await pede("joyce", { query: { t: "eu" } });
-    assert.strictEqual(r.statusCode, 503);
-    assert.match(r.body.message, /SUPABASE_JWT_SECRET/);
-  } finally { process.env.SUPABASE_JWT_SECRET = s; }
+  assert.strictEqual(uidDe(a.cabs.find(c => c.url.includes("periodos")).h), JOYCE);
 });
 
 test("tela Usuários: mesmas regras da função de borda; login e senha agora são os do Jarvis", async () => {
@@ -195,7 +179,11 @@ test("docs/ferias-banco.sql: papel próprio, nada para anon/authenticated, tudo 
   assert.match(SQL, /current_user = 'fe_app' and public\.papel_atual\(\) = 'administrador'/);
   assert.match(SQL, /alter table public\.usuarios add column jarvis_user text unique;/);
   assert.match(SQL, /revoke all on public\.afastamentos, .*public\.vw_escala.* from anon, authenticated;/);
-  assert.match(SQL, /grant fe_app to authenticator;/);
+  assert.match(SQL, /grant fe_app to service_role;/);
+  assert.ok(!/grant fe_app to authenticator/.test(SQL), "ninguém troca de papel por token: só a pré-pedido");
+  assert.match(SQL, /if current_user <> 'service_role' then return; end if;/, "só a chave do servidor troca de papel");
+  assert.match(SQL, /alter role authenticator set pgrst\.db_pre_request to 'public\.fe_pre_request';/);
+  assert.match(SQL, /like 'pgrst\.db_pre_request=%'/, "não passa por cima de outra pré-pedido");
   assert.match(SQL, /grant execute on function public\.fe_carga\(text, jsonb\) to service_role;/);
   assert.ok(SQL.indexOf("CREATE SEQUENCE IF NOT EXISTS public.folha_13_import_id_seq") < SQL.indexOf("CREATE TABLE IF NOT EXISTS public.folha_13_import"));
   assert.ok(SQL.indexOf("afastamentos_funcionario_id_fkey") > SQL.indexOf("funcionarios_pkey PRIMARY KEY"));

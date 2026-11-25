@@ -5,8 +5,9 @@
 // apontado para cá. As regras continuam no banco (docs/ferias-banco.sql): esta rota só
 //   1. descobre quem é o login do Jarvis na tabela usuarios da plataforma (coluna jarvis_user;
 //      quem entra pela primeira vez ganha uma linha de Consulta — todos veem, só edita quem a dona liberar);
-//   2. repassa o pedido ao PostgREST com um token do papel fe_app e o id dessa pessoa, assinado com o
-//      SUPABASE_JWT_SECRET: é com ele que as políticas, travas e o histórico do banco sabem quem é;
+//   2. repassa o pedido ao PostgREST com a SUPABASE_SERVICE_ROLE_KEY de sempre e o id dessa pessoa no
+//      cabeçalho x-fe-uid: a função fe_pre_request do banco troca para o papel fe_app com esse id, e é assim
+//      que as políticas, travas e o histórico do banco sabem quem é (o mesmo que o login do Supabase fazia);
 //   3. faz o que a função de borda "usuarios" fazia (tela Usuários), com as mesmas regras.
 //   GET  t=eu          quem sou eu na plataforma (o id que a página usa como "login")
 //   *    (sem t)       PostgREST: o caminho vem no cabeçalho x-fe-path (/rest/v1/<tabela|rpc/função>?...)
@@ -80,15 +81,6 @@ async function euDe(db, chave, nomeSugerido) {
   return depois;
 }
 
-// Token do banco: papel fe_app (políticas e permissões do docs/ferias-banco.sql) e o id da pessoa (fe_uid()).
-function tokenDoBanco(uid) {
-  const agora = Math.floor(Date.now() / 1000);
-  const b64 = o => Buffer.from(JSON.stringify(o)).toString("base64url");
-  const corpo = b64({ alg: "HS256", typ: "JWT" }) + "." +
-    b64({ role: "fe_app", sub: uid, aud: "authenticated", iat: agora, exp: agora + 120 });
-  return corpo + "." + crypto.createHmac("sha256", process.env.SUPABASE_JWT_SECRET).update(corpo).digest("base64url");
-}
-
 // Erro no formato do PostgREST, que a página já sabe mostrar (error.message)
 const recusa = (res, status, message) => res.status(status).json({ code: String(status), message, erro: message });
 
@@ -101,8 +93,10 @@ async function repassar(req, res, eu, caminho) {
   if (!leitura && !editor(eu)) return recusa(res, 403, "Seu acesso à Programação de Férias é só de consulta.");
 
   const base = String(process.env.SUPABASE_URL).replace(/\/+$/, "").replace(/\/rest\/v1$/, "");
-  const h = { apikey: process.env.SUPABASE_SERVICE_ROLE_KEY, Authorization: "Bearer " + tokenDoBanco(eu.id) };
+  const chave = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const h = {};
   for (const k of CABECALHOS) if (req.headers[k]) h[k] = req.headers[k];
+  Object.assign(h, { apikey: chave, Authorization: "Bearer " + chave, "x-fe-uid": eu.id }); // o id vem daqui, nunca da página
   const init = { method: metodo, headers: h };
   if (metodo !== "GET" && metodo !== "HEAD" && req.body !== undefined && req.body !== null && req.body !== "") {
     init.body = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
@@ -228,7 +222,6 @@ module.exports = async function ferias(req, res) {
   if (!ator) return recusa(res, 401, "Entre no Jarvis para abrir a Programação de Férias.");
   const db = ponto.conectar();
   if (!db) return recusa(res, 500, "SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY não configuradas.");
-  if (!process.env.SUPABASE_JWT_SECRET) return recusa(res, 503, "Falta a variável SUPABASE_JWT_SECRET na Vercel (o JWT secret do Supabase do Jarvis).");
   try {
     const q = req.query || {};
     const eu = await euDe(db, ator, q.nome);

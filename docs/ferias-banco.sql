@@ -3,8 +3,9 @@
 -- Gerado a partir do pacote de migração de 24/11/2026 (banco/schema.sql), com estas mudanças:
 --  * os nomes das tabelas, views e funções ficam IGUAIS aos da plataforma (as regras do banco
 --    usam esses nomes, inclusive no histórico); nenhum deles existia no banco do Jarvis;
---  * o login passa a ser o do Jarvis: a API do Jarvis entra no banco com o papel "fe_app"
---    e o id do usuário da plataforma (auth.uid() continua funcionando nas regras);
+--  * o login passa a ser o do Jarvis: a API do Jarvis entra com a SUPABASE_SERVICE_ROLE_KEY de sempre e o id
+--    da pessoa no cabeçalho x-fe-uid; a fe_pre_request troca para o papel "fe_app" e as regras sabem quem é
+--    (auth.uid() virou public.fe_uid(), que lê esse id);
 --  * "fe_app" substitui "authenticated" nas políticas e permissões: um login do Supabase Auth
 --    no projeto do Jarvis NÃO enxerga nada destas tabelas; anon também não;
 --  * sem a ligação usuarios -> auth.users; coluna nova usuarios.jarvis_user liga ao login do Jarvis;
@@ -22,19 +23,23 @@ begin
   select string_agg(p.proname, ', ') into ja from pg_proc p join pg_namespace n on n.oid = p.pronamespace
    where n.nspname = 'public' and p.proname in ('abre_prazo_fechamento', 'demitir', 'dias_afastado_no_periodo', 'eh_dono', 'fecha_mes_anterior', 'gerar_proximo_periodo', 'gerar_proximos_periodos', 'marca_alteracao', 'mes_bloqueado_grupo', 'mes_travado', 'norm', 'norm2', 'papel_atual', 'pode', 'pode_financeiro', 'reativar_demitido', 'registra_historico', 'registra_mes_aberto', 'registrar_retorno', 'saida_congelada', 'sem_acento', 'supervisor_do_login', 'tg_congela_ficha_saidas', 'tg_trava_mes_fechado', 'tg_trava_mes_grupo', 'tirar_snapshot', 'trava_colunas_funcionarios', 'trava_colunas_periodos', 'turno_do_cargo', 'fe_uid');
   if ja is not null then raise exception 'Já existem funções com estes nomes no banco do Jarvis: %. Nada foi alterado.', ja; end if;
+  select string_agg(c, ', ') into ja from pg_roles r, unnest(r.rolconfig) c
+   where r.rolname = 'authenticator' and c like 'pgrst.db_pre_request=%';
+  if ja is not null then raise exception 'A API do Supabase já tem uma função de pré-pedido (%). Nada foi alterado.', ja; end if;
 end $guarda$;
 
 create extension if not exists "unaccent" with schema extensions;
 create extension if not exists "pg_trgm" with schema extensions;
 
--- Papel que a API do Jarvis usa para falar com estas tabelas (o token é assinado com o JWT secret do projeto)
+-- Papel que a API do Jarvis usa para falar com estas tabelas. A API entra com a SUPABASE_SERVICE_ROLE_KEY de sempre
+-- e manda o id da pessoa no cabeçalho x-fe-uid; a fe_pre_request (abaixo) troca para este papel antes do pedido.
 do $papel$ begin
   if not exists (select 1 from pg_roles where rolname = 'fe_app') then create role fe_app nologin noinherit; end if;
 end $papel$;
-grant fe_app to authenticator;
+grant fe_app to service_role;
 grant usage on schema public to fe_app;
 
--- O id do login (o que auth.uid() dava no projeto antigo), lido do token que a API do Jarvis assina
+-- O id do login (o que auth.uid() dava no projeto antigo), posto pela fe_pre_request
 create function public.fe_uid() returns uuid language sql stable as $uid$
   select nullif(nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub', '')::uuid
 $uid$;
@@ -2345,10 +2350,25 @@ end $carga$;
 revoke all on function public.fe_carga(text, jsonb) from public, anon, authenticated;
 grant execute on function public.fe_carga(text, jsonb) to service_role;
 
+-- Antes de cada pedido à API do Supabase: se veio com a chave service_role (só os servidores do Jarvis a têm)
+-- e com o cabeçalho x-fe-uid, o pedido roda como fe_app e com esse id. Os outros pedidos não mudam em nada.
+create function public.fe_pre_request() returns void language plpgsql as $pre$
+declare u text;
+begin
+  if current_user <> 'service_role' then return; end if;
+  u := nullif(current_setting('request.headers', true), '')::json ->> 'x-fe-uid';
+  if u is null then return; end if;
+  perform set_config('request.jwt.claims', json_build_object('sub', u::uuid, 'role', 'fe_app')::text, true);
+  set local role fe_app;
+end $pre$;
+grant execute on function public.fe_pre_request() to anon, authenticated, service_role;
+alter role authenticator set pgrst.db_pre_request to 'public.fe_pre_request';
+
 commit;
 
 -- Avisa a API (PostgREST) das tabelas novas
 notify pgrst, 'reload schema';
+notify pgrst, 'reload config';
 
 -- ============================================================================
 -- Agendamentos diários que existiam no projeto antigo (horário UTC). Rodar depois do bloco acima.
