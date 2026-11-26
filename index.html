@@ -582,14 +582,14 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
   background:#040c15 url(/assets/login/fundo.webp) center center/cover no-repeat;}
 .login-overlay.hidden{opacity:0;visibility:hidden;pointer-events:none;}
 /* Tamanho do login: tudo escala pela ALTURA da tela (--u), para nunca precisar de barra de rolagem */
-.login-overlay{--u:min(.66px,calc(100vh / 800));}
+.login-overlay{--u:min(1px,calc(100vh / 800));}
 .login-box{position:relative;margin:auto;padding:calc(12*var(--u)) 0;width:min(calc(440*var(--u)),calc(100vw - 40px));text-align:left;}
 /* LOGO do login (SERVIX), centralizado acima do formulário */
-.login-logo{display:flex;justify-content:center;align-items:center;margin-bottom:calc(14*var(--u));}
+.login-logo{display:flex;justify-content:center;align-items:center;margin-bottom:calc(24*var(--u));}
 .login-logo:empty{display:none;}
 /* O logo fica POR CIMA do fundo, com as cores originais e nada sobre ele. */
 .login-logo-in{position:relative;display:block;line-height:0;max-width:100%;}
-.login-logo img{display:block;height:calc(250*var(--u));width:auto;max-width:100%;}
+.login-logo img{display:block;height:min(320px,31vh);width:auto;max-width:100%;}
 .login-field{margin-bottom:calc(14*var(--u));}
 .login-field label{display:block;font-size:max(10px,calc(13*var(--u)));font-weight:700;color:rgba(214,226,240,.78);text-transform:uppercase;letter-spacing:.16em;margin-bottom:calc(7*var(--u));}
 .login-input{position:relative;}
