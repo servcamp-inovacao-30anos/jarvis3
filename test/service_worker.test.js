@@ -18,6 +18,8 @@ test("service worker: só ícones e manifesto vêm do cache; scripts, estilos, f
     assert.equal(respondeu(c), false, c + " não pode ficar preso no cache");
   }
   assert.equal(respondeu("/", "navigate"), true, "a página continua rede primeiro, com o cache só de reserva");
+  for (const p of ["/ferias.html", "/agendar.html", "/via.html", "/cartao/gabi"])
+    assert.equal(respondeu(p, "navigate"), false, p + " aberta direto não vira a cópia offline do painel");
   assert.match(codigo, /const VERSAO = "jarvis-v\d+";/, "o cache tem versão: trocar o nome apaga o antigo");
   assert.ok(ouvintes.push && ouvintes.notificationclick, "o comunicado semanal volta por notificação");
 });

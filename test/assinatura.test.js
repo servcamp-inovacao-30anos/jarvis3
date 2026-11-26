@@ -401,7 +401,7 @@ test("a página pública não exige login e a via não aparece no painel de ning
   const r = await chamar(rh, { query: { modulo: "via", c: "a".repeat(30) } });
   assert.notEqual(r.statusCode, 401, "a rota da via passa antes da exigência de token");
   const vercel = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "vercel.json"), "utf8"));
-  assert.ok(vercel.headers[0].headers.some(h => h.key === "Content-Security-Policy"));
+  assert.ok(vercel.headers.find(b => b.source === "/(.*)").headers.some(h => h.key === "Content-Security-Policy"));
 });
 
 test("tela: os botões não dependem de a assinatura já ter carregado (sinal fraco no celular do supervisor)", () => {

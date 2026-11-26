@@ -889,6 +889,7 @@ aside.sb#sidebar.sb-mini #navRoot .ni{margin:2px 8px;padding:9px 0;}
     <div class="nav-cat-b">
       <div class="ni" data-pg="saude" data-perm="admin" onclick="navTo('saude',this)"><span class="ni-ic">🩺</span><span>Sa&uacute;de do Cliente</span><span class="nib nib-novo">NOVO</span></div>
       <div class="ni" data-pg="celulares" data-perm="admin" onclick="navTo('celulares',this)"><span class="ni-ic">📱</span><span>Celulares</span><span class="nib nib-novo">NOVO</span></div>
+      <div class="ni" data-pg="ferias" onclick="navTo('ferias',this)"><span class="ni-ic">🏖️</span><span>Programa&ccedil;&atilde;o de F&eacute;rias</span><span hidden>ferias férias escala sar2g aso afastados</span><span class="nib nib-novo">NOVO</span></div>
       <!-- DESATIVADA 17/08 a pedido do Joao: nao ha responsavel definido pela auditoria.
            A pagina e o codigo continuam existindo; para religar, descomente esta linha.
       <div class="ni" data-pg="audqual" data-perm="qual" onclick="navTo('audqual',this)"><span class="ni-ic">✅</span><span>Auditoria de Qualidade</span></div>
@@ -1969,6 +1970,11 @@ aside.sb#sidebar.sb-mini #navRoot .ni{margin:2px 8px;padding:9px 0;}
   <div class="page" id="pg-celulares">
     <div class="sec-hdr"><span class="sec-hdr-ic">📱</span><div><div class="sec-hdr-t">Celulares</div><div class="sec-hdr-sub">Os aparelhos dos postos: o que está faltando, o que conferir, e o número e o login Zello de cada um.</div></div></div>
     <div id="cel-content"><div style="padding:40px;text-align:center;color:#94a3b8;font-size:.85rem">Carregando…</div></div>
+  </div>
+  <div class="page" id="pg-ferias">
+    <!-- A plataforma de férias inteira (ferias.html), com o desenho dela; os dados vêm pela /api/rh?modulo=ferias -->
+    <style>#pg-ferias.active{height:100%}#fe-frame{display:block;width:100%;height:100%;min-height:480px;border:0;border-radius:var(--r);background:#000c1e}</style>
+    <iframe id="fe-frame" title="Programação de Férias" allow="fullscreen"></iframe>
   </div>
   <div class="page" id="pg-faltasmed">
     <style>
@@ -4736,7 +4742,7 @@ function setTurno(t,btn){document.querySelectorAll("#trnoPg .pi").forEach(b=>b.c
 function setArea(){ST.area=document.getElementById("areaS").value;rpg();refresh();}
 function rpg(){Object.keys(ST.tpg).forEach(k=>ST.tpg[k]=1);}
 
-const PTITLES={saude:"Saúde do Cliente",cartao:"Cartão de Visita",fmrel:"Relatório de Faltas x Medidas",metas:"Metas da Diretoria",visao:"Visão Geral",ativos:"Funcionários Ativos",clientes:"Clientes",celulares:"Celulares — Controle dos Aparelhos",agenda:"Agenda Comercial",votacao:"Votação — novo nome e nova logo",faltas:"Faltas & Top 10",coberturas:"Coberturas",postos:"Justificativa de Postos Descobertos",os:"OS Avulsos",fts:"FTS",dispo:"Sem Alocação",restec:"Reservas Técnicas",hrextra:"Horas Extras",checklist:"Check List",rhvagas:"RH — Controle de Vagas",rhentrev:"RH — Entrevistas & Funil",rhdesl:"RH — Desligamentos",rhres:"RH — Reservas → Efetivação",rhtrein:"RH — Treinamentos",rhdash:"Painel RH — Diretoria",compro:"Comercial — Propostas e Serviços Extras",comdash:"Painel Comercial",config:"Configurações — Acessos & Usuários",sede:"Base Virtual — Equipe",prj:"Projetos — Evolução & Inovação",audqual:"Auditoria de Qualidade",ligacoes:"Feedback de Faltas",faltasmed:"Faltas x Medidas",bdvrel:"Relatório de Coberturas do Supervisor",faltassup:"Acompanhamento de Medidas (Supervisão)",apres:"Apresentação"};
+const PTITLES={ferias:"Programação de Férias",saude:"Saúde do Cliente",cartao:"Cartão de Visita",fmrel:"Relatório de Faltas x Medidas",metas:"Metas da Diretoria",visao:"Visão Geral",ativos:"Funcionários Ativos",clientes:"Clientes",celulares:"Celulares — Controle dos Aparelhos",agenda:"Agenda Comercial",votacao:"Votação — novo nome e nova logo",faltas:"Faltas & Top 10",coberturas:"Coberturas",postos:"Justificativa de Postos Descobertos",os:"OS Avulsos",fts:"FTS",dispo:"Sem Alocação",restec:"Reservas Técnicas",hrextra:"Horas Extras",checklist:"Check List",rhvagas:"RH — Controle de Vagas",rhentrev:"RH — Entrevistas & Funil",rhdesl:"RH — Desligamentos",rhres:"RH — Reservas → Efetivação",rhtrein:"RH — Treinamentos",rhdash:"Painel RH — Diretoria",compro:"Comercial — Propostas e Serviços Extras",comdash:"Painel Comercial",config:"Configurações — Acessos & Usuários",sede:"Base Virtual — Equipe",prj:"Projetos — Evolução & Inovação",audqual:"Auditoria de Qualidade",ligacoes:"Feedback de Faltas",faltasmed:"Faltas x Medidas",bdvrel:"Relatório de Coberturas do Supervisor",faltassup:"Acompanhamento de Medidas (Supervisão)",apres:"Apresentação"};
 
 /* ── Sidebar 2.0: accordion com estado salvo + busca de módulos ── */
 function navCatToggle(k){
@@ -4884,12 +4890,13 @@ function navTo(p,btn){
   document.getElementById("pgTitle").textContent=PTITLES[p]||p;
   document.getElementById("pgSub").textContent=perLabel();
   // o Relatório de Coberturas tem período próprio: o filtro geral (Hoje/Semana/Turno/Área) não vale lá e só confundiria
-  {const lig=p==="ligacoes",rel=p==="bdvrel"||p==="fmrel",fb=document.querySelector(".fb"),tt=document.getElementById("pgTitle");if(fb)fb.style.display=rel||lig?"none":""; // Feedback de Faltas tem cabeçalho e filtros próprios (referência do Raphael, 10/11/2026)
+  {const lig=p==="ligacoes",rel=p==="bdvrel"||p==="fmrel",fb=document.querySelector(".fb"),tt=document.getElementById("pgTitle");if(fb)fb.style.display=rel||lig||p==="ferias"?"none":""; // Feedback de Faltas tem cabeçalho e filtros próprios (referência do Raphael, 10/11/2026)
     if(tt&&tt.parentElement)tt.parentElement.style.visibility=lig?"hidden":"";document.body.classList.toggle("pg-lig",lig);/* tela cheia: o módulo ocupa a área toda (assets/ligacoes/ligacoes.css) */if(rel)document.getElementById("pgSub").textContent=p==="fmrel"?"Visão da coordenação":"Visão da diretoria";}
   if(["faltas","coberturas","postos","os","fts","dispo","restec","hrextra","checklist"].includes(p)){rTbl(p);updSecCharts(p);}
   else if(p==="ativos"){renderAtivos();}
   else if(p==="clientes"){renderClientes();}
   else if(p==="celulares"){if(typeof celLoad==="function")celLoad();}
+  else if(p==="ferias"){const f=document.getElementById("fe-frame");if(f&&!f.getAttribute("src"))f.setAttribute("src","/ferias.html");} // só carrega na primeira vez que abre
   else if(p==="saude"){sauRender();} // dados já vêm no batimento (/api/hq); desenha na hora, sem esperar o próximo
   else if(p==="agenda"){if(typeof agLoad==="function")agLoad();}
   else if(p==="cartao"){if(typeof cvLoad==="function")cvLoad();} // assets/cartao/painel.js
