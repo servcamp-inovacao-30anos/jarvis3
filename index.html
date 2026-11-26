@@ -599,8 +599,12 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
 .login-olho{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:46px;height:46px;display:flex;align-items:center;justify-content:center;background:none;border:none;border-radius:10px;color:rgba(214,226,240,.75);cursor:pointer;}
 .login-olho:hover{color:#fff;background:rgba(255,255,255,.06);}
 .login-olho svg{width:24px;height:24px;}
-.login-manter{display:flex;align-items:center;gap:12px;margin:4px 0 26px;font-size:1.1rem;color:rgba(214,226,240,.82);cursor:pointer;min-height:34px;}
-.login-manter input{width:24px;height:24px;margin:0;accent-color:#2e8fef;flex:none;border-radius:5px;cursor:pointer;}
+.login-manter{display:flex;align-items:center;gap:14px;margin:4px 0 26px;font-size:1.35rem;letter-spacing:.14em;color:rgba(190,206,224,.6);cursor:pointer;min-height:34px;}
+.login-manter input{-webkit-appearance:none;appearance:none;width:26px;height:26px;margin:0;flex:none;cursor:pointer;border-radius:7px;background:rgba(3,10,18,.78);border:1px solid rgba(150,185,225,.3);outline:none;position:relative;transition:border-color .15s,box-shadow .15s,background .15s;}
+.login-manter input:hover{border-color:rgba(70,170,240,.55);}
+.login-manter input:focus-visible,.login-manter input:checked{border-color:rgba(70,170,240,.75);box-shadow:0 0 0 3px rgba(46,143,239,.18),0 0 12px rgba(46,143,239,.35);}
+.login-manter input:checked{background:linear-gradient(135deg,#2c63ea 0%,#27a5ee 100%);}
+.login-manter input:checked::after{content:"";position:absolute;left:8px;top:3px;width:7px;height:13px;border:solid #fff;border-width:0 2.5px 2.5px 0;transform:rotate(45deg);}
 .login-btn{width:100%;height:78px;border:none;border-radius:14px;color:#fff;font-size:1.5rem;font-weight:800;letter-spacing:.02em;cursor:pointer;background:linear-gradient(100deg,#2c63ea 0%,#27a5ee 55%,#2cd3f0 100%);box-shadow:0 14px 34px rgba(40,170,240,.3);transition:transform .15s,box-shadow .15s,filter .15s;}
 .login-btn:hover{transform:translateY(-1px);box-shadow:0 18px 40px rgba(40,170,240,.42);filter:brightness(1.05);}
 .login-btn:active{transform:translateY(0);}
@@ -615,12 +619,14 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
   .login-input input{height:54px;font-size:1.05rem;border-radius:12px;padding:0 18px;}
   .login-input input.com-olho{padding-right:54px;}
   .login-olho{width:42px;height:42px;right:6px;}.login-olho svg{width:22px;height:22px;}
-  .login-manter{font-size:.92rem;margin:2px 0 20px;}.login-manter input{width:22px;height:22px;}
+  .login-manter{font-size:1rem;gap:12px;margin:2px 0 20px;}.login-manter input{width:22px;height:22px;border-radius:6px;}
+  .login-manter input:checked::after{left:6.5px;top:2.5px;width:6px;height:11px;border-width:0 2.5px 2.5px 0;}
   .login-btn{height:58px;font-size:1.1rem;border-radius:12px;}
   .login-error{font-size:.86rem;}
   .login-bemvindo{font-size:1rem;margin-top:20px;}
 }
 @media(max-width:768px){.login-overlay{background-position:72% center;}}
+@media(max-width:480px){.login-manter{font-size:.82rem;letter-spacing:.1em;gap:10px;}}
 @keyframes float{0%,100%{transform:translateY(0) scale(1);opacity:.3;}50%{transform:translateY(-30px) scale(1.1);opacity:.6;}}
 /* CREDIT SIDEBAR */
 .sb-credit{padding:8px 14px 10px;text-align:center;border-top:1px solid rgba(255,255,255,.06);}
