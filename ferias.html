@@ -19,7 +19,7 @@
    a recarregar e a reabrir a mesma aba. O localStorage continua sendo o
    principal; o endereço só entra quando ele não dá conta. */
 var _hash = (location.hash.match(/tema=(light|dark)/) || [])[1];
-try{ var t = localStorage.getItem('tema') || _hash;
+try{ var t = (parent !== window && parent.document.documentElement.getAttribute('data-theme')) || localStorage.getItem('svc_theme') || localStorage.getItem('tema') || _hash;
      document.documentElement.dataset.theme = t || 'dark';
      if(localStorage.getItem('menu') === 'min') document.documentElement.dataset.lat = 'min'; }catch(e){
      document.documentElement.dataset.theme = _hash || 'dark'; }
@@ -7024,8 +7024,8 @@ body:has(#painel-permissoes.aberto) #saving { z-index: 10000; }
 .sec-prox-acao{margin-top:12px;display:flex;justify-content:flex-end}
 </style>
 <style id="jarvis">
-/* Jarvis: login, senha e saída são os do Jarvis — a tela de login da plataforma nunca aparece */
-#btn-senha, #btn-sair, #tela-login{display:none !important}
+/* módulo do Jarvis: login, senha, saída e tema são os do sistema — a tela de login da plataforma nunca aparece */
+#btn-senha, #btn-sair, #btn-tema, #tela-login{display:none !important}
 #fe-aviso{position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
   gap:16px; padding:24px; text-align:center; font-size:15px; color:var(--ink-2, #9fb3c8); background:var(--ground, #000c1e); z-index:5}
 #fe-aviso.erro #fe-aviso-txt{color:var(--crit, #ff6b6b); max-width:460px; line-height:1.5}
@@ -7444,7 +7444,7 @@ html[data-theme="dark"] .pill.dem b{color:#b26bff}
       <h3>Quem tem acesso à plataforma</h3>
       <button class="btn primary" id="u-novo" type="button">+ Novo login</button>
     </div>
-    <p class="user-nota">O papel decide o que a pessoa enxerga e pode mudar. <b>Master</b> edita tudo · <b>Administrador</b> faz o que estiver marcado em Permissões · <b>Consulta</b> só vê. Quem abre a Programação de Férias pelo Jarvis entra nesta lista como <b>Consulta</b>; aqui você muda o papel.</p>
+    <p class="user-nota">O papel decide o que a pessoa enxerga e pode mudar. <b>Master</b> edita tudo · <b>Administrador</b> faz o que estiver marcado em Permissões · <b>Consulta</b> só vê. Quem abre a Programação de Férias entra nesta lista como <b>Consulta</b>; aqui você muda o papel.</p>
     <div id="user-box"></div>
   </div>
 </div><!-- /wrap -->
@@ -7558,10 +7558,10 @@ sb.auth.getSession = async () => {
         const j = await r.json().catch(() => ({}));
         if(r.ok && j.uid){ FE_EU = j; break; }
         FE_ERRO = r.status === 401
-          ? 'Sua sessão do Jarvis terminou. Entre de novo no Jarvis e abra a Programação de Férias.'
+          ? 'Sua sessão terminou. Entre de novo para abrir a Programação de Férias.'
           : (j.message || j.error || ('O servidor respondeu ' + r.status + '.'));
         if(r.status < 500) break;
-      }catch(e){ FE_ERRO = 'Não consegui falar com o Jarvis. Confira a internet e tente de novo.'; }
+      }catch(e){ FE_ERRO = 'Não consegui carregar a Programação de Férias. Confira a internet e tente de novo.'; }
       if(vez === 1) await new Promise(ok => setTimeout(ok, 1500));
     }
   }
@@ -7823,6 +7823,10 @@ $('#btn-tema').addEventListener('click', () => {
   location.reload();
 });
 pintarBotaoTema();
+/* o tema é o do sistema: quando o botão do Jarvis troca, a pele troca aqui pelo mesmo caminho do botão antigo */
+window.addEventListener('storage', e => {
+  if(e.key === 'svc_theme' && e.newValue && (e.newValue === 'dark') !== escuroAtivo()) $('#btn-tema').click();
+});
 
 /* -------------------- barra lateral -------------------- */
 function pintarBotaoMenu(){
@@ -7969,7 +7973,7 @@ async function iniciar(){
   const { data:{ session } } = await sb.auth.getSession();
   if(!session){
     $('#tela-app').hidden = true;
-    jarvisAviso(FE_ERRO || 'Abra pelo Jarvis: Gestão → Programação de Férias.');
+    jarvisAviso(FE_ERRO || 'Abra a Programação de Férias pelo menu Gestão.');
     return;
   }
 

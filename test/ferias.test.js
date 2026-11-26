@@ -139,11 +139,11 @@ test("tela Usuários: mesmas regras da função de borda; login e senha agora s�
   const l = await usu("joyce", { acao: "listar" });
   assert.strictEqual(l.statusCode, 200);
   assert.strictEqual(l.body.dono, true);
-  assert.strictEqual(l.body.usuarios.find(u => u.id === AMAURI).email, "login do Jarvis: amauri");
+  assert.strictEqual(l.body.usuarios.find(u => u.id === AMAURI).email, "login: amauri");
 
   assert.strictEqual((await usu("amauri", { acao: "listar" })).statusCode, 403, "consulta sem a aba Usuários não vê");
-  assert.match((await usu("joyce", { acao: "criar", nome: "X", email: "x@x", senha: "12345678" })).body.erro, /logins agora são os do Jarvis/);
-  assert.match((await usu("joyce", { acao: "senha", id: AMAURI, senha: "12345678" })).body.erro, /senha agora é a do Jarvis/);
+  assert.match((await usu("joyce", { acao: "criar", nome: "X", email: "x@x", senha: "12345678" })).body.erro, /Os logins são criados em Configurações/);
+  assert.match((await usu("joyce", { acao: "senha", id: AMAURI, senha: "12345678" })).body.erro, /A senha é a do login/);
 
   const p = await usu("joyce", { acao: "permissoes", id: AMAURI, papel: "administrador", financeiro: true,
     permissoes: { abas: ["programacao", "invente"], acoes: ["sar2g"], campos: ["datas"] } });
@@ -187,14 +187,19 @@ test("ferias.html: sem o Supabase antigo, tudo pela API do Jarvis, scripts compi
   assert.ok(PAGINA.includes("sessionStorage.getItem('authToken')"));
   assert.ok(PAGINA.includes("if(document.hidden || (window.frameElement && !window.frameElement.offsetParent)) return;"), "não consulta o banco com a guia escondida");
   // dentro do Jarvis a tela de login da plataforma nunca aparece (nem piscando enquanto a sessão volta do servidor)
-  assert.ok(PAGINA.includes("#btn-senha, #btn-sair, #tela-login{display:none !important}"));
   assert.ok(!PAGINA.includes("$('#tela-login').hidden = false"), "nenhum caminho volta para a tela de login");
   assert.ok(PAGINA.includes('<p id="fe-aviso-txt">Abrindo a Programação de Férias…</p>'));
-  assert.ok(PAGINA.includes("jarvisAviso(FE_ERRO || 'Abra pelo Jarvis: Gestão → Programação de Férias.');"));
-  assert.ok(PAGINA.includes("Sua sessão do Jarvis terminou."), "401 explica em vez de mostrar o código");
+  assert.ok(PAGINA.includes("jarvisAviso(FE_ERRO || 'Abra a Programação de Férias pelo menu Gestão.');"));
+  assert.ok(PAGINA.includes("Sua sessão terminou. Entre de novo para abrir a Programação de Férias."), "401 explica em vez de mostrar o código");
+  // um sistema só: nenhuma mensagem trata o Jarvis como outro sistema, e o tema é o do Jarvis
+  for (const frase of ["falar com o Jarvis", "sessão do Jarvis", "Abra pelo Jarvis", "pelo Jarvis entra", "login do Jarvis"])
+    assert.ok(!PAGINA.includes(frase), frase);
+  assert.ok(PAGINA.includes("#btn-senha, #btn-sair, #btn-tema, #tela-login{display:none !important}"), "um botão de tema só: o do Jarvis");
+  assert.ok(PAGINA.includes("parent.document.documentElement.getAttribute('data-theme')"), "nasce no tema da página do Jarvis");
+  assert.ok(PAGINA.includes("if(e.key === 'svc_theme' && e.newValue && (e.newValue === 'dark') !== escuroAtivo()) $('#btn-tema').click();"), "troca junto");
   assert.ok(PAGINA.includes("localStorage.getItem('jarvisSessao')"), "aba nova com 'Manter conectado' entra sem pedir login");
   assert.ok(PAGINA.includes("for(let vez = 1; vez <= 2 && !FE_EU; vez++){"), "tenta de novo se o servidor falhar");
-  assert.ok(PAGINA.includes("Quem abre a Programação de Férias pelo Jarvis entra nesta lista como <b>Consulta</b>"));
+  assert.ok(PAGINA.includes("Quem abre a Programação de Férias entra nesta lista como <b>Consulta</b>"));
   const re = /<script(\s[^>]*)?>([\s\S]*?)<\/script>/g; let m, n = 0;
   while ((m = re.exec(PAGINA))) { if (m[1] && /src=/.test(m[1])) continue; n++; new vm.Script(m[2]); }
   assert.ok(n > 10);
@@ -250,5 +255,6 @@ test("index.html: guia em Gestão para todos, página com a plataforma, carrega 
 
 test("service worker: a página no iframe não vira a cópia offline do painel", () => {
   const sw = fs.readFileSync(path.join(RAIZ, "sw.js"), "utf8");
-  assert.ok(sw.includes('if (req.mode === "navigate" && req.destination !== "iframe") {'));
+  assert.ok(sw.includes('if (req.mode === "navigate" && req.destination !== "iframe" && painel) {'));
+  assert.ok(sw.includes('const painel = url.pathname === "/" || url.pathname === "/index.html";'));
 });

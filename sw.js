@@ -54,8 +54,10 @@ self.addEventListener("fetch", e => {
   if (url.pathname.startsWith("/api/")) return;
 
   // Navegação (abrir o sistema): rede primeiro, cache só como rede de segurança.
-  // Só a página principal: a Programação de Férias abre num iframe e não pode virar a cópia do /index.html.
-  if (req.mode === "navigate" && req.destination !== "iframe") {
+  // Só a página principal: outra página aberta direto (/ferias.html, /agendar.html, /via.html, /cartao/…) ou num
+  // iframe (a Programação de Férias) não pode virar a cópia do /index.html.
+  const painel = url.pathname === "/" || url.pathname === "/index.html";
+  if (req.mode === "navigate" && req.destination !== "iframe" && painel) {
     e.respondWith((async () => {
       try {
         const r = await fetch(req);

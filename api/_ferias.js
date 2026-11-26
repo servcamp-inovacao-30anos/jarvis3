@@ -160,12 +160,12 @@ async function usuarios(req, res, db, eu) {
 
   if (acao === "listar") {
     const lista = await db.obter(`usuarios?select=${SELECT_USUARIO}&order=nome.asc`);
-    // o e-mail era o login; agora o login é o do Jarvis
-    lista.forEach(u => { if (!u.email && u.jarvis_user) u.email = "login do Jarvis: " + u.jarvis_user; });
+    // o e-mail era o login; agora o login é o do sistema
+    lista.forEach(u => { if (!u.email && u.jarvis_user) u.email = "login: " + u.jarvis_user; });
     return ok({ ok: true, usuarios: lista, eu: eu.id, dono, gerencia });
   }
-  if (acao === "criar") return nao(400, "Os logins agora são os do Jarvis: quem abre a Programação de Férias pelo Jarvis já aparece aqui como Consulta.");
-  if (acao === "senha") return nao(400, "A senha agora é a do Jarvis.");
+  if (acao === "criar") return nao(400, "Os logins são criados em Configurações. Quem abre a Programação de Férias já aparece aqui como Consulta.");
+  if (acao === "senha") return nao(400, "A senha é a do login: troque em Trocar senha, no menu com o seu nome.");
   if (!gerencia) return nao(403, "Seu acesso permite só ver os logins.");
 
   const id = String(body.id || "");
@@ -252,7 +252,7 @@ async function usuarios(req, res, db, eu) {
 module.exports = async function ferias(req, res) {
   res.setHeader("Cache-Control", "no-store");
   const ator = quemPede(req);
-  if (!ator) return recusa(res, 401, "Entre no Jarvis para abrir a Programação de Férias.");
+  if (!ator) return recusa(res, 401, "Sua sessão terminou. Entre de novo para abrir a Programação de Férias.");
   const db = ponto.conectar();
   if (!db) return recusa(res, 500, "SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY não configuradas.");
   try {
