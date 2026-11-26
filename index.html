@@ -582,7 +582,7 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
   background:#040c15 url(/assets/login/fundo.webp) center center/cover no-repeat;}
 .login-overlay.hidden{opacity:0;visibility:hidden;pointer-events:none;}
 /* Tamanho do login: tudo escala pela ALTURA da tela (--u), para nunca precisar de barra de rolagem */
-.login-overlay{--u:min(1px,calc(100vh / 680));}
+.login-overlay{--u:min(.78px,calc(100vh / 800));}
 .login-box{position:relative;margin:auto;padding:calc(12*var(--u)) 0;width:min(calc(440*var(--u)),calc(100vw - 40px));text-align:left;}
 /* LOGO do login (SERVIX), centralizado acima do formulário */
 .login-logo{display:flex;justify-content:center;align-items:center;margin-bottom:calc(14*var(--u));}
@@ -597,7 +597,8 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
 .login-input input.com-olho{padding-right:calc(50*var(--u));}
 .login-input input:focus{border-color:rgba(70,170,240,.75);box-shadow:0 0 0 3px rgba(46,143,239,.18);}
 .login-input input::placeholder{color:rgba(255,255,255,.28);}
-.login-input input:-webkit-autofill{-webkit-box-shadow:0 0 0 100px #07131f inset;-webkit-text-fill-color:#fff;caret-color:#fff;}
+.login-input input:-webkit-autofill,.login-input input:-webkit-autofill:hover,.login-input input:-webkit-autofill:active{border:1px solid rgba(150,185,225,.22)!important;outline:none!important;-webkit-box-shadow:0 0 0 100px #07131f inset!important;-webkit-text-fill-color:#fff;caret-color:#fff;}
+.login-input input:-webkit-autofill:focus{border:1px solid rgba(70,170,240,.75)!important;outline:none!important;-webkit-box-shadow:0 0 0 100px #07131f inset,0 0 0 3px rgba(46,143,239,.18)!important;-webkit-text-fill-color:#fff;caret-color:#fff;}
 .login-olho{position:absolute;right:calc(6*var(--u));top:50%;transform:translateY(-50%);width:calc(38*var(--u));height:calc(38*var(--u));display:flex;align-items:center;justify-content:center;background:none;border:none;border-radius:10px;color:rgba(214,226,240,.75);cursor:pointer;}
 .login-olho:hover{color:#fff;background:rgba(255,255,255,.06);}
 .login-olho svg{width:calc(20*var(--u));height:calc(20*var(--u));}
