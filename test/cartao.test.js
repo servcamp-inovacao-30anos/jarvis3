@@ -53,9 +53,10 @@ test("/cartao/<apelido> abre a página do cartão e o .vcf sai como contato", ()
   assert.match(pg, /noindex/);
 });
 
-test("a guia do painel fica no menu Comercial, com a permissão do comercial", () => {
+test("a guia saiu do menu (26/11), mas a tela continua pronta para voltar", () => {
   const html = ler("index.html");
-  assert.match(html, /<div class="ni" data-pg="cartao" data-perm="com" onclick="navTo\('cartao',this\)">/);
+  // Para voltar: <div class="ni" data-pg="cartao" data-perm="com" onclick="navTo('cartao',this)"> no menu Comercial
+  assert.doesNotMatch(html, /<div class="ni" data-pg="cartao"/);
   assert.match(html, /<div class="page" id="pg-cartao">[\s\S]*?<div id="cv-content">/);
   assert.match(html, /else if\(p==="cartao"\)\{if\(typeof cvLoad==="function"\)cvLoad\(\);\}/);
   // painel.js precisa do gerador de QR, que é carregado antes
