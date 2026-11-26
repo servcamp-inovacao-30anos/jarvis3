@@ -922,13 +922,6 @@ aside.sb#sidebar.sb-mini #navRoot .ni{margin:2px 8px;padding:9px 0;}
       <div class="ni" data-pg="comdash" data-perm="comdash" onclick="navTo('comdash',this)"><span class="ni-ic">📊</span><span>Painel Comercial</span><span class="nib nib-exec">EXEC</span></div>
     </div>
   </div>
-  <div class="nav-cat" data-cat="inov">
-    <div class="nav-cat-h" onclick="navCatToggle('inov')"><span class="nav-cat-t">🚀 Inovação</span><span class="nav-cat-ar">▾</span></div>
-    <div class="nav-cat-b">
-      <div class="ni" data-pg="sede" onclick="navTo('sede',this)"><span class="ni-ic">🏢</span><span>Base Virtual</span><span class="nib nib-vivo">AO VIVO</span></div>
-      <div class="ni" data-pg="prj" data-perm="prj" onclick="navTo('prj',this)"><span class="ni-ic">🚀</span><span>Projetos</span><span class="nib nib-novo">NOVO</span></div>
-    </div>
-  </div>
   <div class="nav-cat" data-cat="sys">
     <div class="nav-cat-h" onclick="navCatToggle('sys')"><span class="nav-cat-t">⚙️ Sistema</span><span class="nav-cat-ar">▾</span></div>
     <div class="nav-cat-b">
@@ -4777,7 +4770,7 @@ function sbPerfilRender(){
   document.getElementById("sbPerfilCargo").textContent=sessionStorage.getItem("userCargo")||"";
   box.style.display="";
   if(typeof ofIniciar==="function")ofIniciar(); // ofensiva: contador do cartão e ranking da primeira tela
-  if(typeof votIniciar==="function")votIniciar(); // votação do nome e da logo: janela de aviso para quem ainda não votou
+  if(typeof votIniciar==="function"&&!pgInativa("votacao"))votIniciar(); // votação do nome e da logo: janela de aviso para quem ainda não votou
 }
 /* favoritos ⭐ com persistência */
 function navFavGet(){try{return JSON.parse(localStorage.getItem("svc_navfav")||"[]");}catch(e){return[];}}
@@ -4851,7 +4844,17 @@ function vgFmPermitido(){return fmPermitido()||fsPermitido();}
 /* Relatório de Coberturas: quem tem fm + quem recebeu a permissão só deste relatório (bdv) */
 function bdvPermitido(){return fmPermitido()||sessionStorage.getItem("userBdv")==="1";}
 function fsPermitido(){return sessionStorage.getItem("userAdmin")==="1"||sessionStorage.getItem("userSup")==="1"||sessionStorage.getItem("userLig")==="1";}
+/* Guias inativadas (26/11/2026): saíram do menu, mas a tela, o código e os dados continuam, para poder voltar.
+   Qualquer outro caminho que tente abrir uma delas (volta depois de atualização automática, card, aviso,
+   favorito antigo) cai na Visão Geral. Para reativar: tire o nome daqui e devolva o item ao menu.
+   • votacao, cartao — o cartão público /cartao/gabi continua no ar para o QR Code.
+   • sede (Base Virtual) e prj (Projetos) — ficavam na categoria "🚀 Inovação" do menu (data-cat inov),
+     logo antes de "⚙️ Sistema"; o git guarda os dois itens. Dentro da Base Virtual também ficam o
+     Checklist Diário (chkLoad, api/checklist.js) e o ranking da Ofensiva (#of-ranking): voltam com ela. */
+var PG_INATIVAS=["votacao","cartao","sede","prj"];
+function pgInativa(p){return PG_INATIVAS.indexOf(p)>=0;}
 function navTo(p,btn){
+  if(pgInativa(p)){p="visao";btn=null;}
   if(p==="faltasmed"&&!fmPermitido()){p=fsPermitido()?"faltassup":"visao";btn=null;}
   if(p==="faltassup"&&!fsPermitido()){p="visao";btn=null;}
   if(p==="apres"&&!apPermitido()){p="visao";btn=null;}
