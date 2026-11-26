@@ -71,3 +71,11 @@ drop function if exists public.fe_carga(text, jsonb);
 commit;
 
 notify pgrst, 'reload schema';
+
+-- Agendamentos diários do projeto antigo (horário UTC). Se o SQL da parte 1 já os criou, aqui só são regravados.
+-- Se der erro só aqui embaixo: Database → Extensions → pg_cron → Enable, e rodar de novo só este trecho.
+create extension if not exists pg_cron;
+select cron.schedule('ferias-gerar-proximos-periodos', '0 9 * * *', 'select public.gerar_proximos_periodos()');
+select cron.schedule('ferias-fecha-mes-anterior', '0 3 * * *', 'select public.fecha_mes_anterior()');
+-- o resultado que aparece embaixo do editor: os dois agendamentos ligados
+select jobname, schedule, active from cron.job where jobname like 'ferias-%' order by jobname;
