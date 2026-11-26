@@ -186,6 +186,14 @@ test("ferias.html: sem o Supabase antigo, tudo pela API do Jarvis, scripts compi
   assert.ok(PAGINA.includes("await feFetch(`${SB_URL}/functions/v1/usuarios`"));
   assert.ok(PAGINA.includes("sessionStorage.getItem('authToken')"));
   assert.ok(PAGINA.includes("if(document.hidden || (window.frameElement && !window.frameElement.offsetParent)) return;"), "não consulta o banco com a guia escondida");
+  // dentro do Jarvis a tela de login da plataforma nunca aparece (nem piscando enquanto a sessão volta do servidor)
+  assert.ok(PAGINA.includes("#btn-senha, #btn-sair, #tela-login{display:none !important}"));
+  assert.ok(!PAGINA.includes("$('#tela-login').hidden = false"), "nenhum caminho volta para a tela de login");
+  assert.ok(PAGINA.includes('<p id="fe-aviso-txt">Abrindo a Programação de Férias…</p>'));
+  assert.ok(PAGINA.includes("jarvisAviso(FE_ERRO || 'Abra pelo Jarvis: Gestão → Programação de Férias.');"));
+  assert.ok(PAGINA.includes("Sua sessão do Jarvis terminou."), "401 explica em vez de mostrar o código");
+  assert.ok(PAGINA.includes("localStorage.getItem('jarvisSessao')"), "aba nova com 'Manter conectado' entra sem pedir login");
+  assert.ok(PAGINA.includes("for(let vez = 1; vez <= 2 && !FE_EU; vez++){"), "tenta de novo se o servidor falhar");
   assert.ok(PAGINA.includes("Quem abre a Programação de Férias pelo Jarvis entra nesta lista como <b>Consulta</b>"));
   const re = /<script(\s[^>]*)?>([\s\S]*?)<\/script>/g; let m, n = 0;
   while ((m = re.exec(PAGINA))) { if (m[1] && /src=/.test(m[1])) continue; n++; new vm.Script(m[2]); }
