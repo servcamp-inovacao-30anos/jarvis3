@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Dashboard | Grupo ServCamp</title>
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
-<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
-<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-<meta name="apple-mobile-web-app-title" content="ServCamp">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=2">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png?v=2">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=2">
+<meta name="apple-mobile-web-app-title" content="SERVIX">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0d1f35">
@@ -593,12 +593,12 @@ td{padding:6px 9px;font-size:.73rem;color:var(--g700);}
 .login-field{margin-bottom:calc(14*var(--u));}
 .login-field label{display:block;font-size:max(10px,calc(13*var(--u)));font-weight:700;color:rgba(214,226,240,.78);text-transform:uppercase;letter-spacing:.16em;margin-bottom:calc(7*var(--u));}
 .login-input{position:relative;}
-.login-input input{width:100%;height:calc(50*var(--u));padding:0 calc(18*var(--u));background:rgba(3,10,18,.78);border:1px solid rgba(150,185,225,.22);border-radius:calc(12*var(--u));color:#fff;font-size:max(13px,calc(17*var(--u)));outline:none;transition:border-color .15s,box-shadow .15s;}
+.login-input input{width:100%;height:calc(50*var(--u));padding:0 calc(18*var(--u));background:rgba(3,10,18,.78);border:1px solid rgba(150,185,225,.22);border-radius:calc(12*var(--u));color:#fff;font-size:max(13px,calc(17*var(--u)));outline:none;background-clip:padding-box;transition:border-color .15s,box-shadow .15s;}
 .login-input input.com-olho{padding-right:calc(50*var(--u));}
 .login-input input:focus{border-color:rgba(70,170,240,.75);box-shadow:0 0 0 3px rgba(46,143,239,.18);}
 .login-input input::placeholder{color:rgba(255,255,255,.28);}
-.login-input input:-webkit-autofill,.login-input input:-webkit-autofill:hover,.login-input input:-webkit-autofill:active{border:1px solid rgba(150,185,225,.22)!important;outline:none!important;-webkit-box-shadow:0 0 0 100px #07131f inset!important;-webkit-text-fill-color:#fff;caret-color:#fff;}
-.login-input input:-webkit-autofill:focus{border:1px solid rgba(70,170,240,.75)!important;outline:none!important;-webkit-box-shadow:0 0 0 100px #07131f inset,0 0 0 3px rgba(46,143,239,.18)!important;-webkit-text-fill-color:#fff;caret-color:#fff;}
+.login-input input:-webkit-autofill,.login-input input:-webkit-autofill:hover,.login-input input:-webkit-autofill:active{background-clip:padding-box!important;border:1px solid rgba(150,185,225,.22)!important;outline:none!important;-webkit-box-shadow:0 0 0 100px #07131f inset!important;-webkit-text-fill-color:#fff;caret-color:#fff;}
+.login-input input:-webkit-autofill:focus{background-clip:padding-box!important;border:1px solid rgba(70,170,240,.75)!important;outline:none!important;-webkit-box-shadow:0 0 0 100px #07131f inset,0 0 0 3px rgba(46,143,239,.18)!important;-webkit-text-fill-color:#fff;caret-color:#fff;}
 .login-olho{position:absolute;right:calc(6*var(--u));top:50%;transform:translateY(-50%);width:calc(38*var(--u));height:calc(38*var(--u));display:flex;align-items:center;justify-content:center;background:none;border:none;border-radius:10px;color:rgba(214,226,240,.75);cursor:pointer;}
 .login-olho:hover{color:#fff;background:rgba(255,255,255,.06);}
 .login-olho svg{width:calc(20*var(--u));height:calc(20*var(--u));}
