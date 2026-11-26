@@ -5973,31 +5973,31 @@ setTimeout(letraDoCabecalho, 300); setTimeout(letraDoCabecalho, 1300);
 function ajustaChips(){
   const chips = [...document.querySelectorAll('.fchip')].filter(c => c.offsetParent);
   if(!chips.length) return;
-  const regua = document.createElement('span');
-  regua.style.cssText = 'position:absolute;visibility:hidden;white-space:pre;top:-999px';
-  document.body.appendChild(regua);
+  /* medida pelo canvas: não força o navegador a refazer o estilo da página a cada texto */
+  const ctx = document.createElement('canvas').getContext('2d');
   chips.forEach(c => {
     const s = c.querySelector('select'); if(!s) return;
     const cs = getComputedStyle(s);
-    regua.style.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
-    regua.style.letterSpacing = cs.letterSpacing;
-    regua.textContent = s.options[s.selectedIndex]?.textContent.trim() || '';
-    const texto = regua.offsetWidth;
+    const ls = parseFloat(cs.letterSpacing) || 0;
+    const medir = t => { ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`; return ctx.measureText(t).width + ls * t.length; };
+    const texto = medir(s.options[s.selectedIndex]?.textContent.trim() || '');
     const folga = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) + 4;
     if(c.closest('#tela-hist')){
       /* no Histórico o filtro não cresce: tem a largura do texto mais comprido da lista */
       let maior = texto;
-      [...s.options].forEach(o => { regua.textContent = o.textContent.trim(); maior = Math.max(maior, regua.offsetWidth); });
+      [...s.options].forEach(o => { maior = Math.max(maior, medir(o.textContent.trim())); });
       c.style.flex = '0 0 auto'; c.style.width = (maior + folga).toFixed(0) + 'px';
       return;
     }
     c.style.flex = `${(texto + folga).toFixed(0)} 1 0`;
   });
-  regua.remove();
 }
 addEventListener('resize', ajustaChips);
 document.querySelectorAll('.tools select').forEach(s => s.addEventListener('change', () => setTimeout(ajustaChips, 60)));
-new MutationObserver(ajustaChips).observe(document.querySelector('.tools'), {childList:true, subtree:true});
+/* as mudanças de filtro vêm em rajada: uma medida por quadro, não uma por mudança */
+let AJUSTA_AGENDADO = 0;
+new MutationObserver(() => { cancelAnimationFrame(AJUSTA_AGENDADO); AJUSTA_AGENDADO = requestAnimationFrame(ajustaChips); })
+  .observe(document.querySelector('.tools'), {childList:true, subtree:true});
 setTimeout(ajustaChips, 400); setTimeout(ajustaChips, 1400);
 
 /* meses com sigla de 3 letras, como no modelo */
@@ -8100,7 +8100,6 @@ function pintarDoGuardado(uid){
   if(ANO === null || !anos.includes(ANO)) ANO = anos.find(a => a >= PRIMEIRO_ANO_A_MOSTRA) ?? anos[0] ?? new Date().getFullYear();
   montarFiltros();
   desenharAnos(anos);
-  desenharTudo();
   contarAfastados();
   marcarAtualizando(true);
   return true;
