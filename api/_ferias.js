@@ -101,12 +101,45 @@ async function repassar(req, res, eu, caminho) {
   if (metodo !== "GET" && metodo !== "HEAD" && req.body !== undefined && req.body !== null && req.body !== "") {
     init.body = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
   }
-  const r = await fetch(`${base}/rest/v1/${m[1] || ""}${m[2]}${m[3] || ""}`, init);
+  const consulta = m[3] || "";
+  const endereco = `${base}/rest/v1/${m[1] || ""}${m[2]}`;
+  // O PostgREST do Jarvis devolve no máximo 1000 linhas por pedido e a página lê tabelas inteiras sem
+  // paginar (a Programação passaria de 1000 e gente sumiria da tela sem aviso): aqui busca página a página.
+  if (metodo === "GET" && !m[1] && CHAVE[m[2]] && !/[?&](limit|offset)=/.test(consulta) && !req.headers.range) {
+    return paginar(res, endereco, consulta, CHAVE[m[2]], init);
+  }
+  const r = await fetch(endereco + consulta, init);
   for (const k of ["content-type", "content-range", "preference-applied"]) {
     const v = r.headers && r.headers.get(k);
     if (v) res.setHeader(k, v);
   }
   return res.status(r.status).send(metodo === "HEAD" ? "" : await r.text());
+}
+
+// Coluna(s) que desempatam a ordem, para as páginas não repetirem nem pularem linhas
+const PAGINA = 1000;
+const CHAVE = {
+  vw_escala: "periodo_id", vw_ficha_saidas: "periodo_id", vw_historica: "periodo_id", vw_aso: "funcionario_id",
+  vw_financeiro_13: "emp,codigo", vw_financeiro_ferias: "ano,mes,codigo,nome",
+  funcionarios: "id", periodos: "id", historico: "id", afastamentos: "id"
+};
+async function paginar(res, endereco, consulta, chave, init) {
+  const desempate = chave.split(",").map(c => c + ".asc").join(",");
+  let q = consulta ? consulta : "?";
+  q = /[?&]order=/.test(q) ? q.replace(/([?&]order=)([^&]*)/, (_, a, b) => a + b + "," + desempate)
+                           : q + (q === "?" ? "" : "&") + "order=" + desempate;
+  let lista = [];
+  for (let de = 0; ; de += PAGINA) {
+    const r = await fetch(`${endereco}${q}&limit=${PAGINA}&offset=${de}`, init);
+    const texto = await r.text();
+    if (!r.ok) { res.setHeader("content-type", "application/json"); return res.status(r.status).send(texto); }
+    const pag = JSON.parse(texto);
+    if (!Array.isArray(pag)) { res.setHeader("content-type", "application/json"); return res.status(200).send(texto); } // .single()
+    lista = lista.concat(pag);
+    if (pag.length < PAGINA) break;
+  }
+  res.setHeader("content-type", "application/json; charset=utf-8");
+  return res.status(200).send(JSON.stringify(lista));
 }
 
 // ---------- tela Usuários: o que a função de borda "usuarios" fazia ----------

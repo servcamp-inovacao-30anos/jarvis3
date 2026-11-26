@@ -65,7 +65,7 @@ test("repassa ao PostgREST com a chave de sempre e o id da pessoa (a página nã
   assert.strictEqual(r.statusCode, 200);
   assert.deepStrictEqual(JSON.parse(r.body), [{ periodo_id: 1, nome: "Fulano" }]);
   const ida = a.cabs.find(c => c.url.includes("/rest/v1/vw_escala"));
-  assert.strictEqual(ida.url, "https://falso.supabase.co/rest/v1/vw_escala?select=*&order=nome.asc");
+  assert.strictEqual(ida.url, "https://falso.supabase.co/rest/v1/vw_escala?select=*&order=nome.asc,periodo_id.asc&limit=1000&offset=0");
   assert.strictEqual(ida.h.apikey, "chave-servico");
   assert.strictEqual(ida.h.Authorization, "Bearer chave-servico");
   assert.strictEqual(ida.h.prefer, "count=exact");
@@ -77,7 +77,30 @@ test("SUPABASE_URL com /rest/v1 no fim também funciona", async () => {
   process.env.SUPABASE_URL = "https://falso.supabase.co/rest/v1/";
   try { await pede("joyce", { headers: { "x-fe-path": "/rest/v1/vw_escala?select=*" } }); }
   finally { process.env.SUPABASE_URL = "https://falso.supabase.co"; }
-  assert.ok(a.cabs.some(c => c.url === "https://falso.supabase.co/rest/v1/vw_escala?select=*"));
+  assert.ok(a.cabs.some(c => c.url.startsWith("https://falso.supabase.co/rest/v1/vw_escala?select=*&order=periodo_id.asc")));
+});
+
+test("tabela com mais de 1000 linhas vem inteira, em páginas com desempate pela chave", async () => {
+  const t = base();
+  t.vw_escala = Array.from({ length: 2345 }, (_, i) => ({ periodo_id: i + 1, nome: "N" + String(i % 7) }));
+  const a = ambiente(t);
+  const r = await pede("amauri", { headers: { "x-fe-path": "/rest/v1/vw_escala?select=*&order=nome.asc" } });
+  assert.strictEqual(r.statusCode, 200);
+  const lista = JSON.parse(r.body);
+  assert.strictEqual(lista.length, 2345, "ninguém some da tela");
+  assert.strictEqual(new Set(lista.map(x => x.periodo_id)).size, 2345, "sem repetir");
+  const idas = a.cabs.filter(c => c.url.includes("/rest/v1/vw_escala"));
+  assert.deepStrictEqual(idas.map(c => c.url.split("&").slice(-2).join("&")), ["limit=1000&offset=0", "limit=1000&offset=1000", "limit=1000&offset=2000"]);
+  assert.ok(idas.every(c => c.url.includes("order=nome.asc,periodo_id.asc")));
+  assert.ok(idas.every(c => c.h["x-fe-uid"] === AMAURI));
+});
+
+test("leitura com limite da própria página (Histórico: 500) vai num pedido só", async () => {
+  const t = base(); t.historico = Array.from({ length: 900 }, (_, i) => ({ id: i + 1, quando: "2026-11-0" + (i % 9) }));
+  const a = ambiente(t);
+  const r = await pede("amauri", { headers: { "x-fe-path": "/rest/v1/historico?select=*&order=quando.desc&limit=500" } });
+  assert.strictEqual(JSON.parse(r.body).length, 500);
+  assert.strictEqual(a.cabs.filter(c => c.url.includes("/rest/v1/historico")).length, 1);
 });
 
 test("só passa o que a plataforma usa: backups, lixeira, snapshots e funções de carga ficam de fora", async () => {
@@ -162,6 +185,8 @@ test("ferias.html: sem o Supabase antigo, tudo pela API do Jarvis, scripts compi
   assert.ok(PAGINA.includes("fetch('/api/rh?modulo=ferias', init)"));
   assert.ok(PAGINA.includes("await feFetch(`${SB_URL}/functions/v1/usuarios`"));
   assert.ok(PAGINA.includes("sessionStorage.getItem('authToken')"));
+  assert.ok(PAGINA.includes("if(document.hidden || (window.frameElement && !window.frameElement.offsetParent)) return;"), "não consulta o banco com a guia escondida");
+  assert.ok(PAGINA.includes("Quem abre a Programação de Férias pelo Jarvis entra nesta lista como <b>Consulta</b>"));
   const re = /<script(\s[^>]*)?>([\s\S]*?)<\/script>/g; let m, n = 0;
   while ((m = re.exec(PAGINA))) { if (m[1] && /src=/.test(m[1])) continue; n++; new vm.Script(m[2]); }
   assert.ok(n > 10);
@@ -187,6 +212,20 @@ test("docs/ferias-banco.sql: papel próprio, nada para anon/authenticated, tudo 
   assert.match(SQL, /grant execute on function public\.fe_carga\(text, jsonb\) to service_role;/);
   assert.ok(SQL.indexOf("CREATE SEQUENCE IF NOT EXISTS public.folha_13_import_id_seq") < SQL.indexOf("CREATE TABLE IF NOT EXISTS public.folha_13_import"));
   assert.ok(SQL.indexOf("afastamentos_funcionario_id_fkey") > SQL.indexOf("funcionarios_pkey PRIMARY KEY"));
+});
+
+const SQL2 = fs.readFileSync(path.join(RAIZ, "docs", "ferias-banco-2.sql"), "utf8");
+test("docs/ferias-banco-2.sql: fila de demissões que a tela já usava, confirmação pelo demitir() e sem a fe_carga", () => {
+  assert.match(SQL2, /^begin;$/m);
+  assert.match(SQL2, /create table public\.demissoes_pendentes \(/);
+  assert.match(SQL2, /status text not null default 'pendente'/, "a tela filtra status = pendente");
+  assert.match(SQL2, /using \(public\.eh_dono\(\) or public\.pode\('acoes', 'deletar'\)\)/);
+  assert.match(SQL2, /create function public\.confirmar_demissao\(p_codigo integer, p_quem text default null\) returns jsonb/);
+  assert.match(SQL2, /r := public\.demitir\(p_codigo, current_date, v_quem\);/);
+  assert.match(SQL2, /drop function if exists public\.fe_carga\(text, jsonb\);/);
+  assert.ok(!/ to authenticated/i.test(SQL2.replace(/from public, anon, authenticated|from anon, authenticated/g, "")));
+  assert.match(PAGINA, /sb\.from\('demissoes_pendentes'\)\.select\('codigo,nome,empresa'\)\.eq\('status','pendente'\)/, "colunas que a tela lê");
+  assert.match(PAGINA, /sb\.rpc\('confirmar_demissao', \{ p_codigo: x\.codigo, p_quem: EU\.nome \}\)/, "assinatura que a tela chama");
 });
 
 // ── ligação com o index.html ─────────────────────────────────────────────
