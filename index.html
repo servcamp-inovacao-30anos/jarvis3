@@ -3897,7 +3897,7 @@ const USERS={
   "gabrielaalvarenga":{nome:"Gabriela Alvarenga",cargo:"Comercial",admin:false,com:true,comDash:true},
   "rosisantos":{nome:"Rosi Santos",cargo:"Diretora Financeiro",admin:false},
   "fabianalassala":{nome:"Fabiana Lassala",cargo:"Financeiro",admin:false},
-  "raphaelvictor":{nome:"Raphael Victor",cargo:"Auxiliar ADM",admin:false,fm:true,qual:true,lig:true},
+  "raphaelvictor":{nome:"Raphael Victor",cargo:"Auxiliar ADM",admin:true},
   "sandraalves":{nome:"Sandra Alves",cargo:"Responsável RH",admin:false,rh:true},
   "testejoao":{nome:"Teste João",cargo:"Usuário de Teste",admin:false},
   "rafaelandrade":{nome:"Rafael Andrade",cargo:"Supervisor",admin:false,sup:true},
@@ -4072,7 +4072,7 @@ function applyUserUI(){
   document.querySelectorAll(".upload-btn,#btnNovoExcel").forEach(function(el){el.style.display=isAdmin?"":"none";});
   // Permissões do menu agora são por ITEM (data-perm) — MESMAS regras de antes:
   // rh: Sandra+admin · rhdash: +diretoria (Paulo/Ingridy) · com: Gabriela/Ingridy+admin ·
-  // comdash: Ingridy+admin · prj: Ingridy+admin · admin: só João.
+  // comdash: Ingridy+admin · prj: Ingridy+admin · admin: João e Raphael.
   const isCom=sessionStorage.getItem("userCom")==="1";
   const isComDash=sessionStorage.getItem("userComDash")==="1";
   const isPrj=sessionStorage.getItem("userPrj")==="1";
@@ -4084,7 +4084,7 @@ function applyUserUI(){
     const isBdv=sessionStorage.getItem("userBdv")==="1";
     const navOk={rh:isAdmin||isRh,rhdash:isAdmin||isRh||isRhDash,com:isAdmin||isCom,comdash:isAdmin||isComDash,prj:isAdmin||isPrj,admin:isAdmin,qual:isAdmin||isQual,lig:isAdmin||isLig,metas:isAdmin||isMetas,fm:isAdmin||isFm,sup:isAdmin||isSup||isLig};
     navOk.agenda=isAdmin; // por enquanto só o admin; a Gabriela entra quando a agenda estiver completa (a mesma lista do api/_agenda.js, GESTORES: quem barra é o servidor)
-    navOk.bdv=isAdmin||isFm||isBdv;navOk.apres=sessionStorage.getItem("userKey")==="joaoygor"; // fora do literal: test/faltas_supervisao lê só ele
+    navOk.bdv=isAdmin||isFm||isBdv;navOk.apres=["joaoygor","raphaelvictor"].indexOf(sessionStorage.getItem("userKey"))>=0; // fora do literal: test/faltas_supervisao lê só ele
   // guias ligadas/desligadas para a pessoa na Configuração valem por cima da regra do perfil
   const _g=_guiasDoUsuario();
   document.querySelectorAll('#navRoot .ni[data-pg]').forEach(function(el){
@@ -6299,14 +6299,14 @@ function heSupFech(){
     (ks.some(parcial)?'<div style="margin-top:8px;font-size:.66rem;color:#94a3b8">*Fechamento em andamento, dados até '+fimDado.slice(8,10)+'/'+fimDado.slice(5,7)+'</div>':'')+
     '<div style="margin-top:4px;font-size:.66rem;color:#94a3b8">Fechamento: dia 26 ao dia 25 · só cargos de Supervisor</div>';
 }
-/* ═════════ Guia "Apresentação" (só João Ygor) ═════════
+/* ═════════ Guia "Apresentação" (só João Ygor e Raphael Victor) ═════════
    Faltas de EFETIVOS de Portaria e Limpeza em sábado, domingo e feriado, com o
    mapa dos clientes que tiveram falta. Dados: DASHBOARD_DATA.faltas (planilha do
    dia) cruzados pelo RE com os Funcionários Ativos (só TIPO = EFETIVO). Feriados:
    os mesmos cadastrados em Faltas x Medidas (fm_feriados). Portaria/Limpeza vêm
    do cargo. O mapa usa os mesmos endereços da Saúde do Cliente (/api/hq?mapa=1). */
 var AP={fer:null,ferErro:false,pinos:null,mapa:null,lin:[],base:null,dias:[]};
-function apPermitido(){return sessionStorage.getItem("userKey")==="joaoygor";}
+function apPermitido(){return ["joaoygor","raphaelvictor"].indexOf(sessionStorage.getItem("userKey"))>=0;}
 function apNorm(s){return String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase().replace(/\s+/g," ").trim();}
 function apServico(cargo){
   const c=apNorm(cargo);
@@ -11036,7 +11036,7 @@ function cfgGuias(k){
 /* Bloquear / liberar o acesso de quem já existe. Bloqueado não entra e quem está com o
    painel aberto volta ao login em ~15 s. Senha e permissões ficam guardadas: liberar
    devolve tudo como estava. */
-const CFG_ADMINS_FIXOS=["joaoygor"];
+const CFG_ADMINS_FIXOS=["joaoygor","raphaelvictor"];
 function cfgBotaoAcesso(k,bloq){
   if(k===sessionStorage.getItem("userKey")||CFG_ADMINS_FIXOS.indexOf(k)>=0)return "";
   // o botão de bloquear saiu (pedido de 30/10); quem já estiver bloqueado ainda pode ser liberado

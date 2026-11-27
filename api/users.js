@@ -30,7 +30,7 @@ const USUARIOS = [
 
 // Administradores fixos: os mesmos com admin:true no USERS do index.html. Quem é
 // criado pela tela de Configurações ganha admin pelo campo perms do banco.
-const ADMINS = ["joaoygor"];
+const ADMINS = ["joaoygor", "raphaelvictor"];
 // Permissões que a tela de Configurações pode dar (as mesmas chaves do USERS).
 const PERMS_VALIDAS = ["admin", "rh", "rhDash", "com", "comDash", "prj", "qual", "lig", "sup", "fm", "bdv", "metas"];
 // Mesma regra do _normUser do index.html: "Maria da Silva" -> "mariadasilva".

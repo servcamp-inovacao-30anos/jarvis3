@@ -47,10 +47,10 @@ test.beforeEach(() => {
 test.after(() => { global.fetch = fetchReal; });
 
 test("item 1: GET ?userKey devolve só has_custom e must_change, nunca a senha", async () => {
-  sb.semear("raphaelvictor", { custom_password: "texto-claro-antigo", must_change: false });
+  sb.semear("jussilenealmeida", { custom_password: "texto-claro-antigo", must_change: false });
   sb.semear("joaoygor", { custom_password: await _senha.hash("outra-senha-1"), must_change: false });
   const casos = [
-    ["raphaelvictor", { has_custom: true, must_change: false }],
+    ["jussilenealmeida", { has_custom: true, must_change: false }],
     ["joaoygor", { has_custom: true, must_change: false }],
     ["testejoao", { has_custom: false, must_change: true }]   // sem linha no banco
   ];
@@ -62,11 +62,11 @@ test("item 1: GET ?userKey devolve só has_custom e must_change, nunca a senha",
 });
 
 test("GET ?all=1: só campos seguros, e exige token sempre que há AUTH_SECRET", async () => {
-  sb.semear("raphaelvictor", { custom_password: "texto-claro-antigo", must_change: false, last_login: "2026-09-01T10:00:00Z", login_count: 3 });
+  sb.semear("jussilenealmeida", { custom_password: "texto-claro-antigo", must_change: false, last_login: "2026-09-01T10:00:00Z", login_count: 3 });
   assert.equal((await chamar("GET", { query: { all: "1" } })).status, 401, "sem token: recusado, mesmo sem AUTH_ENFORCE");
   const r = await chamar("GET", { query: { all: "1" }, token: _auth.sign("joaoygor", SEGREDO, 1) });
   assert.equal(r.status, 200);
-  assert.deepEqual(r.dados.users, [{ user_key: "raphaelvictor", has_custom: true, must_change: false, last_login: "2026-09-01T10:00:00Z", login_count: 3, updated_at: null }]);
+  assert.deepEqual(r.dados.users, [{ user_key: "jussilenealmeida", has_custom: true, must_change: false, last_login: "2026-09-01T10:00:00Z", login_count: 3, updated_at: null }]);
   process.env.AUTH_ENFORCE = "0"; // chave de emergência
   assert.equal((await chamar("GET", { query: { all: "1" } })).status, 200, "AUTH_ENFORCE=0 desliga a exigência");
   delete process.env.AUTH_ENFORCE;
@@ -136,22 +136,22 @@ test("senha errada ou usuário fora da lista não entram", async () => {
 });
 
 test("troca de senha de quem já tem senha própria exige a atual", async () => {
-  sb.semear("raphaelvictor", { custom_password: await _senha.hash("senha-antiga-1"), must_change: false });
-  const r = await trocar("raphaelvictor", "senha-antiga-1", "senha-nova-22");
+  sb.semear("jussilenealmeida", { custom_password: await _senha.hash("senha-antiga-1"), must_change: false });
+  const r = await trocar("jussilenealmeida", "senha-antiga-1", "senha-nova-22");
   assert.equal(r.status, 200);
-  assert.equal(_auth.verify(r.dados.token, SEGREDO).u, "raphaelvictor");
-  assert.equal((await entrar("raphaelvictor", "senha-antiga-1")).status, 401);
-  assert.equal((await entrar("raphaelvictor", "senha-nova-22")).status, 200);
+  assert.equal(_auth.verify(r.dados.token, SEGREDO).u, "jussilenealmeida");
+  assert.equal((await entrar("jussilenealmeida", "senha-antiga-1")).status, 401);
+  assert.equal((await entrar("jussilenealmeida", "senha-nova-22")).status, 200);
 });
 
 test("nova senha: tamanho, diferente da atual e nunca a senha padrão", async () => {
-  sb.semear("raphaelvictor", { custom_password: await _senha.hash("senha-antiga-1"), must_change: false });
-  assert.equal((await trocar("raphaelvictor", "senha-antiga-1", "12345")).status, 400);
-  assert.equal((await trocar("raphaelvictor", "senha-antiga-1", "x".repeat(201))).status, 400);
-  assert.equal((await trocar("raphaelvictor", "senha-antiga-1", "senha-antiga-1")).status, 400);
-  assert.equal((await trocar("raphaelvictor", "senha-antiga-1", PADRAO)).status, 400);
+  sb.semear("jussilenealmeida", { custom_password: await _senha.hash("senha-antiga-1"), must_change: false });
+  assert.equal((await trocar("jussilenealmeida", "senha-antiga-1", "12345")).status, 400);
+  assert.equal((await trocar("jussilenealmeida", "senha-antiga-1", "x".repeat(201))).status, 400);
+  assert.equal((await trocar("jussilenealmeida", "senha-antiga-1", "senha-antiga-1")).status, 400);
+  assert.equal((await trocar("jussilenealmeida", "senha-antiga-1", PADRAO)).status, 400);
   assert.equal((await trocar("testejoao", PADRAO, PADRAO)).status, 400);
-  assert.equal(await _senha.verify("senha-antiga-1", sb.linhas.get("raphaelvictor").custom_password), true);
+  assert.equal(await _senha.verify("senha-antiga-1", sb.linhas.get("jussilenealmeida").custom_password), true);
 });
 
 test("must_change marcado no banco: a senha própria entra, mas o token só sai na troca", async () => {
@@ -168,40 +168,40 @@ test("must_change marcado no banco: a senha própria entra, mas o token só sai 
 });
 
 test("linha antiga em texto claro: entra e vira hash, sem trancar ninguém", async () => {
-  sb.semear("raphaelvictor", { custom_password: "senhaAntiga123", must_change: false, updated_at: "2026-07-01T00:00:00Z" });
-  assert.equal((await entrar("raphaelvictor", "senha-errada")).status, 401);
-  assert.equal(sb.linhas.get("raphaelvictor").custom_password, "senhaAntiga123");   // errou: não mexe
-  const r = await entrar("raphaelvictor", "senhaAntiga123");
+  sb.semear("jussilenealmeida", { custom_password: "senhaAntiga123", must_change: false, updated_at: "2026-07-01T00:00:00Z" });
+  assert.equal((await entrar("jussilenealmeida", "senha-errada")).status, 401);
+  assert.equal(sb.linhas.get("jussilenealmeida").custom_password, "senhaAntiga123");   // errou: não mexe
+  const r = await entrar("jussilenealmeida", "senhaAntiga123");
   assert.equal(r.status, 200);
   assert.ok(r.dados.token);
-  const linha = sb.linhas.get("raphaelvictor");
+  const linha = sb.linhas.get("jussilenealmeida");
   assert.ok(_senha.isHash(linha.custom_password));
   assert.equal(linha.updated_at, "2026-07-01T00:00:00Z");   // converter não conta como trocar a senha
-  assert.equal((await entrar("raphaelvictor", "senhaAntiga123")).status, 200);
-  assert.equal((await entrar("raphaelvictor", "senha-errada")).status, 401);
+  assert.equal((await entrar("jussilenealmeida", "senhaAntiga123")).status, 200);
+  assert.equal((await entrar("jussilenealmeida", "senha-errada")).status, 401);
 });
 
 test("se a conversão para hash falhar, o login segue e ela é refeita no próximo", async t => {
   t.mock.method(console, "error", () => {});
-  sb.semear("raphaelvictor", { custom_password: "senhaAntiga123", must_change: false });
+  sb.semear("jussilenealmeida", { custom_password: "senhaAntiga123", must_change: false });
   sb.falhar = metodo => (metodo === "PATCH" ? 500 : 0);
-  assert.equal((await entrar("raphaelvictor", "senhaAntiga123")).status, 200);
-  assert.equal(sb.linhas.get("raphaelvictor").custom_password, "senhaAntiga123");
+  assert.equal((await entrar("jussilenealmeida", "senhaAntiga123")).status, 200);
+  assert.equal(sb.linhas.get("jussilenealmeida").custom_password, "senhaAntiga123");
   sb.falhar = null;
-  assert.equal((await entrar("raphaelvictor", "senhaAntiga123")).status, 200);
-  assert.ok(_senha.isHash(sb.linhas.get("raphaelvictor").custom_password));
+  assert.equal((await entrar("jussilenealmeida", "senhaAntiga123")).status, 200);
+  assert.ok(_senha.isHash(sb.linhas.get("jussilenealmeida").custom_password));
 });
 
 test("a conversão não sobrescreve uma senha trocada nesse meio-tempo", async () => {
-  sb.semear("raphaelvictor", { custom_password: "senhaAntiga123", must_change: false });
+  sb.semear("jussilenealmeida", { custom_password: "senhaAntiga123", must_change: false });
   const trocadaNoMeio = await _senha.hash("senha-trocada-no-meio");
   // corrida: quando o PATCH da conversão chega, a linha já tem outra senha
   global.fetch = async (url, opt = {}) => {
-    if (opt.method === "PATCH") sb.linhas.get("raphaelvictor").custom_password = trocadaNoMeio;
+    if (opt.method === "PATCH") sb.linhas.get("jussilenealmeida").custom_password = trocadaNoMeio;
     return sb.fetch(url, opt);
   };
-  assert.equal((await entrar("raphaelvictor", "senhaAntiga123")).status, 200);
-  assert.equal(sb.linhas.get("raphaelvictor").custom_password, trocadaNoMeio);
+  assert.equal((await entrar("jussilenealmeida", "senhaAntiga123")).status, 200);
+  assert.equal(sb.linhas.get("jussilenealmeida").custom_password, trocadaNoMeio);
 });
 
 test("sem DEFAULT_PASSWORD_HASH válida o primeiro acesso fecha; senha própria segue entrando", async () => {
@@ -252,13 +252,13 @@ test("último acesso é registrado só no login certo", async () => {
 });
 
 test("senha nunca vai para URL do Supabase, nunca é gravada em texto e nunca volta na resposta", async () => {
-  sb.semear("raphaelvictor", { custom_password: "senhaAntiga123", must_change: false });
+  sb.semear("jussilenealmeida", { custom_password: "senhaAntiga123", must_change: false });
   const respostas = [
-    await entrar("raphaelvictor", "senhaAntiga123"),
-    await trocar("raphaelvictor", "senhaAntiga123", "senhaNova456"),
+    await entrar("jussilenealmeida", "senhaAntiga123"),
+    await trocar("jussilenealmeida", "senhaAntiga123", "senhaNova456"),
     await entrar("testejoao", PADRAO),
     await trocar("testejoao", PADRAO, "outraNova789"),
-    await chamar("GET", { query: { userKey: "raphaelvictor" } }),
+    await chamar("GET", { query: { userKey: "jussilenealmeida" } }),
     await chamar("GET", { query: { all: "1" } })
   ];
   const senhas = /senhaAntiga123|senhaNova456|outraNova789|padrao-de-teste/;
@@ -309,19 +309,19 @@ test("as senhas padrão antigas não aparecem em nenhum arquivo servido", () => 
 
 // ── Configurações: redefinir senha e criar usuário (só administrador) ──
 const comoAdmin = () => _auth.sign("joaoygor", SEGREDO, 1);
-const comoComum = () => _auth.sign("raphaelvictor", SEGREDO, 1);
+const comoComum = () => _auth.sign("jussilenealmeida", SEGREDO, 1);
 const acao = (body, token) => chamar("POST", { body, token });
 
 test("admin_reset: só admin; gera senha temporária com troca obrigatória", async () => {
-  sb.semear("raphaelvictor", { custom_password: await _senha.hash("senha-antiga-1"), must_change: false });
-  assert.equal((await acao({ action: "admin_reset", userKey: "raphaelvictor" })).status, 403, "sem token");
-  assert.equal((await acao({ action: "admin_reset", userKey: "raphaelvictor" }, comoComum())).status, 403, "não admin");
+  sb.semear("jussilenealmeida", { custom_password: await _senha.hash("senha-antiga-1"), must_change: false });
+  assert.equal((await acao({ action: "admin_reset", userKey: "jussilenealmeida" })).status, 403, "sem token");
+  assert.equal((await acao({ action: "admin_reset", userKey: "jussilenealmeida" }, comoComum())).status, 403, "não admin");
   assert.equal((await acao({ action: "admin_reset", userKey: "naoexiste" }, comoAdmin())).status, 404);
-  const r = await acao({ action: "admin_reset", userKey: "raphaelvictor" }, comoAdmin());
+  const r = await acao({ action: "admin_reset", userKey: "jussilenealmeida" }, comoAdmin());
   assert.equal(r.status, 200);
   assert.match(r.dados.senha, /^[a-z2-9]{8}$/);
-  assert.equal((await entrar("raphaelvictor", "senha-antiga-1")).status, 401, "a senha antiga deixa de valer");
-  const e = await entrar("raphaelvictor", r.dados.senha);
+  assert.equal((await entrar("jussilenealmeida", "senha-antiga-1")).status, 401, "a senha antiga deixa de valer");
+  const e = await entrar("jussilenealmeida", r.dados.senha);
   assert.equal(e.status, 200);
   assert.equal(e.dados.must_change, true, "troca obrigatória no primeiro acesso");
   assert.equal(e.dados.token, null, "token só depois da troca");
@@ -355,17 +355,17 @@ test("create_user: só admin; entra com a senha temporária, troca obrigatória 
 
 test("criado pela tela com admin no banco também redefine senhas", async () => {
   sb.semear("chefe", { nome: "Chefe", cargo: "Diretoria", perms: { admin: true }, ativo: true, custom_password: await _senha.hash("x1234567") });
-  sb.semear("raphaelvictor", { custom_password: await _senha.hash("senha-antiga-1") });
-  const r = await acao({ action: "admin_reset", userKey: "raphaelvictor" }, _auth.sign("chefe", SEGREDO, 1));
+  sb.semear("jussilenealmeida", { custom_password: await _senha.hash("senha-antiga-1") });
+  const r = await acao({ action: "admin_reset", userKey: "jussilenealmeida" }, _auth.sign("chefe", SEGREDO, 1));
   assert.equal(r.status, 200);
 });
 
 // ── Configurações: bloquear e liberar acesso (só administrador) ──
 test("set_active: só admin, nunca a si mesmo nem o admin fixo, e só usuário que existe", async () => {
   const ajusta = (userKey, ativo, token) => acao({ action: "set_active", userKey, ativo }, token);
-  assert.equal((await ajusta("raphaelvictor", false)).status, 403, "sem token");
-  assert.equal((await ajusta("raphaelvictor", false, comoComum())).status, 403, "não admin");
-  assert.equal((await ajusta("raphaelvictor", "false", comoAdmin())).status, 400, "ativo precisa ser booleano");
+  assert.equal((await ajusta("jussilenealmeida", false)).status, 403, "sem token");
+  assert.equal((await ajusta("jussilenealmeida", false, comoComum())).status, 403, "não admin");
+  assert.equal((await ajusta("jussilenealmeida", "false", comoAdmin())).status, 400, "ativo precisa ser booleano");
   assert.equal((await ajusta("joaoygor", false, comoAdmin())).status, 400, "não bloqueia a si mesmo");
   sb.semear("chefe", { nome: "Chefe", perms: { admin: true }, ativo: true, custom_password: await _senha.hash("x1234567") });
   assert.equal((await ajusta("joaoygor", false, _auth.sign("chefe", SEGREDO, 1))).status, 400, "admin fixo não é bloqueado");
@@ -373,22 +373,22 @@ test("set_active: só admin, nunca a si mesmo nem o admin fixo, e só usuário q
 });
 
 test("bloqueado não entra (aviso só com a senha certa), não troca senha, aparece na lista e volta ao liberar", async () => {
-  sb.semear("raphaelvictor", { custom_password: await _senha.hash("senha-dele-1"), must_change: false });
-  const b = await acao({ action: "set_active", userKey: "raphaelvictor", ativo: false }, comoAdmin());
+  sb.semear("jussilenealmeida", { custom_password: await _senha.hash("senha-dele-1"), must_change: false });
+  const b = await acao({ action: "set_active", userKey: "jussilenealmeida", ativo: false }, comoAdmin());
   assert.equal(b.status, 200);
   assert.equal(b.dados.ativo, false);
-  const e = await entrar("raphaelvictor", "senha-dele-1");
+  const e = await entrar("jussilenealmeida", "senha-dele-1");
   assert.equal(e.status, 403);
   assert.match(e.dados.error, /bloqueado/i);
   assert.equal(e.dados.token, undefined, "bloqueado não recebe token");
-  assert.equal((await entrar("raphaelvictor", "senha-errada-1")).status, 401, "senha errada: mensagem genérica, sem revelar o bloqueio");
-  assert.equal((await trocar("raphaelvictor", "senha-dele-1", "outra-senha-2")).status, 403, "bloqueado não troca a senha");
+  assert.equal((await entrar("jussilenealmeida", "senha-errada-1")).status, 401, "senha errada: mensagem genérica, sem revelar o bloqueio");
+  assert.equal((await trocar("jussilenealmeida", "senha-dele-1", "outra-senha-2")).status, 403, "bloqueado não troca a senha");
   const lista = await chamar("GET", { query: { all: "1" }, token: comoAdmin() });
-  assert.equal(lista.dados.users.find(u => u.user_key === "raphaelvictor").ativo, false, "a Configuração enxerga o bloqueio");
+  assert.equal(lista.dados.users.find(u => u.user_key === "jussilenealmeida").ativo, false, "a Configuração enxerga o bloqueio");
   // senha preservada: bloquear não apaga a senha
-  const l = await acao({ action: "set_active", userKey: "raphaelvictor", ativo: true }, comoAdmin());
+  const l = await acao({ action: "set_active", userKey: "jussilenealmeida", ativo: true }, comoAdmin());
   assert.equal(l.status, 200);
-  const e2 = await entrar("raphaelvictor", "senha-dele-1");
+  const e2 = await entrar("jussilenealmeida", "senha-dele-1");
   assert.equal(e2.status, 200, "liberado entra de novo com a mesma senha");
   assert.ok(e2.dados.token);
 });
@@ -414,8 +414,8 @@ test("GET ?all=1 (com quem está bloqueado) é só para administrador", async ()
 });
 
 test("set_guias: só admin; guarda só guias válidas, ignora Configurações e volta no login", async () => {
-  sb.semear("raphaelvictor", { custom_password: await _senha.hash("senha-dele-1"), must_change: false });
-  const g = (guias, token) => acao({ action: "set_guias", userKey: "raphaelvictor", guias }, token);
+  sb.semear("jussilenealmeida", { custom_password: await _senha.hash("senha-dele-1"), must_change: false });
+  const g = (guias, token) => acao({ action: "set_guias", userKey: "jussilenealmeida", guias }, token);
   assert.equal((await g({ hrextra: false })).status, 403, "sem token");
   assert.equal((await g({ hrextra: false }, comoComum())).status, 403, "não admin");
   assert.equal((await g(["x"], comoAdmin())).status, 400, "lista não vale");
@@ -425,12 +425,12 @@ test("set_guias: só admin; guarda só guias válidas, ignora Configurações e 
   const r = await g({ hrextra: false, rhvagas: true, config: false }, comoAdmin());
   assert.equal(r.status, 200);
   assert.deepEqual(r.dados.guias, { hrextra: false, rhvagas: true }, "config fica de fora");
-  const e = await entrar("raphaelvictor", "senha-dele-1");
+  const e = await entrar("jussilenealmeida", "senha-dele-1");
   assert.deepEqual(e.dados.guias, { hrextra: false, rhvagas: true });
   const l = await chamar("GET", { query: { all: "1" }, token: comoAdmin() });
-  assert.deepEqual(l.dados.users.find(u => u.user_key === "raphaelvictor").guias, { hrextra: false, rhvagas: true });
+  assert.deepEqual(l.dados.users.find(u => u.user_key === "jussilenealmeida").guias, { hrextra: false, rhvagas: true });
   assert.equal((await g({}, comoAdmin())).status, 200, "voltar ao padrão");
-  assert.deepEqual((await entrar("raphaelvictor", "senha-dele-1")).dados.guias, {});
+  assert.deepEqual((await entrar("jussilenealmeida", "senha-dele-1")).dados.guias, {});
 });
 
 // ── sessão salva no aparelho (manter conectado) ─────────────────────────────
@@ -446,41 +446,41 @@ async function rotaProtegida(token, escopo) {
   return { status: 200, dados: {} };
 }
 async function semearRaphael() {
-  sb.semear("raphaelvictor", { custom_password: await _senha.hash("senha-dele-1"), must_change: false });
+  sb.semear("jussilenealmeida", { custom_password: await _senha.hash("senha-dele-1"), must_change: false });
 }
 
 test("manter conectado: o servidor emite sessão de 30 dias marcada; sem marcar, segue 12 h", async () => {
   await semearRaphael();
   _auth.esquecerBloqueio();
-  const normal = (await entrar("raphaelvictor", "senha-dele-1")).dados;
+  const normal = (await entrar("jussilenealmeida", "senha-dele-1")).dados;
   const pn = _auth.verify(normal.token, SEGREDO);
   assert.equal(pn.m, undefined);
   assert.ok(Math.abs(pn.exp - pn.iat - 12 * HORA) < 1000, "12 h");
-  const salvo = (await chamar("POST", { body: { action: "authenticate", userKey: "raphaelvictor", password: "senha-dele-1", manter: true } })).dados;
+  const salvo = (await chamar("POST", { body: { action: "authenticate", userKey: "jussilenealmeida", password: "senha-dele-1", manter: true } })).dados;
   const ps = _auth.verify(salvo.token, SEGREDO);
   assert.equal(ps.m, 1);
   assert.ok(Math.abs(ps.exp - ps.iat - 30 * 24 * HORA) < 1000, "30 dias");
-  const lixo = (await chamar("POST", { body: { action: "authenticate", userKey: "raphaelvictor", password: "senha-dele-1", manter: "sim" } })).dados;
+  const lixo = (await chamar("POST", { body: { action: "authenticate", userKey: "jussilenealmeida", password: "senha-dele-1", manter: "sim" } })).dados;
   assert.equal(_auth.verify(lixo.token, SEGREDO).m, undefined, "só o booleano true liga");
 });
 
 test("renew: devolve sessão nova de 30 dias; recusa sessão comum, token ruim, bloqueado e encerrada", async () => {
   await semearRaphael();
-  const antiga = _auth.sign("raphaelvictor", SEGREDO, 30 * 24, { m: 1 });
+  const antiga = _auth.sign("jussilenealmeida", SEGREDO, 30 * 24, { m: 1 });
   const r = await chamar("POST", { body: { action: "renew" }, token: antiga });
   assert.equal(r.status, 200);
   const p = _auth.verify(r.dados.token, SEGREDO);
-  assert.equal(p.u, "raphaelvictor");
+  assert.equal(p.u, "jussilenealmeida");
   assert.equal(p.m, 1);
   assert.ok(Math.abs(p.exp - Date.now() - 30 * 24 * HORA) < 5000, "volta a valer 30 dias a partir de agora");
 
   assert.equal((await chamar("POST", { body: { action: "renew" } })).status, 401, "sem token");
-  assert.equal((await chamar("POST", { body: { action: "renew" }, token: _auth.sign("raphaelvictor", SEGREDO, -1, { m: 1 }) })).status, 401, "vencido");
-  assert.equal((await chamar("POST", { body: { action: "renew" }, token: _auth.sign("raphaelvictor", SEGREDO, 12) })).status, 400, "sessão comum não vira de 30 dias");
-  assert.equal((await chamar("POST", { body: { action: "renew" }, token: _auth.sign("raphaelvictor", "outra-chave", 24, { m: 1 }) })).status, 401, "assinatura de outra chave");
-  assert.equal((await chamar("POST", { body: { action: "renew" }, token: _auth.sign("raphaelvictor", SEGREDO, 24, { m: 1, s: "xl" }) })).status, 401, "chave do Excel não renova");
+  assert.equal((await chamar("POST", { body: { action: "renew" }, token: _auth.sign("jussilenealmeida", SEGREDO, -1, { m: 1 }) })).status, 401, "vencido");
+  assert.equal((await chamar("POST", { body: { action: "renew" }, token: _auth.sign("jussilenealmeida", SEGREDO, 12) })).status, 400, "sessão comum não vira de 30 dias");
+  assert.equal((await chamar("POST", { body: { action: "renew" }, token: _auth.sign("jussilenealmeida", "outra-chave", 24, { m: 1 }) })).status, 401, "assinatura de outra chave");
+  assert.equal((await chamar("POST", { body: { action: "renew" }, token: _auth.sign("jussilenealmeida", SEGREDO, 24, { m: 1, s: "xl" }) })).status, 401, "chave do Excel não renova");
 
-  sb.semear("raphaelvictor", { ativo: false });
+  sb.semear("jussilenealmeida", { ativo: false });
   _auth.esquecerBloqueio();
   const b = await chamar("POST", { body: { action: "renew" }, token: antiga });
   assert.equal(b.status, 401);
@@ -490,18 +490,18 @@ test("renew: devolve sessão nova de 30 dias; recusa sessão comum, token ruim, 
 test("sair de todos os aparelhos: sessões emitidas antes deixam de valer em qualquer rota; entrar de novo funciona", async () => {
   await semearRaphael();
   _auth.esquecerBloqueio();
-  const celular = _auth.sign("raphaelvictor", SEGREDO, 30 * 24, { m: 1 });
+  const celular = _auth.sign("jussilenealmeida", SEGREDO, 30 * 24, { m: 1 });
   await new Promise(ok => setTimeout(ok, 5));
   assert.equal((await rotaProtegida(celular)).status, 200, "antes de sair, vale");
   const r = await chamar("POST", { body: { action: "logout_all" }, token: celular });
   assert.equal(r.status, 200);
-  assert.equal(sb.auditoria.filter(e => e.acao === "SESSAO_REVOGADA" && e.chave === "raphaelvictor").length, 1);
+  assert.equal(sb.auditoria.filter(e => e.acao === "SESSAO_REVOGADA" && e.chave === "jussilenealmeida").length, 1);
   const velho = await rotaProtegida(celular);
   assert.equal(velho.status, 401);
   assert.equal(velho.dados.encerrada, true);
   assert.equal((await chamar("POST", { body: { action: "renew" }, token: celular })).status, 401, "a sessão encerrada também não se renova");
   await new Promise(ok => setTimeout(ok, 5));
-  const novo = (await entrar("raphaelvictor", "senha-dele-1")).dados.token;
+  const novo = (await entrar("jussilenealmeida", "senha-dele-1")).dados.token;
   assert.equal((await rotaProtegida(novo)).status, 200, "o login depois do encerramento vale");
   assert.equal((await chamar("POST", { body: { action: "logout_all" } })).status, 401, "sem token não encerra a sessão de ninguém");
 });
@@ -509,18 +509,18 @@ test("sair de todos os aparelhos: sessões emitidas antes deixam de valer em qua
 test("a chave do Excel não é sessão de aparelho: sair de todos os aparelhos não a derruba", async () => {
   await semearRaphael();
   _auth.esquecerBloqueio();
-  const excel = _auth.sign("raphaelvictor", SEGREDO, 24 * 365, { s: "xl" });
+  const excel = _auth.sign("jussilenealmeida", SEGREDO, 24 * 365, { s: "xl" });
   await new Promise(ok => setTimeout(ok, 5));
-  await chamar("POST", { body: { action: "logout_all" }, token: _auth.sign("raphaelvictor", SEGREDO, 12) });
+  await chamar("POST", { body: { action: "logout_all" }, token: _auth.sign("jussilenealmeida", SEGREDO, 12) });
   assert.equal((await rotaProtegida(excel, "xl")).status, 200);
 });
 
 test("trocar a senha encerra os outros aparelhos, mas o token devolvido na troca continua valendo", async () => {
   await semearRaphael();
   _auth.esquecerBloqueio();
-  const outroAparelho = _auth.sign("raphaelvictor", SEGREDO, 30 * 24, { m: 1 });
+  const outroAparelho = _auth.sign("jussilenealmeida", SEGREDO, 30 * 24, { m: 1 });
   await new Promise(ok => setTimeout(ok, 5));
-  const r = await trocar("raphaelvictor", "senha-dele-1", "senha-nova-22");
+  const r = await trocar("jussilenealmeida", "senha-dele-1", "senha-nova-22");
   assert.equal(r.status, 200);
   assert.equal((await rotaProtegida(outroAparelho)).status, 401, "o outro aparelho cai");
   assert.equal((await rotaProtegida(r.dados.token)).status, 200, "quem trocou segue logado");
@@ -529,18 +529,18 @@ test("trocar a senha encerra os outros aparelhos, mas o token devolvido na troca
 test("administrador redefine a senha de alguém: as sessões salvas dessa pessoa caem", async () => {
   await semearRaphael();
   _auth.esquecerBloqueio();
-  const dele = _auth.sign("raphaelvictor", SEGREDO, 30 * 24, { m: 1 });
+  const dele = _auth.sign("jussilenealmeida", SEGREDO, 30 * 24, { m: 1 });
   await new Promise(ok => setTimeout(ok, 5));
-  const r = await acao({ action: "admin_reset", userKey: "raphaelvictor" }, comoAdmin());
+  const r = await acao({ action: "admin_reset", userKey: "jussilenealmeida" }, comoAdmin());
   assert.equal(r.status, 200);
   assert.equal((await rotaProtegida(dele)).status, 401);
 });
 
 test("minhas_guias: quem está logado lê as próprias guias na hora (sem sair e entrar); sem login, nada", async () => {
-  sb.semear("raphaelvictor", { custom_password: await _senha.hash("senha-dele-1"), must_change: false });
+  sb.semear("jussilenealmeida", { custom_password: await _senha.hash("senha-dele-1"), must_change: false });
   assert.equal((await acao({ action: "minhas_guias" })).status, 401, "sem token");
   assert.deepEqual((await acao({ action: "minhas_guias" }, comoComum())).dados, { ok: true, guias: {} });
-  assert.equal((await acao({ action: "set_guias", userKey: "raphaelvictor", guias: { agenda: true } }, comoAdmin())).status, 200);
+  assert.equal((await acao({ action: "set_guias", userKey: "jussilenealmeida", guias: { agenda: true } }, comoAdmin())).status, 200);
   const r = await acao({ action: "minhas_guias" }, comoComum());
   assert.equal(r.status, 200);
   assert.deepEqual(r.dados.guias, { agenda: true }, "liberou agora, já vê");
@@ -564,16 +564,16 @@ test("delete_user: só admin; criado pela tela some do banco (e o nome fica livr
   assert.ok(sb.auditoria.some(a => a.chave === "brunateste" && a.ator === "joaoygor"), "sessões encerradas, com quem excluiu");
   assert.equal((await acao(novo, comoAdmin())).status, 200, "o nome fica livre para criar de novo");
   // fixo: bloqueado e marcado; some da lista (a tela esconde) e não entra
-  sb.semear("raphaelvictor", { custom_password: await _senha.hash("senha-dele-1"), must_change: false, perms: { guias: { agenda: true } } });
-  const f = await del("raphaelvictor");
+  sb.semear("jussilenealmeida", { custom_password: await _senha.hash("senha-dele-1"), must_change: false, perms: { guias: { agenda: true } } });
+  const f = await del("jussilenealmeida");
   assert.equal(f.status, 200);
   assert.equal(f.dados.apagado, false);
-  const linha = sb.linhas.get("raphaelvictor");
+  const linha = sb.linhas.get("jussilenealmeida");
   assert.equal(linha.ativo, false);
   assert.deepEqual(linha.perms, { guias: { agenda: true }, excluido: true }, "guarda o resto das permissões");
-  assert.equal((await entrar("raphaelvictor", "senha-dele-1")).status, 403, "não entra mais");
+  assert.equal((await entrar("jussilenealmeida", "senha-dele-1")).status, 403, "não entra mais");
   const l = await chamar("GET", { query: { all: "1" }, token: comoAdmin() });
-  assert.equal(l.dados.users.find(u => u.user_key === "raphaelvictor").excluido, true);
+  assert.equal(l.dados.users.find(u => u.user_key === "jussilenealmeida").excluido, true);
 });
 
 test("tela de Configurações: botão Excluir em cada usuário (menos você e o admin fixo) e a lista esconde os excluídos", () => {

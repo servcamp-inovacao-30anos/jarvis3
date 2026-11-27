@@ -404,5 +404,5 @@ test("rota desconhecida", async () => {
 });
 
 test("os administradores da guia são os mesmos do login", () => {
-  assert.deepEqual(require("../api/users").ADMINS, ["joaoygor"]);
+  assert.deepEqual(require("../api/users").ADMINS, ["joaoygor", "raphaelvictor"]);
 });

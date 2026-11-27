@@ -76,8 +76,9 @@ test("limite para a medida: o texto certo para cada situação", () => {
 test("painel operacional Faltas x Medidas: só João (admin), Raphael, Ingridy, Campana, Jussilene, Amauri e Joyce (Inovação, vê tudo)", () => {
   const U = usuarios();
   const com = Object.entries(U).filter(([, u]) => u.fm).map(([k]) => k).sort();
-  assert.deepEqual(com, ["amauriantonio", "ingridycampana", "joyce", "jussilenealmeida", "paulocampana", "raphaelvictor"]);
+  assert.deepEqual(com, ["amauriantonio", "ingridycampana", "joyce", "jussilenealmeida", "paulocampana"]);
   assert.equal(U.joaoygor.admin, true, "o João entra por ser administrador");
+  assert.equal(U.raphaelvictor.admin, true, "o Raphael também (administrador, como o João)");
   Object.entries(U).filter(([, u]) => u.cargo === "Supervisor").forEach(([k, u]) => assert.ok(!u.fm, k + " (supervisor) não vê o painel operacional"));
 });
 
