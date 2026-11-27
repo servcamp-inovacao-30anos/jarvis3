@@ -12,6 +12,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0d1f35">
 <link rel="manifest" href="/site.webmanifest">
+<script>(function(){try{var m=window.matchMedia("(display-mode: window-controls-overlay)");var a=function(){document.documentElement.classList.toggle("wco",!!m.matches);};a();if(m.addEventListener)m.addEventListener("change",a);else if(m.addListener)m.addListener(a);}catch(e){}})();</script>
 <script src="/assets/sessao/sessao.js"></script>
 <!-- Leaflet (mapa). Vem do mesmo CDN já liberado para o Chart.js; o CSS e os
      tiles do OpenStreetMap precisaram entrar na política de segurança em
@@ -774,10 +775,20 @@ aside.sb#sidebar .sb-perfil-senha:focus-visible{box-shadow:0 0 0 2px #7cc0ff;}
 @media(max-width:768px){aside.sb#sidebar .sb-perfil-senha{padding:7px 8px;font-size:.8125rem;}}
 aside.sb#sidebar.sb-mini #navRoot .ni{margin:2px 8px;padding:9px 0;}
 @media(max-width:768px){aside.sb#sidebar{width:240px;min-width:240px;}}
+/* Barra de título do app instalado (computador): em vez do ícone pequeno e do texto, o nome SERVIX da arte.
+   Só existe quando o Chrome/Edge abre o app no modo "window-controls-overlay" (html.wco); no navegador comum nada muda. */
+#wco-bar{display:none;}
+html.wco #wco-bar{display:flex;position:fixed;top:0;left:0;width:100%;height:env(titlebar-area-height,33px);z-index:2147483000;align-items:center;padding:0 16px;background:#0d1f35;-webkit-app-region:drag;app-region:drag;user-select:none;}
+html.wco #wco-bar img{height:calc(100% - 6px);width:auto;display:block;pointer-events:none;}
+html.wco body{padding-top:env(titlebar-area-height,33px);}
+html.wco aside.sb#sidebar{height:auto;}
+html.wco body:has(#loginOverlay:not(.hidden)) #wco-bar{background:transparent;}
+html.wco body:has(#intro-overlay) #wco-bar{display:none;}
 </style>
 <link rel="stylesheet" href="/assets/faltas-email/faltas-email.css">
 </head>
 <body>
+<div id="wco-bar" aria-hidden="true"><img src="/assets/login/servix-nome.webp?v=1" alt="" width="720" height="126"></div>
 <div id="intro-overlay" style="display:none">
   <video id="introVid" muted playsinline preload="auto" disablepictureinpicture>
     <source src="intro.mp4?v=3" type="video/mp4">
