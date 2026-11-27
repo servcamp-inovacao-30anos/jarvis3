@@ -910,7 +910,6 @@ html.wco .topbar{padding-right:calc(20px + 100vw - env(titlebar-area-x,0px) - en
   <div class="nav-cat" data-cat="gestao">
     <div class="nav-cat-h" onclick="navCatToggle('gestao')"><span class="nav-cat-t">📊 Gestão</span><span class="nav-cat-ar">▾</span></div>
     <div class="nav-cat-b">
-      <div class="ni" data-pg="saude" data-perm="admin" onclick="navTo('saude',this)"><span class="ni-ic">🩺</span><span>Sa&uacute;de do Cliente</span><span class="nib nib-novo">NOVO</span></div>
       <div class="ni" data-pg="celulares" data-perm="admin" onclick="navTo('celulares',this)"><span class="ni-ic">📱</span><span>Celulares</span><span class="nib nib-novo">NOVO</span></div>
       <div class="ni" data-pg="ferias" onclick="navTo('ferias',this)"><span class="ni-ic">🏖️</span><span>Programa&ccedil;&atilde;o de F&eacute;rias</span><span hidden>ferias férias escala sar2g aso afastados</span><span class="nib nib-novo">NOVO</span></div>
       <!-- DESATIVADA 17/08 a pedido do Joao: nao ha responsavel definido pela auditoria.
@@ -1070,7 +1069,7 @@ html.wco .topbar{padding-right:calc(20px + 100vw - env(titlebar-area-x,0px) - en
 
     <div class="vg-sec">
       <div class="vg-sec-lbl vg-s-rh"><span class="i">💼</span>RH</div>
-      <div class="oc-row oc-row-4">
+      <div class="oc-row oc-row-3">
         <div class="oc c2 oc-h" id="ocVagas" onclick="vgAbrir('rhvagas','rh')">
           <div class="oc-ic">💼</div>
           <div class="oc-txt"><div class="oc-lb">Vagas Abertas</div><div class="oc-v" id="ocVagasV">—</div><div class="oc-sb" id="ocVagasSub">total, sem filtro de data</div></div>
@@ -1083,10 +1082,9 @@ html.wco .topbar{padding-right:calc(20px + 100vw - env(titlebar-area-x,0px) - en
           <div class="oc-ic">🚪</div>
           <div class="oc-txt"><div class="oc-lb">Desligamentos</div><div class="oc-v" id="ocDeslV">—</div><div class="oc-sb" id="ocDeslSub">no mês</div></div>
         </div>
-        <div class="oc c4 oc-h" id="ocTurn" onclick="vgAbrir('rhdesl','rh')">
-          <div class="oc-ic">🔁</div>
-          <div class="oc-txt"><div class="oc-lb">Turnover</div><div class="oc-v" id="ocTurnV">—</div><div class="oc-sb" id="ocTurnSub">no mês</div></div>
-        </div>
+        <!-- Turnover: card inativado em 27/11/2026. Quem o preenche é vgCardsMes ("ocTurn"), que segue
+             ignorando a falta do card; para voltar, recupere o bloco no git. O turnover continua em
+             RH › Desligamentos ("Turnover do Mês") e no Painel RH — Diretoria. -->
       </div>
     </div>
 
@@ -4883,14 +4881,16 @@ function vgFmPermitido(){return fmPermitido()||fsPermitido();}
 /* Relatório de Coberturas: quem tem fm + quem recebeu a permissão só deste relatório (bdv) */
 function bdvPermitido(){return fmPermitido()||sessionStorage.getItem("userBdv")==="1";}
 function fsPermitido(){return sessionStorage.getItem("userAdmin")==="1"||sessionStorage.getItem("userSup")==="1"||sessionStorage.getItem("userLig")==="1";}
-/* Guias inativadas (26/11/2026): saíram do menu, mas a tela, o código e os dados continuam, para poder voltar.
+/* Guias inativadas (26 e 27/11/2026): saíram do menu, mas a tela, o código e os dados continuam, para poder voltar.
    Qualquer outro caminho que tente abrir uma delas (volta depois de atualização automática, card, aviso,
    favorito antigo) cai na Visão Geral. Para reativar: tire o nome daqui e devolva o item ao menu.
    • votacao, cartao — o cartão público /cartao/gabi continua no ar para o QR Code.
    • sede (Base Virtual) e prj (Projetos) — ficavam na categoria "🚀 Inovação" do menu (data-cat inov),
      logo antes de "⚙️ Sistema"; o git guarda os dois itens. Dentro da Base Virtual também ficam o
-     Checklist Diário (chkLoad, api/checklist.js) e o ranking da Ofensiva (#of-ranking): voltam com ela. */
-var PG_INATIVAS=["votacao","cartao","sede","prj"];
+     Checklist Diário (chkLoad, api/checklist.js) e o ranking da Ofensiva (#of-ranking): voltam com ela.
+   • saude (Saúde do Cliente) — 27/11; ficava no menu "📊 Gestão", só para admin, logo antes de Celulares
+     (data-perm admin). A nota de cada cliente continua vindo no batimento (/api/hq) e no mapa do modo TV. */
+var PG_INATIVAS=["votacao","cartao","sede","prj","saude"];
 function pgInativa(p){return PG_INATIVAS.indexOf(p)>=0;}
 function navTo(p,btn){
   if(pgInativa(p)){p="visao";btn=null;}
