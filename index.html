@@ -783,6 +783,8 @@ html.wco #wco-bar img{height:calc(100% - 6px);width:auto;display:block;pointer-e
 html.wco body{padding-top:env(titlebar-area-height,33px);}
 html.wco aside.sb#sidebar{height:auto;}
 html.wco body:has(#loginOverlay:not(.hidden)) #wco-bar{background:transparent;}
+/* Dentro do sistema a barra fica só azul escuro, sem o nome (a logo já está no menu). O nome aparece só na tela de login. */
+html.wco body:not(:has(#loginOverlay:not(.hidden))) #wco-bar img{display:none;}
 html.wco body:has(#intro-overlay) #wco-bar{display:none;}
 </style>
 <link rel="stylesheet" href="/assets/faltas-email/faltas-email.css">
