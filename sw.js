@@ -17,7 +17,8 @@
 // antigo, com os ícones velhos, ser apagado no "activate".
 // v4: ícones de instalação com a arte da SERVIX (o cache antigo, com os ícones velhos, é apagado no "activate").
 // v5: ícones da SERVIX com fundo branco e logo maior.
-const VERSAO = "jarvis-v5";
+// v6: nome SERVIX maior dentro do ícone.
+const VERSAO = "jarvis-v6";
 const ESTATICOS = [
   "/icon-192.png",
   "/icon-512.png",
