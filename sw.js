@@ -18,7 +18,8 @@
 // v4: ícones de instalação com a arte da SERVIX (o cache antigo, com os ícones velhos, é apagado no "activate").
 // v5: ícones da SERVIX com fundo branco e logo maior.
 // v6: nome SERVIX maior dentro do ícone.
-const VERSAO = "jarvis-v6";
+// v7: logo mais alta no ícone, para a setinha do atalho do Windows não cobrir o nome.
+const VERSAO = "jarvis-v7";
 const ESTATICOS = [
   "/icon-192.png",
   "/icon-512.png",
